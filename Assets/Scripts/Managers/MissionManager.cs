@@ -47,6 +47,9 @@ public class MissionManager : MonoBehaviour
         GameEvents.ProductsCollected += OnCollected;
         FieldPlot.FieldPlanted += OnPlanted;
         GameEvents.AnimalBorn += OnBorn;
+        GameEvents.TractorWorked += OnTractor;
+        GameEvents.ContractCompleted += OnContract;
+        GameEvents.MoneyChanged += OnMoney;
         GameEvents.PenCleaned += OnCleaned;
         FieldPlot.FieldHarvested += OnFieldHarvest;
     }
@@ -63,6 +66,9 @@ public class MissionManager : MonoBehaviour
         GameEvents.ProductsCollected -= OnCollected;
         FieldPlot.FieldPlanted -= OnPlanted;
         GameEvents.AnimalBorn -= OnBorn;
+        GameEvents.TractorWorked -= OnTractor;
+        GameEvents.ContractCompleted -= OnContract;
+        GameEvents.MoneyChanged -= OnMoney;
         GameEvents.PenCleaned -= OnCleaned;
         FieldPlot.FieldHarvested -= OnFieldHarvest;
     }
@@ -89,6 +95,9 @@ public class MissionManager : MonoBehaviour
     private void OnPlanted(FieldPlot p) => Add("plantField", 1f);
     private void OnBorn(string id) => Add("animalBorn", 1f);
     private void OnCleaned() => Add("cleanPen", 1f);
+    private void OnTractor(Implement i) { Add("tractorWork", 1f); if (i == Implement.Plow) Add("tractorPlow", 1f); if (i == Implement.Harvester) Add("tractorHarvest", 1f); }
+    private void OnContract() => Add("completeContract", 1f);
+    private void OnMoney(int balance) { if (Is("haveMoney")) { Progress = balance; CheckDone(); } }
     private void OnFieldHarvest(FieldPlot p, string crop, float kg) => Add("harvestField", kg);
     private void OnBought(string id)
     {
@@ -106,6 +115,12 @@ public class MissionManager : MonoBehaviour
         {
             foreach (var w in FindObjectsByType<WellController>(FindObjectsSortMode.None))
                 if (w.IsRunning) { Progress = Current.target; CheckDone(); return; }
+        }
+        if (Is("reachDay") && WorldClock.Instance != null) { Progress = WorldClock.Instance.Day; CheckDone(); return; }
+        if (Is("animalTypes") && EconomyManager.Instance != null)
+        {
+            int types = 0; foreach (var a in EconomyManager.Instance.Data.animals) if (EconomyManager.Instance.Owned(a.id) > 0) types++;
+            Progress = types; CheckDone(); return;
         }
         if (gm == null) return;
         if (Is("healthyGreenhouse"))

@@ -21,13 +21,15 @@ public static class GameEvents
     public static event Action ProductsCollected;
     public static event Action<string> AnimalBorn;
     public static event Action PenCleaned;
+    public static event Action<Implement> TractorWorked;
+    public static event Action ContractCompleted;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void Reset()
     {
         WellStarted = null; ModuleOptimized = null; BedStateChanged = null; Harvested = null;
         CargoLoaded = null; Delivered = null; VehicleChanged = null; UpgradeBought = null;
-        MoneyChanged = null; MissionStarted = null; MissionCompleted = null; ProductsCollected = null; AnimalBorn = null; PenCleaned = null;
+        MoneyChanged = null; MissionStarted = null; MissionCompleted = null; ProductsCollected = null; AnimalBorn = null; PenCleaned = null; TractorWorked = null; ContractCompleted = null;
     }
 
     public static void RaiseWellStarted(WellController w) => WellStarted?.Invoke(w);
@@ -44,4 +46,6 @@ public static class GameEvents
     public static void RaiseProductsCollected() => ProductsCollected?.Invoke();
     public static void RaiseAnimalBorn(string id) => AnimalBorn?.Invoke(id);
     public static void RaisePenCleaned() => PenCleaned?.Invoke();
+    public static void RaiseTractorWorked(Implement i) => TractorWorked?.Invoke(i);
+    public static void RaiseContractCompleted() => ContractCompleted?.Invoke();
 }

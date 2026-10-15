@@ -97,6 +97,7 @@ public class MarketManager : MonoBehaviour
             if (c.delivered >= c.amount - 0.01f)
             {
                 messages.Add(Loc.Display(Loc.Raw("Contract complete") + ": " + BuyerName(c)));
+                GameEvents.RaiseContractCompleted();
                 Contracts.RemoveAt(i);
             }
         }

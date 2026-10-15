@@ -57,7 +57,7 @@ public class Tractor : Vehicle
             bool done = ActiveImplement == Implement.Plow ? plot.TryPlow(false)
                       : ActiveImplement == Implement.Seeder ? plot.TrySeed(false)
                       : plot.TryHarvest(false);
-            if (done) workCooldown = 0.4f;
+            if (done) { workCooldown = 0.4f; GameEvents.RaiseTractorWorked(ActiveImplement); }
         }
     }
 

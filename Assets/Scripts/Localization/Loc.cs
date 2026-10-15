@@ -63,6 +63,8 @@ public static class Loc
         { "Silver", "فضي" },
         { "Bronze", "برونزي" },
         { "Partners", "الشركاء" },
+        { "Mazraa", "المزرعة" },
+        { "[Enter] Start   [L] Arabic / English", "[Enter] ابدأ   [L] عربي / إنجليزي" },
         { "A new animal was born", "اتولد حيوان جديد" },
         { "Water trough filled", "حوض المياه اتملى" },
         { "Pen cleaned", "الحظيرة اتنضفت" },
@@ -177,6 +179,11 @@ public static class Loc
     // Long English texts that are keyed by an id instead of their own text
     private static readonly Dictionary<string, string> englishLong = new Dictionary<string, string>
     {
+        { "STORY_BODY",
+            "Your grandfather left you his small farm in the Nile Delta: two greenhouses, an old well and empty land.\n\n" +
+            "Get the water running, bring the greenhouses back to life, plow and plant the fields, raise animals " +
+            "and drive your harvest to the market. Follow the orange marker for your next task.\n\n" +
+            "Make Mazraa the finest farm in the Delta." },
         { "HELP_BODY",
             "WASD - move    Mouse - look    E - interact\n" +
             "Start the well, then use the Control Station to optimize\n" +
@@ -195,6 +202,11 @@ public static class Loc
 
     private static readonly Dictionary<string, string> arabicLong = new Dictionary<string, string>
     {
+        { "STORY_BODY",
+            "جدّك ساب لك مزرعته الصغيرة في دلتا النيل: صوبتين وبئر قديم وأرض فاضية.\n\n" +
+            "شغّل المياه، رجّع الصوب للحياة، احرث وازرع الحقول، ربّي الحيوانات " +
+            "ووصّل محصولك للسوق. اتبع العلامة البرتقالي عشان تعرف المهمة الجاية.\n\n" +
+            "خلّي المزرعة أحسن مزرعة في الدلتا." },
         { "HELP_BODY",
             "WASD - حركة    الماوس - نظر    E - تفاعل\n" +
             "شغّل البئر ثم استخدم محطة التحكم لتحسين\n" +

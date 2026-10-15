@@ -53,6 +53,8 @@ public class GameManager : MonoBehaviour
         if (GetComponent<WorldClock>() == null) gameObject.AddComponent<WorldClock>();
         if (GetComponent<FieldManager>() == null) gameObject.AddComponent<FieldManager>();
         if (GetComponent<MarketManager>() == null) gameObject.AddComponent<MarketManager>();
+        if (GetComponent<ObjectiveMarker>() == null) gameObject.AddComponent<ObjectiveMarker>();
+        if (GetComponent<StoryIntro>() == null) gameObject.AddComponent<StoryIntro>();
     }
 
     private void Start()

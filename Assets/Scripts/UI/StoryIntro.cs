@@ -1,0 +1,78 @@
+using TMPro;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
+
+/// <summary>Opening story card shown on a new game (Enter or click to start). Bilingual.</summary>
+public class StoryIntro : MonoBehaviour
+{
+    private GameObject canvasGo;
+    private TextMeshProUGUI text;
+    private bool open;
+
+    private void Start()
+    {
+        if (SaveData.GetInt("mazraa.introSeen", 0) == 1) return;
+        Invoke(nameof(Show), 1.2f);
+    }
+
+    private void Show()
+    {
+        canvasGo = new GameObject("Story Intro", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        canvasGo.transform.SetParent(transform, false);
+        var canvas = canvasGo.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 80;
+        var scaler = canvasGo.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.matchWidthOrHeight = 0.5f;
+
+        var bg = new GameObject("Backdrop", typeof(RectTransform), typeof(Image), typeof(Button));
+        bg.transform.SetParent(canvasGo.transform, false);
+        var brt = (RectTransform)bg.transform; brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one; brt.offsetMin = brt.offsetMax = Vector2.zero;
+        bg.GetComponent<Image>().color = new Color(0.03f, 0.03f, 0.02f, 0.86f);
+        bg.GetComponent<Button>().onClick.AddListener(Close);
+
+        var tgo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+        tgo.transform.SetParent(bg.transform, false);
+        var trt = (RectTransform)tgo.transform; trt.anchorMin = new Vector2(0.2f, 0.15f); trt.anchorMax = new Vector2(0.8f, 0.85f); trt.offsetMin = trt.offsetMax = Vector2.zero;
+        text = tgo.GetComponent<TextMeshProUGUI>();
+        text.fontSize = 30; text.color = Color.white; text.richText = true; text.raycastTarget = false;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        Loc.ExcludeFromScene(text);
+        Refresh();
+        Loc.OnLanguageChanged += Refresh;
+        open = true;
+        if (UIManager.Instance != null) UIManager.Instance.SetExternalPanel(true);
+    }
+
+    private void Refresh()
+    {
+        if (text == null) return;
+        Loc.ApplyFont(text);
+        text.alignment = Loc.IsArabic ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
+        text.text = "<size=150%><color=#FF9A3C><b>" + Loc.T("Mazraa") + "</b></color></size>\n\n" + Loc.T("STORY_BODY") +
+                    "\n\n<size=80%><color=#BBBBBB>" + Loc.T("[Enter] Start   [L] Arabic / English") + "</color></size>";
+    }
+
+    private void Update()
+    {
+        if (!open) return;
+        var kb = Keyboard.current;
+        if (kb != null && (kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame)) Close();
+    }
+
+    private void Close()
+    {
+        if (!open) return;
+        open = false;
+        SaveData.SetInt("mazraa.introSeen", 1);
+        SaveData.Save();
+        Loc.OnLanguageChanged -= Refresh;
+        if (canvasGo != null) Destroy(canvasGo);
+        if (UIManager.Instance != null) UIManager.Instance.SetExternalPanel(false);
+    }
+
+    private void OnDestroy() => Loc.OnLanguageChanged -= Refresh;
+}

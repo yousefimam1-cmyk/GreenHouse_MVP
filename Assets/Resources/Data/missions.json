@@ -1,5 +1,5 @@
 {
-  "notes": "Mission chain, played in order. type: startWell | optimize | healthyGreenhouse | allHealthy | harvestKg | enterVehicle | loadKg | deliverKg | earnMoney | buyFeed | buyAnimal | collectProducts | buyUpgrade | plantField | harvestField | cleanPen | animalBorn. target = amount needed (counted from when the mission starts). reward in EGP.",
+  "notes": "Mission chain, played in order. type: startWell | optimize | healthyGreenhouse | allHealthy | harvestKg | enterVehicle | loadKg | deliverKg | earnMoney | buyFeed | buyAnimal | collectProducts | buyUpgrade | plantField | harvestField | cleanPen | animalBorn | tractorWork | tractorPlow | tractorHarvest | completeContract | haveMoney | reachDay | animalTypes. target = amount needed (counted from when the mission starts). reward in EGP.",
   "missions": [
     {
       "id": "well",
@@ -62,6 +62,26 @@
       "descAr": "اسقِ الحقل واحصد 60 كجم لما ينضج."
     },
     {
+      "id": "tractor",
+      "type": "tractorPlow",
+      "target": 2,
+      "reward": 350,
+      "titleEn": "Bigger fields, bigger tools",
+      "titleAr": "أدوات أكبر",
+      "descEn": "Drive the red tractor with the plow (Q) over 2 field plots.",
+      "descAr": "سوق الجرار الأحمر بالمحراث (Q) فوق قطعتين أرض."
+    },
+    {
+      "id": "seed",
+      "type": "tractorWork",
+      "target": 4,
+      "reward": 300,
+      "titleEn": "Mechanised farm",
+      "titleAr": "مزرعة بالمكن",
+      "descEn": "Do 4 jobs with tractor implements (plow, seeder, harvester).",
+      "descAr": "اعمل 4 شغلانات بمعدات الجرار (محراث، بذّارة، حصّادة)."
+    },
+    {
       "id": "truck",
       "type": "enterVehicle",
       "target": 1,
@@ -90,6 +110,16 @@
       "titleAr": "إلى السوق",
       "descEn": "Drive to the gold market pad and sell 50 kg.",
       "descAr": "سوق إلى منطقة السوق الذهبية وبيع 50 كجم."
+    },
+    {
+      "id": "contract",
+      "type": "completeContract",
+      "target": 1,
+      "reward": 600,
+      "titleEn": "A buyer's trust",
+      "titleAr": "ثقة المشتري",
+      "descEn": "Check the contracts on M, then deliver one in full at the market.",
+      "descAr": "شوف العقود من M وسلّم عقد كامل في السوق."
     },
     {
       "id": "feed",
@@ -180,6 +210,46 @@
       "titleAr": "مواليد جديدة",
       "descEn": "Keep a pair of animals fed, watered and clean until one is born.",
       "descAr": "خلي زوج حيوانات متأكّل ومتشرّب ونضيف لحد ما يتولد واحد."
+    },
+    {
+      "id": "season",
+      "type": "reachDay",
+      "target": 6,
+      "reward": 500,
+      "titleEn": "Through the seasons",
+      "titleAr": "عبر المواسم",
+      "descEn": "Keep the farm running until day 6, when the season changes.",
+      "descAr": "خلي المزرعة شغالة لحد اليوم 6 لما الموسم يتغير."
+    },
+    {
+      "id": "zoo",
+      "type": "animalTypes",
+      "target": 3,
+      "reward": 1500,
+      "titleEn": "Mixed farm",
+      "titleAr": "مزرعة متكاملة",
+      "descEn": "Own chickens, sheep and cows.",
+      "descAr": "امتلك فراخ وخرفان وبقر."
+    },
+    {
+      "id": "harvest",
+      "type": "tractorHarvest",
+      "target": 3,
+      "reward": 800,
+      "titleEn": "Harvest season",
+      "titleAr": "موسم الحصاد",
+      "descEn": "Harvest 3 ripe plots with the tractor harvester.",
+      "descAr": "احصد 3 قطع ناضجة بحصّادة الجرار."
+    },
+    {
+      "id": "rich",
+      "type": "haveMoney",
+      "target": 25000,
+      "reward": 2500,
+      "titleEn": "Delta's finest farm",
+      "titleAr": "أحسن مزرعة في الدلتا",
+      "descEn": "Have 25,000 EGP in the bank.",
+      "descAr": "يكون معاك 25,000 جنيه."
     }
   ]
 }
