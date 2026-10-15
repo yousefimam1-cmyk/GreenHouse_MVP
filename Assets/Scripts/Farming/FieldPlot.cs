@@ -100,39 +100,66 @@ public class FieldPlot : Interactable
     public override void Interact()
     {
         base.Interact();
-        var eco = EconomyManager.Instance;
         switch (State)
         {
-            case PlotState.Untilled:
-                State = PlotState.Plowed;
-                Say(Loc.T("Field plowed"));
-                break;
-            case PlotState.Plowed:
-                var seed = BestSeed();
-                if (seed == null || !eco.UseSeed(seed.id)) { Say(Loc.T("No seeds - buy them at a Farm Shop")); return; }
-                CropId = seed.id; Growth = 0f; State = PlotState.Growing;
-                FieldPlanted?.Invoke(this);
-                if (Water < 0.3f) Water = 0.3f;
-                Say(Loc.Display(Loc.Raw("Planted") + " " + FieldCropText.Name(seed) + (InSeason(seed) ? "" : " - " + Loc.Raw("Out of season - slow"))));
-                break;
+            case PlotState.Untilled: TryPlow(true); break;
+            case PlotState.Plowed: TrySeed(true); break;
             case PlotState.Growing:
                 if (!WellRunning()) { Say(Loc.T("Start the well first to get water")); return; }
                 Water = 1f;
                 Say(Loc.T("Field watered"));
+                Refresh(); Save();
                 break;
-            case PlotState.Ripe:
-                var crop = eco.FieldCrop(CropId);
-                float kg = crop != null ? crop.yieldKg : 50f;
-                eco.AddGood(CropId, kg);
-                FieldHarvested?.Invoke(this, CropId, kg);
-                if (GameManager.Instance != null) GameManager.Instance.RegisterFieldHarvest(kg);
-                FeedbackFX.Float(transform.position + Vector3.up * 1.4f, "+" + kg.ToString("F0") + " kg", new Color(0.95f, 0.85f, 0.4f));
-                Say(Loc.Display(Loc.Raw("Harvested") + " " + kg.ToString("F0") + " " + Loc.Raw("kg") + " " + FieldCropText.Name(crop)));
-                State = PlotState.Untilled; CropId = ""; Growth = 0f;
-                break;
+            case PlotState.Ripe: TryHarvest(true); break;
         }
-        Refresh();
-        Save();
+    }
+
+    // --- Actions shared by the player (E) and tractor implements ---
+
+    public bool TryPlow(bool announce)
+    {
+        if (State != PlotState.Untilled) return false;
+        State = PlotState.Plowed;
+        if (announce) Say(Loc.T("Field plowed"));
+        Refresh(); Save();
+        return true;
+    }
+
+    public bool TrySeed(bool announce)
+    {
+        if (State != PlotState.Plowed) return false;
+        var eco = EconomyManager.Instance;
+        var seed = BestSeed();
+        if (seed == null || eco == null || !eco.UseSeed(seed.id)) { if (announce) Say(Loc.T("No seeds - buy them at a Farm Shop")); return false; }
+        CropId = seed.id; Growth = 0f; State = PlotState.Growing;
+        FieldPlanted?.Invoke(this);
+        if (Water < 0.3f) Water = 0.3f;
+        if (announce) Say(Loc.Display(Loc.Raw("Planted") + " " + FieldCropText.Name(seed) + (InSeason(seed) ? "" : " - " + Loc.Raw("Out of season - slow"))));
+        Refresh(); Save();
+        return true;
+    }
+
+    public bool TryHarvest(bool announce)
+    {
+        if (State != PlotState.Ripe) return false;
+        var eco = EconomyManager.Instance;
+        var crop = eco != null ? eco.FieldCrop(CropId) : null;
+        float kg = crop != null ? crop.yieldKg : 50f;
+        if (eco != null) eco.AddGood(CropId, kg);
+        FieldHarvested?.Invoke(this, CropId, kg);
+        if (GameManager.Instance != null) GameManager.Instance.RegisterFieldHarvest(kg);
+        FeedbackFX.Float(transform.position + Vector3.up * 1.4f, "+" + kg.ToString("F0") + " kg", new Color(0.95f, 0.85f, 0.4f));
+        if (announce) Say(Loc.Display(Loc.Raw("Harvested") + " " + kg.ToString("F0") + " " + Loc.Raw("kg") + " " + FieldCropText.Name(crop)));
+        State = PlotState.Untilled; CropId = ""; Growth = 0f;
+        Refresh(); Save();
+        return true;
+    }
+
+    /// <summary>True when the world point lies on this plot.</summary>
+    public bool Contains(Vector3 world)
+    {
+        Vector3 l = transform.InverseTransformPoint(world);
+        return Mathf.Abs(l.x) <= size.x * 0.5f && Mathf.Abs(l.z) <= size.y * 0.5f;
     }
 
     private static bool WellRunning()

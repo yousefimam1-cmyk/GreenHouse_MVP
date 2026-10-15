@@ -31,6 +31,7 @@ public class VehicleSpawner : MonoBehaviour
         MarketPos = Spot("MarketSpot", PickMarket(start.position));
 
         BuildTruck(LoadingBay, Quaternion.LookRotation(fwd));
+        BuildTractor(LoadingBay + right * 5.5f, Quaternion.LookRotation(fwd));
         BuildZone(LoadingBay, ZoneKind.LoadingBay, new Color(0.3f, 0.85f, 0.35f), "Loading bay");
         BuildPen(PenPos, Quaternion.LookRotation(fwd));
         BuildZone(MarketPos, ZoneKind.Market, new Color(1f, 0.75f, 0.2f), "Market");
@@ -220,12 +221,82 @@ public class VehicleSpawner : MonoBehaviour
         hay.SetActive(true);
     }
 
-    // Lets the truck pass the existing farm fences so it can leave the farm.
+    private void BuildTractor(Vector3 pos, Quaternion rot)
+    {
+        var root = new GameObject("Tractor");
+        root.layer = 7;
+        root.transform.SetPositionAndRotation(Build.OnGround(pos, 0.9f), rot);
+        root.AddComponent<Rigidbody>();
+        var col = root.AddComponent<BoxCollider>();
+        col.center = new Vector3(0, 0.75f, 0.2f); col.size = new Vector3(2.0f, 1.6f, 3.4f);
+        col.material = new PhysicsMaterial("Tractor") { dynamicFriction = 0f, staticFriction = 0f, frictionCombine = PhysicsMaterialCombine.Minimum };
+        Transform t = root.transform;
+        var red = Build.Mat(new Color(0.72f, 0.1f, 0.08f), 0.55f, 0.1f);
+        var dark = Build.Mat(new Color(0.08f, 0.08f, 0.09f), 0.3f);
+        var steel = Build.Mat(new Color(0.55f, 0.56f, 0.58f), 0.6f, 0.6f);
+        var glass = Build.Mat(new Color(0.12f, 0.18f, 0.22f), 0.9f);
+        var yellow = Build.Mat(new Color(0.95f, 0.75f, 0.1f), 0.4f);
+        var light = Build.Mat(new Color(1f, 0.95f, 0.8f), 0.8f, 0f, new Color(2.2f, 2.0f, 1.6f));
+        var wheels = new Transform[4];
+        if (Build.TryModel("Tractor", t) == null)
+        {
+            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.55f, 0.9f), new Vector3(1.0f, 0.75f, 2.2f), red, "Engine");
+            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.6f, 2.02f), new Vector3(0.95f, 0.6f, 0.06f), steel, "Grille");
+            Build.Part(PrimitiveType.Cube, t, new Vector3(0.3f, 0.75f, 2.04f), new Vector3(0.2f, 0.12f, 0.04f), light);
+            Build.Part(PrimitiveType.Cube, t, new Vector3(-0.3f, 0.75f, 2.04f), new Vector3(0.2f, 0.12f, 0.04f), light);
+            Build.Part(PrimitiveType.Cylinder, t, new Vector3(0.3f, 1.4f, 1.4f), new Vector3(0.1f, 0.5f, 0.1f), dark, "Exhaust");
+            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.75f, -0.45f), new Vector3(1.6f, 0.35f, 1.3f), red, "Fenders");
+            // Cab: roof + four posts + glass
+            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 2.25f, -0.45f), new Vector3(1.5f, 0.1f, 1.4f), red, "Roof");
+            foreach (var px in new[] { -0.7f, 0.7f }) foreach (var pz in new[] { -1.1f, 0.2f })
+                Build.Part(PrimitiveType.Cube, t, new Vector3(px, 1.6f, pz), new Vector3(0.07f, 1.3f, 0.07f), dark, "Post");
+            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 1.6f, 0.22f), new Vector3(1.35f, 1.1f, 0.03f), glass, "Glass");
+            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 1.15f, -0.6f), new Vector3(0.5f, 0.12f, 0.5f), dark, "Seat");
+            Vector3[] wp = { new Vector3(0.65f, -0.15f, 1.55f), new Vector3(-0.65f, -0.15f, 1.55f), new Vector3(0.95f, 0.15f, -0.45f), new Vector3(-0.95f, 0.15f, -0.45f) };
+            float[] ws = { 0.75f, 0.75f, 1.45f, 1.45f };
+            for (int i = 0; i < 4; i++)
+            {
+                var w = new GameObject("Wheel").transform; w.SetParent(t, false); w.localPosition = wp[i];
+                Build.Part(PrimitiveType.Cylinder, w, Vector3.zero, new Vector3(ws[i], i < 2 ? 0.14f : 0.24f, ws[i]), dark, "Tyre", new Vector3(0, 0, 90));
+                Build.Part(PrimitiveType.Cylinder, w, new Vector3(Mathf.Sign(wp[i].x) * 0.14f, 0, 0), new Vector3(ws[i] * 0.55f, 0.04f, ws[i] * 0.55f), yellow, "Rim", new Vector3(0, 0, 90));
+                for (int k = 0; k < 3; k++)
+                    Build.Part(PrimitiveType.Cube, w, new Vector3(Mathf.Sign(wp[i].x) * 0.18f, 0, 0), new Vector3(0.03f, ws[i] * 0.9f, 0.08f), dark, "Lug", new Vector3(k * 60f, 0, 0));
+                wheels[i] = w;
+            }
+        }
+        var hitch = new GameObject("Hitch").transform; hitch.SetParent(t, false); hitch.localPosition = new Vector3(0, 0, -2.6f);
+        var exit = new GameObject("Exit").transform; exit.SetParent(t, false); exit.localPosition = new Vector3(-2.4f, 0.5f, 0f);
+        foreach (var r in root.GetComponentsInChildren<Renderer>(true)) r.gameObject.layer = 7;
+
+        var tractor = root.AddComponent<Tractor>();
+        tractor.wheels = wheels; tractor.exitPoint = exit; tractor.hitch = hitch;
+        tractor.rideHeight = 0.75f; tractor.footprint = new Vector2(0.95f, 1.5f); tractor.camDistance = 8f;
+
+        // Implements (shown one at a time behind the tractor)
+        var plow = new GameObject("Plow"); plow.transform.SetParent(hitch, false);
+        Build.Part(PrimitiveType.Cube, plow.transform, new Vector3(0, -0.2f, 0.5f), new Vector3(0.15f, 0.15f, 1.0f), dark);
+        Build.Part(PrimitiveType.Cube, plow.transform, new Vector3(0, -0.25f, 0), new Vector3(2.4f, 0.15f, 0.3f), red);
+        for (int i = 0; i < 4; i++) Build.Part(PrimitiveType.Cube, plow.transform, new Vector3(-0.9f + i * 0.6f, -0.5f, 0), new Vector3(0.12f, 0.5f, 0.5f), steel, "Share", new Vector3(30, 0, 0));
+        var seeder = new GameObject("Seeder"); seeder.transform.SetParent(hitch, false);
+        Build.Part(PrimitiveType.Cube, seeder.transform, new Vector3(0, 0.15f, 0), new Vector3(2.6f, 0.7f, 0.9f), yellow, "Hopper");
+        Build.Part(PrimitiveType.Cube, seeder.transform, new Vector3(0, -0.35f, 0), new Vector3(2.8f, 0.12f, 0.5f), dark);
+        for (int i = 0; i < 6; i++) Build.Part(PrimitiveType.Cylinder, seeder.transform, new Vector3(-1.25f + i * 0.5f, -0.55f, 0), new Vector3(0.08f, 0.2f, 0.08f), steel);
+        var harvester = new GameObject("Harvester"); harvester.transform.SetParent(hitch, false);
+        Build.Part(PrimitiveType.Cube, harvester.transform, new Vector3(0, 0f, 0), new Vector3(3f, 0.6f, 1.1f), Build.Mat(new Color(0.15f, 0.5f, 0.2f), 0.4f), "Header");
+        Build.Part(PrimitiveType.Cylinder, harvester.transform, new Vector3(0, 0.1f, -0.5f), new Vector3(0.5f, 1.5f, 0.5f), yellow, "Reel", new Vector3(0, 0, 90));
+        foreach (var r in hitch.GetComponentsInChildren<Renderer>(true)) r.gameObject.layer = 7;
+        tractor.RegisterVisual(Implement.Plow, plow);
+        tractor.RegisterVisual(Implement.Seeder, seeder);
+        tractor.RegisterVisual(Implement.Harvester, harvester);
+    }
+
+    // Lets the vehicles pass the existing farm fences so they can leave the farm.
     private static void IgnoreFences()
     {
-        var truck = FarmTruck.Instance;
-        if (truck == null) return;
-        var truckCols = truck.GetComponentsInChildren<Collider>();
+        var vehicleCols = new System.Collections.Generic.List<Collider>();
+        foreach (var v in FindObjectsByType<Vehicle>(FindObjectsSortMode.None)) vehicleCols.AddRange(v.GetComponentsInChildren<Collider>());
+        if (vehicleCols.Count == 0) return;
+        var truckCols = vehicleCols;
         foreach (var c in FindObjectsByType<Collider>(FindObjectsSortMode.None))
         {
             if (c == null || !InFence(c.transform)) continue;

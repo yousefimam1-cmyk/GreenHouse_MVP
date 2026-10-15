@@ -63,6 +63,17 @@ public static class Loc
         { "Silver", "فضي" },
         { "Bronze", "برونزي" },
         { "Partners", "الشركاء" },
+        { "[E] Drive tractor", "[E] سوق الجرار" },
+        { "Implement", "المعدّة" },
+        { "No implement", "بدون معدّة" },
+        { "Plow", "محراث" },
+        { "Seeder", "بذّارة" },
+        { "Harvester", "حصّادة" },
+        { "[Q] Change implement   [E] Exit   [R] Reset", "[Q] غيّر المعدّة   [E] انزل   [R] تعديل" },
+        { "Fuel {0}%", "الوقود {0}%" },
+        { "Out of fuel - press R to tow (150 EGP)", "الوقود خلص - اضغط R للسحب (150 جنيه)" },
+        { "Refuelled {0} L for {1} EGP", "تم التموين {0} لتر بـ {1} جنيه" },
+        { "Towed to the loading bay for {0} EGP", "اتسحبت لمنطقة التحميل بـ {0} جنيه" },
         { "Contract complete", "العقد اكتمل" },
         { "Contract expired", "العقد انتهى" },
         { "New contract", "عقد جديد" },
@@ -166,7 +177,8 @@ public static class Loc
             "Shops sell feed, animals and upgrades. Collect eggs, milk and wool at the pen crate.\n" +
             "G - graphics quality    P - pause / new game\n" +
             "Fields: E to plow, plant (buy seeds), water (well must run), harvest. Seasons and weather change growth.\n" +
-            "M - market prices and buyer contracts (contracts pay a bonus when you sell at the market)" },
+            "M - market prices and buyer contracts (contracts pay a bonus when you sell at the market)\n" +
+            "Tractor: Q changes implement (plow, seeder, harvester) - drive it over a field. Park on the green pad to refuel." },
     };
 
     private static readonly Dictionary<string, string> arabicLong = new Dictionary<string, string>
@@ -182,7 +194,8 @@ public static class Loc
             "المحلات فيها علف وحيوانات وترقيات. اجمع البيض واللبن والصوف من صندوق الحظيرة.\n" +
             "G - جودة الجرافيكس    P - إيقاف / لعبة جديدة\n" +
             "الحقول: E للحرث والزراعة (اشتري بذور) والري (البئر لازم يشتغل) والحصاد. المواسم والطقس بيأثروا على النمو.\n" +
-            "M - أسعار السوق وعقود المشترين (العقود بتدفع زيادة لما تبيع في السوق)" },
+            "M - أسعار السوق وعقود المشترين (العقود بتدفع زيادة لما تبيع في السوق)\n" +
+            "الجرار: Q لتغيير المعدّة (محراث، بذّارة، حصّادة) - سوقه فوق الحقل. اركن على المنطقة الخضراء للتموين." },
     };
 
     private static TMP_FontAsset arabicFont;

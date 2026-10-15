@@ -102,12 +102,15 @@ public class GameHUD : MonoBehaviour
     // Points the HUD arrow at the next stop: loading bay when empty, market when loaded.
     private void UpdateArrow()
     {
-        var truck = FarmTruck.Instance;
-        if (arrow == null || truck == null || !truck.IsDriving) return;
-        var target = TruckTarget(truck);
-        if (target == null) return;
-        Vector3 to = target.transform.position - truck.transform.position; to.y = 0f;
-        float angle = Vector3.SignedAngle(Vector3.ProjectOnPlane(truck.transform.forward, Vector3.up), to, Vector3.up);
+        var v = Vehicle.Current;
+        if (arrow == null || v == null) return;
+        Vector3 targetPos;
+        if (v is FarmTruck truck) { var z = TruckTarget(truck); if (z == null) return; targetPos = z.transform.position; }
+        else if (v.Fuel < v.fuelCapacity * 0.2f && DeliveryZone.LoadingBay != null) targetPos = DeliveryZone.LoadingBay.transform.position;
+        else if (FieldManager.Instance != null && FieldManager.Instance.Plots.Count > 0) targetPos = FieldManager.Instance.Plots[0].transform.position;
+        else return;
+        Vector3 to = targetPos - v.transform.position; to.y = 0f;
+        float angle = Vector3.SignedAngle(Vector3.ProjectOnPlane(v.transform.forward, Vector3.up), to, Vector3.up);
         arrow.localRotation = Quaternion.Euler(0, 0, -angle);
     }
 
@@ -149,13 +152,30 @@ public class GameHUD : MonoBehaviour
         priceText.text = sb.ToString();
     }
 
+    private static string FuelLine(Vehicle v)
+    {
+        float pct = v.Fuel / Mathf.Max(1f, v.fuelCapacity);
+        string c = pct < 0.15f ? "#FF6B5B" : pct < 0.35f ? "#F2B84B" : "#DDDDDD";
+        return "<color=" + c + ">" + Loc.T("Fuel {0}%", Mathf.RoundToInt(pct * 100f)) + (pct <= 0.001f ? " - " + Loc.T("Out of fuel - press R to tow (150 EGP)") : "") + "</color>";
+    }
+
     private void RefreshTruck()
     {
-        var truck = FarmTruck.Instance;
+        var v = Vehicle.Current;
         if (truckPanel == null) return;
-        bool show = truck != null && truck.IsDriving;
-        truckPanel.gameObject.SetActive(show);
-        if (!show) return;
+        truckPanel.gameObject.SetActive(v != null);
+        if (v == null) return;
+        if (v is Tractor tractor)
+        {
+            var tb = new StringBuilder();
+            tb.Append(Title(Loc.T("{0} km/h", Mathf.Abs(tractor.Speed * 3.6f).ToString("F0"))));
+            tb.Append('\n').Append(Loc.Display(Loc.Raw("Implement") + ": " + Tractor.ImplementName(tractor.ActiveImplement)));
+            tb.Append('\n').Append(FuelLine(tractor));
+            tb.Append("\n<size=80%>").Append(Loc.T("[Q] Change implement   [E] Exit   [R] Reset")).Append("</size>");
+            truckText.text = tb.ToString();
+            return;
+        }
+        var truck = (FarmTruck)v;
         var eco = EconomyManager.Instance;
         var target = TruckTarget(truck);
         float dist = target != null ? Vector3.Distance(target.transform.position, truck.transform.position) : 0f;
@@ -164,6 +184,7 @@ public class GameHUD : MonoBehaviour
         sb.Append(Title(Loc.T("{0} km/h", Mathf.Abs(truck.Speed * 3.6f).ToString("F0"))));
         sb.Append('\n').Append(Loc.T("Cargo {0}/{1} kg", truck.CargoWeight.ToString("F0"), (eco != null ? eco.TruckCapacity : 0f).ToString("F0")));
         if (target != null) sb.Append('\n').Append(Loc.Display(where + ": " + dist.ToString("F0") + " m"));
+        sb.Append('\n').Append(FuelLine(truck));
         sb.Append("\n<size=80%>").Append(Loc.T("[E] Exit   [Space] Brake   [R] Reset truck")).Append("</size>");
         truckText.text = sb.ToString();
     }
