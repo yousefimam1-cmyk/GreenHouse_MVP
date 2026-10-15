@@ -22,3 +22,6 @@
 *.VC.db
 
 # NOTE: .meta files MUST be committed (they hold asset GUIDs).
+
+Tests/Headless/*.exe
+Tests/Headless/*.dll
