@@ -142,3 +142,22 @@ POWER & WATER UTILITIES (Scripts/Utilities, feat/utilities)
 --- Utilities/UtilityPart.cs, UtilitiesUI.cs  E on equipment; U = utilities panel (sources, demand, stored water, today's use, cost, warnings).
 Data: Resources/Data/Loc/20_utilities.json, Missions/20_utilities.json (installSolar, powerPositiveDays, installEfficientIrrigation),
 Economy/20_utilities.json (manure).
+
+SAUDI CROPS, ORCHARD, SOIL AND PESTS (feat/crops)
+--- Crops/CropsData.cs        Reads the extra sections of Resources/Data/Economy/30_crops.json (cropMeta, trees, pests, cures).
+    The same file adds goods + field crops: alfalfa (برسيم), sorghum, millet, field tomato; dates (Sukkari/Khalas/Ajwa),
+    olives, pomegranates, grapes, lemons. Real data + scale factors: DATA_SOURCES.md (repo root).
+--- Crops/CropCareManager.cs  [MazraaSystem(30)] Soil fertility per field plot (harvests use it up, more for the same crop
+    family twice; alfalfa adds nitrogen; fertilizer/manure restore it with E on a plowed field), +15% rotation bonus,
+    daily pests by season/weather/family (aphids, whitefly, blight, rare desert locust swarms) that slow growth and
+    damage yield until treated (E with ladybugs / neem / pesticide; protects a few days). Whitefly in greenhouse beds too.
+    Alfalfa is cut 6 times (regrows) and every cut also adds animal feed (sorghum/millet straw too).
+    Shop page "Crop care". Buying seeds makes that crop the next one planted (FieldPlot.PreferredSeed).
+--- Crops/OrchardManager.cs + TreeSlot.cs  [MazraaSystem(31)] 6 tree slots right of the fields (or at "OrchardSpot").
+    Saplings on the shop page "Orchard". Trees age 1 per season, fruit once a year when mature; date palms need hand
+    pollination in spring (E, otherwise 30% crop) and ripen in late summer; red palm weevil -> palm weevil trap.
+    Models: Resources/Models/Trees/palm|olive|pomegranate|grape|lemon if present, else primitive trunk + fronds/crown.
+--- Hooks added: FieldPlot.GrowthModifiers / YieldModifiers / PromptExtras / PromptOverrides / InteractHandlers /
+    RegrowHooks, FieldPlot.ReduceGrowth(); Cropbed.YieldModifiers / PromptExtras / InteractHandlers.
+--- Missions/30_crops.json: plant alfalfa, cure a pest, rotate crops, first date harvest. Text: Loc/30_crops.json.
+    Save keys mazraa.crops.*; reset on GameEvents.NewGameStarted.

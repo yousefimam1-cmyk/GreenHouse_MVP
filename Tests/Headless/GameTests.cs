@@ -129,6 +129,152 @@ static class Program
         new GameObject("GameManager (auto)").AddComponent<GameManager>();
     }
 
+    // ---------------------------------------------------------------- Saudi crops, soil, pests, orchard
+    static void CropsTests()
+    {
+        Console.WriteLine("Saudi crops, soil, pests, orchard");
+        var eco = EconomyManager.Instance; var care = CropCareManager.Instance; var orch = OrchardManager.Instance; var mm = MissionManager.Instance;
+        var clock = WorldClock.Instance; var plots = FieldManager.Instance.Plots;
+        T.Check("Crops: systems created", care != null && orch != null);
+        var crops = new[] { "alfalfa", "sorghum", "millet", "tomato", "wheat", "potato", "onion", "watermelon" };
+        T.Check("Crops: 8 field crops with sellable goods and a family", crops.All(c => eco.FieldCrop(c) != null && eco.Good(c) != null && CropsData.Meta(c) != null));
+        T.Check("Crops: only heat-tolerant crops grow in summer", eco.Data.fieldCrops.Where(c => c.seasons.Contains("summer")).All(c => c.id == "sorghum" || c.id == "millet"),
+            string.Join(",", eco.Data.fieldCrops.Where(c => c.seasons.Contains("summer")).Select(c => c.id)));
+        T.Check("Crops: cool season (Oct-Apr) is the main season", eco.Data.fieldCrops.Count(c => c.seasons.Contains("winter") || c.seasons.Contains("autumn")) >= 5);
+        T.Check("Crops: date goods for Sukkari, Khalas, Ajwa (Ajwa dearest)", eco.Good("dates_ajwa").price > eco.Good("dates_sukkari").price && eco.Good("dates_sukkari").price > eco.Good("dates_khalas").price);
+        T.Check("Crops: shop pages Orchard (7 saplings) and Crop care (6 items)", ShopCatalog.Entries.Count(e => e.category == "Orchard") == 7 && ShopCatalog.Entries.Count(e => e.category == "Crop care") == 6);
+        T.Check("Crops: orchard of 6 tree slots next to the fields", orch.Trees.Count == 6 && Vector3.Distance(orch.Trees[0].transform.position, plots[2].transform.position) < 40f,
+            orch.Trees.Count + " " + (orch.Trees.Count > 0 ? Vector3.Distance(orch.Trees[0].transform.position, plots[2].transform.position).ToString() : ""));
+        T.Check("Crops: mission pack loaded (bilingual)", mm.Missions.Count(m => m.id.StartsWith("crops_") && !string.IsNullOrEmpty(m.titleAr) && !string.IsNullOrEmpty(m.descAr)) == 4);
+        var src = string.Join("\n", Directory.GetFiles("../../Assets/Scripts/Crops", "*.cs").Select(File.ReadAllText));
+        var keys = System.Text.RegularExpressions.Regex.Matches(src, "CropsText\\.[RT]\\(\"([^\"]+)\"").Cast<System.Text.RegularExpressions.Match>().Select(m => m.Groups[1].Value)
+            .Concat(new[] { "Crop care", OrchardManager.LabelKey, "Grains", "Legumes", "Nightshades", "Onions & garlic", "Melons & squash" }).Distinct().ToList();
+        Loc.Raw("x");
+        var missing = keys.Where(k => !Loc.HasTranslation(k)).ToList();
+        T.Check("Crops: every text key has Arabic (Loc/30_crops.json)", keys.Count > 20 && missing.Count == 0, string.Join(" | ", missing));
+
+        int start = Array.FindIndex(mm.Missions, m => m.id == "crops_alfalfa");
+        T.Set(mm, "<Index>k__BackingField", start); T.Set(mm, "<Progress>k__BackingField", 0f);
+        eco.AddMoney(30000);
+
+        // Alfalfa: several cuts, hay + feed, nitrogen
+        var ap = plots[3];
+        eco.TryBuy("seed_wheat");
+        T.Check("Crops: buy alfalfa seeds", eco.TryBuy("seed_alfalfa"));
+        ap.Interact(); ap.Interact();
+        T.Check("Crops: the last seed bought (alfalfa) is planted", ap.State == PlotState.Growing && ap.CropId == "alfalfa", ap.State + " " + ap.CropId);
+        T.Check("Crops: mission 'plant alfalfa' done", mm.Current?.id == "crops_cure", mm.Current?.id);
+        T.SetProp(ap, "Growth", 1f); T.SetProp(ap, "State", PlotState.Ripe);
+        float feed = eco.Feed, hay = eco.Stored("alfalfa");
+        ap.Interact();
+        T.Check("Crops: alfalfa cut stores hay", eco.Stored("alfalfa") > hay + 30f, (eco.Stored("alfalfa") - hay).ToString());
+        T.Check("Crops: alfalfa cut adds animal feed", eco.Feed > feed + 3f, feed + " -> " + eco.Feed);
+        T.Check("Crops: alfalfa regrows for the next cut", ap.State == PlotState.Growing && ap.CropId == "alfalfa" && ap.Growth > 0.5f, ap.State + " " + ap.Growth);
+        T.Check("Crops: legume keeps the soil fertile", care.Plot(3).fertility > 0.99f);
+        T.Check("Crops: prompt shows soil and cut 2/6", ap.InteractionPrompt.Contains("Soil 100%") && ap.InteractionPrompt.Contains("Cut 2/6"), ap.InteractionPrompt);
+
+        // Pests and cures
+        T.Check("Crops: aphids infest a growing field", care.Infest(ap, "aphids"));
+        T.Check("Crops: pests slow growth", care.GrowthMultiplier(ap) < 0.7f);
+        T.Check("Crops: pest shown on the prompt", ap.InteractionPrompt.Contains("Aphids"), ap.InteractionPrompt);
+        T.Check("Crops: buy neem spray", eco.TryBuy("care_neem") && care.Items("neem") == 1);
+        T.Check("Crops: prompt offers the treatment", ap.InteractionPrompt.Contains("[E] Treat Aphids: Neem spray"), ap.InteractionPrompt);
+        ap.Interact();
+        T.Check("Crops: E treats the aphids (uses the spray)", care.Plot(3).pest == "" && care.Items("neem") == 0);
+        T.Check("Crops: mission 'cure a pest' done", mm.Current?.id == "crops_rotate", mm.Current?.id);
+        T.Check("Crops: treatment protects for a few days", !care.Infest(ap, "aphids"));
+
+        // Soil fertility and rotation
+        var wp = plots[4];
+        eco.TryBuy("seed_wheat"); eco.TryBuy("seed_wheat");
+        wp.Interact(); wp.Interact();
+        T.Check("Crops: wheat planted on field 5", wp.CropId == "wheat", wp.CropId);
+        T.SetProp(wp, "Growth", 1f); T.SetProp(wp, "State", PlotState.Ripe); wp.Interact();
+        float f1 = care.Plot(4).fertility;
+        T.Check("Crops: a harvest uses up soil fertility", f1 < 0.9f && f1 > 0.8f, f1.ToString());
+        wp.Interact(); wp.Interact();
+        T.Check("Crops: no rotation bonus for the same family", wp.CropId == "wheat" && !care.Plot(4).rotated);
+        T.SetProp(wp, "Growth", 1f); T.SetProp(wp, "State", PlotState.Ripe); wp.Interact();
+        float f2 = care.Plot(4).fertility;
+        T.Check("Crops: same family twice drains the soil faster", f1 - f2 > 0.2f, f1 + " -> " + f2);
+        wp.Interact();
+        T.Check("Crops: buy fertilizer", eco.TryBuy("care_fertilizer"));
+        T.Check("Crops: plowed field offers fertilizer", wp.InteractionPrompt.Contains("[E] Spread Fertilizer"), wp.InteractionPrompt);
+        wp.Interact();
+        T.Check("Crops: fertilizer restores the soil", care.Plot(4).fertility > f2 + 0.3f && wp.State == PlotState.Plowed, care.Plot(4).fertility.ToString());
+        eco.TryBuy("seed_potato");
+        wp.Interact();
+        T.Check("Crops: potato after wheat is a rotation", wp.CropId == "potato" && care.Plot(4).rotated);
+        T.Check("Crops: mission 'rotate crops' done", mm.Current?.id == "crops_dates", mm.Current?.id);
+        T.Check("Crops: rotation bonus in the yield", care.YieldMultiplier(wp) > 1.1f, care.YieldMultiplier(wp).ToString());
+        float pot = eco.Stored("potato"), expected = eco.FieldCrop("potato").yieldKg * care.YieldMultiplier(wp);
+        T.SetProp(wp, "Growth", 1f); T.SetProp(wp, "State", PlotState.Ripe); wp.Interact();
+        float potKg = eco.Stored("potato") - pot;
+        T.Check("Crops: harvest kg = base x soil x rotation (full soil + rotation = 115%)", Math.Abs(potKg - expected) < 0.5f && Math.Abs(expected - eco.FieldCrop("potato").yieldKg * 1.15f) < 0.5f, potKg + " vs " + expected);
+
+        // Desert locusts
+        var lp = plots[5];
+        eco.TryBuy("seed_sorghum");
+        lp.Interact(); lp.Interact();
+        T.SetProp(lp, "Growth", 0.5f);
+        care.LocustSwarm();
+        T.Check("Crops: locust swarm eats growth and leaves locusts", lp.Growth < 0.3f && care.Plot(5).pest == "locust", lp.Growth + " " + care.Plot(5).pest);
+        T.Check("Crops: neem does not stop locusts", care.OwnedCureFor("locust") == null);
+        eco.TryBuy("care_pesticide");
+        lp.Interact();
+        T.Check("Crops: pesticide clears locusts", care.Plot(5).pest == "");
+
+        // Greenhouse whitefly hook
+        var gbed = GameManager.Instance.Greenhouses[0].Cropbeds[0];
+        care.InfestBed(gbed, "whitefly");
+        T.Check("Crops: greenhouse bed gets whitefly (shown on prompt)", gbed.InteractionPrompt.Contains("Whitefly"), gbed.InteractionPrompt);
+        T.Check("Crops: whitefly lowers the bed yield", Cropbed.YieldModifiers.Aggregate(1f, (m, f) => m * f(gbed)) < 0.9f);
+        eco.TryBuy("care_pesticide");
+        gbed.Interact();
+        T.Check("Crops: E on the bed treats whitefly", care.Bed(gbed).pest == "");
+
+        // Orchard: date palms
+        var palm = orch.Trees[0]; var palm2 = orch.Trees[1];
+        T.Check("Crops: empty slot asks for a sapling", palm.InteractionPrompt.Contains("buy saplings"), palm.InteractionPrompt);
+        T.Check("Crops: buy saplings", eco.TryBuy("sapling_palm_khalas") && eco.TryBuy("sapling_palm_sukkari"));
+        palm.Interact();
+        T.Check("Crops: plant the last sapling bought (Sukkari)", palm.Kind == "palm_sukkari", palm.Kind);
+        palm2.Interact();
+        T.Check("Crops: plant the other one (Khalas)", palm2.Kind == "palm_khalas", palm2.Kind);
+        int planted = clock.Day, fruitDay = -1;
+        bool pollinated = false;
+        for (int i = 0; i < 100 && fruitDay < 0; i++)
+        {
+            clock.NextDay();
+            foreach (var t in new[] { palm, palm2 }) { T.SetProp(t, "Pest", ""); T.SetProp(t, "Damage", 0f); }
+            if (palm.NeedsPollination) { palm.Interact(); pollinated = palm.Pollinated; }
+            if (palm.FruitKg > 0f) fruitDay = clock.Day;
+        }
+        T.Check("Crops: palm pollinated by hand in spring", pollinated);
+        T.Check("Crops: palm takes several seasons before its first dates", fruitDay - planted >= 2 * clock.daysPerSeason, (fruitDay - planted) + " days");
+        T.Check("Crops: dates ripen in late summer", clock.Season == Season.Summer && clock.DayOfSeason >= 3, clock.Season + " day " + clock.DayOfSeason);
+        T.Check("Crops: pollinated palm gives a much bigger crop", palm.FruitKg > palm2.FruitKg * 2f && palm2.FruitKg > 0f, palm.FruitKg + " vs " + palm2.FruitKg);
+        T.Check("Crops: ripe palm prompt", palm.InteractionPrompt.Contains("[E] Pick"), palm.InteractionPrompt);
+        float kg = palm.FruitKg, before = eco.Stored("dates_sukkari");
+        palm.Interact();
+        T.Check("Crops: picking stores Sukkari dates", Math.Abs(eco.Stored("dates_sukkari") - before - kg) < 0.01f && palm.FruitKg == 0f);
+        T.Check("Crops: mission 'first date harvest' done", mm.Index > Array.FindIndex(mm.Missions, m => m.id == "crops_dates"));
+        T.Check("Crops: market price for dates", MarketManager.Instance.Price("dates_ajwa") > 20f);
+        T.Check("Crops: red palm weevil on a palm", palm.Infest("weevil") && palm.InteractionPrompt.Contains("Red palm weevil"), palm.InteractionPrompt);
+        eco.TryBuy("care_weevil_trap");
+        palm.Interact();
+        T.Check("Crops: weevil trap clears it", palm.Pest == "" && palm.ProtectDays > 0);
+        for (int i = 0; i < 2 * clock.daysPerSeason; i++) clock.NextDay();
+        T.Check("Crops: unpicked fruit spoils after its season", palm2.FruitKg == 0f, palm2.FruitKg.ToString());
+        T.Check("Crops: palms fruit once a year", palm.FruitKg == 0f);
+        T.Check("Crops: HUD lines registered", HudLines.Status.Count >= 2 && HudLines.Status.Any(h => (h() ?? "").Contains("Orchard")));
+        Loc.SetLanguage(Language.Arabic);
+        string ar = palm.InteractionPrompt + ap.InteractionPrompt;
+        T.Check("Crops: tree and field prompts in Arabic", ar.Any(c => c >= '\uFE70') && !ar.Contains("Soil"), ar);
+        Loc.SetLanguage(Language.English);
+        T.Check("Crops: no errors", FakeEngine.Errors.Count == 0, string.Join(" | ", FakeEngine.Errors.Take(3)));
+    }
+
     static void Main(string[] args)
     {
         FakeEngine.ResourcesRoot = args[0];
@@ -305,11 +451,15 @@ static class Program
         T.Check("HUD refresh in Arabic has no errors", FakeEngine.Errors.Count == errs, string.Join(" | ", FakeEngine.Errors.Skip(errs).Take(2)));
         Loc.SetLanguage(Language.English);
 
+        CropsTests();
+
         Console.WriteLine("Saving");
         SaveData.Flush(true);
         T.Check("Save file written", File.Exists(SaveData.Path));
         int savedMoney = EconomyManager.Instance.Money;
         int savedMission = mm.Index;
+        float savedFertility = CropCareManager.Instance.Plot(4).fertility;
+        int savedCuts = CropCareManager.Instance.Plot(3).cuts;
         // Restart: fresh world reading the same save file
         BuildWorld();
         FakeEngine.Run(2f);
@@ -319,6 +469,9 @@ static class Program
             UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length + " vs " + EconomyManager.Instance.Owned("chicken"));
         T.Check("Field crop state restored", FieldManager.Instance.Plots[1].State == PlotState.Plowed);
         UtilityTests.AfterRestart();
+        T.Check("Crops: orchard trees restored", OrchardManager.Instance.Trees.Count == 6 && OrchardManager.Instance.Trees[0].Kind == "palm_sukkari" && OrchardManager.Instance.Trees[0].Age >= 3f, OrchardManager.Instance.Trees.Count > 0 ? OrchardManager.Instance.Trees[0].Kind : "none");
+        T.Check("Crops: soil fertility and alfalfa cuts restored", Math.Abs(CropCareManager.Instance.Plot(4).fertility - savedFertility) < 0.001f && CropCareManager.Instance.Plot(3).cuts == savedCuts,
+            CropCareManager.Instance.Plot(4).fertility + " vs " + savedFertility + ", cuts " + CropCareManager.Instance.Plot(3).cuts + " vs " + savedCuts);
         T.Check("Intro not shown again", SaveData.GetInt("mazraa.introSeen", 0) == 1 || true);
 
         Console.WriteLine("New game");
@@ -331,6 +484,8 @@ static class Program
         T.Check("New game resets fields", FieldManager.Instance.Plots.All(x => x.State == PlotState.Untilled));
         T.Check("Time scale restored", Time.timeScale == 1f);
         UtilityTests.AfterNewGame();
+        T.Check("Crops: new game clears orchard, soil and care items", OrchardManager.Instance.Trees.All(x => x.Kind == "") && CropCareManager.Instance.Plot(4).fertility == 1f
+            && CropsData.Data.cures.All(c => CropCareManager.Instance.Items(c.id) == 0) && CropsData.Data.trees.All(t => OrchardManager.Instance.Saplings(t.id) == 0));
 
         Console.WriteLine("Long run (10 in-game days, everything ticking)");
         int e0 = FakeEngine.Errors.Count;

@@ -49,6 +49,13 @@ public class Cropbed : Interactable
 
     public event Action<Cropbed> OnStateChanged;
 
+    // Feature hooks (e.g. greenhouse pests): yield multipliers, extra prompt text (translated, unshaped), E handlers.
+    public static readonly System.Collections.Generic.List<Func<Cropbed, float>> YieldModifiers = new System.Collections.Generic.List<Func<Cropbed, float>>();
+    public static readonly System.Collections.Generic.List<Func<Cropbed, string>> PromptExtras = new System.Collections.Generic.List<Func<Cropbed, string>>();
+    public static readonly System.Collections.Generic.List<Func<Cropbed, bool>> InteractHandlers = new System.Collections.Generic.List<Func<Cropbed, bool>>();
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetHooks() { YieldModifiers.Clear(); PromptExtras.Clear(); InteractHandlers.Clear(); }
+
     protected override void Awake()
     {
         base.Awake();
@@ -99,6 +106,7 @@ public class Cropbed : Interactable
             string key = IsReadyToHarvest ? "[E] Harvest" : PromptKey;
             string text = Loc.Raw(key);
             if (Crop != null) text += " - " + Loc.CropName(Crop);
+            foreach (var f in PromptExtras) { string x = f(this); if (!string.IsNullOrEmpty(x)) text += " | " + x; }
             return Loc.Display(text); // shape the whole line once so RTL order is correct
         }
     }
@@ -113,6 +121,7 @@ public class Cropbed : Interactable
 
     public override void Interact()
     {
+        foreach (var h in InteractHandlers) if (h(this)) return;
         if (IsReadyToHarvest)
         {
             Harvest(); // plays its own harvest sound
@@ -127,6 +136,7 @@ public class Cropbed : Interactable
         var config = GreenHouseHelper.Config;
         float factor = Crop != null && Crop.yieldFactor > 0f ? Crop.yieldFactor : 1f;
         float kg = Mathf.Max(0f, data.yieldProjection) * config.harvestKgPerYieldPoint * factor;
+        foreach (var f in YieldModifiers) kg *= Mathf.Max(0f, f(this));
         Growth = 0f;
         ApplyGrowthVisual();
         if (GameManager.Instance != null) GameManager.Instance.RegisterHarvest(this, kg);
