@@ -113,12 +113,12 @@ public class Cropbed : Interactable
 
     public override void Interact()
     {
-        base.Interact();
         if (IsReadyToHarvest)
         {
-            Harvest();
+            Harvest(); // plays its own harvest sound
             return;
         }
+        base.Interact();
         if (UIManager.Instance != null) UIManager.Instance.ShowCropbedUI(this);
     }
 

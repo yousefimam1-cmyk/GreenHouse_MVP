@@ -59,14 +59,20 @@ public class UIManager : MonoBehaviour
     {
         Instance = this;
         GreenHouseHelper.Initialize(configurationData);
+        // Find the title before any localization changes its text.
+        if (cropbedUI != null)
+            foreach (var t in cropbedUI.GetComponentsInChildren<TMP_Text>(true))
+                if (t.text.Trim() == "Crop Stats") { cropTitleText = t; break; }
+        // Texts this script rewrites itself must not be reset by the scene-wide translation pass.
+        Loc.ExcludeFromScene(alertMsg);
+        Loc.ExcludeFromScene(cropTitleText);
+        if (moduleStatsUI != null) foreach (var m in moduleStatsUI) Loc.ExcludeFromScene(m.valueTxt);
+        if (cropbedStatsUI != null) foreach (var c in cropbedStatsUI) { Loc.ExcludeFromScene(c.valueTxt); Loc.ExcludeFromScene(c.satisfiedText); }
     }
 
     private void Start()
     {
         inputs = FindAnyObjectByType<StarterAssetsInputs>();
-        if (cropbedUI != null)
-            foreach (var t in cropbedUI.GetComponentsInChildren<TMP_Text>(true))
-                if (t.text.Trim() == "Crop Stats") { cropTitleText = t; break; }
         Loc.OnLanguageChanged += RefreshOpenPanels;
         Loc.LocalizeScene();
     }

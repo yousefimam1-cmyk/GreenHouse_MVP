@@ -116,6 +116,7 @@ public class GameHUD : MonoBehaviour
         text.raycastTarget = false;
         text.richText = true;
         text.textWrappingMode = TextWrappingModes.Normal;
+        Loc.ExcludeFromScene(text);
         return rt;
     }
 

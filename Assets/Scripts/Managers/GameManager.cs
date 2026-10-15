@@ -98,6 +98,7 @@ public class GameManager : MonoBehaviour
         HarvestCount = 0;
         PlayerPrefs.DeleteKey(KgKey);
         PlayerPrefs.DeleteKey(CountKey);
+        PlayerPrefs.Save();
         OnStatsChanged?.Invoke();
     }
 

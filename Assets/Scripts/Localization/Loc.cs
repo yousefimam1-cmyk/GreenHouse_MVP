@@ -110,6 +110,10 @@ public static class Loc
     private static bool fontLoadFailed;
     private static readonly Dictionary<TMP_Text, TMP_FontAsset> originalFonts = new Dictionary<TMP_Text, TMP_FontAsset>();
     private static readonly Dictionary<TMP_Text, string> sceneOriginals = new Dictionary<TMP_Text, string>();
+    private static readonly HashSet<TMP_Text> excluded = new HashSet<TMP_Text>();
+
+    /// <summary>Texts whose owner sets them in code (alerts, values) are skipped by LocalizeScene.</summary>
+    public static void ExcludeFromScene(TMP_Text text) { if (text != null) excluded.Add(text); }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics()
@@ -117,6 +121,7 @@ public static class Loc
         OnLanguageChanged = null;
         originalFonts.Clear();
         sceneOriginals.Clear();
+        excluded.Clear();
         Current = Language.English;
     }
 
@@ -201,6 +206,7 @@ public static class Loc
     {
         foreach (var t in UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
+            if (excluded.Contains(t)) continue;
             if (!sceneOriginals.ContainsKey(t))
             {
                 if (!HasTranslation(t.text)) continue;
