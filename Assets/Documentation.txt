@@ -60,3 +60,12 @@ DATA
 IMPORTANT FOR GIT
 - .meta files must be committed. The old .gitignore ignored "*.meta", so 190+ assets had no meta on GitHub
   and their scene references broke on a fresh clone. The .gitignore is fixed.
+
+TRAINING SCENARIOS (idea from team chat: simulation-based training)
+--- Managers/ScenarioManager.cs  Resources/Data/scenarios.json. T = start/stop, N = next scenario.
+    Objectives: allHealthy or harvestKg, with a time limit; setup can re-roll modules or break one module
+    (pump failure, heatwave). Graded Gold/Silver/Bronze; best times saved.
+
+PARTNER / SPONSOR SLOTS (idea from team chat: in-game brand placement)
+--- Resources/Data/sponsors.json  One partner slot per module, shown beside the Control Station panel.
+    Placeholders only - fill with real partners once agreed.

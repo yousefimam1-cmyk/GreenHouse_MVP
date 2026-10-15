@@ -14,8 +14,10 @@ public class GameHUD : MonoBehaviour
     private static readonly Color Accent = new Color(0.55f, 0.85f, 0.35f, 1f);
 
     private Canvas canvas;
-    private RectTransform statusPanel, infoPanel, hintPanel, helpPanel;
-    private TextMeshProUGUI statusText, infoText, hintText, helpText;
+    private RectTransform statusPanel, infoPanel, hintPanel, helpPanel, trainingPanel, partnerPanel;
+    private TextMeshProUGUI statusText, infoText, hintText, helpText, trainingText, partnerText;
+    private GreenhouseManager partnerGreenhouse;
+    private SponsorFile sponsors;
     private Cropbed infoBed;
     private float refreshTimer;
 
@@ -24,7 +26,13 @@ public class GameHUD : MonoBehaviour
         BuildCanvas();
         Loc.OnLanguageChanged += RefreshAll;
         if (GameManager.Instance != null) GameManager.Instance.OnStatsChanged += RefreshStatus;
-        if (UIManager.Instance != null) UIManager.Instance.OnCropbedPanelChanged += ShowCropInfo;
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.OnCropbedPanelChanged += ShowCropInfo;
+            UIManager.Instance.OnControlStationPanelChanged += ShowPartners;
+        }
+        TextAsset sj = Resources.Load<TextAsset>("Data/sponsors");
+        if (sj != null) { try { sponsors = JsonUtility.FromJson<SponsorFile>(sj.text); } catch { sponsors = null; } }
         RefreshAll();
     }
 
@@ -32,7 +40,11 @@ public class GameHUD : MonoBehaviour
     {
         Loc.OnLanguageChanged -= RefreshAll;
         if (GameManager.Instance != null) GameManager.Instance.OnStatsChanged -= RefreshStatus;
-        if (UIManager.Instance != null) UIManager.Instance.OnCropbedPanelChanged -= ShowCropInfo;
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.OnCropbedPanelChanged -= ShowCropInfo;
+            UIManager.Instance.OnControlStationPanelChanged -= ShowPartners;
+        }
     }
 
     private void Update()
@@ -40,7 +52,8 @@ public class GameHUD : MonoBehaviour
         refreshTimer -= Time.unscaledDeltaTime;
         if (refreshTimer <= 0f)
         {
-            refreshTimer = 0.5f;
+            refreshTimer = 0.25f;
+            RefreshTraining();
             RefreshStatus();
             if (infoBed != null) ShowCropInfo(infoBed);
         }
@@ -70,8 +83,11 @@ public class GameHUD : MonoBehaviour
         infoPanel = MakePanel("CropInfo", new Vector2(0, 0.5f), new Vector2(24, 0), new Vector2(480, 0), out infoText, 22);
         hintPanel = MakePanel("Hints", new Vector2(0, 0), new Vector2(24, 24), new Vector2(430, 0), out hintText, 20);
         helpPanel = MakePanel("Help", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 0), out helpText, 26);
+        trainingPanel = MakePanel("Training", new Vector2(0.5f, 1), new Vector2(0, -24), new Vector2(520, 0), out trainingText, 22);
+        partnerPanel = MakePanel("Partners", new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(460, 0), out partnerText, 20);
         infoPanel.gameObject.SetActive(false);
         helpPanel.gameObject.SetActive(false);
+        partnerPanel.gameObject.SetActive(false);
     }
 
     private RectTransform MakePanel(string name, Vector2 anchor, Vector2 offset, Vector2 size, out TextMeshProUGUI text, float fontSize)
@@ -112,15 +128,78 @@ public class GameHUD : MonoBehaviour
         Mirror(statusPanel, rtl);
         Mirror(infoPanel, rtl);
         Mirror(hintPanel, rtl);
-        foreach (var t in new[] { statusText, infoText, hintText, helpText })
+        Mirror(partnerPanel, !rtl);
+        foreach (var t in new[] { statusText, infoText, hintText, helpText, partnerText })
         {
             Loc.ApplyFont(t);
             t.alignment = rtl ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
         }
-        hintText.text = Loc.T("[H] Help   [L] Arabic");
+        Loc.ApplyFont(trainingText);
+        trainingText.alignment = TextAlignmentOptions.Top;
+        hintText.text = Loc.T("[H] Help   [L] Arabic   [T] Training");
         helpText.text = Title(Loc.T("HELP")) + "\n" + Loc.T("HELP_BODY");
         RefreshStatus();
+        RefreshTraining();
         if (infoBed != null) ShowCropInfo(infoBed);
+        if (partnerGreenhouse != null) ShowPartners(partnerGreenhouse);
+    }
+
+    private void RefreshTraining()
+    {
+        var sm = ScenarioManager.Instance;
+        if (trainingPanel == null) return;
+        if (sm == null || !sm.HasScenarios) { trainingPanel.gameObject.SetActive(false); return; }
+        var d = sm.Selected;
+        var sb = new StringBuilder();
+        sb.Append(Title(Loc.Display(Loc.Raw("Training") + ": " + ScenarioManager.Title(d))));
+        if (sm.Running)
+        {
+            sb.Append('\n').Append(sm.ProgressText());
+            sb.Append("\n<size=85%>").Append(Loc.T("[T] Stop training")).Append("</size>");
+        }
+        else
+        {
+            sb.Append('\n').Append(Loc.Display(ScenarioManager.Brief(d)));
+            float best = sm.BestTime(d);
+            if (best >= 0f) sb.Append('\n').Append(Loc.T("Best: {0}s", best.ToString("F0")));
+            sb.Append("\n<size=85%>").Append(Loc.T("[T] Start   [N] Next scenario")).Append("</size>");
+        }
+        trainingText.text = sb.ToString();
+        // Show while running, or briefly as a menu when nothing else is open.
+        bool uiOpen = UIManager.Instance != null && UIManager.Instance.IsUIOpened;
+        trainingPanel.gameObject.SetActive(sm.Running || !uiOpen);
+    }
+
+    private void ShowPartners(GreenhouseManager gh)
+    {
+        partnerGreenhouse = gh;
+        if (partnerPanel == null) return;
+        if (gh == null || sponsors?.slots == null || sponsors.slots.Length == 0) { partnerPanel.gameObject.SetActive(false); return; }
+        var sb = new StringBuilder();
+        sb.Append(Title(Loc.T("Partners")));
+        foreach (var s in sponsors.slots)
+        {
+            bool ar = Loc.IsArabic;
+            string module = Loc.Raw(ModuleLabel(s.module));
+            string name = ar && !string.IsNullOrEmpty(s.nameAr) ? s.nameAr : s.nameEn;
+            string tag = ar && !string.IsNullOrEmpty(s.taglineAr) ? s.taglineAr : s.taglineEn;
+            sb.Append('\n').Append(Loc.Display(module + ": " + name));
+            if (!string.IsNullOrEmpty(tag)) sb.Append("\n<size=80%><color=#BBBBBB>").Append(Loc.Display(tag)).Append("</color></size>");
+        }
+        partnerText.text = sb.ToString();
+        partnerPanel.gameObject.SetActive(true);
+    }
+
+    private static string ModuleLabel(string module)
+    {
+        switch (module)
+        {
+            case "Irrigation": return "Water";
+            case "Nutrient": return "Nutrient";
+            case "Energy": return "Energy";
+            case "ClimateControl": return "Climate Control";
+            default: return module ?? "";
+        }
     }
 
     // Move a corner panel to the opposite side for right-to-left reading.
@@ -192,3 +271,9 @@ public class GameHUD : MonoBehaviour
         sb.Append('\n').Append(Loc.Display(Loc.Raw(label) + ": " + value + unit));
     }
 }
+
+[System.Serializable]
+public class SponsorSlot { public string module, nameEn, nameAr, taglineEn, taglineAr; }
+
+[System.Serializable]
+public class SponsorFile { public SponsorSlot[] slots; }

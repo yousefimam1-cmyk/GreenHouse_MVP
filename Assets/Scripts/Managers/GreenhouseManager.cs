@@ -128,9 +128,38 @@ public class GreenhouseManager : MonoBehaviour
         return GreenHouseHelper.IsValueSatisfied(GetModuleValue(moduleType), attr);
     }
 
+    /// <summary>Raised after the player optimizes a module (used by training scenarios).</summary>
+    public event System.Action<GreenhouseManager, ModuleType> OnModuleOptimized;
+
+    /// <summary>Re-roll (or fully optimize) all modules and recalculate the beds. Used by training scenarios.</summary>
+    public void ResetModules(bool randomize)
+    {
+        if (randomize) RandomizeModules(); else OptimizeAllModules();
+        RefreshCurrentState();
+        foreach (var bed in cropbeds) if (bed != null) bed.ResetGrowth();
+        CalculateCropbeds();
+    }
+
+    /// <summary>Simulate a failure: the module's main value drops to 0.</summary>
+    public void BreakModule(ModuleType moduleType)
+    {
+        Module m = GetModule(moduleType);
+        if (m == null) return;
+        switch (moduleType)
+        {
+            case ModuleType.Irrigation: m.water = 0f; break;
+            case ModuleType.Nutrient: m.nutrient = 0f; break;
+            case ModuleType.Energy: m.energy = 0f; break;
+            case ModuleType.ClimateControl: m.climate = 0f; break;
+        }
+        RefreshCurrentState();
+        CalculateCropbeds();
+    }
+
     public void OptimizeModule(ModuleType moduleType, bool invokeAction = true)
     {
         SetOptimized(moduleType);
+        if (invokeAction) OnModuleOptimized?.Invoke(this, moduleType);
         // Totals must be refreshed BEFORE the beds recalculate (the original order was reversed).
         RefreshCurrentState();
         if (invokeAction)

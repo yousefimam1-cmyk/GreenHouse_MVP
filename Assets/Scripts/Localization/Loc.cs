@@ -48,9 +48,24 @@ public static class Loc
         // HUD / gameplay
         { "Mazraa Greenhouse", "صوبة المزرعة" },
         { "Greenhouse", "الصوبة" },
+        { "Training", "التدريب" },
+        { "[T] Start   [N] Next scenario", "[T] ابدأ   [N] السيناريو التالي" },
+        { "[T] Stop training", "[T] إيقاف التدريب" },
+        { "Training stopped", "تم إيقاف التدريب" },
+        { "Time's up - training failed", "انتهى الوقت - لم ينجح التدريب" },
+        { "Harvested {0}/{1} kg", "الحصاد {0}/{1} كجم" },
+        { "Healthy beds {0}/{1}", "الأحواض السليمة {0}/{1}" },
+        { "Time left {0}s", "الوقت المتبقي {0} ث" },
+        { "Best: {0}s", "الأفضل: {0} ث" },
+        { "Training complete: {0}", "اكتمل التدريب: {0}" },
+        { "Optimizations: {0}", "عدد التحسينات: {0}" },
+        { "Gold", "ذهبي" },
+        { "Silver", "فضي" },
+        { "Bronze", "برونزي" },
+        { "Partners", "الشركاء" },
         { "Harvested: {0} kg", "المحصول: {0} كجم" },
         { "{0}: {1}/{2} beds healthy", "{0}: {1}/{2} أحواض سليمة" },
-        { "[H] Help   [L] Arabic", "[H] مساعدة   [L] English" },
+        { "[H] Help   [L] Arabic   [T] Training", "[H] مساعدة   [L] English   [T] تدريب" },
         { "Harvested {0} kg of {1}", "تم حصاد {0} كجم من {1}" },
         { "All crop beds are healthy!", "كل الأحواض سليمة!" },
         { "Growing {0}%", "النمو {0}%" },
@@ -76,7 +91,8 @@ public static class Loc
             "Start the well, then use the Control Station to optimize\n" +
             "Irrigation, Nutrients, Energy and Climate.\n" +
             "Healthy (green) beds grow - press E on a grown bed to harvest.\n" +
-            "Esc - close panels    H - help    L - Arabic/English" },
+            "Esc - close panels    H - help    L - Arabic/English\n" +
+            "T - start/stop a timed training scenario    N - next scenario" },
     };
 
     private static readonly Dictionary<string, string> arabicLong = new Dictionary<string, string>
@@ -86,7 +102,8 @@ public static class Loc
             "شغّل البئر ثم استخدم محطة التحكم لتحسين\n" +
             "الري والتسميد والطاقة والمناخ.\n" +
             "الأحواض السليمة (الخضراء) تنمو - اضغط E على الحوض الناضج للحصاد.\n" +
-            "Esc - إغلاق    H - مساعدة    L - عربي/إنجليزي" },
+            "Esc - إغلاق    H - مساعدة    L - عربي/إنجليزي\n" +
+            "T - بدء/إيقاف سيناريو تدريب    N - السيناريو التالي" },
     };
 
     private static TMP_FontAsset arabicFont;

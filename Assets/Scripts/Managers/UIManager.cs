@@ -52,6 +52,8 @@ public class UIManager : MonoBehaviour
 
     /// <summary>Raised when the crop bed panel opens (bed) or closes (null). Used by the HUD info panel.</summary>
     public event Action<Cropbed> OnCropbedPanelChanged;
+    /// <summary>Raised when the control station panel opens (greenhouse) or closes (null). Used for partner slots.</summary>
+    public event Action<GreenhouseManager> OnControlStationPanelChanged;
 
     private void Awake()
     {
@@ -129,6 +131,7 @@ public class UIManager : MonoBehaviour
         FadeIn(controlStationUI);
         UpdateControlStationUI();
         SetGameplayInput(false);
+        OnControlStationPanelChanged?.Invoke(greenhouseManager);
     }
 
     private void UpdateControlStationUI()
@@ -149,6 +152,7 @@ public class UIManager : MonoBehaviour
         controlStationOpen = false;
         if (!cropbedOpen) SetGameplayInput(true);
         FadeOut(controlStationUI);
+        OnControlStationPanelChanged?.Invoke(null);
     }
 
     public void OptimizeButtonCallback(string module)

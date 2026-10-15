@@ -1,0 +1,21 @@
+{
+  "notes": "Training scenarios. objective: allHealthy | harvestKg. setup: randomize (re-roll all modules), breakModule (Irrigation | Nutrient | Energy | ClimateControl set to 0 in every greenhouse). Times in seconds; goldTime/silverTime grade the result.",
+  "scenarios": [
+    { "id": "first_shift",  "titleEn": "First shift",        "titleAr": "الوردية الأولى",
+      "briefEn": "Get every crop bed healthy.", "briefAr": "اجعل كل الأحواض سليمة.",
+      "objective": "allHealthy", "target": 0, "timeLimit": 240, "goldTime": 90, "silverTime": 150,
+      "setup": "randomize", "breakModule": "" },
+    { "id": "pump_failure", "titleEn": "Irrigation failure",  "titleAr": "عطل الري",
+      "briefEn": "Irrigation is down in every greenhouse. Restore it fast.", "briefAr": "الري متوقف في كل الصوب. أصلحه بسرعة.",
+      "objective": "allHealthy", "target": 0, "timeLimit": 120, "goldTime": 40, "silverTime": 75,
+      "setup": "", "breakModule": "Irrigation" },
+    { "id": "heatwave",     "titleEn": "Heatwave",            "titleAr": "موجة حر",
+      "briefEn": "Climate control has failed. Save the crops.", "briefAr": "التحكم في المناخ تعطل. أنقذ المحاصيل.",
+      "objective": "allHealthy", "target": 0, "timeLimit": 120, "goldTime": 40, "silverTime": 75,
+      "setup": "", "breakModule": "ClimateControl" },
+    { "id": "harvest_rush", "titleEn": "Harvest rush",        "titleAr": "سباق الحصاد",
+      "briefEn": "Harvest 300 kg before the truck leaves.", "briefAr": "احصد 300 كجم قبل مغادرة الشاحنة.",
+      "objective": "harvestKg", "target": 300, "timeLimit": 300, "goldTime": 150, "silverTime": 220,
+      "setup": "randomize", "breakModule": "" }
+  ]
+}

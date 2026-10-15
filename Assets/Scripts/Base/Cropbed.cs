@@ -132,6 +132,12 @@ public class Cropbed : Interactable
         if (GameManager.Instance != null) GameManager.Instance.RegisterHarvest(this, kg);
     }
 
+    public void ResetGrowth()
+    {
+        Growth = 0f;
+        ApplyGrowthVisual();
+    }
+
     private void Update()
     {
         if (!IsInitialized || !IsActive || Growth >= 1f) return;

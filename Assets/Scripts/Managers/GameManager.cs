@@ -19,6 +19,8 @@ public class GameManager : MonoBehaviour
     public IReadOnlyList<GreenhouseManager> Greenhouses => greenhouses;
 
     public event Action OnStatsChanged;
+    /// <summary>kg harvested in one action.</summary>
+    public event Action<float> OnHarvest;
 
     private readonly List<GreenhouseManager> greenhouses = new List<GreenhouseManager>();
     private bool allHealthyAnnounced;
@@ -41,6 +43,7 @@ public class GameManager : MonoBehaviour
         HarvestCount = PlayerPrefs.GetInt(CountKey, 0);
         hud = GetComponent<GameHUD>();
         if (hud == null) hud = gameObject.AddComponent<GameHUD>();
+        if (GetComponent<ScenarioManager>() == null) gameObject.AddComponent<ScenarioManager>();
     }
 
     private void Start()
@@ -83,6 +86,7 @@ public class GameManager : MonoBehaviour
         string crop = bed != null && bed.Crop != null ? Loc.CropName(bed.Crop) : (bed != null ? bed.name : "");
         if (UIManager.Instance != null)
             UIManager.Instance.ShowAlertMessage(Loc.T("Harvested {0} kg of {1}", kg.ToString("F0"), crop));
+        OnHarvest?.Invoke(kg);
         OnStatsChanged?.Invoke();
     }
 
