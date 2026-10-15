@@ -7,7 +7,9 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioSource waterAS;
     [SerializeField] private AudioSource sfxAS;
     [SerializeField] private AudioClip interactSFX;
+    [SerializeField] private AudioClip harvestSFX;
     public static AudioManager Instance;
+
     private void Awake()
     {
         if (Instance == null)
@@ -23,11 +25,17 @@ public class AudioManager : MonoBehaviour
 
     public void StartWaterSound()
     {
-        waterAS.Play();
+        if (waterAS != null && !waterAS.isPlaying) waterAS.Play();
     }
 
     public void PlaySFX()
     {
-        sfxAS.PlayOneShot(interactSFX);
+        if (sfxAS != null && interactSFX != null) sfxAS.PlayOneShot(interactSFX);
+    }
+
+    public void PlayHarvest()
+    {
+        AudioClip clip = harvestSFX != null ? harvestSFX : interactSFX;
+        if (sfxAS != null && clip != null) sfxAS.PlayOneShot(clip);
     }
 }

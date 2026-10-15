@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 
 public class Interactable : MonoBehaviour, IInteractable
@@ -9,45 +8,48 @@ public class Interactable : MonoBehaviour, IInteractable
     [SerializeField] private string interactionPrompt = "[E] Use";
     [SerializeField] private Vector3 promptOffset;
 
-    private int outlineLayer = 6;
-    private int initLayer = 7;
+    private const int outlineLayer = 6;
+    private const int initLayer = 7;
 
-    public string InteractionPrompt => interactionPrompt;
-
+    /// <summary>English prompt as set in the inspector (used as the localization key).</summary>
+    protected string PromptKey => interactionPrompt;
+    public virtual string InteractionPrompt => Loc.T(interactionPrompt);
     public Vector3 PromptOffset => promptOffset;
+    public virtual bool CanInteract => true;
+
     [SerializeField] protected WebGLOutline outline;
-    private List<MeshRenderer> meshRenderers = new List<MeshRenderer>();
+    private readonly List<MeshRenderer> meshRenderers = new List<MeshRenderer>();
+    private bool highlighted;
+    protected bool IsInitialized { get; private set; }
 
     protected virtual void Awake() { }
 
-    IEnumerator Start()
+    private IEnumerator Start()
     {
+        // Wait so the greenhouse managers have set up their modules first.
         yield return new WaitForSeconds(1.0f);
-        // TryGetComponent(out outline);
-        // if (!outline)
-        //     outline = GetComponentInChildren<WebGLOutline>();
-        // if (!outline)
-        //     outline = GetComponentInParent<WebGLOutline>();
         Initialize();
+        IsInitialized = true;
+        if (highlighted) SetHighlighted(true);
     }
 
     protected virtual void Initialize()
     {
-        Debug.Log("Mesh renderers filling in: " + gameObject.name);
         meshRenderers.AddRange(GetComponentsInChildren<MeshRenderer>(true));
     }
 
     public virtual void SetHighlighted(bool value)
     {
-        // outline?.EnableOutline(value);
-        // gameObject.layer = value ? outlineLayer : initLayer;
+        highlighted = value;
         for (int i = 0; i < meshRenderers.Count; i++)
         {
-            meshRenderers[i].gameObject.layer = value ? outlineLayer : initLayer;
+            if (meshRenderers[i] != null)
+                meshRenderers[i].gameObject.layer = value ? outlineLayer : initLayer;
         }
     }
+
     public virtual void Interact()
     {
-        AudioManager.Instance.PlaySFX();
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX();
     }
 }

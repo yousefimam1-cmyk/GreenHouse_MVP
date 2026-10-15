@@ -12,26 +12,33 @@ public class InteractionPromptUI : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (target == null)
+        if (target == null || root == null)
             return;
+        if (playerCamera == null) playerCamera = Camera.main;
+        if (playerCamera == null) return;
 
         Vector3 screenPos = playerCamera.WorldToScreenPoint(target.position + offset);
-
-        root.position = screenPos;
+        // Hide when the target is behind the camera instead of drawing a mirrored prompt.
+        root.position = screenPos.z > 0f ? screenPos : new Vector3(-10000f, -10000f, 0f);
     }
 
+    /// <summary>Show a prompt. Text should already be localized (IInteractable.InteractionPrompt is).</summary>
     public void Show(string prompt, Transform targetTransform, Vector3 promptOffset)
     {
         target = targetTransform;
         offset = promptOffset;
 
-        promptText.text = prompt;
-        root.gameObject.SetActive(true);
+        if (promptText != null)
+        {
+            Loc.ApplyFont(promptText);
+            promptText.text = prompt;
+        }
+        if (root != null) root.gameObject.SetActive(true);
     }
 
     public void Hide()
     {
         target = null;
-        root.gameObject.SetActive(false);
+        if (root != null && root.gameObject.activeSelf) root.gameObject.SetActive(false);
     }
 }

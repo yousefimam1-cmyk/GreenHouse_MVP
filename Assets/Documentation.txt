@@ -36,3 +36,27 @@ The formulaes for these calculations are simple as when optimizing, we are setti
 
 CROPBED DATA:
 Each cropbed has it's own unique data that is hardcoded (for now) some of the cropbeds are already satisfied in some attributes and needs optimizing in some attributes.
+
+==================== UPDATE (Oct 2026) ====================
+
+NEW SCRIPTS
+--- Localization/Loc.cs          English/Arabic text. English strings are the keys. Press L in game to switch (saved).
+--- Localization/ArabicShaper.cs Joins Arabic letters + right-to-left order for TextMeshPro. Font: Resources/Fonts/Tajawal-Bold.ttf (OFL).
+--- Data/CropProfiles.cs         Loads Resources/Data/crop_profiles.json (crop types, reference growing ranges, bed starting values).
+--- UI/GameHUD.cs                HUD built from code: harvest total, healthy beds per greenhouse, crop info panel, help (H).
+--- Managers/GameManager.cs      Created automatically. Harvest totals (saved in PlayerPrefs), language/help keys, "all beds healthy" goal.
+
+GAMEPLAY
+- Healthy (green) beds grow over ConfigurationData.growthSeconds. When grown, the prompt becomes "[E] Harvest".
+- Harvest kg = yield projection x harvestKgPerYieldPoint x crop yieldFactor.
+- Esc / Tab closes panels. H = help. L = Arabic/English.
+
+DATA
+- Bed values now come from crop_profiles.json (key = GreenhouseName/CropbedName). Values match the scene.
+  Turn off with ConfigurationData.useCropProfilesFile to use the inspector values again.
+- Bed value = bed's own value + sum of the greenhouse modules (if the bed's own value is already satisfied it is kept).
+- Modules are copied at runtime, so Play mode no longer overwrites the Module .asset files.
+
+IMPORTANT FOR GIT
+- .meta files must be committed. The old .gitignore ignored "*.meta", so 190+ assets had no meta on GitHub
+  and their scene references broke on a fresh clone. The .gitignore is fixed.
