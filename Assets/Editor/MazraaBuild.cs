@@ -3,7 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-/// <summary>Menu Mazraa > Build WebGL, also used by the GitHub Actions build (buildMethod MazraaBuild.WebGL).</summary>
+/// <summary>Menu Mazraa > Build WebGL / Build Windows, also used by the GitHub Actions builds.</summary>
 public static class MazraaBuild
 {
     [MenuItem("Mazraa/Build WebGL")]
@@ -18,6 +18,17 @@ public static class MazraaBuild
         var scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
         var report = BuildPipeline.BuildPlayer(scenes, outDir, BuildTarget.WebGL, BuildOptions.None);
         Debug.Log("Mazraa WebGL build: " + report.summary.result + " -> " + outDir);
+        if (Application.isBatchMode) EditorApplication.Exit(report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded ? 0 : 1);
+    }
+
+    [MenuItem("Mazraa/Build Windows (.exe)")]
+    public static void Windows()
+    {
+        string outDir = "build/Windows/Mazraa";
+        Directory.CreateDirectory(outDir);
+        var scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
+        var report = BuildPipeline.BuildPlayer(scenes, outDir + "/Mazraa.exe", BuildTarget.StandaloneWindows64, BuildOptions.None);
+        Debug.Log("Mazraa Windows build: " + report.summary.result + " -> " + outDir);
         if (Application.isBatchMode) EditorApplication.Exit(report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded ? 0 : 1);
     }
 }
