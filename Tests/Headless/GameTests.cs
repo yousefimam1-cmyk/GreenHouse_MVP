@@ -278,11 +278,15 @@ static class Program
 
         Console.WriteLine("Mission chain");
         var mm = MissionManager.Instance;
-        // jump to the last mission ("haveMoney") which used to recurse forever
-        T.Set(mm, "<Index>k__BackingField", mm.Missions.Length - 1);
+        // jump to the "haveMoney" mission (last of missions.json; feature packs may append more) which used to recurse forever
+        int haveMoney = Array.FindLastIndex(mm.Missions, x => x.type == "haveMoney");
+        T.Set(mm, "<Index>k__BackingField", haveMoney);
         int errs = FakeEngine.Errors.Count;
-        try { EconomyManager.Instance.AddMoney(30000); T.Check("Last mission completes without stack overflow", mm.AllDone); }
+        try { EconomyManager.Instance.AddMoney(30000); T.Check("Last mission completes without stack overflow", mm.Index > haveMoney); }
         catch (Exception e) { T.Check("Last mission completes without stack overflow", false, e.GetType().Name); }
+
+        UtilityTests.Run();
+        errs = FakeEngine.Errors.Count;
 
         Console.WriteLine("Training scenario");
         var sm = ScenarioManager.Instance;
@@ -314,6 +318,7 @@ static class Program
         T.Check("Animals restored (incl. any born)", UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length == EconomyManager.Instance.Owned("chicken") && EconomyManager.Instance.Owned("chicken") >= 2,
             UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length + " vs " + EconomyManager.Instance.Owned("chicken"));
         T.Check("Field crop state restored", FieldManager.Instance.Plots[1].State == PlotState.Plowed);
+        UtilityTests.AfterRestart();
         T.Check("Intro not shown again", SaveData.GetInt("mazraa.introSeen", 0) == 1 || true);
 
         Console.WriteLine("New game");
@@ -325,6 +330,7 @@ static class Program
         T.Check("New game removes animals", UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length == 0);
         T.Check("New game resets fields", FieldManager.Instance.Plots.All(x => x.State == PlotState.Untilled));
         T.Check("Time scale restored", Time.timeScale == 1f);
+        UtilityTests.AfterNewGame();
 
         Console.WriteLine("Long run (10 in-game days, everything ticking)");
         int e0 = FakeEngine.Errors.Count;
@@ -334,5 +340,198 @@ static class Program
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
         Environment.Exit(T.Fail == 0 ? 0 : 1);
+    }
+}
+
+// ---------------------------------------------------------------- Utilities (power + water)
+static class UtilityTests
+{
+    static UtilityEnv Env(Season s, Weather w, float sun, int greenhouses = 2, int beds = 8, int growing = 0)
+        => new UtilityEnv { season = s, weather = w, sun = sun, greenhouses = greenhouses, beds = beds, plots = 6, growingPlots = growing, day = 3, hour = 12, wellRunning = true };
+
+    public static void Run()
+    {
+        Console.WriteLine("Utilities: model");
+        int e0 = FakeEngine.Errors.Count;
+        var m = new UtilityModel();
+        m.Advance(Env(Season.Spring, Weather.Sunny, 1f), 0f);
+        T.Check("Basic SEC connection covers 2 greenhouses on a spring noon", !m.PowerShort && m.GreenhouseFactor == 1f, m.PowerDemand + " kW");
+        m.Advance(Env(Season.Summer, Weather.Heatwave, 1f), 0f);
+        T.Check("Summer heatwave cooling overloads the basic connection", m.PowerShort && m.GreenhouseFactor < 1f && m.CoolingKw > 20f, m.PowerDemand + " kW, factor " + m.GreenhouseFactor);
+        m.Solar = 2;
+        m.Advance(Env(Season.Summer, Weather.Heatwave, 1f), 0f);
+        T.Check("Solar panels fix the noon shortage", !m.PowerShort && m.SolarOut > 5f, m.SolarOut + " kW solar");
+        m.Advance(Env(Season.Spring, Weather.Sunny, 0f), 0f);
+        T.Check("No solar at night", m.SolarOut == 0f);
+        var sunny = new UtilityModel { Solar = 4 }; sunny.Advance(Env(Season.Spring, Weather.Sunny, 1f, 10), 0f);
+        var cloudy = new UtilityModel { Solar = 4 }; cloudy.Advance(Env(Season.Spring, Weather.Cloudy, 1f, 10), 0f);
+        var dusty = new UtilityModel { Solar = 4, Dust = 0.5f }; dusty.Advance(Env(Season.Spring, Weather.Sunny, 1f, 10), 0f);
+        T.Check("Clouds and dust cut solar output", cloudy.SolarOut < sunny.SolarOut * 0.6f && dusty.SolarOut < sunny.SolarOut * 0.6f, sunny.SolarOut + " / " + cloudy.SolarOut + " / " + dusty.SolarOut);
+        float dust0 = m.Dust;
+        m.EndDay(Season.Summer, Weather.Heatwave);
+        T.Check("Panels get dusty over days (more in summer heat)", m.Dust >= dust0 + 0.1f, "" + m.Dust);
+
+        var gen = new UtilityModel { Generator = true, DieselL = 100f };
+        gen.Advance(Env(Season.Summer, Weather.Heatwave, 1f), 1f);
+        T.Check("Diesel generator covers the gap and burns fuel", !gen.PowerShort && gen.DieselOut > 0f && gen.DieselL < 100f, gen.DieselOut + " kW, " + gen.DieselL + " L");
+        var bio = new UtilityModel { Biogas = true };
+        var be = Env(Season.Summer, Weather.Heatwave, 1f); be.manureKg = 100f;
+        float manure = bio.Advance(be, 1f);
+        T.Check("Biogas digester runs on manure", bio.BiogasOut > 0f && manure > 0f, bio.BiogasOut + " kW, " + manure + " kg");
+        var wind = new UtilityModel { Wind = 2 }; wind.Advance(Env(Season.Spring, Weather.Sunny, 1f), 0f);
+        T.Check("Wind turbines produce power", wind.WindOut > 0f && wind.WindOut <= 10f, "" + wind.WindOut);
+
+        var none = new UtilityModel(); none.Advance(Env(Season.Spring, Weather.Sunny, 1f, 2, 8, 6), 0f);
+        var drip = new UtilityModel { Irrigation = IrrigationKind.Drip }; drip.Advance(Env(Season.Spring, Weather.Sunny, 1f, 2, 8, 6), 0f);
+        T.Check("Drip irrigation needs about half the field water", drip.FieldWater < none.FieldWater * 0.5f, none.FieldWater + " -> " + drip.FieldWater);
+        T.Check("Drip lines water the fields automatically", drip.FieldsAutoWatered && !none.FieldsAutoWatered);
+        var pivot = new UtilityModel { Irrigation = IrrigationKind.CenterPivot };
+        pivot.Advance(Env(Season.Spring, Weather.Sunny, 1f, 2, 8, 6), 0f);
+        T.Check("Center pivot waters all plots and draws power", pivot.FieldsAutoWatered && pivot.IrrigationKw >= 10f);
+        pivot.Advance(Env(Season.Summer, Weather.Heatwave, 1f, 6, 24, 6), 0f);
+        T.Check("Center pivot stops when power is badly short", pivot.PowerRatio < 0.5f && !pivot.FieldsAutoWatered, "ratio " + pivot.PowerRatio);
+
+        var dry = new UtilityModel();
+        var de = Env(Season.Summer, Weather.Sunny, 1f, 2, 8, 6); de.wellRunning = false;
+        for (int h = 0; h < 48; h++) dry.Advance(de, 1f);
+        T.Check("Stopped well: reservoir drains, then water runs short", dry.Stored < 0.01f && dry.WaterShort && dry.FieldDryFactor > 1f && dry.GreenhouseFactor < 1f, dry.Stored + " m3, ratio " + dry.WaterRatio);
+        var deep = new UtilityModel { DeepWell = true };
+        deep.Advance(de, 1f);
+        T.Check("Deep aquifer well supplies water and needs pump power", deep.DeepOut > 10f && deep.PumpKw > 0f, deep.DeepOut + " m3/day, " + deep.PumpKw + " kW");
+        var tse = new UtilityModel { Tse = true };
+        tse.Advance(Env(Season.Spring, Weather.Sunny, 1f, 2, 8, 6), 0f);
+        T.Check("Treated wastewater only serves the fields", tse.TseOut > 0f && tse.TseOut <= tse.FieldWater + 0.001f);
+
+        var day = new UtilityModel();
+        for (int h = 0; h < 24; h++) day.Advance(Env(Season.Spring, Weather.Sunny, 0.8f, 2, 8, 6), 1f);
+        float bill = day.EndDay(Season.Spring, Weather.Sunny);
+        T.Check("Daily SEC bill = fee + kWh tariff", bill > UtilityModel.GridDailyFee[0] && bill < 200f, bill + " SAR");
+        T.Check("A day without shortage counts toward the power streak", day.PowerOkDays == 1);
+        var big = new UtilityModel();
+        for (int h = 0; h < 24; h++) big.Advance(Env(Season.Summer, Weather.Heatwave, 1f, 2, 8, 6), 1f);
+        T.Check("A day with shortage resets the streak", big.EndDay(Season.Summer, Weather.Heatwave) > 0f && big.PowerOkDays == 0);
+        var heavy = new UtilityModel { DeepWell = true, GridLevel = 2 };
+        for (int h = 0; h < 24; h++) heavy.Advance(Env(Season.Summer, Weather.Heatwave, 1f, 2, 8, 6), 1f);
+        T.Check("Heavy summer irrigation passes the daily water limit", heavy.WaterUsedToday > UtilityModel.DailyWaterLimit, heavy.WaterUsedToday + " m3");
+
+        Console.WriteLine("Utilities: in game");
+        var g = UtilityGrid.Instance;
+        var eco = EconomyManager.Instance;
+        T.Check("UtilityGrid + panel created automatically", g != null && UtilitiesUI.Instance != null);
+        T.Check("Shop has Power (6) and Water (7) pages", ShopCatalog.Entries.Count(x => x.category == "Power") == 6 && ShopCatalog.Entries.Count(x => x.category == "Water") == 7);
+        T.Check("Utilities yard built with SEC connection + reservoir", GameObject.Find("SEC Grid") != null && GameObject.Find("Water Reservoir") != null);
+        T.Check("Manure good comes from the economy pack", eco.Good("manure") != null);
+        eco.AddMoney(40000);
+        T.Check("Buy solar panels", eco.TryBuy("util_solar") && g.Model.Solar == 1);
+        FakeEngine.Run(0.2f);
+        T.Check("Solar array appears in the yard", GameObject.Find("Solar Array 1") != null);
+        g.Model.Dust = 0.4f;
+        var solarPart = GameObject.Find("Solar Array 1").GetComponent<UtilityPart>();
+        T.Check("Dusty panels prompt for cleaning", solarPart.InteractionPrompt.Contains("Clean"), solarPart.InteractionPrompt);
+        solarPart.Interact();
+        T.Check("E cleans the panels", g.Model.Dust == 0f);
+        T.Check("Diesel can't be bought without a generator", !eco.TryBuy("util_diesel"));
+        T.Check("Buy diesel generator", eco.TryBuy("util_generator") && g.Model.Generator);
+        FakeEngine.Run(0.2f);
+        int money = eco.Money; float litres = g.Model.DieselL;
+        GameObject.Find("Diesel Generator").GetComponent<UtilityPart>().Interact();
+        T.Check("E refuels the generator at the per-litre price", g.Model.DieselL > litres + 99f && eco.Money == money - Mathf.CeilToInt(100f * UtilityModel.DieselPrice), (eco.Money - money) + " SAR");
+        T.Check("Tanker blocked while the reservoir is full", !eco.TryBuy("util_tanker"));
+        T.Check("Buy a water tank, then a desalinated water tanker", eco.TryBuy("util_tank") && eco.TryBuy("util_tanker") && g.Model.Stored >= 39.9f, "" + g.Model.Stored);
+
+        // Greenhouse hook: no power/water -> beds stop growing
+        var bed = GameManager.Instance.Greenhouses.SelectMany(x => x.Cropbeds).First(b => b.IsActive);
+        bed.ResetGrowth();
+        UtilityHooks.GreenhouseGrowth = 0f;
+        FakeEngine.Run(3f, 0.25f);
+        T.Check("Greenhouse beds stop growing without power/water", bed.Growth == 0f, "" + bed.Growth);
+        UtilityHooks.GreenhouseGrowth = 1f;
+        FakeEngine.Run(3f, 0.25f);
+        T.Check("Beds grow again when supply is back", bed.Growth > 0f);
+
+        // Field hook: drip irrigation keeps a growing plot wet
+        var plot = FieldManager.Instance.Plots[2];
+        plot.TryPlow(false); plot.TrySeed(false);
+        T.Check("Plot planted for the irrigation test", plot.State == PlotState.Growing, plot.State.ToString());
+        T.Check("Buy drip irrigation", eco.TryBuy("util_drip") && g.Model.Irrigation == IrrigationKind.Drip);
+        g.Recompute();
+        FakeEngine.Run(40f, 0.5f);
+        T.Check("Drip keeps the field watered", UtilityHooks.FieldsAutoWatered && plot.Water > 0.99f, plot.Water + " auto " + UtilityHooks.FieldsAutoWatered);
+        T.Check("Drip lines laid on the plots", GameObject.Find("Drip Lines") != null);
+        eco.AddMoney(60000);
+        T.Check("Buy center pivot", eco.TryBuy("util_pivot") && g.Model.Irrigation == IrrigationKind.CenterPivot);
+        FakeEngine.Run(0.5f);
+        T.Check("Center pivot built over the fields", GameObject.Find("Pivot Arm") != null && GameObject.Find("Drip Lines") == null);
+        T.Check("Sprinklers then back to drip", eco.TryBuy("util_sprinklers") && eco.TryBuy("util_drip") && g.Model.Irrigation == IrrigationKind.Drip);
+        T.Check("Buy wind turbine, biogas digester, deep well, treated wastewater line", eco.TryBuy("util_wind") && eco.TryBuy("util_biogas") && eco.TryBuy("util_deepwell") && eco.TryBuy("util_tse") && eco.TryBuy("util_grid"));
+        FakeEngine.Run(0.5f);
+        T.Check("All bought equipment stands in the yard", new[] { "Wind Turbine 1", "Biogas Digester", "Deep Well", "TSE Valve", "Diesel Generator", "Solar Array 1" }.All(n => GameObject.Find(n) != null));
+        T.Check("Grid upgrade raises capacity", g.Model.GridLevel == 1 && g.Model.PowerCapacity >= 50f);
+        T.Check("Hourly ticks book water use", g.Model.WaterUsedToday > 0f, "" + g.Model.WaterUsedToday);
+
+        // Shortage -> HUD warning + panel
+        var saved = g.Model.GridLevel;
+        g.Model.Advance(Env(Season.Summer, Weather.Heatwave, 1f, 8, 32, 6), 0f);
+        string hud = g.HudLine();
+        T.Check("HUD warns when power is short", hud != null && hud.Contains("Power short"), hud ?? "null");
+        g.Recompute();
+        UtilitiesUI.Instance.Open();
+        string text = UtilitiesUI.BuildText();
+        T.Check("Utilities panel opens and lists supply vs demand", UtilitiesUI.Instance.IsOpen && text.Contains("Power: demand") && text.Contains("Water: demand") && text.Contains("Solar") && text.Contains("SEC grid"), text.Split('\n').FirstOrDefault());
+        UtilitiesUI.Instance.Close();
+        T.Check("Panel closes", !UtilitiesUI.Instance.IsOpen);
+
+        // Daily bill on a new day
+        money = eco.Money;
+        WorldClock.Instance.NextDay();
+        T.Check("SEC bill is paid each morning", eco.Money < money, money + " -> " + eco.Money);
+
+        // Missions
+        var mm = MissionManager.Instance;
+        int first = Array.FindIndex(mm.Missions, x => x.id == "util_solar");
+        T.Check("3 utility missions loaded from the pack", first >= 0 && mm.Missions.Skip(first).Take(3).Select(x => x.id).SequenceEqual(new[] { "util_solar", "util_power2d", "util_irrigation" }));
+        g.Model.PowerOkDays = 0;
+        T.Set(mm, "<Index>k__BackingField", first);
+        FakeEngine.Run(1.5f);
+        T.Check("Solar mission completes (panels owned)", mm.Index == first + 1, "index " + mm.Index);
+        FakeEngine.Run(2f);
+        T.Check("Power mission waits for 2 days in a row", mm.Index == first + 1 && mm.Current.type == "powerPositiveDays", "index " + mm.Index);
+        g.Model.PowerOkDays = 2;
+        FakeEngine.Run(3f);
+        T.Check("Power-positive 2 days + efficient irrigation (drip) missions complete", mm.Index == first + 3, "index " + mm.Index);
+
+        // Translations of every utilities string
+        var dir = Path.Combine("..", "..", "Assets", "Scripts", "Utilities");
+        var keys = new List<string>();
+        foreach (var f in Directory.GetFiles(dir, "*.cs"))
+        {
+            string src = File.ReadAllText(f);
+            foreach (System.Text.RegularExpressions.Match x in System.Text.RegularExpressions.Regex.Matches(src, "(?:Loc\\.(?:T|Raw)\\(|Build\\.Label\\([^\"\\n]*|Reg\\(\"[^\"]+\", \"[^\"]+\", |return |label\\)?\\s*=?\\s*)\"((?:[^\"\\\\]|\\\\.)+)\""))
+                keys.Add(x.Groups[1].Value);
+        }
+        keys.AddRange(new[] { "Power", "Water", "By hand", "Drip lines", "Sprinklers", "Center pivot" });
+        var missing = keys.Distinct().Where(k => !Loc.HasTranslation(k) && k.Any(char.IsLetter) && !k.StartsWith("<") && !k.StartsWith("util_") && !k.StartsWith("Utilities/")).ToList();
+        T.Check("Every utilities string has an Arabic translation (" + keys.Distinct().Count() + " keys)", missing.Count == 0, string.Join(" | ", missing.Take(5)));
+        Loc.SetLanguage(Language.Arabic);
+        string ar = UtilitiesUI.BuildText() + g.HudLine();
+        Loc.SetLanguage(Language.English);
+        T.Check("Panel renders in Arabic", ar.Any(c => c >= 'ﹰ'));
+        T.Check("No errors in utilities tests", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
+        SaveData.Flush(true);
+    }
+
+    public static void AfterRestart()
+    {
+        var g = UtilityGrid.Instance;
+        T.Check("Utilities restored after restart (solar, generator, tank, drip)", g != null && g.Model.Solar == 1 && g.Model.Generator && g.Model.Tanks == 1 && g.Model.Irrigation == IrrigationKind.Drip);
+        FakeEngine.Run(0.5f);
+        T.Check("Restored equipment rebuilt in the world", GameObject.Find("Solar Array 1") != null && GameObject.Find("Diesel Generator") != null && GameObject.Find("Drip Lines") != null);
+    }
+
+    public static void AfterNewGame()
+    {
+        var g = UtilityGrid.Instance;
+        T.Check("New game resets utilities", g.Model.Solar == 0 && !g.Model.Generator && g.Model.Irrigation == IrrigationKind.None && g.Model.Stored == UtilityModel.BaseReservoir);
+        T.Check("New game resets the hooks", UtilityHooks.GreenhouseGrowth == 1f && !UtilityHooks.FieldsAutoWatered);
     }
 }

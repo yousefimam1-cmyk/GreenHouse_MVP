@@ -176,8 +176,8 @@ public class FieldPlot : Interactable
         if (State != PlotState.Growing) return;
         var clock = WorldClock.Instance;
         bool raining = clock != null && clock.Weather == Weather.Rain;
-        if (raining) Water = 1f;
-        float dry = (clock != null && clock.Weather == Weather.Heatwave ? 2f : 1f) / 150f;
+        if (raining || UtilityHooks.FieldsAutoWatered) Water = 1f; // rain or drip/pivot/sprinklers (Utilities)
+        float dry = (clock != null && clock.Weather == Weather.Heatwave ? 2f : 1f) / 150f * UtilityHooks.FieldDryFactor;
         Water = Mathf.Max(0f, Water - dry * Time.deltaTime);
         if (Water > 0.05f)
         {

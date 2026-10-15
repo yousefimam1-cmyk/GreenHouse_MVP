@@ -142,7 +142,7 @@ public class Cropbed : Interactable
     {
         if (!IsInitialized || !IsActive || Growth >= 1f) return;
         float seconds = Mathf.Max(1f, GreenHouseHelper.Config.growthSeconds / EconomyManager.GrowthSpeed);
-        Growth = Mathf.Min(1f, Growth + Time.deltaTime / seconds);
+        Growth = Mathf.Min(1f, Growth + Time.deltaTime / seconds * UtilityHooks.GreenhouseGrowth); // power/water supply (Utilities)
         ApplyGrowthVisual();
     }
 
