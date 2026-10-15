@@ -123,3 +123,22 @@ Data: Resources/Data/Economy/10_fish.json (fish, dates, processed goods, honey, 
       Resources/Data/Missions/10_fish.json (catchFish, harvestTank, processBatch, ownCamel), Resources/Data/Loc/10_fish.json.
 Custom mission events: catchFish, catchFishKg, catchCoastFish, harvestTank, harvestTankKg, feedFish, processBatch,
       process_<good>, collectHoney, collectPigeons. State missions: ownCamel, ownGoats. Save keys: mazraa.fish.*
+
+POWER & WATER UTILITIES (Scripts/Utilities, feat/utilities)
+--- Utilities/UtilityGrid.cs   [MazraaSystem(40)] Supply vs demand every in-game hour (WorldClock), SEC bill each morning,
+    shop pages "Power" and "Water", HUD warning when short, daily water limit (45 m3) messages, 3 missions. Saves "mazraa.util.*".
+--- Utilities/UtilityModel.cs  Pure calculation (tested headless). Power in kW, dispatched cheapest first:
+    solar (10 kWp arrays, follows the sun, -50% cloudy, -75% rain, dust builds up daily: E on a panel cleans it),
+    wind (5 kW, gusty), biogas (8 kW, burns "manure" that animals add to storage), SEC grid (20/50/100 kW, fee + 0.18 SAR/kWh,
+    surplus renewables credited 0.07 SAR/kWh), diesel generator (30 kW, 0.3 L/kWh, diesel 1.66 SAR/L: shop "Diesel 200 L" or E on it).
+    Demand: greenhouse evaporative cooling (season + Heatwave + daytime), deep-well pump, irrigation, farm base load.
+    Water in m3/day: farm well 25 (when running), deep Saq aquifer well 60 (needs 15 kW), treated wastewater 30 (fields only),
+    reservoir 20 m3 + tanks 50 m3 (buffer), desalinated water tanker 20 m3 (12 SAR/m3).
+    Irrigation: by hand (x1.3 water), sprinklers (x1.0), center pivot (x0.85, 10 kW), drip (x0.55, also slower drying).
+--- Utilities/UtilityHooks.cs  Static hooks read by existing code: Cropbed growth x GreenhouseGrowth (min of power and water
+    supply ratios, 0 below 20%); FieldPlot dries x FieldDryFactor and stays wet while FieldsAutoWatered.
+--- Utilities/UtilityYard.cs   Builds the equipment (place an object named "UtilitiesSpot" to move the yard); drip lines / sprinklers
+    on the plots, rotating center pivot over the fields. Optional models: Resources/Models/Utilities/{PowerPole,Generator,Biogas,SolarPanel,DeepWell,WaterTank}.
+--- Utilities/UtilityPart.cs, UtilitiesUI.cs  E on equipment; U = utilities panel (sources, demand, stored water, today's use, cost, warnings).
+Data: Resources/Data/Loc/20_utilities.json, Missions/20_utilities.json (installSolar, powerPositiveDays, installEfficientIrrigation),
+Economy/20_utilities.json (manure).

@@ -1,0 +1,6 @@
+{
+  "notes": "Utilities pack: manure from the animals (fuel for the biogas digester, or sold as fertiliser).",
+  "goods": [
+    { "id": "manure", "nameEn": "Manure", "nameAr": "سماد بلدي", "unitEn": "kg", "unitAr": "كجم", "price": 1, "weight": 1 }
+  ]
+}
