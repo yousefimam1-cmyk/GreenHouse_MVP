@@ -105,6 +105,7 @@ public class WorkerManager : MonoBehaviour
 
     private void OnNewDay(int day)
     {
+        if (NetSession.IsClient) return; // co-op: the host runs daily costs and events
         var eco = EconomyManager.Instance;
         if (eco == null) return;
         foreach (var d in Defs)

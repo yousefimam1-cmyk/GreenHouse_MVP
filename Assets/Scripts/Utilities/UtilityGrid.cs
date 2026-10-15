@@ -162,6 +162,7 @@ public class UtilityGrid : MonoBehaviour
 
     private void OnDayStarted(int day)
     {
+        if (NetSession.IsClient) return; // co-op: the host runs daily costs and events
         // Book any hours of the previous day not yet ticked, so the bill is complete.
         int now = ClockHour();
         if (now >= 0 && lastHour >= 0 && now > lastHour)

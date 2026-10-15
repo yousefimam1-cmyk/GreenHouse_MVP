@@ -158,6 +158,7 @@ public class BankManager : MonoBehaviour
 
     private void OnNewDay(int day)
     {
+        if (NetSession.IsClient) return; // co-op: the host runs daily costs and events
         if (Debt <= 0) return;
         int interest = Mathf.CeilToInt(Debt * DailyInterest);
         Debt += interest; InterestPaid += interest;

@@ -497,7 +497,7 @@ static class Program
         T.Check("No errors over 10 simulated days", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
 
         FishTests();
-        MultiplayerTests(args[0]);
+        MpTests.MultiplayerTests(args[0]);
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
@@ -1144,8 +1144,12 @@ static class EventsFinTests
         T.Check("New game removes bought land", FieldManager.Instance.Plots.Count == 6 && LandOffice.Instance.Owned == 0);
         T.Check("New game clears debt, workers and events", BankManager.Instance.Debt == 0 && WorkerManager.Instance.HiredCount == 0 && EventDirector.Instance.Pending == null && EventDirector.Instance.Active == null);
     }
+}
+
+static class MpTests
+{
     // ------------------------------------------------------------------ co-op (no Netcode: fake backend)
-    static void MultiplayerTests(string resources)
+    public static void MultiplayerTests(string resources)
     {
         Console.WriteLine("Co-op: single player unchanged");
         var mp = MultiplayerManager.Instance;

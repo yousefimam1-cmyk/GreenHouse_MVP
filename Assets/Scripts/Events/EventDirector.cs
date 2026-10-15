@@ -107,6 +107,7 @@ public class EventDirector : MonoBehaviour
 
     private void OnNewDay(int day)
     {
+        if (NetSession.IsClient) return; // co-op: the host runs daily costs and events
         if (Active != null && day > lastDay) EndActive();
         if (Pending != null && PendingDay <= day)
         {
