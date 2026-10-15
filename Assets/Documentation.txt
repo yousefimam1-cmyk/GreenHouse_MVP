@@ -101,3 +101,40 @@ CHATS 1-6 (open fields, economy, vehicles, animals, missions, graphics)
 --- UI/ObjectiveMarker.cs, StoryIntro.cs; Resources/Data/missions.json (25 missions).
 --- Graphics/DayNightCycle.cs  Sun follows the clock, night dimming, headlights and pad lamps.
 --- Real models: Kenney CC0 truck, tractor, crops (Assets/ThirdParty/CREDITS.md). Build.TryModel scales any model to fit.
+
+COZY EXTRAS, SPONSORS, LEARN MODE, ANALYTICS (Oct 2026)
+All in new files, added automatically through [MazraaSystem]. Keys: C look, B collection book, K learn, V place stored decor.
+--- Cozy/PetSystem.cs       The AmbientLife dog becomes a saluki: E to pet once per in-game day (hearts + random gift:
+    seeds, feed or 10-30 SAR). Falcon perch next to the farmhouse: E flies the falcon (eagle model circles, lands,
+    20-50 SAR once a day; 5 flights = Falconer achievement +150 SAR).
+--- Cozy/Appearance.cs + AppearancePanel.cs  Static Appearance data (thobe colour + red shemagh / white ghutra, or abaya
+    colour + headscarf), saved and kept on a new game. Appearance.ApplyTo(model) tints the model and adds headwear;
+    applied to a third-person player model (SkinnedMeshRenderer under the player) and to the vehicle drivers.
+    The other Characters/* models (shopkeepers, workers, buyers, villagers) are dressed in thobes/abayas too.
+--- Cozy/DailyQuests.cs     Board at the market (E): 3 random quests a day from Resources/Data/quests.json
+    (deliver X kg of Y from the farm store at the board, collect eggs, earn N SAR, harvest, plant, pet, falcon, chat).
+--- Cozy/SeasonalEvents.cs  Calendar events: Ramadan night market (end of winter, +20% prices at night, lanterns),
+    Eid al-Fitr (first spring day after a Ramadan: 300 SAR + feed, lights), Saudi National Day (first autumn day:
+    green flags, +10% prices, 250 SAR), Buraidah date festival (last 2 summer days: dates x1.6 + festival contract).
+    Decorations are built in code and removed afterwards. Date palm grove by the farmhouse: E picks dates (new good
+    "dates" in Resources/Data/Economy/60_cozy.json) in summer/autumn every 2 days.
+--- Cozy/Decorations.cs     Shop page "Decor": majlis tent (bait al-sha'ar), lantern, palm-frond fence, flower pot.
+    After buying, a preview follows the player: E places, Esc keeps it in storage, V places a stored piece,
+    E on a placed piece picks it up. Positions saved.
+--- Cozy/CollectionBook.cs  B: crops, animals, fish (GameEvents.Custom "catchFish" or "catchFish:<species>"),
+    sponsors met, feats; % complete. Other features can call CollectionBook.Record(category, id).
+--- Cozy/Villagers.cs       Abu Saleh (shopkeeper), Abu Fahad (market buyer), Abu Nasser (neighbour farmer). E to chat
+    once a day = +1 heart (max 5). 3/5 hearts: shop cash back 10%/15%, market prices +5%/+10%, kleija recipe card /
+    daily seed gift.
+--- Sponsors/SponsorManager.cs  sponsors.json now also has "brands" and "products" (sample placeholder brands):
+    shop page "Sponsors" (seed packs, fertilizer charges +25% field harvest, drip kit +10% fields, solar fans +10%
+    greenhouse), 4 billboards along the farm-market road, sponsor met when you pass a billboard or buy.
+--- Learn/LearnMode.cs      K: tip cards from Resources/Data/Learn/*.json (drip irrigation, crop rotation, water saving,
+    date palms, greenhouse climate, wheat, hens, sheep/cows, kleija, soil), unlocked by playing; 3-question quiz each
+    ([1] start, 1-3 answer, 2/3 to pass, small reward once). LearnMode.Trigger("id") unlocks cards from other code.
+--- Learn/CozyAnalytics.cs  Opt-in (0 in the learn panel, default off): session length, missions done and sponsor
+    purchases written ONLY to persistentDataPath/mazraa_analytics.json. Nothing counted while off; off deletes the file.
+--- Missions: Resources/Data/Missions/60_cozy.json (pet the saluki, daily quest, 3 hearts, quiz, sponsor item).
+    Arabic texts: Resources/Data/Loc/60_cozy.json. Save keys: mazraa.cozy.*, mazraa.sponsor.*, mazraa.learn.*.
+--- Hooks in shared files: MarketManager.PriceMultipliers (static list of per-good multipliers used by Price()),
+    EconomyManager.AddSeeds(cropId, count).

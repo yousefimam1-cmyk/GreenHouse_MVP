@@ -1,0 +1,532 @@
+{
+ "entries": [
+  {
+   "en": "Outfit",
+   "ar": "اللبس"
+  },
+  {
+   "en": "Colour",
+   "ar": "اللون"
+  },
+  {
+   "en": "Farmer look",
+   "ar": "شكل المزارع"
+  },
+  {
+   "en": "[1-3] change   [C/Esc] close",
+   "ar": "[1-3] غيّر   [C/Esc] إغلاق"
+  },
+  {
+   "en": "Thobe",
+   "ar": "ثوب"
+  },
+  {
+   "en": "Abaya",
+   "ar": "عباية"
+  },
+  {
+   "en": "Head cloth",
+   "ar": "غطاء الراس"
+  },
+  {
+   "en": "Headscarf",
+   "ar": "الطرحة"
+  },
+  {
+   "en": "White",
+   "ar": "أبيض"
+  },
+  {
+   "en": "Cream",
+   "ar": "سكري"
+  },
+  {
+   "en": "Grey",
+   "ar": "رمادي"
+  },
+  {
+   "en": "Brown",
+   "ar": "بني"
+  },
+  {
+   "en": "Navy",
+   "ar": "كحلي"
+  },
+  {
+   "en": "Black",
+   "ar": "أسود"
+  },
+  {
+   "en": "Burgundy",
+   "ar": "عنابي"
+  },
+  {
+   "en": "Dark green",
+   "ar": "أخضر غامق"
+  },
+  {
+   "en": "Red shemagh",
+   "ar": "شماغ أحمر"
+  },
+  {
+   "en": "White ghutra",
+   "ar": "غترة بيضاء"
+  },
+  {
+   "en": "New in your collection book",
+   "ar": "جديد في دفتر المجموعة"
+  },
+  {
+   "en": "Fish",
+   "ar": "سمك"
+  },
+  {
+   "en": "Fish caught",
+   "ar": "السمك اللي صدته"
+  },
+  {
+   "en": "none yet",
+   "ar": "ما فيه للحين"
+  },
+  {
+   "en": "Collection book",
+   "ar": "دفتر المجموعة"
+  },
+  {
+   "en": "[B/Esc] close",
+   "ar": "[B/Esc] إغلاق"
+  },
+  {
+   "en": "Crops harvested",
+   "ar": "المحاصيل اللي حصدتها"
+  },
+  {
+   "en": "Animals raised",
+   "ar": "الحلال اللي ربيته"
+  },
+  {
+   "en": "Sponsors met",
+   "ar": "الرعاة اللي تعرفت عليهم"
+  },
+  {
+   "en": "Feats",
+   "ar": "الإنجازات"
+  },
+  {
+   "en": "Falconer",
+   "ar": "صقّار"
+  },
+  {
+   "en": "Feed",
+   "ar": "علف"
+  },
+  {
+   "en": "Daily quests: {0}/{1}",
+   "ar": "المهام اليومية: {0}/{1}"
+  },
+  {
+   "en": "New daily quests at the market board",
+   "ar": "فيه مهام يومية جديدة في لوحة السوق"
+  },
+  {
+   "en": "Daily quest complete",
+   "ar": "خلصت مهمة يومية"
+  },
+  {
+   "en": "Not enough in the farm store yet",
+   "ar": "ما فيه كمية كافية في مخزن المزرعة للحين"
+  },
+  {
+   "en": "[E] Daily quests board",
+   "ar": "[E] لوحة المهام اليومية"
+  },
+  {
+   "en": "done",
+   "ar": "خلصت"
+  },
+  {
+   "en": "In the farm store",
+   "ar": "في مخزن المزرعة"
+  },
+  {
+   "en": "press the number to hand in",
+   "ar": "اضغط الرقم عشان تسلّم"
+  },
+  {
+   "en": "Daily Quests",
+   "ar": "المهام اليومية"
+  },
+  {
+   "en": "New quests every morning   [1-3] hand in   [E/Esc] close",
+   "ar": "مهام جديدة كل صباح   [1-3] سلّم   [E/Esc] إغلاق"
+  },
+  {
+   "en": "Decor",
+   "ar": "زينة"
+  },
+  {
+   "en": "Sponsors",
+   "ar": "الرعاة"
+  },
+  {
+   "en": "Majlis tent",
+   "ar": "بيت شعر (مجلس)"
+  },
+  {
+   "en": "Lantern",
+   "ar": "فانوس"
+  },
+  {
+   "en": "Palm-frond fence",
+   "ar": "سياج سعف"
+  },
+  {
+   "en": "Flower pot",
+   "ar": "حوض ورد"
+  },
+  {
+   "en": "in storage",
+   "ar": "في المخزن"
+  },
+  {
+   "en": "Placing decoration: [E] place   [Esc] keep in storage",
+   "ar": "تركيب الزينة: [E] ركّب   [Esc] خلّها في المخزن"
+  },
+  {
+   "en": "Decoration kept in storage",
+   "ar": "انحفظت الزينة في المخزن"
+  },
+  {
+   "en": "No decorations in storage - buy some in the shop (Decor)",
+   "ar": "ما عندك زينة في المخزن - اشترِ من المتجر (زينة)"
+  },
+  {
+   "en": "[E] Pick up decoration",
+   "ar": "[E] شيل الزينة"
+  },
+  {
+   "en": "Saluki (happy - petted today)",
+   "ar": "السلوقي (مبسوط - دلّعته اليوم)"
+  },
+  {
+   "en": "[E] Pet the saluki",
+   "ar": "[E] دلّع السلوقي"
+  },
+  {
+   "en": "The saluki wags its tail. Come back tomorrow for another gift.",
+   "ar": "السلوقي يهز ذيله. ارجع بكرة عشان هدية ثانية."
+  },
+  {
+   "en": "The saluki found a gift",
+   "ar": "السلوقي لقى لك هدية"
+  },
+  {
+   "en": "The falcon is hunting...",
+   "ar": "الصقر يصيد..."
+  },
+  {
+   "en": "The falcon is resting - fly it again tomorrow",
+   "ar": "الصقر مرتاح - طيّره بكرة"
+  },
+  {
+   "en": "[E] Fly the falcon",
+   "ar": "[E] طيّر الصقر"
+  },
+  {
+   "en": "The falcon takes off!",
+   "ar": "الصقر طار!"
+  },
+  {
+   "en": "The falcon is back on the perch",
+   "ar": "رجع الصقر للوكر"
+  },
+  {
+   "en": "Achievement: Falconer",
+   "ar": "إنجاز: صقّار"
+  },
+  {
+   "en": "Falcon",
+   "ar": "الصقر"
+  },
+  {
+   "en": "Event",
+   "ar": "مناسبة"
+  },
+  {
+   "en": "Ramadan night market",
+   "ar": "سوق رمضان الليلي"
+  },
+  {
+   "en": "Eid al-Fitr",
+   "ar": "عيد الفطر"
+  },
+  {
+   "en": "Buraidah date festival",
+   "ar": "مهرجان تمور بريدة"
+  },
+  {
+   "en": "Saudi National Day",
+   "ar": "اليوم الوطني السعودي"
+  },
+  {
+   "en": "Ramadan Kareem! The market stays open at night with better prices.",
+   "ar": "رمضان كريم! السوق مفتوح بالليل وأسعاره أحسن."
+  },
+  {
+   "en": "Eid Mubarak! A gift is waiting for you.",
+   "ar": "عيدكم مبارك! فيه عيدية تنتظرك."
+  },
+  {
+   "en": "Dates sell high - check the festival contract.",
+   "ar": "التمر سعره عالي - شوف عقد المهرجان."
+  },
+  {
+   "en": "Happy National Day! Prices are up for the celebration.",
+   "ar": "كل عام والوطن بخير! الأسعار مرتفعة بمناسبة الاحتفال."
+  },
+  {
+   "en": "Ramadan Kareem",
+   "ar": "رمضان كريم"
+  },
+  {
+   "en": "Eid Mubarak",
+   "ar": "عيدكم مبارك"
+  },
+  {
+   "en": "Happy Saudi National Day",
+   "ar": "يوم وطني سعيد"
+  },
+  {
+   "en": "Buraidah Date Festival",
+   "ar": "مهرجان تمور بريدة"
+  },
+  {
+   "en": "Eid gift (eidiya)",
+   "ar": "العيدية"
+  },
+  {
+   "en": "National Day celebration bonus",
+   "ar": "مكافأة احتفال اليوم الوطني"
+  },
+  {
+   "en": "Date palms (dates ripen in summer and autumn)",
+   "ar": "النخل (التمر يستوي في الصيف والخريف)"
+  },
+  {
+   "en": "[E] Pick dates",
+   "ar": "[E] اجنِ التمر"
+  },
+  {
+   "en": "Date palms (more dates in a few days)",
+   "ar": "النخل (فيه تمر زيادة بعد كم يوم)"
+  },
+  {
+   "en": "Picked {0} kg of dates",
+   "ar": "جنيت {0} كجم تمر"
+  },
+  {
+   "en": "Date palms",
+   "ar": "النخل"
+  },
+  {
+   "en": "Abu Saleh",
+   "ar": "أبو صالح"
+  },
+  {
+   "en": "Abu Fahad",
+   "ar": "أبو فهد"
+  },
+  {
+   "en": "Abu Nasser",
+   "ar": "أبو ناصر"
+  },
+  {
+   "en": "Abu Saleh (shopkeeper)",
+   "ar": "أبو صالح (صاحب الدكان)"
+  },
+  {
+   "en": "Abu Fahad (market buyer)",
+   "ar": "أبو فهد (مشتري السوق)"
+  },
+  {
+   "en": "Abu Nasser (neighbour farmer)",
+   "ar": "أبو ناصر (جارك المزارع)"
+  },
+  {
+   "en": "[E] Talk to",
+   "ar": "[E] سولف مع"
+  },
+  {
+   "en": "Good to see you again! Come by tomorrow for a proper chat.",
+   "ar": "هلا والله مرة ثانية! تعال بكرة نسولف على راحتنا."
+  },
+  {
+   "en": "Welcome, neighbour! The feed came in fresh this morning.",
+   "ar": "هلا بالجار! العلف وصل جديد الصبح."
+  },
+  {
+   "en": "Your chickens look healthy, ma sha Allah.",
+   "ar": "دجاجك ما شاء الله صاحي."
+  },
+  {
+   "en": "You're one of my best customers now.",
+   "ar": "صرت من أحسن زباينّي."
+  },
+  {
+   "en": "My father ran this shop for forty years - farmers like you kept it going.",
+   "ar": "أبوي فتح هالدكان أربعين سنة - مزارعين مثلك هم اللي خلّوه ماشي."
+  },
+  {
+   "en": "You're family now. Anything you need, just ask.",
+   "ar": "صرت من الأهل. أي شي تبيه بس قول."
+  },
+  {
+   "en": "Bring me good produce and I'll pay a fair price.",
+   "ar": "جب لي إنتاج زين وأعطيك سعر يرضيك."
+  },
+  {
+   "en": "The hotels in Buraidah want fresh vegetables every week.",
+   "ar": "فنادق بريدة تبي خضار طازجة كل أسبوع."
+  },
+  {
+   "en": "Your crops sell fast - I'll pay you a bit more.",
+   "ar": "محصولك ينباع بسرعة - بزيد لك شوي."
+  },
+  {
+   "en": "During the date festival, everyone in Qassim comes to the market.",
+   "ar": "وقت مهرجان التمور كل أهل القصيم يجون السوق."
+  },
+  {
+   "en": "I tell every buyer in Qassim about your farm!",
+   "ar": "أعلّم كل مشتري في القصيم عن مزرعتك!"
+  },
+  {
+   "en": "Salam! Still getting used to the heat? Water early in the morning.",
+   "ar": "السلام عليكم! للحين ما تعودت على الحر؟ اسقِ الصبح بدري."
+  },
+  {
+   "en": "Rotate your wheat with onions - the soil will thank you.",
+   "ar": "بدّل القمح مع البصل - التربة بتشكرك."
+  },
+  {
+   "en": "Here, my mother's recipe. Your dates will taste even better.",
+   "ar": "خذ وصفة أمي. تمرك بيصير ألذ."
+  },
+  {
+   "en": "Drip lines saved half my water last summer.",
+   "ar": "خطوط التنقيط وفّرت لي نص الموية الصيف اللي فات."
+  },
+  {
+   "en": "Take some seeds whenever you pass by, ya jar.",
+   "ar": "خذ بذور كل ما مريت يا جار."
+  },
+  {
+   "en": "Perk: 10% back on shop purchases.",
+   "ar": "ميزة: يرجع لك ١٠٪ من مشترياتك من المتجر."
+  },
+  {
+   "en": "Perk: 15% back on shop purchases.",
+   "ar": "ميزة: يرجع لك ١٥٪ من مشترياتك من المتجر."
+  },
+  {
+   "en": "Perk: market prices +5%.",
+   "ar": "ميزة: أسعار السوق +٥٪."
+  },
+  {
+   "en": "Perk: market prices +10%.",
+   "ar": "ميزة: أسعار السوق +١٠٪."
+  },
+  {
+   "en": "Recipe tip unlocked: kleija date cookies (see Learn, K).",
+   "ar": "انفتحت وصفة: الكليجا بالتمر (شوف التعلّم، K)."
+  },
+  {
+   "en": "Perk: a seed gift each day you visit.",
+   "ar": "ميزة: هدية بذور كل يوم تزوره."
+  },
+  {
+   "en": "Play stats on (saved only on this computer)",
+   "ar": "إحصائيات اللعب شغالة (تنحفظ في جهازك بس)"
+  },
+  {
+   "en": "Play stats off (file deleted)",
+   "ar": "إحصائيات اللعب طافية (انحذف الملف)"
+  },
+  {
+   "en": "New learn card",
+   "ar": "بطاقة تعلّم جديدة"
+  },
+  {
+   "en": "Correct!",
+   "ar": "صح!"
+  },
+  {
+   "en": "Not quite. The answer was",
+   "ar": "لا، مو كذا. الجواب هو"
+  },
+  {
+   "en": "Quiz passed",
+   "ar": "نجحت في الاختبار"
+  },
+  {
+   "en": "Quiz not passed",
+   "ar": "ما نجحت في الاختبار"
+  },
+  {
+   "en": "read the card and try again",
+   "ar": "اقرأ البطاقة وحاول مرة ثانية"
+  },
+  {
+   "en": "Question",
+   "ar": "سؤال"
+  },
+  {
+   "en": "Quiz",
+   "ar": "اختبار"
+  },
+  {
+   "en": "[1-3] answer   [K/Esc] close",
+   "ar": "[1-3] جاوب   [K/Esc] إغلاق"
+  },
+  {
+   "en": "locked - keep farming",
+   "ar": "مقفلة - كمّل شغل المزرعة"
+  },
+  {
+   "en": "quiz passed",
+   "ar": "نجحت فيها"
+  },
+  {
+   "en": "new",
+   "ar": "جديدة"
+  },
+  {
+   "en": "Share play stats (saved only on this computer)",
+   "ar": "مشاركة إحصائيات اللعب (تنحفظ في جهازك بس)"
+  },
+  {
+   "en": "On",
+   "ar": "شغال"
+  },
+  {
+   "en": "Off",
+   "ar": "طافي"
+  },
+  {
+   "en": "Learn",
+   "ar": "التعلّم"
+  },
+  {
+   "en": "[Up/Down] card   [1] quiz   [0] stats   [K/Esc] close",
+   "ar": "[فوق/تحت] بطاقة   [1] اختبار   [0] الإحصائيات   [K/Esc] إغلاق"
+  },
+  {
+   "en": "charges",
+   "ar": "مرات"
+  },
+  {
+   "en": "Already owned",
+   "ar": "عندك واحد"
+  }
+ ]
+}

@@ -201,6 +201,8 @@ public class EconomyManager : MonoBehaviour
     }
 
     public void AddFeed(float units) { if (units <= 0f) return; Feed += units; Save(); }
+    /// <summary>Add free seeds (gifts, sponsor packs).</summary>
+    public void AddSeeds(string cropId, int count) { if (count <= 0 || FieldCrop(cropId) == null) return; seeds[cropId] = Seeds(cropId) + count; Save(); }
 
     public bool TryBuy(string id)
     {

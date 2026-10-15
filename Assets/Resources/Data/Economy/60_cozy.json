@@ -1,0 +1,5 @@
+{
+  "goods": [
+    { "id": "dates", "nameEn": "Dates", "nameAr": "تمر", "unitEn": "kg", "unitAr": "كجم", "price": 18, "weight": 1 }
+  ]
+}

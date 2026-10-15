@@ -1,0 +1,19 @@
+{
+  "missions": [
+    { "id": "cozy_pet", "type": "petSaluki", "target": 1, "reward": 100,
+      "titleEn": "Best friend", "titleAr": "الرفيق الوفي",
+      "descEn": "Find your saluki and press E to pet it. It may find you a gift.", "descAr": "دوّر على السلوقي حقك واضغط E عشان تدلّعه. يمكن يجيب لك هدية." },
+    { "id": "cozy_daily", "type": "dailyQuestDone", "target": 1, "reward": 200,
+      "titleEn": "Daily work", "titleAr": "شغل اليوم",
+      "descEn": "Finish a daily quest from the board at the market.", "descAr": "خلّص مهمة يومية من لوحة المهام في السوق." },
+    { "id": "cozy_hearts", "type": "reachHearts", "target": 3, "reward": 300,
+      "titleEn": "Good neighbours", "titleAr": "جيران خير",
+      "descEn": "Talk to a villager every day until you reach 3 hearts of friendship.", "descAr": "سولف مع واحد من أهل القرية كل يوم لين توصل ٣ قلوب صداقة." },
+    { "id": "cozy_quiz", "type": "quizPassed", "target": 1, "reward": 150,
+      "titleEn": "Smart farmer", "titleAr": "المزارع الفاهم",
+      "descEn": "Open Learn (K), read a card and pass its quiz.", "descAr": "افتح التعلّم (K)، اقرأ بطاقة ونجح في اختبارها." },
+    { "id": "cozy_sponsor", "type": "buySponsorItem", "target": 1, "reward": 150,
+      "titleEn": "Partner products", "titleAr": "منتجات الشركاء",
+      "descEn": "Buy a sponsor product from the shop (page Sponsors).", "descAr": "اشترِ منتج من الشركاء من المتجر (صفحة الرعاة)." }
+  ]
+}

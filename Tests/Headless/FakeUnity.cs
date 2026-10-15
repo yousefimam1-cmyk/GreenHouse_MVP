@@ -14,7 +14,7 @@ namespace UnityEngine
     public static class FakeEngine
     {
         public static string ResourcesRoot;           // Assets/Resources
-        public static string PersistentPath = Path.Combine(Path.GetTempPath(), "mazraa_test");
+        public static string PersistentPath = Path.Combine(Path.GetTempPath(), "mazraa_test_" + System.Diagnostics.Process.GetCurrentProcess().Id);   // per process: parallel test runs do not share saves
         public static readonly List<GameObject> Objects = new List<GameObject>();
         public static readonly List<string> Errors = new List<string>();
         public static readonly List<string> Logs = new List<string>();
@@ -425,6 +425,7 @@ namespace UnityEngine
             var mx = new Vector3(Math.Max(max.x, p.x), Math.Max(max.y, p.y), Math.Max(max.z, p.z));
             center = (mn + mx) * 0.5f; size = mx - mn;
         }
+        public void Encapsulate(Bounds b) { Encapsulate(b.min); Encapsulate(b.max); }
     }
     public static class Mathf
     {
@@ -534,6 +535,7 @@ namespace UnityEngine
         public Bounds bounds => new Bounds(transform.position, transform.lossyScale);
     }
     public class MeshRenderer : Renderer { }
+    public class SkinnedMeshRenderer : Renderer { }
     public class Collider : Component { public bool enabled = true; public PhysicsMaterial material; }
     public class BoxCollider : Collider { public Vector3 center, size; }
     public class CharacterController : Collider { }
