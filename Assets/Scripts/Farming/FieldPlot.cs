@@ -7,6 +7,7 @@ public enum PlotState { Untilled, Plowed, Growing, Ripe }
 /// An open-field plot. E does the next job: plow, plant (uses a seed bag from the shop), water (needs the well
 /// running), harvest. Crops grow only while watered; out of season they grow at a quarter speed; rain waters,
 /// heatwaves dry twice as fast. Three visual growth stages. State is saved per plot.
+/// Features plug in through the static hook lists below (soil, pests, multi-cut crops) instead of editing this file.
 /// </summary>
 public class FieldPlot : Interactable
 {
@@ -27,26 +28,69 @@ public class FieldPlot : Interactable
 
     public static event System.Action<FieldPlot, string, float> FieldHarvested;
     public static event System.Action<FieldPlot> FieldPlanted;
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStatics() { FieldHarvested = null; FieldPlanted = null; }
 
-    public override string InteractionPrompt
+    // ---- Extension hooks (registered by feature systems) ----
+    /// <summary>Growth speed multipliers (e.g. pests, poor soil). All are multiplied together.</summary>
+    public static readonly List<System.Func<FieldPlot, float>> GrowthModifiers = new List<System.Func<FieldPlot, float>>();
+    /// <summary>Harvest kg multipliers (e.g. soil fertility, rotation bonus, pest damage).</summary>
+    public static readonly List<System.Func<FieldPlot, float>> YieldModifiers = new List<System.Func<FieldPlot, float>>();
+    /// <summary>Extra status text (already translated, not shaped) appended to the prompt, e.g. "Soil 80%".</summary>
+    public static readonly List<System.Func<FieldPlot, string>> PromptExtras = new List<System.Func<FieldPlot, string>>();
+    /// <summary>Replaces the prompt when non-null (translated, not shaped), e.g. "[E] Spray neem".</summary>
+    public static readonly List<System.Func<FieldPlot, string>> PromptOverrides = new List<System.Func<FieldPlot, string>>();
+    /// <summary>Runs before the default E action; return true when the press was handled.</summary>
+    public static readonly List<System.Func<FieldPlot, bool>> InteractHandlers = new List<System.Func<FieldPlot, bool>>();
+    /// <summary>Called on harvest (before the plot is cleared): return a growth value 0..1 to keep the crop
+    /// growing for another cut (e.g. alfalfa), or a negative value to clear the plot as usual.</summary>
+    public static readonly List<System.Func<FieldPlot, float>> RegrowHooks = new List<System.Func<FieldPlot, float>>();
+    /// <summary>Seed planted next when the player owns it (set when seeds are bought in the shop).</summary>
+    public static string PreferredSeed = "";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
     {
-        get
+        FieldHarvested = null; FieldPlanted = null; PreferredSeed = "";
+        GrowthModifiers.Clear(); YieldModifiers.Clear(); PromptExtras.Clear(); PromptOverrides.Clear(); InteractHandlers.Clear(); RegrowHooks.Clear();
+    }
+
+    private static float Product(List<System.Func<FieldPlot, float>> list, FieldPlot p)
+    {
+        float m = 1f;
+        foreach (var f in list) { try { m *= Mathf.Max(0f, f(p)); } catch (System.Exception e) { Debug.LogException(e); } }
+        return m;
+    }
+
+    public override string InteractionPrompt => Loc.Display(PromptRaw());
+
+    /// <summary>Prompt text translated but not shaped (so the whole line is shaped once).</summary>
+    public string PromptRaw()
+    {
+        string text = null;
+        foreach (var f in PromptOverrides) { try { text = f(this); } catch (System.Exception e) { Debug.LogException(e); } if (text != null) break; }
+        if (text == null) text = BasePrompt();
+        foreach (var f in PromptExtras)
         {
-            var eco = EconomyManager.Instance;
-            switch (State)
-            {
-                case PlotState.Untilled: return Loc.T("[E] Plow field");
-                case PlotState.Plowed:
-                    var seed = BestSeed();
-                    return seed != null ? Loc.Display(Loc.Raw("[E] Plant") + " " + FieldCropText.Name(seed) + " (" + eco.Seeds(seed.id) + ")") : Loc.T("No seeds - buy them at a Farm Shop");
-                case PlotState.Growing:
-                    string crop = FieldCropText.Name(eco != null ? eco.FieldCrop(CropId) : null);
-                    if (Water < 0.35f) return Loc.Display(Loc.Raw("[E] Water") + " - " + crop);
-                    return Loc.Display(crop + " " + Mathf.FloorToInt(Growth * 100f) + "% - " + Loc.Raw(InSeason() ? "In season" : "Out of season - slow"));
-                default: return Loc.T("[E] Harvest");
-            }
+            string x = null;
+            try { x = f(this); } catch (System.Exception e) { Debug.LogException(e); }
+            if (!string.IsNullOrEmpty(x)) text += " | " + x;
+        }
+        return text;
+    }
+
+    private string BasePrompt()
+    {
+        var eco = EconomyManager.Instance;
+        switch (State)
+        {
+            case PlotState.Untilled: return Loc.Raw("[E] Plow field");
+            case PlotState.Plowed:
+                var seed = BestSeed();
+                return seed != null ? Loc.Raw("[E] Plant") + " " + FieldCropText.Name(seed) + " (" + eco.Seeds(seed.id) + ")" : Loc.Raw("No seeds - buy them at a Farm Shop");
+            case PlotState.Growing:
+                string crop = FieldCropText.Name(eco != null ? eco.FieldCrop(CropId) : null);
+                if (Water < 0.35f) return Loc.Raw("[E] Water") + " - " + crop;
+                return crop + " " + Mathf.FloorToInt(Growth * 100f) + "% - " + Loc.Raw(InSeason() ? "In season" : "Out of season - slow");
+            default: return Loc.Raw("[E] Harvest");
         }
     }
 
@@ -75,10 +119,12 @@ public class FieldPlot : Interactable
         foreach (var r in GetComponentsInChildren<Renderer>(true)) r.gameObject.layer = 7;
     }
 
-    private FieldCropDef BestSeed()
+    /// <summary>The seed E would plant now: the last seed bought (if owned), else the first in-season seed owned.</summary>
+    public FieldCropDef BestSeed()
     {
         var eco = EconomyManager.Instance;
         if (eco == null) return null;
+        if (!string.IsNullOrEmpty(PreferredSeed) && eco.Seeds(PreferredSeed) > 0 && eco.FieldCrop(PreferredSeed) != null) return eco.FieldCrop(PreferredSeed);
         FieldCropDef fallback = null;
         foreach (var c in eco.Data.fieldCrops)
         {
@@ -89,8 +135,8 @@ public class FieldPlot : Interactable
         return fallback;
     }
 
-    private bool InSeason() => InSeason(EconomyManager.Instance?.FieldCrop(CropId));
-    private static bool InSeason(FieldCropDef c)
+    public bool InSeason() => InSeason(EconomyManager.Instance?.FieldCrop(CropId));
+    public static bool InSeason(FieldCropDef c)
     {
         if (c == null || c.seasons == null || WorldClock.Instance == null) return true;
         string now = WorldClock.SeasonId(WorldClock.Instance.Season);
@@ -101,6 +147,12 @@ public class FieldPlot : Interactable
     public override void Interact()
     {
         base.Interact();
+        foreach (var h in InteractHandlers)
+        {
+            bool handled = false;
+            try { handled = h(this); } catch (System.Exception e) { Debug.LogException(e); }
+            if (handled) return;
+        }
         switch (State)
         {
             case PlotState.Untilled: TryPlow(true); break;
@@ -145,15 +197,27 @@ public class FieldPlot : Interactable
         if (State != PlotState.Ripe) return false;
         var eco = EconomyManager.Instance;
         var crop = eco != null ? eco.FieldCrop(CropId) : null;
-        float kg = crop != null ? crop.yieldKg : 50f;
+        float kg = (crop != null ? crop.yieldKg : 50f) * Product(YieldModifiers, this);
         if (eco != null) eco.AddGood(CropId, kg);
         FieldHarvested?.Invoke(this, CropId, kg);
         if (GameManager.Instance != null) GameManager.Instance.RegisterFieldHarvest(kg);
         FeedbackFX.Float(transform.position + Vector3.up * 1.4f, "+" + kg.ToString("F0") + " kg", new Color(0.95f, 0.85f, 0.4f));
         if (announce) Say(Loc.Display(Loc.Raw("Harvested") + " " + kg.ToString("F0") + " " + Loc.Raw("kg") + " " + FieldCropText.Name(crop)));
-        State = PlotState.Untilled; CropId = ""; Growth = 0f;
+        float regrow = -1f;
+        foreach (var f in RegrowHooks) { try { regrow = Mathf.Max(regrow, f(this)); } catch (System.Exception e) { Debug.LogException(e); } }
+        if (regrow >= 0f) { State = PlotState.Growing; Growth = Mathf.Clamp01(regrow) * 0.999f; }
+        else { State = PlotState.Untilled; CropId = ""; Growth = 0f; }
         Refresh(); Save();
         return true;
+    }
+
+    /// <summary>Set back the growth of the current crop (e.g. a locust swarm ate part of it).</summary>
+    public void ReduceGrowth(float amount)
+    {
+        if (State != PlotState.Growing && State != PlotState.Ripe) return;
+        Growth = Mathf.Clamp01(Growth - Mathf.Max(0f, amount));
+        if (State == PlotState.Ripe && Growth < 1f) State = PlotState.Growing;
+        Refresh(); Save();
     }
 
     /// <summary>True when the world point lies on this plot.</summary>
@@ -183,7 +247,7 @@ public class FieldPlot : Interactable
         {
             var crop = EconomyManager.Instance?.FieldCrop(CropId);
             float seconds = crop != null ? crop.growSeconds : 200f;
-            float rate = (InSeason() ? 1f : 0.25f) * EconomyManager.GrowthSpeed / Mathf.Max(10f, seconds);
+            float rate = (InSeason() ? 1f : 0.25f) * EconomyManager.GrowthSpeed * Product(GrowthModifiers, this) / Mathf.Max(10f, seconds);
             Growth = Mathf.Min(1f, Growth + rate * Time.deltaTime);
             if (Growth >= 1f) { State = PlotState.Ripe; Save(); }
         }
