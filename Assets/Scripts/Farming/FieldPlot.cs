@@ -217,7 +217,10 @@ public class FieldPlot : Interactable
                 plant.SetParent(plantsRoot, false);
                 plant.localPosition = new Vector3(-size.x * 0.4f + x * size.x * 0.2f, 0.1f, -size.y * 0.4f + z * size.y * 0.2f);
                 plant.localRotation = Quaternion.Euler(0, (x * 37 + z * 61) % 360, 0);
-                if (CropId == "wheat")
+                string modelName = PlantModel(CropId, stage);
+                float fit = stage == 1 ? 0.45f : stage == 2 ? 0.65f : 0.9f;
+                if (modelName != null && Build.TryModel("Crops/" + modelName, plant, fit, 0f) != null) { }
+                else if (CropId == "wheat")
                 {
                     var stalk = stage == 4 ? fruit : leaf;
                     for (int s = 0; s < 3; s++)
@@ -236,6 +239,25 @@ public class FieldPlot : Interactable
                 foreach (var rr in plant.GetComponentsInChildren<Renderer>(true)) rr.gameObject.layer = 7;
                 plants.Add(plant);
             }
+    }
+
+    // Kenney Nature Kit (CC0) crop models in Resources/Models/Crops, by growth stage.
+    private static string PlantModel(string crop, int stage)
+    {
+        switch (stage)
+        {
+            case 1: return "crops_leafsStageA";
+            case 2: return crop == "wheat" ? "crops_wheatStageA" : "crops_leafsStageB";
+            case 3: return crop == "wheat" ? "crops_wheatStageA" : "crops_leafsStageB";
+            default:
+                switch (crop)
+                {
+                    case "wheat": return "crops_wheatStageB";
+                    case "watermelon": return "crop_melon";
+                    case "onion": return "crop_turnip";
+                    default: return "crops_leafsStageB";
+                }
+        }
     }
 
     private void Save()

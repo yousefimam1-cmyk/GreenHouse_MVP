@@ -79,9 +79,10 @@ public class VehicleSpawner : MonoBehaviour
         var light = Build.Mat(new Color(1f, 0.95f, 0.8f), 0.8f, 0f, new Color(2.2f, 2.0f, 1.6f));
         var tail = Build.Mat(new Color(0.8f, 0.05f, 0.05f), 0.6f, 0f, new Color(1.5f, 0.05f, 0.05f));
 
-        var model = Build.TryModel("Truck", t);
+        var model = Build.TryModel("Truck", t, 4.6f, -0.55f);
         Transform cargo;
         var wheels = new Transform[4];
+        if (model != null) wheels = Build.FaceForwardAndFindWheels(model, t);
         if (model == null)
         {
             Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.25f, 0), new Vector3(1.7f, 0.35f, 4.5f), dark, "Chassis");
@@ -112,7 +113,10 @@ public class VehicleSpawner : MonoBehaviour
                 wheels[i] = w;
             }
         }
-        else cargo = t;
+        else
+        {
+            cargo = new GameObject("Cargo").transform; cargo.SetParent(t, false); cargo.localPosition = new Vector3(0, 0.55f, -1.2f);
+        }
 
         foreach (var r in root.GetComponentsInChildren<Renderer>(true)) r.gameObject.layer = 7;
         var exit = new GameObject("Exit").transform; exit.SetParent(t, false); exit.localPosition = new Vector3(-2.6f, 0.5f, 0.6f);
@@ -275,7 +279,9 @@ public class VehicleSpawner : MonoBehaviour
         var yellow = Build.Mat(new Color(0.95f, 0.75f, 0.1f), 0.4f);
         var light = Build.Mat(new Color(1f, 0.95f, 0.8f), 0.8f, 0f, new Color(2.2f, 2.0f, 1.6f));
         var wheels = new Transform[4];
-        if (Build.TryModel("Tractor", t) == null)
+        var tractorModel = Build.TryModel("Tractor", t, 3.6f, -0.75f);
+        if (tractorModel != null) wheels = Build.FaceForwardAndFindWheels(tractorModel, t);
+        if (tractorModel == null)
         {
             Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.55f, 0.9f), new Vector3(1.0f, 0.75f, 2.2f), red, "Engine");
             Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.6f, 2.02f), new Vector3(0.95f, 0.6f, 0.06f), steel, "Grille");

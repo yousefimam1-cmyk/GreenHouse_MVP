@@ -20,7 +20,8 @@ public class FarmAnimal : MonoBehaviour
         root.transform.rotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
         var a = root.AddComponent<FarmAnimal>();
         a.animalId = id; a.pen = pen;
-        if (Build.TryModel(id, root.transform) == null) a.BuildBody();
+        float fit = id == "cow" ? 2.2f : id == "sheep" ? 1.3f : 0.55f;
+        if (Build.TryModel(id, root.transform, fit, 0f) == null) a.BuildBody();
         a.speed = id == "chicken" ? 1.1f : id == "sheep" ? 0.8f : 0.6f;
         a.PickTarget();
         return a;

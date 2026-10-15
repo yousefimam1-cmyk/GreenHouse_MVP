@@ -380,7 +380,7 @@ public class GameHUD : MonoBehaviour
         sb.Append(Title(Loc.T("Mazraa Greenhouse")));
         var clock = WorldClock.Instance;
         if (clock != null)
-            sb.Append('\n').Append("<color=#9FD3FF>").Append(Loc.Display(Loc.Raw("Day") + " " + clock.Day + " - " + clock.SeasonName() + " " + clock.DayOfSeason + "/" + clock.daysPerSeason + " - " + clock.WeatherName())).Append("</color>");
+            sb.Append('\n').Append("<color=#9FD3FF>").Append(Loc.Display(Loc.Raw("Day") + " " + clock.Day + " " + clock.TimeText() + " - " + clock.SeasonName() + " " + clock.DayOfSeason + "/" + clock.daysPerSeason + " - " + clock.WeatherName())).Append("</color>");
         if (gm != null)
         {
             sb.Append('\n').Append(Loc.T("Harvested: {0} kg", gm.TotalHarvestKg.ToString("F0")));

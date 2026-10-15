@@ -55,6 +55,7 @@ public class GameManager : MonoBehaviour
         if (GetComponent<MarketManager>() == null) gameObject.AddComponent<MarketManager>();
         if (GetComponent<ObjectiveMarker>() == null) gameObject.AddComponent<ObjectiveMarker>();
         if (GetComponent<StoryIntro>() == null) gameObject.AddComponent<StoryIntro>();
+        if (GetComponent<DayNightCycle>() == null) gameObject.AddComponent<DayNightCycle>();
     }
 
     private void Start()

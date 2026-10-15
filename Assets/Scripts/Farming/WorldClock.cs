@@ -117,11 +117,7 @@ public class WorldClock : MonoBehaviour
             if (Weather == Weather.Rain && !rain.isPlaying) rain.Play();
             else if (Weather != Weather.Rain && rain.isPlaying) rain.Stop();
         }
-        if (sun != null)
-        {
-            float k = Weather == Weather.Rain ? 0.45f : Weather == Weather.Cloudy ? 0.7f : Weather == Weather.Heatwave ? 1.2f : 1f;
-            sun.intensity = sunBaseIntensity * k;
-        }
+        if (sun != null && DayNightCycle.Instance == null) sun.intensity = sunBaseIntensity * WeatherLight;
     }
 
     private void SaveState()
@@ -138,6 +134,20 @@ public class WorldClock : MonoBehaviour
         ApplyWeatherVisuals();
         SaveState();
     }
+
+    /// <summary>Sunlight multiplier from the weather.</summary>
+    public float WeatherLight => Weather == Weather.Rain ? 0.45f : Weather == Weather.Cloudy ? 0.7f : Weather == Weather.Heatwave ? 1.2f : 1f;
+
+    /// <summary>Clock text for the HUD, e.g. 07:30 (day starts at 06:00).</summary>
+    public string TimeText()
+    {
+        float hours = (6f + DayProgress * 24f) % 24f;
+        int h = Mathf.FloorToInt(hours), m = Mathf.FloorToInt((hours - h) * 60f / 10f) * 10;
+        return h.ToString("00") + ":" + m.ToString("00");
+    }
+
+    /// <summary>0 at midnight .. 1 at noon (sun height), from the clock (day starts at 06:00).</summary>
+    public float SunHeight => Mathf.Sin(((6f + DayProgress * 24f) % 24f - 6f) / 24f * Mathf.PI * 2f);
 
     public static string SeasonId(Season s) => s.ToString().ToLowerInvariant();
     public string SeasonName() => Loc.Raw(Season.ToString());

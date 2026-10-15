@@ -52,13 +52,67 @@ public static class Build
     }
 
     /// <summary>Instantiate Resources/Models/name if it exists, else null.</summary>
-    public static GameObject TryModel(string name, Transform parent)
+    public static GameObject TryModel(string name, Transform parent) => TryModel(name, parent, 0f, 0f);
+
+    /// <summary>
+    /// Instantiate Resources/Models/name, scaled so its longest horizontal side is fitSize (0 = keep scale),
+    /// centred on the parent and with its lowest point at bottomY (parent space). Works whatever units the FBX uses.
+    /// </summary>
+    public static GameObject TryModel(string name, Transform parent, float fitSize, float bottomY)
     {
         var prefab = Resources.Load<GameObject>("Models/" + name);
         if (prefab == null) return null;
         var go = Object.Instantiate(prefab, parent, false);
         go.name = name;
+        foreach (var c in go.GetComponentsInChildren<Collider>(true)) Object.Destroy(c);
+        if (fitSize <= 0f || parent == null) return go;
+        var rs = go.GetComponentsInChildren<Renderer>(true);
+        if (rs.Length == 0) return go;
+        // Bounds in parent space
+        Bounds b = default; bool first = true;
+        foreach (var r in rs)
+        {
+            var wb = r.bounds;
+            foreach (var corner in new[] { wb.min, wb.max, new Vector3(wb.min.x, wb.min.y, wb.max.z), new Vector3(wb.max.x, wb.max.y, wb.min.z) })
+            {
+                var lp = parent.InverseTransformPoint(corner);
+                if (first) { b = new Bounds(lp, Vector3.zero); first = false; } else b.Encapsulate(lp);
+            }
+        }
+        float longest = Mathf.Max(b.size.x, b.size.z);
+        if (longest < 1e-4f) return go;
+        float k = fitSize / longest;
+        go.transform.localScale *= k;
+        Vector3 c0 = b.center * k, min = b.min * k;
+        go.transform.localPosition = go.transform.localPosition * k - new Vector3(c0.x, min.y - bottomY, c0.z) + new Vector3(0, 0, 0);
         return go;
+    }
+
+    /// <summary>For vehicle models with child wheels named "wheel-front-*": turn the model to face +Z and return its wheels.</summary>
+    public static Transform[] FaceForwardAndFindWheels(GameObject model, Transform vehicleRoot)
+    {
+        var wheels = new List<Transform>();
+        Transform front = null, back = null;
+        foreach (var t in model.GetComponentsInChildren<Transform>(true))
+        {
+            string n = t.name.ToLowerInvariant();
+            if (!n.StartsWith("wheel")) continue;
+            wheels.Add(t);
+            if (n.Contains("front") && front == null) front = t;
+            if (n.Contains("back") && back == null) back = t;
+        }
+        if (front != null && back != null)
+        {
+            float fz = vehicleRoot.InverseTransformPoint(front.position).z, bz = vehicleRoot.InverseTransformPoint(back.position).z;
+            if (fz < bz)
+            {
+                // Rotate 180 degrees about the root's vertical axis, keeping the model centred.
+                Vector3 lp = model.transform.localPosition;
+                model.transform.localRotation = Quaternion.Euler(0, 180, 0) * model.transform.localRotation;
+                model.transform.localPosition = new Vector3(-lp.x, lp.y, -lp.z);
+            }
+        }
+        return wheels.ToArray();
     }
 
     public static bool GroundAt(Vector3 pos, out RaycastHit hit)

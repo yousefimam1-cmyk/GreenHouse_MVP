@@ -89,3 +89,15 @@ Missions, Economy, HUD and FeedbackFX only listen. GameManager auto-creates ever
 --- Helper/Build.cs  Placeholder geometry. Drop a prefab at Resources/Models/Truck, ShopStall, cow, sheep or chicken
     (e.g. free CC0 Quaternius / Kenney models) and it is used instead of the placeholder automatically.
 Keys: P pause (Backspace there = new game), G graphics, H help, L language, T training.
+
+CHATS 1-6 (open fields, economy, vehicles, animals, missions, graphics)
+--- Farming/WorldClock.cs + FieldManager.cs + FieldPlot.cs  Days, seasons, weather (rain waters fields); 6 field plots:
+    plow / plant (seeds from shop) / water (well must run) / harvest. Field crops in economy.json (fieldCrops).
+--- Base/SaveData.cs  All progress in one JSON file (persistentDataPath/mazraa_save.json). P > Backspace = new game.
+--- Managers/MarketManager.cs  Daily prices (drift, season, supply) + buyer contracts. M = price board.
+--- Vehicle/Vehicle.cs (base), FarmTruck.cs, Tractor.cs  Fuel, refuel on the green pad, R = reset/tow.
+    Tractor: Q cycles plow / seeder / harvester; drive over plots to work them.
+--- Farming/AnimalPen.cs, PenTask.cs  Water trough + cleaning at the barn door, health, breeding.
+--- UI/ObjectiveMarker.cs, StoryIntro.cs; Resources/Data/missions.json (25 missions).
+--- Graphics/DayNightCycle.cs  Sun follows the clock, night dimming, headlights and pad lamps.
+--- Real models: Kenney CC0 truck, tractor, crops (Assets/ThirdParty/CREDITS.md). Build.TryModel scales any model to fit.
