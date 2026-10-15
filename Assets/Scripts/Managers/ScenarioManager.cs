@@ -77,7 +77,7 @@ public class ScenarioManager : MonoBehaviour
         if (kb != null && !uiOpen && HasScenarios)
         {
             if (kb.tKey.wasPressedThisFrame) { if (Running) Stop(Loc.T("Training stopped")); else Begin(); }
-            else if (kb.nKey.wasPressedThisFrame && !Running) selected = (selected + 1) % defs.Length;
+            else if (kb.bKey.wasPressedThisFrame && !Running) selected = (selected + 1) % defs.Length;
         }
 
         if (!Running) return;

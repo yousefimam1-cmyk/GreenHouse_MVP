@@ -5,11 +5,14 @@ using UnityEngine.Rendering.Universal;
 
 /// <summary>
 /// Runtime graphics upgrade for URP: a global post-processing volume (ACES tonemapping, bloom, warm grading,
-/// vignette), SMAA, MSAA, longer soft shadows. G toggles High / Low quality (Low for weaker PCs and WebGL). Saved.
+/// vignette), SMAA, MSAA, longer soft shadows. Low / Medium / High presets (Settings menu); G toggles High / Low. Saved.
 /// </summary>
 public class GraphicsEnhancer : MonoBehaviour
 {
     public static bool High { get; private set; } = true;
+    /// <summary>0 Low, 1 Medium, 2 High (Settings menu). G still toggles High / Low.</summary>
+    public static int Preset { get; private set; } = 2;
+    private static GraphicsEnhancer instance;
     private Volume volume;
     // Original URP asset values, restored on exit so Play mode doesn't permanently change project settings.
     private UniversalRenderPipelineAsset urpAsset;
@@ -19,13 +22,16 @@ public class GraphicsEnhancer : MonoBehaviour
     {
         urpAsset = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
         if (urpAsset != null) { origMsaa = urpAsset.msaaSampleCount; origScale = urpAsset.renderScale; origShadow = urpAsset.shadowDistance; }
-        High = SaveData.GetInt("mazraa.gfxHigh", Application.platform == RuntimePlatform.WebGLPlayer ? 0 : 1) == 1;
+        instance = this;
+        Preset = GameSettings.GraphicsPreset;
+        High = Preset == 2;
         BuildVolume();
         Apply();
     }
 
     private void OnDestroy()
     {
+        if (instance == this) instance = null;
         if (urpAsset == null) return;
         urpAsset.msaaSampleCount = origMsaa;
         urpAsset.renderScale = origScale;
@@ -40,7 +46,8 @@ public class GraphicsEnhancer : MonoBehaviour
             High = !High;
             SaveData.SetInt("mazraa.gfxHigh", High ? 1 : 0);
             SaveData.Save();
-            Apply();
+            GameSettings.GraphicsPreset = High ? 2 : 0;
+            SetPreset(High ? 2 : 0);
             if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T(High ? "Graphics: High" : "Graphics: Low"));
         }
     }
@@ -73,14 +80,22 @@ public class GraphicsEnhancer : MonoBehaviour
         volume.sharedProfile = profile;
     }
 
+    /// <summary>Low / Medium / High quality (also used by the Settings menu).</summary>
+    public static void SetPreset(int preset)
+    {
+        Preset = Mathf.Clamp(preset, 0, 2);
+        High = Preset == 2;
+        if (instance != null && instance.volume != null) instance.Apply();
+    }
+
     private void Apply()
     {
-        if (volume != null) volume.weight = High ? 1f : 0.6f;
+        if (volume != null) volume.weight = Preset == 2 ? 1f : Preset == 1 ? 0.85f : 0.6f;
         if (urpAsset is UniversalRenderPipelineAsset urp)
         {
-            urp.msaaSampleCount = High ? 4 : 1;
-            urp.renderScale = High ? 1f : 0.85f;
-            urp.shadowDistance = High ? 90f : 40f;
+            urp.msaaSampleCount = Preset == 2 ? 4 : Preset == 1 ? 2 : 1;
+            urp.renderScale = Preset == 0 ? 0.85f : 1f;
+            urp.shadowDistance = Preset == 2 ? 90f : Preset == 1 ? 65f : 40f;
         }
         foreach (var cam in FindObjectsByType<Camera>(FindObjectsSortMode.None)) ConfigureCamera(cam);
     }
@@ -88,12 +103,12 @@ public class GraphicsEnhancer : MonoBehaviour
     /// <summary>Turn on post-processing and anti-aliasing for a camera (also used by the truck camera).</summary>
     public static void ConfigureCamera(Camera cam)
     {
-        if (cam == null) return;
+        if (cam == null || cam.targetTexture != null) return;   // minimap / render-texture cameras stay plain
         var data = cam.GetUniversalAdditionalCameraData();
         if (data == null) return;
         data.renderPostProcessing = true;
-        data.antialiasing = High ? AntialiasingMode.SubpixelMorphologicalAntiAliasing : AntialiasingMode.FastApproximateAntialiasing;
-        data.antialiasingQuality = High ? AntialiasingQuality.High : AntialiasingQuality.Low;
+        data.antialiasing = Preset >= 1 ? AntialiasingMode.SubpixelMorphologicalAntiAliasing : AntialiasingMode.FastApproximateAntialiasing;
+        data.antialiasingQuality = Preset == 2 ? AntialiasingQuality.High : Preset == 1 ? AntialiasingQuality.Medium : AntialiasingQuality.Low;
         data.renderShadows = true;
     }
 }

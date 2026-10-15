@@ -211,6 +211,7 @@ namespace UnityEngine
         public Transform transform => gameObject.transform;
         public string tag { get => gameObject.tag; set => gameObject.tag = value; }
         public T GetComponent<T>() => gameObject.GetComponent<T>();
+        public void SendMessage(string m, object v, SendMessageOptions o) { foreach (var c in gameObject.components.OfType<MonoBehaviour>().ToList()) { var mi = c.GetType().GetMethod(m, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic); if (mi != null && mi.GetParameters().Length == 1) mi.Invoke(c, new[] { v }); } }
         public Component GetComponent(Type t) => gameObject.GetComponent(t);
         public bool TryGetComponent<T>(out T c) { c = GetComponent<T>(); return c != null; }
         public T GetComponentInParent<T>()
@@ -257,6 +258,7 @@ namespace UnityEngine
         public IEnumerator GetEnumerator() => children.GetEnumerator();
         internal IEnumerable<Transform> AllChildren() { foreach (var c in children.ToList()) { yield return c; foreach (var d in c.AllChildren()) yield return d; } }
         public void SetParent(Transform p) => SetParent(p, true);
+        public void SetAsLastSibling() { if (_parent != null) { _parent.children.Remove(this); _parent.children.Add(this); } }
         public void SetParent(Transform p, bool worldStays)
         {
             Vector3 wp = position; Quaternion wr = rotation;
@@ -473,6 +475,7 @@ namespace UnityEngine
         public static string persistentDataPath => FakeEngine.PersistentPath;
         public static RuntimePlatform platform => RuntimePlatform.LinuxEditor;
         public static bool isEditor => true;
+        public static void Quit() { }
     }
     public static class PlayerPrefs
     {
@@ -580,11 +583,12 @@ namespace UnityEngine
         public static Camera[] allCameras => FindObjectsByType<Camera>(FindObjectsSortMode.None).Where(c => c.isActiveAndEnabled).ToArray();
         public float fieldOfView, nearClipPlane, farClipPlane = 1000;
         public Ray ViewportPointToRay(Vector3 v) => new Ray { origin = transform.position, direction = transform.forward };
+        public bool orthographic; public float orthographicSize = 5, depth; public RenderTexture targetTexture; public int cullingMask = -1; public CameraClearFlags clearFlags; public Color backgroundColor;
         public Vector3 WorldToScreenPoint(Vector3 p) => new Vector3(0, 0, 1);
     }
-    public class AudioListener : Behaviour { }
+    public class AudioListener : Behaviour { public static float volume = 1f; }
     public class AudioClip : Object { }
-    public class AudioSource : Behaviour { public bool isPlaying; public void Play() => isPlaying = true; public void PlayOneShot(AudioClip c) { } }
+    public class AudioSource : Behaviour { public float volume = 1f; public bool isPlaying; public void Play() => isPlaying = true; public void PlayOneShot(AudioClip c) { } }
     public enum WrapMode { Once, Loop }
     public class AnimationState { public string name; public WrapMode wrapMode; }
     public class Animation : Behaviour, IEnumerable { public IEnumerator GetEnumerator() { yield break; } public void CrossFade(string n, float t) { } }

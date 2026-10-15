@@ -36,7 +36,7 @@ public class Tractor : Vehicle
 
     protected override void DrivingUpdate(Keyboard kb)
     {
-        if (kb.qKey.wasPressedThisFrame)
+        if (GameInput.Pressed(GameAction.Implement))   // Q / Y / Triangle
         {
             ActiveImplement = (Implement)(((int)ActiveImplement + 1) % 4);
             SaveData.SetInt("mazraa.implement", (int)ActiveImplement);

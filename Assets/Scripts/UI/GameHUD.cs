@@ -7,23 +7,28 @@ using UnityEngine.UI;
 /// <summary>
 /// On-screen HUD built entirely from code (no scene edits needed):
 /// farm status (top), crop reference info (while a crop bed panel is open), key hints and a help overlay.
-/// Mirrors to the right side when Arabic is active.
+/// Mirrors to the right side when Arabic is active. Key hints follow the device in use (Glyphs).
+/// Pausing is done by GameMenu (P / Start); NewGame() is called from its menus.
 /// </summary>
 public class GameHUD : MonoBehaviour
 {
+    public static GameHUD Instance { get; private set; }
+
     private static readonly Color PanelColor = new Color(0.06f, 0.09f, 0.05f, 0.72f);
     private static readonly Color Accent = new Color(0.55f, 0.85f, 0.35f, 1f);
 
     private Canvas canvas;
-    private RectTransform statusPanel, infoPanel, hintPanel, helpPanel, trainingPanel, partnerPanel, truckPanel, pausePanel;
-    private TextMeshProUGUI statusText, infoText, hintText, helpText, trainingText, partnerText, truckText, pauseText;
+    private RectTransform statusPanel, infoPanel, hintPanel, helpPanel, trainingPanel, partnerPanel, truckPanel;
+    private TextMeshProUGUI statusText, infoText, hintText, helpText, trainingText, partnerText, truckText;
     private RectTransform arrow, pricePanel;
     private TextMeshProUGUI priceText;
-    private bool paused;
+    private int glyphVersion = -1;
     private GreenhouseManager partnerGreenhouse;
     private SponsorFile sponsors;
     private Cropbed infoBed;
     private float refreshTimer;
+
+    private void Awake() => Instance = this;
 
     private void Start()
     {
@@ -42,6 +47,7 @@ public class GameHUD : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (Instance == this) Instance = null;
         Loc.OnLanguageChanged -= RefreshAll;
         if (GameManager.Instance != null) GameManager.Instance.OnStatsChanged -= RefreshStatus;
         if (UIManager.Instance != null)
@@ -62,26 +68,19 @@ public class GameHUD : MonoBehaviour
             RefreshTruck();
             RefreshPrices();
             if (infoBed != null) ShowCropInfo(infoBed);
+            if (glyphVersion != GameInput.Version) RefreshAll();   // keyboard <-> gamepad, rebound keys
         }
     }
 
     private void LateUpdate()
     {
         var kb = Keyboard.current;
-        if (kb != null && kb.pKey.wasPressedThisFrame) SetPaused(!paused);
-        if (kb != null && kb.mKey.wasPressedThisFrame && pricePanel != null) { pricePanel.gameObject.SetActive(!pricePanel.gameObject.activeSelf); RefreshPrices(); }
-        if (paused && kb != null && kb.backspaceKey.wasPressedThisFrame) NewGame();
+        if (kb != null && kb.mKey.wasPressedThisFrame && pricePanel != null && Time.timeScale > 0f) { pricePanel.gameObject.SetActive(!pricePanel.gameObject.activeSelf); RefreshPrices(); }
         UpdateArrow();
     }
 
-    private void SetPaused(bool value)
-    {
-        paused = value;
-        Time.timeScale = paused ? 0f : 1f;
-        if (pausePanel != null) pausePanel.gameObject.SetActive(paused);
-        if (UIManager.Instance != null) UIManager.Instance.SetExternalPanel(paused);
-        RefreshAll();
-    }
+    /// <summary>Wipe the save and reset every system in place (main menu / pause menu "New game").</summary>
+    public void StartNewGame() => NewGame();
 
     private void NewGame()
     {
@@ -96,11 +95,8 @@ public class GameHUD : MonoBehaviour
         if (FarmTruck.Instance != null) FarmTruck.Instance.ClearCargo();
         foreach (var v in FindObjectsByType<Vehicle>(FindObjectsSortMode.None)) v.Refuel(v.fuelCapacity);
         GameEvents.RaiseNewGameStarted();
-        SetPaused(false);
         if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T("New game started"));
     }
-
-    private void OnDisable() { if (paused) Time.timeScale = 1f; }
 
     // Points the HUD arrow at the next stop: loading bay when empty, market when loaded.
     private void UpdateArrow()
@@ -174,7 +170,7 @@ public class GameHUD : MonoBehaviour
             tb.Append(Title(Loc.T("{0} km/h", Mathf.Abs(tractor.Speed * 3.6f).ToString("F0"))));
             tb.Append('\n').Append(Loc.Display(Loc.Raw("Implement") + ": " + Tractor.ImplementName(tractor.ActiveImplement)));
             tb.Append('\n').Append(FuelLine(tractor));
-            tb.Append("\n<size=80%>").Append(Loc.T("[Q] Change implement   [E] Exit   [R] Reset")).Append("</size>");
+            tb.Append("\n<size=80%>").Append(Glyphs.Apply(Loc.T("[Q] Change implement   [E] Exit   [R] Reset"))).Append("</size>");
             truckText.text = tb.ToString();
             return;
         }
@@ -188,7 +184,7 @@ public class GameHUD : MonoBehaviour
         sb.Append('\n').Append(Loc.T("Cargo {0}/{1} kg", truck.CargoWeight.ToString("F0"), (eco != null ? eco.TruckCapacity : 0f).ToString("F0")));
         if (target != null) sb.Append('\n').Append(Loc.Display(where + ": " + dist.ToString("F0") + " m"));
         sb.Append('\n').Append(FuelLine(truck));
-        sb.Append("\n<size=80%>").Append(Loc.T("[E] Exit   [Space] Brake   [R] Reset truck")).Append("</size>");
+        sb.Append("\n<size=80%>").Append(Glyphs.Apply(Loc.T("[E] Exit   [Space] Brake   [R] Reset truck"))).Append("</size>");
         truckText.text = sb.ToString();
     }
 
@@ -216,7 +212,8 @@ public class GameHUD : MonoBehaviour
         infoPanel = MakePanel("CropInfo", new Vector2(0, 0.5f), new Vector2(24, 0), new Vector2(480, 0), out infoText, 22);
         hintPanel = MakePanel("Hints", new Vector2(0, 0), new Vector2(24, 24), new Vector2(430, 0), out hintText, 20);
         helpPanel = MakePanel("Help", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 0), out helpText, 26);
-        trainingPanel = MakePanel("Training", new Vector2(0.5f, 1), new Vector2(0, -24), new Vector2(520, 0), out trainingText, 22);
+        // Below the minimap (top centre).
+        trainingPanel = MakePanel("Training", new Vector2(0.5f, 1), new Vector2(0, -300), new Vector2(520, 0), out trainingText, 22);
         partnerPanel = MakePanel("Partners", new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(460, 0), out partnerText, 20);
         truckPanel = MakePanel("Truck", new Vector2(0.5f, 0), new Vector2(0, 24), new Vector2(420, 0), out truckText, 22);
         truckText.alignment = TextAlignmentOptions.Top;
@@ -239,9 +236,6 @@ public class GameHUD : MonoBehaviour
         holder.AddComponent<LayoutElement>().ignoreLayout = true;
         pricePanel = MakePanel("Prices", new Vector2(1, 1), new Vector2(-24, -24), new Vector2(440, 0), out priceText, 20);
         pricePanel.gameObject.SetActive(false);
-        pausePanel = MakePanel("Pause", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760, 0), out pauseText, 30);
-        pauseText.alignment = TextAlignmentOptions.Top;
-        pausePanel.gameObject.SetActive(false);
         truckPanel.gameObject.SetActive(false);
         infoPanel.gameObject.SetActive(false);
         helpPanel.gameObject.SetActive(false);
@@ -295,10 +289,10 @@ public class GameHUD : MonoBehaviour
         }
         Loc.ApplyFont(trainingText);
         Loc.ApplyFont(truckText);
-        Loc.ApplyFont(pauseText);
         trainingText.alignment = TextAlignmentOptions.Top;
-        hintText.text = Loc.T("[H] Help   [L] Arabic   [T] Training") + "\n" + Loc.T("[G] Graphics   [P] Pause   [M] Prices");
-        pauseText.text = Title(Loc.T("Paused")) + "\n" + Loc.T("[P] Resume") + "\n<size=75%>" + Loc.T("[Backspace] New game (clears saved progress)") + "</size>";
+        glyphVersion = GameInput.Version;
+        hintText.text = Loc.T("[H] Help   [L] Arabic   [T] Training") + "\n" + Glyphs.Apply(UiText.T("[G] Graphics   [P] Menu   [M] Prices")) +
+                        "\n" + Glyphs.Apply(UiText.T("[N] Map   [I] Inventory   [O] Stats   [V] View"));
         helpText.text = Title(Loc.T("HELP")) + "\n" + Loc.T("HELP_BODY");
         RefreshStatus();
         RefreshTraining();
@@ -324,7 +318,7 @@ public class GameHUD : MonoBehaviour
             sb.Append('\n').Append(Loc.Display(ScenarioManager.Brief(d)));
             float best = sm.BestTime(d);
             if (best >= 0f) sb.Append('\n').Append(Loc.T("Best: {0}s", best.ToString("F0")));
-            sb.Append("\n<size=85%>").Append(Loc.T("[T] Start   [N] Next scenario")).Append("</size>");
+            sb.Append("\n<size=85%>").Append(UiText.T("[T] Start   [B] Next scenario")).Append("</size>");
         }
         trainingText.text = sb.ToString();
         // Show while running, or briefly as a menu when nothing else is open.

@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Base for drivable vehicles: arcade "hover" physics that follows the ground (robust on any terrain),
 /// its own chase camera, fuel, enter/exit. E in/out, WASD drive, Space brake, R reset.
+/// Gamepad: A / Cross in, B / Circle (or A) out, left stick steer, RT throttle, LT brake / reverse, X / Square reset.
 /// Subclasses: FarmTruck (cargo), Tractor (implements).
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
@@ -136,9 +137,11 @@ public abstract class Vehicle : Interactable
         UpdateWheels();
         if (!IsDriving || Time.timeScale == 0f) return;
         var kb = Keyboard.current;
-        if (kb == null || Time.frameCount == enteredFrame) return;
-        if (kb.eKey.wasPressedThisFrame && Mathf.Abs(Speed) < 4f) { Exit(); return; }
-        if (kb.rKey.wasPressedThisFrame) Recover();
+        if (Time.frameCount == enteredFrame) return;
+        // A menu closing this frame (e.g. Resume with A / Esc) must not also exit or reset the vehicle.
+        if ((UIManager.Instance != null && UIManager.Instance.IsUIOpened) || UIManager.PanelClosedFrame == Time.frameCount) return;
+        if ((GameInput.Pressed(GameAction.Interact) || MenuNav.Back()) && Mathf.Abs(Speed) < 4f) { Exit(); return; }
+        if (GameInput.Pressed(GameAction.VehicleAction)) Recover();
         DrivingUpdate(kb);
     }
 
@@ -162,8 +165,16 @@ public abstract class Vehicle : Interactable
             if (kb.sKey.isPressed || kb.downArrowKey.isPressed) throttle -= 1f;
             if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) steer += 1f;
             if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) steer -= 1f;
-            brake = kb.spaceKey.isPressed;
         }
+        var pad = Gamepad.current;
+        if (IsDriving && pad != null)
+        {
+            throttle += pad.rightTrigger.ReadValue() - pad.leftTrigger.ReadValue();   // LT brakes, then reverses
+            steer += pad.leftStick.ReadValue().x;
+        }
+        if (IsDriving) brake = GameInput.Held(GameAction.Brake);
+        throttle = Mathf.Clamp(throttle, -1f, 1f);
+        steer = Mathf.Clamp(steer, -1f, 1f);
         float dt = Time.fixedDeltaTime;
         if (Fuel <= 0f) throttle = 0f;
         else if (throttle != 0f) Fuel = Mathf.Max(0f, Fuel - fuelPerSecond * dt);

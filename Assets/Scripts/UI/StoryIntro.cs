@@ -18,6 +18,7 @@ public class StoryIntro : MonoBehaviour
 
     private void Show()
     {
+        if (GameMenu.IsOpen) { Invoke(nameof(Show), 0.5f); return; }   // after the main menu closes
         canvasGo = new GameObject("Story Intro", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         canvasGo.transform.SetParent(transform, false);
         var canvas = canvasGo.GetComponent<Canvas>();
@@ -59,8 +60,7 @@ public class StoryIntro : MonoBehaviour
     private void Update()
     {
         if (!open) return;
-        var kb = Keyboard.current;
-        if (kb != null && (kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame)) Close();
+        if (MenuNav.Confirm()) Close();   // Enter / Space / A (Cross)
     }
 
     private void Close()

@@ -9,13 +9,17 @@ public class InteractionPromptUI : MonoBehaviour
 
     private Transform target;
     private Vector3 offset;
+    private string rawPrompt;
+    private int glyphVersion = -1;
 
     private void LateUpdate()
     {
         if (target == null || root == null)
             return;
-        if (playerCamera == null) playerCamera = Camera.main;
+        // Re-find the camera when the view changes (third person camera, vehicle camera).
+        if (playerCamera == null || !playerCamera.isActiveAndEnabled) playerCamera = Camera.main;
         if (playerCamera == null) return;
+        if (glyphVersion != GameInput.Version && promptText != null && rawPrompt != null) { glyphVersion = GameInput.Version; promptText.text = Glyphs.Apply(rawPrompt); }
 
         Vector3 screenPos = playerCamera.WorldToScreenPoint(target.position + offset);
         // Hide when the target is behind the camera instead of drawing a mirrored prompt.
@@ -31,7 +35,9 @@ public class InteractionPromptUI : MonoBehaviour
         if (promptText != null)
         {
             Loc.ApplyFont(promptText);
-            promptText.text = prompt;
+            rawPrompt = prompt;
+            glyphVersion = GameInput.Version;
+            promptText.text = Glyphs.Apply(prompt);   // [E] -> [A] / [cross] / rebound key
         }
         if (root != null) root.gameObject.SetActive(true);
     }
