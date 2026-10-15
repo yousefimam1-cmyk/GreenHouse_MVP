@@ -21,7 +21,9 @@ public class FarmAnimal : MonoBehaviour
         var a = root.AddComponent<FarmAnimal>();
         a.animalId = id; a.pen = pen;
         float fit = id == "cow" ? 2.2f : id == "sheep" ? 1.3f : 0.55f;
-        if (Build.TryModel(id, root.transform, fit, 0f) == null) a.BuildBody();
+        var model = Build.TryModel(id, root.transform, fit, 0f);
+        if (model == null) a.BuildBody();
+        else a.SetupAnimation(model);
         a.speed = id == "chicken" ? 1.1f : id == "sheep" ? 0.8f : 0.6f;
         a.PickTarget();
         return a;
@@ -82,6 +84,33 @@ public class FarmAnimal : MonoBehaviour
 
     private float grow = 1f;
 
+    // Legacy animation clips imported with the CC0 models (Quaternius cow/sheep, CDmir chicken).
+    private Animation anim;
+    private string walkClip, idleClip, eatClip, playing;
+
+    public void SetupAnimation(GameObject model)
+    {
+        anim = model.GetComponentInChildren<Animation>();
+        if (anim == null) return;
+        foreach (AnimationState s in anim)
+        {
+            string n = s.name.ToLowerInvariant();
+            s.wrapMode = WrapMode.Loop;
+            if (n.Contains("walkslow") || (walkClip == null && n.Contains("walk"))) walkClip = s.name;
+            else if (n.EndsWith("idle") && idleClip == null) idleClip = s.name;
+            else if ((n.Contains("eat") || n.Contains("peck")) && eatClip == null) eatClip = s.name;
+        }
+        if (idleClip == null) idleClip = walkClip;
+        Play(idleClip);
+    }
+
+    private void Play(string clip)
+    {
+        if (anim == null || string.IsNullOrEmpty(clip) || clip == playing) return;
+        anim.CrossFade(clip, 0.25f);
+        playing = clip;
+    }
+
     /// <summary>Newborn: starts small and grows to full size over about two in-game days.</summary>
     public void MakeBaby() { grow = 0.55f; transform.localScale = Vector3.one * grow; }
 
@@ -112,6 +141,7 @@ public class FarmAnimal : MonoBehaviour
             transform.position = Build.OnGround(p);
             walkPhase += Time.deltaTime * speed * 7f;
         }
+        if (anim != null) Play(walking ? (walkClip ?? idleClip) : (pen != null && pen.HasFeed && eatClip != null && Time.time % 9f > 6f ? eatClip : idleClip));
         float swing = walking ? Mathf.Sin(walkPhase) * 25f : 0f;
         for (int i = 0; i < legs.Count; i++) legs[i].localRotation = Quaternion.Euler((i == 0 || i == 3) ? swing : -swing, 0, 0);
         if (head != null)
