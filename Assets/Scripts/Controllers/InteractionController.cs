@@ -80,7 +80,7 @@ public class InteractionController : MonoBehaviour
         if (kb != null && kb.eKey.wasPressedThisFrame)
         {
             var target = currentInteractable;
-            target.Interact();
+            if (!NetSession.HandleInteract(target)) target.Interact();   // co-op client: sent to the host instead
             if (!target.CanInteract) ClearCurrent();
             else shownPrompt = null; // force prompt refresh
         }

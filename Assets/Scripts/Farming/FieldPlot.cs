@@ -173,6 +173,7 @@ public class FieldPlot : Interactable
     public bool TryPlow(bool announce)
     {
         if (State != PlotState.Untilled) return false;
+        if (NetSession.ForwardPlotJob(this, Implement.Plow)) return true;   // co-op client: the host does it
         State = PlotState.Plowed;
         if (announce) Say(Loc.T("Field plowed"));
         Refresh(); Save();
@@ -182,6 +183,7 @@ public class FieldPlot : Interactable
     public bool TrySeed(bool announce)
     {
         if (State != PlotState.Plowed) return false;
+        if (NetSession.ForwardPlotJob(this, Implement.Seeder)) return true;
         var eco = EconomyManager.Instance;
         var seed = BestSeed();
         if (seed == null || eco == null || !eco.UseSeed(seed.id)) { if (announce) Say(Loc.T("No seeds - buy them at a Farm Shop")); return false; }
@@ -196,6 +198,7 @@ public class FieldPlot : Interactable
     public bool TryHarvest(bool announce)
     {
         if (State != PlotState.Ripe) return false;
+        if (NetSession.ForwardPlotJob(this, Implement.Harvester)) return true;
         var eco = EconomyManager.Instance;
         var crop = eco != null ? eco.FieldCrop(CropId) : null;
         float kg = (crop != null ? crop.yieldKg : 50f) * Product(YieldModifiers, this);
@@ -341,6 +344,12 @@ public class FieldPlot : Interactable
 
     /// <summary>Add (or remove) water directly: hired field hands, dust storms.</summary>
     public void AddWater(float amount) { Water = Mathf.Clamp01(Water + amount); Refresh(); Save(); }
+    /// <summary>Co-op: take the host's plot state (not saved here).</summary>
+    public void ApplyRemote(PlotState state, string crop, float growth, float water)
+    {
+        State = state; CropId = crop ?? ""; Growth = Mathf.Clamp01(growth); Water = Mathf.Clamp01(water);
+        Refresh();
+    }
 
     public void ResetPlot()
     {

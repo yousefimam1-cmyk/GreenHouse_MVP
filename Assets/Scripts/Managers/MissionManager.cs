@@ -173,6 +173,23 @@ public class MissionManager : MonoBehaviour
         if (Current != null) GameEvents.RaiseMissionStarted(Current);
     }
 
+    /// <summary>Co-op client: show the host's mission (rewards are paid on the host). announce = alert on completion.</summary>
+    public void ApplyRemote(int index, float progress, bool announce)
+    {
+        index = Mathf.Clamp(index, 0, Missions.Length);
+        if (index == Index) { Progress = progress; return; }
+        var done = index > Index ? Current : null;
+        Index = index;
+        Progress = progress;
+        if (done != null && announce)
+        {
+            if (UIManager.Instance != null)
+                UIManager.Instance.ShowAlertMessage(Loc.Display(Loc.Raw("Mission complete") + ": " + Title(done) + "  +" + done.reward.ToString("N0") + " " + Loc.Raw("SAR")));
+            GameEvents.RaiseMissionCompleted(done);
+        }
+        if (Current != null) GameEvents.RaiseMissionStarted(Current);
+    }
+
     public void ResetChain()
     {
         Index = 0; Progress = 0f;

@@ -186,6 +186,7 @@ public class UIManager : MonoBehaviour
         }
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX();
         currentGreenHouse.OptimizeModule(moduleType);
+        NetSession.OnOptimized(currentGreenHouse, moduleType);   // co-op: same module on the other players' farms
         UpdateControlStationUI();
     }
 

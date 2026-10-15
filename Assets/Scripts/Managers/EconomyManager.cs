@@ -138,6 +138,8 @@ public class EconomyManager : MonoBehaviour
     /// <summary>Sell every good in the cargo at today's market prices (contracts first). Returns money earned.</summary>
     public int SellAll(Dictionary<string, float> cargo, List<string> messages)
     {
+        // Co-op client: the host sells from the shared farm storage; returns an estimate.
+        if (NetSession.IsClient) { int estimate = NetSession.RequestSell(cargo); cargo.Clear(); return estimate; }
         float total = 0f, weight = 0f;
         foreach (var kv in cargo)
         {
@@ -204,6 +206,13 @@ public class EconomyManager : MonoBehaviour
 
     public bool TryBuy(string id)
     {
+        if (NetSession.IsClient)
+        {   // co-op client: the host buys with the shared farm money (synced back every second)
+            int p = PriceOf(id);
+            if (p < 0 || Money < p) return false;
+            NetSession.RequestBuy(id);
+            return true;
+        }
         var extra = ShopCatalog.Find(id);
         if (extra != null && Animal(id) == null && id != "feed" && id != "capacity" && id != "growth" && !id.StartsWith("seed_"))
         {
@@ -243,6 +252,13 @@ public class EconomyManager : MonoBehaviour
         if (id.StartsWith("seed_")) { var fc = FieldCrop(id.Substring(5)); return fc != null ? fc.seedPrice : -1; }
         var a = Animal(id);
         return a != null ? a.price : -1;
+    }
+
+    /// <summary>Co-op client: show the host's money and storage (not saved; the client's own save is untouched).</summary>
+    public void ApplyRemote(int money, Dictionary<string, float> goods)
+    {
+        foreach (var g in Data.goods) storage[g.id] = goods != null && goods.TryGetValue(g.id, out var v) ? Mathf.Max(0f, v) : 0f;
+        if (Money != money) { Money = Mathf.Max(0, money); GameEvents.RaiseMoneyChanged(Money); }
     }
 
     public void ResetAll()

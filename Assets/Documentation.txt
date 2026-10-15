@@ -183,3 +183,68 @@ WORKERS, LAND, BANK, RANDOM EVENTS (feat/eventsfin)
     MarketManager.Price (Price). FieldPlot.AddWater() was added for workers / storms.
 Missions: Resources/Data/Missions/40_eventsfin.json (hireWorker, buyLand, repayLoan, surviveDustStorm).
 Text: Resources/Data/Loc/40_eventsfin.json. Save keys mazraa.fin.* and mazraa.events.*; all reset on a new game.
+CO-OP MULTIPLAYER (host + up to 3 friends on one farm, LAN or internet IP)
+--- Multiplayer/NetSession.cs        What the game knows about multiplayer (no Netcode dependency): NetSession.IsHost /
+                                     IsClient / IsOnline, the hooks below, INetBackend interface, LocalBackend (single player).
+--- Multiplayer/NetProtocol.cs       Message format (one string per message) + NetSyncState (farm state sent every second).
+--- Multiplayer/NetIds.cs            Stable object ids = hierarchy path ("GreenHouse/CropA"), same on every machine.
+--- Multiplayer/MultiplayerManager.cs [MazraaSystem(70)] Host/Join/Leave, applies client requests on the host, sync,
+                                     remote players, vehicles, emotes, chat, gifts, client save isolation.
+--- Multiplayer/MultiplayerPanel.cs  [MazraaSystem(71)] F8 menu (IMGUI because it needs text fields) + chat line.
+--- Multiplayer/RemotePlayer.cs      Other players: character model (Resources/Models/Characters) + name tag + bubble.
+--- Multiplayer/NetcodeBackend.cs    The only Netcode code, inside #if MAZRAA_NETCODE. Netcode for GameObjects 2.11.2 +
+                                     Unity Transport 2.6.0 (Packages/manifest.json). NetworkManager is created in code;
+                                     no prefabs, no NetworkObjects, no scene management: everything is one named message.
+--- Resources/Data/Loc/70_mp.json    Arabic texts.
+
+HOW TO PLAY
+- Host: F8 > type your name > "Host a farm". Your farm (your save) is the shared farm. Tell friends your IP: the menu
+  shows your LAN address; over the internet use your public IP and forward UDP port 7777 on the router.
+- Join: F8 > name > type the host's IP > "Join". While you visit, your own save file is NOT changed (SaveData session).
+  When you leave you are back on your own farm exactly as you left it, plus any gifts you received.
+- F8 or Esc closes the menu. In the pause menu (P) a "Co-op (F8)" button appears top-right.
+- Keys while online: 1-4 emotes (hello, dance, "yalla, well done", thank you) shown above your head for others,
+  Enter = quick chat (Enter sends, Esc cancels), gifts in the F8 menu when you stand next to a visiting player.
+- Port: 7777 UDP. Windows Firewall asks the first time you host - allow "Private networks" (and Public if needed).
+  Join on the same PC with 127.0.0.1 (two copies of the game) to test.
+
+WHAT IS SYNCED (the host is authoritative)
+- Every second (and right after any request): money, farm storage (all goods), day + time + weather, mission index +
+  progress, well running, all 6 field plots (state, crop, growth, water).
+- Clients send requests, the host applies them through the normal systems: E on field plots / well / animal crate /
+  water trough / barn door / ready crop beds, shop purchases, sales at the market (sold from the farm storage at the
+  host's prices), tractor work on plots, gifts. Greenhouse modules optimized at a control station are copied to everyone.
+- Positions ~10/s, owner-authoritative (each player sends its own). Vehicles: whoever gets in drives it; the others
+  see it move with the driver character inside and cannot enter it until the driver gets out.
+
+SHARED FILES CHANGED (small hooks, all no-ops in single player)
+- InteractionController: if (!NetSession.HandleInteract(target)) target.Interact();
+- EconomyManager: TryBuy/SellAll forward on a client; ApplyRemote(money, goods).
+- FieldPlot: TryPlow/TrySeed/TryHarvest forward on a client (tractor); ApplyRemote(state...).
+- WorldClock: FollowRemote + ApplyRemote(day, progress, weather). MissionManager: ApplyRemote(index, progress).
+- Vehicle: RemoteDriven, SetRemoteDriven, ApplyRemotePose; no driving keys while typing. Actor: ActorMode.Remote,
+  driver shown when RemoteDriven. UIManager: NetSession.OnOptimized after Optimize.
+- SaveData: BeginSession/EndSession (client writes go to a throwaway copy; the file keeps your own farm).
+- GameManager (L/H), GameHUD (P/M/Backspace), GraphicsEnhancer (G): ignore keys while NetSession.Typing.
+
+IF THE NETCODE PACKAGE FAILS TO INSTALL OR COMPILE
+- Remove MAZRAA_NETCODE: Edit > Project Settings > Player > (PC) Other Settings > Scripting Define Symbols, or delete
+  ";MAZRAA_NETCODE" from the Standalone line in ProjectSettings/ProjectSettings.asset. Optionally remove the two
+  packages from Packages/manifest.json. The game then runs single player; the F8 menu says Netcode is missing.
+- Only Standalone (Windows/Mac/Linux) has the define. WebGL stays single player.
+
+KNOWN LIMITS
+- Not synced (each machine keeps its own): animals in the pen, feed, upgrades, market prices/contracts, truck cargo,
+  vehicle fuel, crop bed growth timers (harvests ARE synced: a harvested bed resets for everyone), greenhouse module
+  values other than optimizations, training scenarios. Animals bought by a client are added on the host's farm.
+- A client's truck load is checked against the host storage when sold (no duplicates); the client's storage display
+  refills from the host every second. Fuel and tow fees on a client are not charged to the shared money.
+- Two players entering the same vehicle in the same instant: both drive their own copy until one gets out.
+- Arabic typed in the IMGUI text fields shows unjoined while typing; bubbles, name tags and chat log show it joined.
+- The Netcode file was written against the NGO 2.x API but could not be compiled or run here (no package/editor):
+  test hosting/joining in the editor first (two builds, or a build + the editor, 127.0.0.1).
+- Headless tests cover the rest with a fake backend (Tests/Headless, "Co-op" sections).
+
+NOTE (merge): MAZRAA_NETCODE is OFF by default so the project always compiles. To try network co-op, open the
+project, wait for the Netcode packages to import, then menu Mazraa > Co-op > Enable Netcode. If NetcodeBackend.cs
+shows compile errors, use Mazraa > Co-op > Disable Netcode (single player keeps working either way).

@@ -68,6 +68,7 @@ public class GameHUD : MonoBehaviour
     private void LateUpdate()
     {
         var kb = Keyboard.current;
+        if (NetSession.Typing) kb = null;   // typing a co-op chat line / name
         if (kb != null && kb.pKey.wasPressedThisFrame) SetPaused(!paused);
         if (kb != null && kb.mKey.wasPressedThisFrame && pricePanel != null) { pricePanel.gameObject.SetActive(!pricePanel.gameObject.activeSelf); RefreshPrices(); }
         if (paused && kb != null && kb.backspaceKey.wasPressedThisFrame) NewGame();
