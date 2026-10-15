@@ -1,0 +1,56 @@
+using System.Collections;
+using System.Linq;
+using NUnit.Framework;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.TestTools;
+
+/// <summary>
+/// Window > General > Test Runner > EditMode > Run All.
+/// Data/text tests run instantly; PlaysTheMainScene enters Play mode on Blak_Pulse_Main and checks the farm boots.
+/// </summary>
+public class MazraaEditorTests
+{
+    [Test]
+    public void ArabicShaper_JoinsLettersAndKeepsNumbers()
+    {
+        string s = ArabicShaper.Shape("الصوبة 1: 3/4");
+        Assert.IsTrue(s.Contains("3/4"), s);
+        Assert.IsTrue(s.Any(c => c >= 'ﹰ'), "letters should use joined presentation forms");
+    }
+
+    [Test]
+    public void DataFiles_LoadFromResources()
+    {
+        foreach (var n in new[] { "crop_profiles", "economy", "missions", "scenarios", "sponsors" })
+            Assert.IsNotNull(Resources.Load<TextAsset>("Data/" + n), n);
+        Assert.IsNotNull(CropDatabase.GetBed("GreenHouse/CropA"));
+        Assert.IsNotNull(CropDatabase.GetCrop("tomato"));
+    }
+
+    [Test]
+    public void Models_AndFont_Import()
+    {
+        foreach (var n in new[] { "Truck", "Tractor", "cow", "sheep", "chicken", "dog", "cat", "eagle", "horse", "Characters/character-male-a", "Crops/crop_melon" })
+            Assert.IsNotNull(Resources.Load<GameObject>("Models/" + n), n);
+        Assert.IsNotNull(Resources.Load<Font>("Fonts/Tajawal-Bold"));
+        var cow = Resources.Load<GameObject>("Models/cow");
+        Assert.IsNotNull(cow.GetComponentInChildren<Animation>(), "animal models should import with legacy Animation");
+    }
+
+    [UnityTest]
+    public IEnumerator PlaysTheMainScene()
+    {
+        EditorSceneManager.OpenScene("Assets/Scenes/Blak_Pulse_Main.unity");
+        yield return new EnterPlayMode();
+        for (int i = 0; i < 240; i++) yield return null;   // ~4 seconds of frames
+        Assert.IsNotNull(GameManager.Instance, "GameManager");
+        Assert.IsNotNull(FarmTruck.Instance, "truck");
+        Assert.IsNotNull(Tractor.Instance, "tractor");
+        Assert.AreEqual(6, FieldManager.Instance.Plots.Count, "field plots");
+        Assert.AreEqual(2, GameManager.Instance.Greenhouses.Count, "greenhouses");
+        Assert.Greater(Object.FindObjectsByType<Actor>(FindObjectsSortMode.None).Length, 5, "animated actors");
+        Assert.AreEqual(4, GameManager.Instance.Greenhouses.First(g => g.name == "GreenHouse").HealthyCount, "greenhouse 1 healthy");
+        yield return new ExitPlayMode();
+    }
+}

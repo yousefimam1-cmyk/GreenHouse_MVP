@@ -6,6 +6,9 @@
 | Nature Kit (crops, fence) | Kenney (kenney.nl) | CC0 1.0 | Resources/Models/Crops/*, Fence.fbx |
 | Farm Animals Pack (cow, sheep) | Quaternius | CC0 1.0 | Resources/Models/cow.fbx, sheep.fbx (re-exported to face +Z, legacy animations) |
 | Chicken (animated) | Čestmír Dammer (CDmir), opengameart.org | CC0 | Resources/Models/chicken.fbx (converted from .blend) |
+| Mini Characters (4 people, 30+ animations) | Kenney (kenney.nl) | CC0 1.0 | Resources/Models/Characters (shopkeepers, workers, buyers, drivers) |
+| Animal Pack Vol.2 (dog, cat, eagle) | Quaternius | CC0 1.0 | Resources/Models/dog, cat, eagle |
+| Farm Animals Pack (horse) | Quaternius | CC0 1.0 | Resources/Models/horse |
 | Tajawal Bold font | Boutros Fonts | SIL OFL 1.1 | Resources/Fonts (Arabic UI) |
 
 Recommended next imports (all free):

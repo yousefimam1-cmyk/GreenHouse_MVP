@@ -125,7 +125,12 @@ namespace UnityEngine
         }
         public static T Instantiate<T>(T original, Transform parent, bool worldStays) where T : Object
         {
-            if (original is GameObject g) { var c = new GameObject(g.name); c.transform.SetParent(parent, worldStays); return c as T; }
+            if (original is GameObject g)
+            {
+                var c = new GameObject(g.name); c.transform.SetParent(parent, worldStays);
+                var mesh = new GameObject("mesh"); mesh.transform.SetParent(c.transform, false); mesh.AddComponent<MeshRenderer>(); mesh.AddComponent<Animation>();
+                return c as T;
+            }
             return original;
         }
         public static T FindAnyObjectByType<T>() where T : Object => FindObjectsByType<T>(FindObjectsSortMode.None).FirstOrDefault();
@@ -444,6 +449,7 @@ namespace UnityEngine
     {
         public static System.Random R = new System.Random(1234);
         public static float value => (float)R.NextDouble();
+        public static Vector2 insideUnitCircle { get { double a = R.NextDouble() * Math.PI * 2, r = Math.Sqrt(R.NextDouble()); return new Vector2((float)(Math.Cos(a) * r), (float)(Math.Sin(a) * r)); } }
         public static float Range(float a, float b) => a + (float)R.NextDouble() * (b - a);
         public static int Range(int a, int b) => b <= a ? a : R.Next(a, b);
     }
@@ -491,7 +497,12 @@ namespace UnityEngine
                 if (!File.Exists(f)) f = Path.Combine(FakeEngine.ResourcesRoot, path + ".txt");
                 return File.Exists(f) ? new TextAsset { text = File.ReadAllText(f), name = path } as T : null;
             }
-            return null; // models, fonts: placeholders are used
+            if (typeof(T) == typeof(GameObject) && path.StartsWith("Models/") && File.Exists(Path.Combine(FakeEngine.ResourcesRoot, path + ".fbx")))
+            {   // stand-in for an imported model: an inactive template the game instantiates
+                var g = new GameObject(path); g.SetActive(false); FakeEngine.Objects.Remove(g);
+                return g as T;
+            }
+            return null; // fonts etc.: placeholders are used
         }
     }
     public class TextAsset : Object { public string text; }

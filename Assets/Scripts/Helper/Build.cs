@@ -58,7 +58,12 @@ public static class Build
     /// Instantiate Resources/Models/name, scaled so its longest horizontal side is fitSize (0 = keep scale),
     /// centred on the parent and with its lowest point at bottomY (parent space). Works whatever units the FBX uses.
     /// </summary>
-    public static GameObject TryModel(string name, Transform parent, float fitSize, float bottomY)
+    public static GameObject TryModel(string name, Transform parent, float fitSize, float bottomY) => TryModel(name, parent, fitSize, bottomY, false);
+
+    /// <summary>Same, but scales so the model is fitSize tall (characters).</summary>
+    public static GameObject TryModelHeight(string name, Transform parent, float height) => TryModel(name, parent, height, 0f, true);
+
+    public static GameObject TryModel(string name, Transform parent, float fitSize, float bottomY, bool fitByHeight)
     {
         var prefab = Resources.Load<GameObject>("Models/" + name);
         if (prefab == null) return null;
@@ -79,7 +84,7 @@ public static class Build
                 if (first) { b = new Bounds(lp, Vector3.zero); first = false; } else b.Encapsulate(lp);
             }
         }
-        float longest = Mathf.Max(b.size.x, b.size.z);
+        float longest = fitByHeight ? b.size.y : Mathf.Max(b.size.x, b.size.z);
         if (longest < 1e-4f) return go;
         float k = fitSize / longest;
         go.transform.localScale *= k;

@@ -150,6 +150,22 @@ static class Program
         T.Check("Starting money 500 EGP", EconomyManager.Instance.Money == 500, "" + EconomyManager.Instance.Money);
         T.Check("Starts on mission 1 (well)", MissionManager.Instance.Current?.id == "well");
 
+        Console.WriteLine("Animated life");
+        var actors = UnityEngine.Object.FindObjectsByType<Actor>(FindObjectsSortMode.None);
+        T.Check("Ambient actors spawned (dog, cat, horses, eagles, shopkeepers, workers, buyers, drivers)", actors.Length >= 14, "" + actors.Length);
+        var dog = actors.First(a => a.mode == ActorMode.FollowPlayer);
+        var playerT = GameObject.Find("PlayerCapsule").transform;
+        playerT.position += new Vector3(15f, 0, 0);
+        float d0 = Vector3.Distance(dog.transform.position, playerT.position);
+        FakeEngine.Run(4f, 0.1f);
+        T.Check("Dog follows the player", Vector3.Distance(dog.transform.position, playerT.position) < d0 - 5f, d0 + " -> " + Vector3.Distance(dog.transform.position, playerT.position));
+        playerT.position -= new Vector3(15f, 0, 0);
+        var eagle = actors.First(a => a.mode == ActorMode.Fly);
+        T.Check("Eagles fly above the farm", eagle.transform.position.y > 15f, eagle.transform.position.ToString());
+        T.Check("Shopkeeper at each stall", actors.Count(a => a.mode == ActorMode.Stand) == 2);
+        var drivers = actors.Where(a => a.mode == ActorMode.Driver).ToList();
+        T.Check("A driver per vehicle, hidden while parked", drivers.Count == 2 && drivers.All(a => !a.transform.GetChild(0).gameObject.activeSelf));
+
         Console.WriteLine("Greenhouses (original game logic)");
         var ghs = gm.Greenhouses;
         var g1 = ghs.First(g => g.name == "GreenHouse"); var g2 = ghs.First(g => g.name == "GreenHouse-1");
@@ -205,6 +221,8 @@ static class Program
         tractor.transform.position = plot2.transform.position + tractor.transform.forward * 2.6f;
         tractor.Interact();
         T.Check("Enter tractor", tractor.IsDriving && Vehicle.Current == tractor);
+        FakeEngine.Run(0.2f);
+        T.Check("Driver appears in the tractor", UnityEngine.Object.FindObjectsByType<Actor>(FindObjectsSortMode.None).Any(a => a.mode == ActorMode.Driver && a.vehicle == tractor && a.transform.GetChild(0).gameObject.activeSelf));
         T.Check("Player hidden while driving", !GameObject.Find("PlayerCapsule").activeSelf);
         T.SetProp(tractor, "Speed", 3f);
         var work = typeof(Tractor).GetMethod("Work", BindingFlags.Instance | BindingFlags.NonPublic);
