@@ -79,6 +79,11 @@ public class FarmAnimal : MonoBehaviour
         }
     }
 
+    private float grow = 1f;
+
+    /// <summary>Newborn: starts small and grows to full size over about two in-game days.</summary>
+    public void MakeBaby() { grow = 0.55f; transform.localScale = Vector3.one * grow; }
+
     private void PickTarget()
     {
         target = pen != null ? pen.RandomPoint() : transform.position;
@@ -87,6 +92,12 @@ public class FarmAnimal : MonoBehaviour
 
     private void Update()
     {
+        if (grow < 1f)
+        {
+            float day = WorldClock.Instance != null ? WorldClock.Instance.secondsPerDay : 360f;
+            grow = Mathf.Min(1f, grow + Time.deltaTime / (day * 2f) * 0.45f);
+            transform.localScale = Vector3.one * grow;
+        }
         Vector3 to = target - transform.position; to.y = 0f;
         bool walking = wait <= 0f && to.magnitude > 0.3f;
         if (wait > 0f) wait -= Time.deltaTime;

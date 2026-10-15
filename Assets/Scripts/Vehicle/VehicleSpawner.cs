@@ -216,6 +216,43 @@ public class VehicleSpawner : MonoBehaviour
         crate.AddComponent<PenCrate>();
         Build.Label(crate.transform, new Vector3(0, 1.6f, 0), "Animal products", 2f, Color.white);
 
+        // Water trough (interactable)
+        var water = new GameObject("Water Trough");
+        water.layer = 7;
+        water.transform.position = Build.OnGround(t.TransformPoint(new Vector3(-s.x / 2f + 1.5f, 0, 0)));
+        water.transform.rotation = t.rotation * Quaternion.Euler(0, 90, 0);
+        var wc = water.AddComponent<BoxCollider>(); wc.center = new Vector3(0, 0.3f, 0); wc.size = new Vector3(2.4f, 0.6f, 0.8f);
+        Build.Part(PrimitiveType.Cube, water.transform, new Vector3(0, 0.3f, 0), new Vector3(2.4f, 0.6f, 0.8f), Build.Mat(new Color(0.55f, 0.56f, 0.58f), 0.6f, 0.5f), "Tank");
+        Build.Part(PrimitiveType.Cube, water.transform, new Vector3(0, 0.55f, 0), new Vector3(2.2f, 0.05f, 0.6f), Build.Mat(new Color(0.25f, 0.5f, 0.75f), 0.95f), "Water");
+        foreach (var r in water.GetComponentsInChildren<Renderer>(true)) r.gameObject.layer = 7;
+        water.AddComponent<PenTask>().kind = PenTaskKind.Water;
+        water.transform.SetParent(t, true);
+
+        // Barn in the back corner; its door is where you clean the pen.
+        var barn = new GameObject("Barn");
+        barn.transform.position = Build.OnGround(t.TransformPoint(new Vector3(s.x / 2f - 3.5f, 0, -s.y / 2f + 2.8f)));
+        barn.transform.rotation = t.rotation;
+        var barnRed = Build.Mat(new Color(0.6f, 0.13f, 0.1f), 0.2f);
+        var trim = Build.Mat(new Color(0.95f, 0.93f, 0.88f), 0.2f);
+        var roof = Build.Mat(new Color(0.25f, 0.24f, 0.26f), 0.4f, 0.3f);
+        if (Build.TryModel("Barn", barn.transform) == null)
+        {
+            Build.Part(PrimitiveType.Cube, barn.transform, new Vector3(0, 1.6f, 0), new Vector3(5f, 3.2f, 4.5f), barnRed, "Walls");
+            Build.Part(PrimitiveType.Cube, barn.transform, new Vector3(-1.3f, 3.7f, 0), new Vector3(3.2f, 0.15f, 4.8f), roof, "Roof", new Vector3(0, 0, 38));
+            Build.Part(PrimitiveType.Cube, barn.transform, new Vector3(1.3f, 3.7f, 0), new Vector3(3.2f, 0.15f, 4.8f), roof, "Roof", new Vector3(0, 0, -38));
+            Build.Part(PrimitiveType.Cube, barn.transform, new Vector3(0, 1.2f, 2.26f), new Vector3(2f, 2.4f, 0.05f), Build.Mat(new Color(0.45f, 0.1f, 0.08f), 0.2f), "Door");
+            Build.Part(PrimitiveType.Cube, barn.transform, new Vector3(0, 1.2f, 2.29f), new Vector3(2.1f, 0.12f, 0.03f), trim, "Brace", new Vector3(0, 0, 50));
+            Build.Part(PrimitiveType.Cube, barn.transform, new Vector3(0, 1.2f, 2.29f), new Vector3(2.1f, 0.12f, 0.03f), trim, "Brace", new Vector3(0, 0, -50));
+        }
+        var walls = barn.AddComponent<BoxCollider>(); walls.center = new Vector3(0, 1.6f, 0); walls.size = new Vector3(5f, 3.2f, 4.5f);
+        var door = new GameObject("Barn Door");
+        door.layer = 7;
+        door.transform.SetParent(barn.transform, false);
+        door.transform.localPosition = new Vector3(0, 0, 2.5f);
+        var dc = door.AddComponent<BoxCollider>(); dc.center = new Vector3(0, 1.2f, 0); dc.size = new Vector3(2.2f, 2.4f, 0.4f);
+        door.AddComponent<PenTask>().kind = PenTaskKind.Clean;
+        barn.transform.SetParent(t, true);
+
         // Farm shop beside the pen so animals and feed can be bought early.
         BuildStall(t.TransformPoint(new Vector3(-3.5f, 0, s.y / 2f + 2.5f)), t.rotation * Quaternion.Euler(0, 180, 0));
         hay.SetActive(true);

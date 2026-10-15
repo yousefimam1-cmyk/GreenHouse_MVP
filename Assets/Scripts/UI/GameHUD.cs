@@ -389,6 +389,8 @@ public class GameHUD : MonoBehaviour
             {
                 sb.Append('\n').Append("<color=#FFC24D>").Append(Loc.T("Money: {0} EGP", eco.Money.ToString("N0"))).Append("</color>");
                 sb.Append('\n').Append(Loc.T("Storage: {0} kg   Feed: {1}", eco.StorageWeight.ToString("F0"), eco.Feed.ToString("F1")));
+                var pen = AnimalPen.Instance;
+                if (pen != null && pen.AnimalCount > 0) sb.Append('\n').Append("<size=85%>").Append(pen.StatusLine()).Append("</size>");
             }
             for (int i = 0; i < gm.Greenhouses.Count; i++)
             {

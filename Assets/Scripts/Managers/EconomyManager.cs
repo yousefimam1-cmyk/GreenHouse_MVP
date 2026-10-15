@@ -149,6 +149,15 @@ public class EconomyManager : MonoBehaviour
 
     // ---------------- feed & animals ----------------
 
+    /// <summary>Add one animal without paying (births).</summary>
+    public void AddAnimal(string id)
+    {
+        var a = Animal(id);
+        if (a == null || Owned(id) >= a.max) return;
+        animalsOwned[id] = Owned(id) + 1;
+        Save();
+    }
+
     public bool ConsumeFeed(float units)
     {
         if (Feed < units) return false;

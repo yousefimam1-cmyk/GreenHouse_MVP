@@ -1,5 +1,5 @@
 {
-  "notes": "Mission chain, played in order. type: startWell | optimize | healthyGreenhouse | allHealthy | harvestKg | enterVehicle | loadKg | deliverKg | earnMoney | buyFeed | buyAnimal | collectProducts | buyUpgrade | plantField | harvestField. target = amount needed (counted from when the mission starts). reward in EGP.",
+  "notes": "Mission chain, played in order. type: startWell | optimize | healthyGreenhouse | allHealthy | harvestKg | enterVehicle | loadKg | deliverKg | earnMoney | buyFeed | buyAnimal | collectProducts | buyUpgrade | plantField | harvestField | cleanPen | animalBorn. target = amount needed (counted from when the mission starts). reward in EGP.",
   "missions": [
     {
       "id": "well",
@@ -122,6 +122,16 @@
       "descAr": "اجمع منتجات الحيوانات من صندوق الحظيرة."
     },
     {
+      "id": "clean",
+      "type": "cleanPen",
+      "target": 1,
+      "reward": 150,
+      "titleEn": "Happy animals",
+      "titleAr": "حيوانات مبسوطة",
+      "descEn": "Clean the pen at the barn door and keep the water trough full.",
+      "descAr": "نضّف الحظيرة من باب الجرن وخلي حوض المياه مليان."
+    },
+    {
       "id": "allhealthy",
       "type": "allHealthy",
       "target": 1,
@@ -160,6 +170,16 @@
       "titleAr": "مزرعة رابحة",
       "descEn": "Earn 10,000 EGP from sales.",
       "descAr": "اكسب 10,000 جنيه من المبيعات."
+    },
+    {
+      "id": "breed",
+      "type": "animalBorn",
+      "target": 1,
+      "reward": 1000,
+      "titleEn": "New arrivals",
+      "titleAr": "مواليد جديدة",
+      "descEn": "Keep a pair of animals fed, watered and clean until one is born.",
+      "descAr": "خلي زوج حيوانات متأكّل ومتشرّب ونضيف لحد ما يتولد واحد."
     }
   ]
 }

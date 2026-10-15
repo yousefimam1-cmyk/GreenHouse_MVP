@@ -63,6 +63,17 @@ public static class Loc
         { "Silver", "فضي" },
         { "Bronze", "برونزي" },
         { "Partners", "الشركاء" },
+        { "A new animal was born", "اتولد حيوان جديد" },
+        { "Water trough filled", "حوض المياه اتملى" },
+        { "Pen cleaned", "الحظيرة اتنضفت" },
+        { "Healthy", "بصحة كويسة" },
+        { "Weak", "ضعيف" },
+        { "Sick", "عيان" },
+        { "Animals", "الحيوانات" },
+        { "Clean", "النضافة" },
+        { "No feed", "مفيش علف" },
+        { "[E] Fill water trough", "[E] املأ حوض المياه" },
+        { "[E] Clean the pen", "[E] نضّف الحظيرة" },
         { "[E] Drive tractor", "[E] سوق الجرار" },
         { "Implement", "المعدّة" },
         { "No implement", "بدون معدّة" },
@@ -178,7 +189,8 @@ public static class Loc
             "G - graphics quality    P - pause / new game\n" +
             "Fields: E to plow, plant (buy seeds), water (well must run), harvest. Seasons and weather change growth.\n" +
             "M - market prices and buyer contracts (contracts pay a bonus when you sell at the market)\n" +
-            "Tractor: Q changes implement (plow, seeder, harvester) - drive it over a field. Park on the green pad to refuel." },
+            "Tractor: Q changes implement (plow, seeder, harvester) - drive it over a field. Park on the green pad to refuel.\n" +
+            "Animals need feed, a full water trough and a clean pen (barn door). Happy pairs have young." },
     };
 
     private static readonly Dictionary<string, string> arabicLong = new Dictionary<string, string>
@@ -195,7 +207,8 @@ public static class Loc
             "G - جودة الجرافيكس    P - إيقاف / لعبة جديدة\n" +
             "الحقول: E للحرث والزراعة (اشتري بذور) والري (البئر لازم يشتغل) والحصاد. المواسم والطقس بيأثروا على النمو.\n" +
             "M - أسعار السوق وعقود المشترين (العقود بتدفع زيادة لما تبيع في السوق)\n" +
-            "الجرار: Q لتغيير المعدّة (محراث، بذّارة، حصّادة) - سوقه فوق الحقل. اركن على المنطقة الخضراء للتموين." },
+            "الجرار: Q لتغيير المعدّة (محراث، بذّارة، حصّادة) - سوقه فوق الحقل. اركن على المنطقة الخضراء للتموين.\n" +
+            "الحيوانات محتاجة علف وحوض مياه مليان وحظيرة نضيفة (باب الجرن). الأزواج المبسوطة بتخلّف." },
     };
 
     private static TMP_FontAsset arabicFont;

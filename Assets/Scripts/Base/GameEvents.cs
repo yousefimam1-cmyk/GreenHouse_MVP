@@ -19,13 +19,15 @@ public static class GameEvents
     public static event Action<MissionDef> MissionStarted;
     public static event Action<MissionDef> MissionCompleted;
     public static event Action ProductsCollected;
+    public static event Action<string> AnimalBorn;
+    public static event Action PenCleaned;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void Reset()
     {
         WellStarted = null; ModuleOptimized = null; BedStateChanged = null; Harvested = null;
         CargoLoaded = null; Delivered = null; VehicleChanged = null; UpgradeBought = null;
-        MoneyChanged = null; MissionStarted = null; MissionCompleted = null; ProductsCollected = null;
+        MoneyChanged = null; MissionStarted = null; MissionCompleted = null; ProductsCollected = null; AnimalBorn = null; PenCleaned = null;
     }
 
     public static void RaiseWellStarted(WellController w) => WellStarted?.Invoke(w);
@@ -40,4 +42,6 @@ public static class GameEvents
     public static void RaiseMissionStarted(MissionDef m) => MissionStarted?.Invoke(m);
     public static void RaiseMissionCompleted(MissionDef m) => MissionCompleted?.Invoke(m);
     public static void RaiseProductsCollected() => ProductsCollected?.Invoke();
+    public static void RaiseAnimalBorn(string id) => AnimalBorn?.Invoke(id);
+    public static void RaisePenCleaned() => PenCleaned?.Invoke();
 }
