@@ -1,0 +1,197 @@
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
+
+/// <summary>
+/// Shop panel built in code: feed, animals and upgrades. Click a row or press its number; Esc closes.
+/// Opened by a ShopStall. Prices and items come from EconomyManager (economy.json).
+/// </summary>
+public class ShopUI : MonoBehaviour
+{
+    public static ShopUI Instance;
+    public bool IsOpen { get; private set; }
+
+    private Canvas canvas;
+    private RectTransform panel, list;
+    private TextMeshProUGUI title, footer;
+    private readonly List<(string id, Button btn, TextMeshProUGUI label)> rows = new List<(string, Button, TextMeshProUGUI)>();
+    private int openedFrame;
+
+    private void Awake() => Instance = this;
+
+    private void Start()
+    {
+        Build();
+        Loc.OnLanguageChanged += Refresh;
+        GameEvents.MoneyChanged += OnMoney;
+    }
+
+    private void OnDestroy()
+    {
+        Loc.OnLanguageChanged -= Refresh;
+        GameEvents.MoneyChanged -= OnMoney;
+    }
+
+    private void OnMoney(int m) { if (IsOpen) Refresh(); }
+
+    private List<string> Items()
+    {
+        var ids = new List<string> { "feed" };
+        var eco = EconomyManager.Instance;
+        if (eco != null) foreach (var a in eco.Data.animals) ids.Add(a.id);
+        ids.Add("capacity");
+        ids.Add("growth");
+        return ids;
+    }
+
+    private void Build()
+    {
+        var go = new GameObject("Shop UI", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        go.transform.SetParent(transform, false);
+        canvas = go.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 60;
+        var scaler = go.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.matchWidthOrHeight = 0.5f;
+
+        panel = NewRect("Panel", canvas.transform, typeof(Image), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0.5f, 0.5f);
+        panel.sizeDelta = new Vector2(760, 0);
+        panel.GetComponent<Image>().color = new Color(0.07f, 0.06f, 0.05f, 0.94f);
+        var vl = panel.GetComponent<VerticalLayoutGroup>();
+        vl.padding = new RectOffset(28, 28, 22, 22); vl.spacing = 10;
+        vl.childControlWidth = vl.childControlHeight = true; vl.childForceExpandWidth = true; vl.childForceExpandHeight = false;
+        panel.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        title = NewText(panel, 34, new Color(1f, 0.55f, 0.15f));
+        list = NewRect("List", panel, typeof(VerticalLayoutGroup));
+        var ll = list.GetComponent<VerticalLayoutGroup>();
+        ll.spacing = 8; ll.childControlWidth = ll.childControlHeight = true; ll.childForceExpandWidth = true; ll.childForceExpandHeight = false;
+        footer = NewText(panel, 20, new Color(0.8f, 0.78f, 0.74f));
+
+        int n = 1;
+        foreach (var id in Items())
+        {
+            var row = NewRect("Row " + id, list, typeof(Image), typeof(Button), typeof(LayoutElement));
+            row.GetComponent<LayoutElement>().minHeight = 58;
+            row.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.06f);
+            var label = NewText(row, 24, Color.white);
+            var lrt = label.rectTransform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one; lrt.offsetMin = new Vector2(16, 6); lrt.offsetMax = new Vector2(-16, -6);
+            label.alignment = TextAlignmentOptions.MidlineLeft;
+            string captured = id;
+            row.GetComponent<Button>().onClick.AddListener(() => Buy(captured));
+            rows.Add((id, row.GetComponent<Button>(), label));
+            n++;
+        }
+        canvas.gameObject.SetActive(false);
+    }
+
+    private static RectTransform NewRect(string name, Transform parent, params System.Type[] comps)
+    {
+        var all = new List<System.Type> { typeof(RectTransform) }; all.AddRange(comps);
+        var go = new GameObject(name, all.ToArray());
+        go.transform.SetParent(parent, false);
+        return (RectTransform)go.transform;
+    }
+
+    private static TextMeshProUGUI NewText(Transform parent, float size, Color c)
+    {
+        var go = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+        go.transform.SetParent(parent, false);
+        var t = go.GetComponent<TextMeshProUGUI>();
+        t.fontSize = size; t.color = c; t.richText = true; t.raycastTarget = false;
+        t.textWrappingMode = TextWrappingModes.Normal;
+        Loc.ExcludeFromScene(t);
+        return t;
+    }
+
+    public void Open()
+    {
+        if (IsOpen || canvas == null) return;
+        IsOpen = true;
+        openedFrame = Time.frameCount;
+        canvas.gameObject.SetActive(true);
+        if (UIManager.Instance != null) UIManager.Instance.SetExternalPanel(true);
+        Refresh();
+    }
+
+    public void Close()
+    {
+        if (!IsOpen) return;
+        IsOpen = false;
+        canvas.gameObject.SetActive(false);
+        if (UIManager.Instance != null) UIManager.Instance.SetExternalPanel(false);
+    }
+
+    private void Update()
+    {
+        if (!IsOpen) return;
+        var kb = Keyboard.current;
+        if (kb == null) return;
+        if (Time.frameCount != openedFrame && (kb.escapeKey.wasPressedThisFrame || kb.eKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame)) { Close(); return; }
+        Key[] keys = { Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5, Key.Digit6, Key.Digit7, Key.Digit8, Key.Digit9 };
+        for (int i = 0; i < rows.Count && i < keys.Length; i++)
+            if (kb[keys[i]].wasPressedThisFrame) Buy(rows[i].id);
+    }
+
+    private void Buy(string id)
+    {
+        var eco = EconomyManager.Instance;
+        if (eco == null) return;
+        if (eco.TryBuy(id))
+        {
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX();
+            if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.Display(Loc.Raw("Bought") + ": " + Name(id)));
+        }
+        else if (UIManager.Instance != null)
+        {
+            var a = eco.Animal(id);
+            string why = eco.PriceOf(id) < 0 ? "Fully upgraded" : (a != null && eco.Owned(id) >= a.max) ? "The pen is full for this animal" : "Not enough money";
+            UIManager.Instance.ShowAlertMessage(Loc.T(why));
+        }
+        Refresh();
+    }
+
+    private string Name(string id)
+    {
+        var eco = EconomyManager.Instance;
+        if (id == "feed") return Loc.IsArabic ? eco.Data.feed.nameAr : eco.Data.feed.nameEn;
+        if (id == "capacity") return Loc.Raw("Bigger truck bed");
+        if (id == "growth") return Loc.Raw("Faster growth");
+        return EconomyManager.AnimalName(eco.Animal(id));
+    }
+
+    private void Refresh()
+    {
+        var eco = EconomyManager.Instance;
+        if (eco == null || title == null) return;
+        foreach (var t in new[] { title, footer }) Loc.ApplyFont(t);
+        title.text = Loc.T("Farm Shop");
+        title.alignment = Loc.IsArabic ? TextAlignmentOptions.Right : TextAlignmentOptions.Left;
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var (id, btn, label) = rows[i];
+            Loc.ApplyFont(label);
+            int price = eco.PriceOf(id);
+            string detail = "";
+            var a = eco.Animal(id);
+            if (a != null) detail = " (" + eco.Owned(id) + "/" + a.max + ")";
+            else if (id == "feed") detail = " (" + eco.Feed.ToString("F1") + ")";
+            else if (id == "capacity") detail = " (" + eco.TruckCapacity.ToString("F0") + " kg)";
+            else if (id == "growth") detail = " (x" + EconomyManager.GrowthSpeed.ToString("F2") + ")";
+            string priceText = price < 0 ? Loc.Raw("Fully upgraded") : price.ToString("N0") + " " + Loc.Raw("EGP");
+            label.text = "<color=#FF9A3C>" + (i + 1) + "</color>   " + Loc.Display(Name(id) + detail + "   " + priceText);
+            label.alignment = Loc.IsArabic ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
+            bool affordable = price >= 0 && eco.Money >= price;
+            btn.interactable = affordable;
+            label.color = affordable ? Color.white : new Color(1f, 1f, 1f, 0.45f);
+        }
+        footer.text = Loc.T("Money: {0} EGP   Feed: {1}", eco.Money.ToString("N0"), eco.Feed.ToString("F1")) + "\n" + Loc.T("[1-9] or click to buy   [Esc] close");
+        footer.alignment = title.alignment;
+    }
+}

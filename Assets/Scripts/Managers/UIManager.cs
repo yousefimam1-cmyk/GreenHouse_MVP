@@ -94,6 +94,15 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    private bool externalOpen;
+
+    /// <summary>For panels built in code (shop, pause): unlocks the cursor and pauses interaction while open.</summary>
+    public void SetExternalPanel(bool open)
+    {
+        externalOpen = open;
+        if (!controlStationOpen && !cropbedOpen) SetGameplayInput(!open);
+    }
+
     private void SetGameplayInput(bool enabled)
     {
         IsUIOpened = !enabled;
@@ -156,7 +165,7 @@ public class UIManager : MonoBehaviour
     {
         currentGreenHouse = null;
         controlStationOpen = false;
-        if (!cropbedOpen) SetGameplayInput(true);
+        if (!cropbedOpen && !externalOpen) SetGameplayInput(true);
         FadeOut(controlStationUI);
         OnControlStationPanelChanged?.Invoke(null);
     }
@@ -222,7 +231,7 @@ public class UIManager : MonoBehaviour
         cropbedOpen = false;
         currentCropbed = null;
         currentCropData = null;
-        if (!controlStationOpen) SetGameplayInput(true);
+        if (!controlStationOpen && !externalOpen) SetGameplayInput(true);
         FadeOut(cropbedUI);
         OnCropbedPanelChanged?.Invoke(null);
     }

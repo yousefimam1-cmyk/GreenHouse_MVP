@@ -63,6 +63,46 @@ public static class Loc
         { "Silver", "فضي" },
         { "Bronze", "برونزي" },
         { "Partners", "الشركاء" },
+        { "All missions complete - free play", "كل المهمات اكتملت - لعب حر" },
+        { "Bigger truck bed", "صندوق عربية أكبر" },
+        { "Bought", "تم الشراء" },
+        { "Bump!", "خبطة!" },
+        { "Cargo {0}/{1} kg", "الحمولة {0}/{1} كجم" },
+        { "Collected", "تم الجمع" },
+        { "EGP", "جنيه" },
+        { "Farm Shop", "محل المزرعة" },
+        { "Farm storage is empty - harvest first", "مخزن المزرعة فاضي - احصد الأول" },
+        { "Faster growth", "نمو أسرع" },
+        { "Fully upgraded", "تمت الترقية بالكامل" },
+        { "Graphics: High", "الجرافيكس: عالي" },
+        { "Graphics: Low", "الجرافيكس: منخفض" },
+        { "Loaded {0} kg onto the truck", "تم تحميل {0} كجم على العربية" },
+        { "Loading bay", "منطقة التحميل" },
+        { "Market", "السوق" },
+        { "Mission", "مهمة" },
+        { "Mission complete", "المهمة اكتملت" },
+        { "Money: {0} EGP", "الفلوس: {0} جنيه" },
+        { "Money: {0} EGP   Feed: {1}", "الفلوس: {0} جنيه   العلف: {1}" },
+        { "New game started", "بدأت لعبة جديدة" },
+        { "No feed - buy feed at the shop", "مفيش علف - اشتري علف من المحل" },
+        { "Not enough money", "الفلوس مش كفاية" },
+        { "Nothing to collect yet", "مفيش حاجة تتجمع لسه" },
+        { "Paused", "إيقاف مؤقت" },
+        { "Reward", "المكافأة" },
+        { "Sold the load for {0} EGP", "اتباعت الحمولة بـ {0} جنيه" },
+        { "Storage: {0} kg   Feed: {1}", "المخزن: {0} كجم   العلف: {1}" },
+        { "The pen is full for this animal", "الحظيرة مليانة من الحيوان ده" },
+        { "Truck is full - drive to the market", "العربية مليانة - روح السوق" },
+        { "[1-9] or click to buy   [Esc] close", "[1-9] أو اضغط للشراء   [Esc] إغلاق" },
+        { "[Backspace] New game (clears saved progress)", "[Backspace] لعبة جديدة (يمسح التقدم المحفوظ)" },
+        { "[E] Collect animal products", "[E] اجمع منتجات الحيوانات" },
+        { "[E] Drive truck", "[E] سوق العربية" },
+        { "[E] Exit   [Space] Brake   [R] Reset truck", "[E] انزل   [Space] فرامل   [R] عدّل العربية" },
+        { "[E] Open shop", "[E] افتح المحل" },
+        { "[G] Graphics   [P] Pause", "[G] الجرافيكس   [P] إيقاف" },
+        { "[P] Resume", "[P] استكمال" },
+        { "{0} km/h", "{0} كم/س" },
+        { "Animal products", "منتجات الحيوانات" },
         { "Harvested: {0} kg", "المحصول: {0} كجم" },
         { "{0}: {1}/{2} beds healthy", "{0}: {1}/{2} أحواض سليمة" },
         { "[H] Help   [L] Arabic   [T] Training", "[H] مساعدة   [L] English   [T] تدريب" },
@@ -92,7 +132,10 @@ public static class Loc
             "Irrigation, Nutrients, Energy and Climate.\n" +
             "Healthy (green) beds grow - press E on a grown bed to harvest.\n" +
             "Esc - close panels    H - help    L - Arabic/English\n" +
-            "T - start/stop a timed training scenario    N - next scenario" },
+            "T - start/stop a timed training scenario    N - next scenario\n" +
+            "Truck: E get in/out, WASD drive, Space brake, R reset. Green pad loads, gold pad sells.\n" +
+            "Shops sell feed, animals and upgrades. Collect eggs, milk and wool at the pen crate.\n" +
+            "G - graphics quality    P - pause / new game" },
     };
 
     private static readonly Dictionary<string, string> arabicLong = new Dictionary<string, string>
@@ -103,7 +146,10 @@ public static class Loc
             "الري والتسميد والطاقة والمناخ.\n" +
             "الأحواض السليمة (الخضراء) تنمو - اضغط E على الحوض الناضج للحصاد.\n" +
             "Esc - إغلاق    H - مساعدة    L - عربي/إنجليزي\n" +
-            "T - بدء/إيقاف سيناريو تدريب    N - السيناريو التالي" },
+            "T - بدء/إيقاف سيناريو تدريب    N - السيناريو التالي\n" +
+            "العربية: E ركوب/نزول، WASD قيادة، Space فرامل، R تعديل. الأخضر تحميل، الذهبي بيع.\n" +
+            "المحلات فيها علف وحيوانات وترقيات. اجمع البيض واللبن والصوف من صندوق الحظيرة.\n" +
+            "G - جودة الجرافيكس    P - إيقاف / لعبة جديدة" },
     };
 
     private static TMP_FontAsset arabicFont;

@@ -69,3 +69,23 @@ TRAINING SCENARIOS (idea from team chat: simulation-based training)
 PARTNER / SPONSOR SLOTS (idea from team chat: in-game brand placement)
 --- Resources/Data/sponsors.json  One partner slot per module, shown beside the Control Station panel.
     Placeholders only - fill with real partners once agreed.
+
+FARMING SIM LAYER (chat #0 of the Chat Splitter plan)
+Architecture: Base/GameEvents.cs is an event bus (Observer pattern). Gameplay raises events
+(WellStarted, ModuleOptimized, Harvested, CargoLoaded, Delivered, UpgradeBought, ProductsCollected...);
+Missions, Economy, HUD and FeedbackFX only listen. GameManager auto-creates every system at scene load.
+--- Managers/EconomyManager.cs  Resources/Data/economy.json: goods + prices (EGP), animals, feed. Money, farm storage,
+    truck capacity and growth upgrades. Starts with 500 EGP.
+--- Managers/MissionManager.cs  Resources/Data/missions.json: 14-mission chain with rewards.
+--- Vehicle/FarmTruck.cs        Drivable truck (E in/out, WASD, Space brake, R reset). Ground-following arcade physics.
+--- Vehicle/VehicleSpawner.cs   Builds truck + green loading bay near the player start, animal pen + farm shop,
+    and a gold market pad (with a shop) ~120 m away. Place empty objects named TruckSpawn / AnimalPenSpot /
+    MarketSpot in the scene to move them. The truck ignores collisions with objects named "*Fence*".
+--- Farming/AnimalPen.cs, FarmAnimal.cs, PenCrate.cs  Chickens, sheep, cows eat feed and make eggs, wool, milk;
+    collect at the crate; products go to storage and are sold with the truck.
+--- UI/ShopUI.cs + Farming/ShopStall.cs  Shop: feed, animals, upgrades (keys 1-9 or click).
+--- Graphics/GraphicsEnhancer.cs  Post-processing (ACES, bloom, grading, vignette), SMAA/MSAA, shadows. G = High/Low.
+--- Graphics/FeedbackFX.cs  Floating +kg / +EGP text and harvest pop.
+--- Helper/Build.cs  Placeholder geometry. Drop a prefab at Resources/Models/Truck, ShopStall, cow, sheep or chicken
+    (e.g. free CC0 Quaternius / Kenney models) and it is used instead of the placeholder automatically.
+Keys: P pause (Backspace there = new game), G graphics, H help, L language, T training.

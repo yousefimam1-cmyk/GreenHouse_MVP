@@ -1,6 +1,7 @@
 using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -14,8 +15,10 @@ public class GameHUD : MonoBehaviour
     private static readonly Color Accent = new Color(0.55f, 0.85f, 0.35f, 1f);
 
     private Canvas canvas;
-    private RectTransform statusPanel, infoPanel, hintPanel, helpPanel, trainingPanel, partnerPanel;
-    private TextMeshProUGUI statusText, infoText, hintText, helpText, trainingText, partnerText;
+    private RectTransform statusPanel, infoPanel, hintPanel, helpPanel, trainingPanel, partnerPanel, truckPanel, pausePanel;
+    private TextMeshProUGUI statusText, infoText, hintText, helpText, trainingText, partnerText, truckText, pauseText;
+    private RectTransform arrow;
+    private bool paused;
     private GreenhouseManager partnerGreenhouse;
     private SponsorFile sponsors;
     private Cropbed infoBed;
@@ -55,8 +58,75 @@ public class GameHUD : MonoBehaviour
             refreshTimer = 0.25f;
             RefreshTraining();
             RefreshStatus();
+            RefreshTruck();
             if (infoBed != null) ShowCropInfo(infoBed);
         }
+    }
+
+    private void LateUpdate()
+    {
+        var kb = Keyboard.current;
+        if (kb != null && kb.pKey.wasPressedThisFrame) SetPaused(!paused);
+        if (paused && kb != null && kb.backspaceKey.wasPressedThisFrame) NewGame();
+        UpdateArrow();
+    }
+
+    private void SetPaused(bool value)
+    {
+        paused = value;
+        Time.timeScale = paused ? 0f : 1f;
+        if (pausePanel != null) pausePanel.gameObject.SetActive(paused);
+        if (UIManager.Instance != null) UIManager.Instance.SetExternalPanel(paused);
+        RefreshAll();
+    }
+
+    private void NewGame()
+    {
+        if (EconomyManager.Instance != null) EconomyManager.Instance.ResetAll();
+        if (MissionManager.Instance != null) MissionManager.Instance.ResetChain();
+        if (GameManager.Instance != null) GameManager.Instance.ResetProgress();
+        SetPaused(false);
+        if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T("New game started"));
+    }
+
+    private void OnDisable() { if (paused) Time.timeScale = 1f; }
+
+    // Points the HUD arrow at the next stop: loading bay when empty, market when loaded.
+    private void UpdateArrow()
+    {
+        var truck = FarmTruck.Instance;
+        if (arrow == null || truck == null || !truck.IsDriving) return;
+        var target = TruckTarget(truck);
+        if (target == null) return;
+        Vector3 to = target.transform.position - truck.transform.position; to.y = 0f;
+        float angle = Vector3.SignedAngle(Vector3.ProjectOnPlane(truck.transform.forward, Vector3.up), to, Vector3.up);
+        arrow.localRotation = Quaternion.Euler(0, 0, -angle);
+    }
+
+    private static DeliveryZone TruckTarget(FarmTruck truck)
+    {
+        var eco = EconomyManager.Instance;
+        bool loaded = truck.CargoWeight > 0.5f && (eco == null || truck.CargoWeight >= eco.TruckCapacity * 0.98f || eco.StorageWeight < 0.5f);
+        return loaded ? DeliveryZone.Market : DeliveryZone.LoadingBay;
+    }
+
+    private void RefreshTruck()
+    {
+        var truck = FarmTruck.Instance;
+        if (truckPanel == null) return;
+        bool show = truck != null && truck.IsDriving;
+        truckPanel.gameObject.SetActive(show);
+        if (!show) return;
+        var eco = EconomyManager.Instance;
+        var target = TruckTarget(truck);
+        float dist = target != null ? Vector3.Distance(target.transform.position, truck.transform.position) : 0f;
+        string where = target == DeliveryZone.Market ? Loc.Raw("Market") : Loc.Raw("Loading bay");
+        var sb = new StringBuilder();
+        sb.Append(Title(Loc.T("{0} km/h", Mathf.Abs(truck.Speed * 3.6f).ToString("F0"))));
+        sb.Append('\n').Append(Loc.T("Cargo {0}/{1} kg", truck.CargoWeight.ToString("F0"), (eco != null ? eco.TruckCapacity : 0f).ToString("F0")));
+        if (target != null) sb.Append('\n').Append(Loc.Display(where + ": " + dist.ToString("F0") + " m"));
+        sb.Append("\n<size=80%>").Append(Loc.T("[E] Exit   [Space] Brake   [R] Reset truck")).Append("</size>");
+        truckText.text = sb.ToString();
     }
 
     public void ToggleHelp()
@@ -85,6 +155,28 @@ public class GameHUD : MonoBehaviour
         helpPanel = MakePanel("Help", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 0), out helpText, 26);
         trainingPanel = MakePanel("Training", new Vector2(0.5f, 1), new Vector2(0, -24), new Vector2(520, 0), out trainingText, 22);
         partnerPanel = MakePanel("Partners", new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(460, 0), out partnerText, 20);
+        truckPanel = MakePanel("Truck", new Vector2(0.5f, 0), new Vector2(0, 24), new Vector2(420, 0), out truckText, 22);
+        truckText.alignment = TextAlignmentOptions.Top;
+        // Direction arrow (two bars forming a chevron) above the truck panel.
+        var holder = new GameObject("Arrow", typeof(RectTransform));
+        holder.transform.SetParent(canvas.transform, false);
+        arrow = (RectTransform)holder.transform;
+        arrow.anchorMin = arrow.anchorMax = new Vector2(0.5f, 0); arrow.anchoredPosition = new Vector2(0, 230); arrow.sizeDelta = new Vector2(80, 80);
+        foreach (float a in new[] { 40f, -40f })
+        {
+            var bar = new GameObject("Bar", typeof(RectTransform), typeof(Image));
+            bar.transform.SetParent(arrow, false);
+            var rt = (RectTransform)bar.transform;
+            rt.sizeDelta = new Vector2(12, 46);
+            rt.anchoredPosition = new Vector2(a > 0 ? -14 : 14, 0);
+            rt.localRotation = Quaternion.Euler(0, 0, a);
+            var img = bar.GetComponent<Image>(); img.color = new Color(1f, 0.6f, 0.15f, 0.95f); img.raycastTarget = false;
+        }
+        arrow.SetParent(truckPanel, true);
+        pausePanel = MakePanel("Pause", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760, 0), out pauseText, 30);
+        pauseText.alignment = TextAlignmentOptions.Top;
+        pausePanel.gameObject.SetActive(false);
+        truckPanel.gameObject.SetActive(false);
         infoPanel.gameObject.SetActive(false);
         helpPanel.gameObject.SetActive(false);
         partnerPanel.gameObject.SetActive(false);
@@ -136,8 +228,11 @@ public class GameHUD : MonoBehaviour
             t.alignment = rtl ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
         }
         Loc.ApplyFont(trainingText);
+        Loc.ApplyFont(truckText);
+        Loc.ApplyFont(pauseText);
         trainingText.alignment = TextAlignmentOptions.Top;
-        hintText.text = Loc.T("[H] Help   [L] Arabic   [T] Training");
+        hintText.text = Loc.T("[H] Help   [L] Arabic   [T] Training") + "\n" + Loc.T("[G] Graphics   [P] Pause");
+        pauseText.text = Title(Loc.T("Paused")) + "\n" + Loc.T("[P] Resume") + "\n<size=75%>" + Loc.T("[Backspace] New game (clears saved progress)") + "</size>";
         helpText.text = Title(Loc.T("HELP")) + "\n" + Loc.T("HELP_BODY");
         RefreshStatus();
         RefreshTraining();
@@ -224,6 +319,12 @@ public class GameHUD : MonoBehaviour
         if (gm != null)
         {
             sb.Append('\n').Append(Loc.T("Harvested: {0} kg", gm.TotalHarvestKg.ToString("F0")));
+            var eco = EconomyManager.Instance;
+            if (eco != null)
+            {
+                sb.Append('\n').Append("<color=#FFC24D>").Append(Loc.T("Money: {0} EGP", eco.Money.ToString("N0"))).Append("</color>");
+                sb.Append('\n').Append(Loc.T("Storage: {0} kg   Feed: {1}", eco.StorageWeight.ToString("F0"), eco.Feed.ToString("F1")));
+            }
             for (int i = 0; i < gm.Greenhouses.Count; i++)
             {
                 var gh = gm.Greenhouses[i];
@@ -234,6 +335,20 @@ public class GameHUD : MonoBehaviour
                 sb.Append('\n').Append("<color=").Append(color).Append('>')
                   .Append(Loc.T("{0}: {1}/{2} beds healthy", label, healthy, total))
                   .Append("</color>");
+            }
+        }
+        var mm = MissionManager.Instance;
+        if (mm != null)
+        {
+            sb.Append("\n\n");
+            if (mm.AllDone) sb.Append(Title(Loc.T("All missions complete - free play")));
+            else
+            {
+                var m = mm.Current;
+                sb.Append(Title(Loc.Display(Loc.Raw("Mission") + " " + (mm.Index + 1) + "/" + mm.Missions.Length + ": " + MissionManager.Title(m))));
+                sb.Append('\n').Append(Loc.Display(MissionManager.Desc(m)));
+                if (m.target > 1f) sb.Append('\n').Append(Loc.Display(Mathf.Min(mm.Progress, m.target).ToString("F0") + " / " + m.target.ToString("F0")));
+                sb.Append("\n<size=85%><color=#FFC24D>").Append(Loc.Display(Loc.Raw("Reward") + ": " + m.reward.ToString("N0") + " " + Loc.Raw("EGP"))).Append("</color></size>");
             }
         }
         statusText.text = sb.ToString();

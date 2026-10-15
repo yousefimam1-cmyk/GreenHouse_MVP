@@ -159,7 +159,11 @@ public class GreenhouseManager : MonoBehaviour
     public void OptimizeModule(ModuleType moduleType, bool invokeAction = true)
     {
         SetOptimized(moduleType);
-        if (invokeAction) OnModuleOptimized?.Invoke(this, moduleType);
+        if (invokeAction)
+        {
+            OnModuleOptimized?.Invoke(this, moduleType);
+            GameEvents.RaiseModuleOptimized(this, moduleType);
+        }
         // Totals must be refreshed BEFORE the beds recalculate (the original order was reversed).
         RefreshCurrentState();
         if (invokeAction)

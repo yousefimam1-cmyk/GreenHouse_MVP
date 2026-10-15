@@ -31,5 +31,6 @@ public class WellController : Interactable
                 .SetLink(handleT.gameObject);
         }
         if (controlStation != null) controlStation.SetActionPerformed(true);
+        GameEvents.RaiseWellStarted(this);
     }
 }

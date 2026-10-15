@@ -141,7 +141,7 @@ public class Cropbed : Interactable
     private void Update()
     {
         if (!IsInitialized || !IsActive || Growth >= 1f) return;
-        float seconds = Mathf.Max(1f, GreenHouseHelper.Config.growthSeconds);
+        float seconds = Mathf.Max(1f, GreenHouseHelper.Config.growthSeconds / EconomyManager.GrowthSpeed);
         Growth = Mathf.Min(1f, Growth + Time.deltaTime / seconds);
         ApplyGrowthVisual();
     }
@@ -178,7 +178,11 @@ public class Cropbed : Interactable
         data.state = GreenHouseHelper.IsCropbedActive(data) ? CropState.Active : CropState.Dead;
         if (data.state == CropState.Dead) Growth = 0f;
         RefreshState();
-        if (previous != data.state) OnStateChanged?.Invoke(this);
+        if (previous != data.state)
+        {
+            OnStateChanged?.Invoke(this);
+            GameEvents.RaiseBedStateChanged(this);
+        }
     }
 
     // Already-satisfied attributes keep their own value (same rule as the original code).

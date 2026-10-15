@@ -44,6 +44,12 @@ public class GameManager : MonoBehaviour
         hud = GetComponent<GameHUD>();
         if (hud == null) hud = gameObject.AddComponent<GameHUD>();
         if (GetComponent<ScenarioManager>() == null) gameObject.AddComponent<ScenarioManager>();
+        if (GetComponent<EconomyManager>() == null) gameObject.AddComponent<EconomyManager>();
+        if (GetComponent<MissionManager>() == null) gameObject.AddComponent<MissionManager>();
+        if (GetComponent<VehicleSpawner>() == null) gameObject.AddComponent<VehicleSpawner>();
+        if (GetComponent<GraphicsEnhancer>() == null) gameObject.AddComponent<GraphicsEnhancer>();
+        if (GetComponent<FeedbackFX>() == null) gameObject.AddComponent<FeedbackFX>();
+        if (GetComponent<ShopUI>() == null) gameObject.AddComponent<ShopUI>();
     }
 
     private void Start()
@@ -87,6 +93,7 @@ public class GameManager : MonoBehaviour
         if (UIManager.Instance != null)
             UIManager.Instance.ShowAlertMessage(Loc.T("Harvested {0} kg of {1}", kg.ToString("F0"), crop));
         OnHarvest?.Invoke(kg);
+        GameEvents.RaiseHarvested(bed, kg);
         OnStatsChanged?.Invoke();
     }
 
