@@ -147,7 +147,7 @@ static class Program
         T.Check("Loading bay and market", DeliveryZone.LoadingBay != null && DeliveryZone.Market != null);
         T.Check("Market is ~120 m away", Vector3.Distance(DeliveryZone.LoadingBay.transform.position, DeliveryZone.Market.transform.position) > 60f);
         T.Check("2 shop stalls + crate + pen", UnityEngine.Object.FindObjectsByType<ShopStall>(FindObjectsSortMode.None).Length == 2 && AnimalPen.Instance != null);
-        T.Check("Starting money 500 EGP", EconomyManager.Instance.Money == 500, "" + EconomyManager.Instance.Money);
+        T.Check("Starting money 500 SAR", EconomyManager.Instance.Money == 500, "" + EconomyManager.Instance.Money);
         T.Check("Starts on mission 1 (well)", MissionManager.Instance.Current?.id == "well");
 
         Console.WriteLine("Animated life");
@@ -177,7 +177,7 @@ static class Program
         UnityEngine.Object.FindAnyObjectByType<WellController>().Interact();
         FakeEngine.Run(0.5f);
         T.Check("Well unlocks station", !station.IsLocked);
-        T.Check("Mission 1 done -> +150 EGP", EconomyManager.Instance.Money == 650 && MissionManager.Instance.Current?.id == "optimize", EconomyManager.Instance.Money + " " + MissionManager.Instance.Current?.id);
+        T.Check("Mission 1 done -> +150 SAR", EconomyManager.Instance.Money == 650 && MissionManager.Instance.Current?.id == "optimize", EconomyManager.Instance.Money + " " + MissionManager.Instance.Current?.id);
         foreach (var t in new[] { ModuleType.Irrigation, ModuleType.Nutrient, ModuleType.Energy, ModuleType.ClimateControl, ModuleType.Health, ModuleType.YieldProjection })
             g2.OptimizeModule(t);
         FakeEngine.Run(0.5f);

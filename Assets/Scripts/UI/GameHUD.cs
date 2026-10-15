@@ -137,7 +137,7 @@ public class GameHUD : MonoBehaviour
             float p = market != null ? market.Price(g.id) : g.price;
             string arrowColor = p > g.price * 1.05f ? "#8CD95A" : p < g.price * 0.95f ? "#FF7B6B" : "#DDDDDD";
             sb.Append('\n').Append("<color=").Append(arrowColor).Append('>')
-              .Append(Loc.Display(EconomyManager.GoodName(g) + ": " + p.ToString("F1") + " " + Loc.Raw("EGP") + " / " + EconomyManager.Unit(g)))
+              .Append(Loc.Display(EconomyManager.GoodName(g) + ": " + p.ToString("F1") + " " + Loc.Raw("SAR") + " / " + EconomyManager.Unit(g)))
               .Append("</color>");
         }
         if (market != null && market.Contracts.Count > 0)
@@ -158,7 +158,7 @@ public class GameHUD : MonoBehaviour
     {
         float pct = v.Fuel / Mathf.Max(1f, v.fuelCapacity);
         string c = pct < 0.15f ? "#FF6B5B" : pct < 0.35f ? "#F2B84B" : "#DDDDDD";
-        return "<color=" + c + ">" + Loc.T("Fuel {0}%", Mathf.RoundToInt(pct * 100f)) + (pct <= 0.001f ? " - " + Loc.T("Out of fuel - press R to tow (150 EGP)") : "") + "</color>";
+        return "<color=" + c + ">" + Loc.T("Fuel {0}%", Mathf.RoundToInt(pct * 100f)) + (pct <= 0.001f ? " - " + Loc.T("Out of fuel - press R to tow (150 SAR)") : "") + "</color>";
     }
 
     private void RefreshTruck()
@@ -390,7 +390,7 @@ public class GameHUD : MonoBehaviour
             var eco = EconomyManager.Instance;
             if (eco != null)
             {
-                sb.Append('\n').Append("<color=#FFC24D>").Append(Loc.T("Money: {0} EGP", eco.Money.ToString("N0"))).Append("</color>");
+                sb.Append('\n').Append("<color=#FFC24D>").Append(Loc.T("Money: {0} SAR", eco.Money.ToString("N0"))).Append("</color>");
                 sb.Append('\n').Append(Loc.T("Storage: {0} kg   Feed: {1}", eco.StorageWeight.ToString("F0"), eco.Feed.ToString("F1")));
                 var pen = AnimalPen.Instance;
                 if (pen != null && pen.AnimalCount > 0) sb.Append('\n').Append("<size=85%>").Append(pen.StatusLine()).Append("</size>");
@@ -418,7 +418,7 @@ public class GameHUD : MonoBehaviour
                 sb.Append(Title(Loc.Display(Loc.Raw("Mission") + " " + (mm.Index + 1) + "/" + mm.Missions.Length + ": " + MissionManager.Title(m))));
                 sb.Append('\n').Append(Loc.Display(MissionManager.Desc(m)));
                 if (m.target > 1f) sb.Append('\n').Append(Loc.Display(Mathf.Min(mm.Progress, m.target).ToString("F0") + " / " + m.target.ToString("F0")));
-                sb.Append("\n<size=85%><color=#FFC24D>").Append(Loc.Display(Loc.Raw("Reward") + ": " + m.reward.ToString("N0") + " " + Loc.Raw("EGP"))).Append("</color></size>");
+                sb.Append("\n<size=85%><color=#FFC24D>").Append(Loc.Display(Loc.Raw("Reward") + ": " + m.reward.ToString("N0") + " " + Loc.Raw("SAR"))).Append("</color></size>");
             }
         }
         statusText.text = sb.ToString();

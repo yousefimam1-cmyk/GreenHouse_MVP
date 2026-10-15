@@ -4,8 +4,8 @@ public enum Season { Spring, Summer, Autumn, Winter }
 public enum Weather { Sunny, Cloudy, Rain, Heatwave }
 
 /// <summary>
-/// In-game calendar: days, four seasons and daily weather (rolled per Egyptian climate: rain mostly in winter,
-/// heatwaves in summer). Rain waters every field; heatwaves dry them twice as fast. Saved.
+/// In-game calendar: days, four seasons and daily weather (rolled per Saudi climate, Al-Qassim: rare rain, mostly in winter
+/// and spring; long hot summers with frequent heatwaves). Rain waters every field; heatwaves dry them twice as fast. Saved.
 /// </summary>
 public class WorldClock : MonoBehaviour
 {
@@ -81,9 +81,10 @@ public class WorldClock : MonoBehaviour
         float r = Random.value;
         switch (Season)
         {
-            case Season.Winter: Weather = r < 0.35f ? Weather.Rain : r < 0.65f ? Weather.Cloudy : Weather.Sunny; break;
-            case Season.Summer: Weather = r < 0.3f ? Weather.Heatwave : r < 0.4f ? Weather.Cloudy : Weather.Sunny; break;
-            default: Weather = r < 0.12f ? Weather.Rain : r < 0.35f ? Weather.Cloudy : Weather.Sunny; break;
+            case Season.Winter: Weather = r < 0.15f ? Weather.Rain : r < 0.35f ? Weather.Cloudy : Weather.Sunny; break;
+            case Season.Spring: Weather = r < 0.10f ? Weather.Rain : r < 0.25f ? Weather.Heatwave : r < 0.40f ? Weather.Cloudy : Weather.Sunny; break;
+            case Season.Summer: Weather = r < 0.55f ? Weather.Heatwave : r < 0.62f ? Weather.Cloudy : Weather.Sunny; break;
+            default: Weather = r < 0.05f ? Weather.Rain : r < 0.25f ? Weather.Heatwave : r < 0.40f ? Weather.Cloudy : Weather.Sunny; break;
         }
         ApplyWeatherVisuals();
         WeatherChanged?.Invoke(Weather);

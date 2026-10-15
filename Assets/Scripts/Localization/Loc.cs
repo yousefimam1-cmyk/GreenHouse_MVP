@@ -46,8 +46,8 @@ public static class Loc
         { "[E] Harvest", "[E] حصاد" },
 
         // HUD / gameplay
-        { "Mazraa Greenhouse", "صوبة المزرعة" },
-        { "Greenhouse", "الصوبة" },
+        { "Mazraa Greenhouse", "البيت المحمي" },
+        { "Greenhouse", "البيت المحمي" },
         { "Training", "التدريب" },
         { "[T] Start   [N] Next scenario", "[T] ابدأ   [N] السيناريو التالي" },
         { "[T] Stop training", "[T] إيقاف التدريب" },
@@ -65,18 +65,18 @@ public static class Loc
         { "Partners", "الشركاء" },
         { "Mazraa", "المزرعة" },
         { "[Enter] Start   [L] Arabic / English", "[Enter] ابدأ   [L] عربي / إنجليزي" },
-        { "A new animal was born", "اتولد حيوان جديد" },
-        { "Water trough filled", "حوض المياه اتملى" },
-        { "Pen cleaned", "الحظيرة اتنضفت" },
-        { "Healthy", "بصحة كويسة" },
+        { "A new animal was born", "انولد حيوان جديد" },
+        { "Water trough filled", "تعبّى حوض الماء" },
+        { "Pen cleaned", "تنظّفت الحظيرة" },
+        { "Healthy", "صحته زينة" },
         { "Weak", "ضعيف" },
-        { "Sick", "عيان" },
+        { "Sick", "مريض" },
         { "Animals", "الحيوانات" },
-        { "Clean", "النضافة" },
-        { "No feed", "مفيش علف" },
-        { "[E] Fill water trough", "[E] املأ حوض المياه" },
-        { "[E] Clean the pen", "[E] نضّف الحظيرة" },
-        { "[E] Drive tractor", "[E] سوق الجرار" },
+        { "Clean", "النظافة" },
+        { "No feed", "ما فيه علف" },
+        { "[E] Fill water trough", "[E] عبّي حوض الماء" },
+        { "[E] Clean the pen", "[E] نظّف الحظيرة" },
+        { "[E] Drive tractor", "[E] سُق الجرار" },
         { "Implement", "المعدّة" },
         { "No implement", "بدون معدّة" },
         { "Plow", "محراث" },
@@ -84,13 +84,13 @@ public static class Loc
         { "Harvester", "حصّادة" },
         { "[Q] Change implement   [E] Exit   [R] Reset", "[Q] غيّر المعدّة   [E] انزل   [R] تعديل" },
         { "Fuel {0}%", "الوقود {0}%" },
-        { "Out of fuel - press R to tow (150 EGP)", "الوقود خلص - اضغط R للسحب (150 جنيه)" },
-        { "Refuelled {0} L for {1} EGP", "تم التموين {0} لتر بـ {1} جنيه" },
-        { "Towed to the loading bay for {0} EGP", "اتسحبت لمنطقة التحميل بـ {0} جنيه" },
+        { "Out of fuel - press R to tow (150 SAR)", "خلص الوقود - اضغط R للسحب (150 ريال)" },
+        { "Refuelled {0} L for {1} SAR", "تم التموين {0} لتر بـ {1} ريال" },
+        { "Towed to the loading bay for {0} SAR", "انسحبت لمنطقة التحميل بـ {0} ريال" },
         { "Contract complete", "العقد اكتمل" },
         { "Contract expired", "العقد انتهى" },
         { "New contract", "عقد جديد" },
-        { "Market prices today", "أسعار السوق النهارده" },
+        { "Market prices today", "أسعار السوق اليوم" },
         { "Contracts", "العقود" },
         { "due day", "آخر يوم" },
         { "[M] close", "[M] إغلاق" },
@@ -107,51 +107,51 @@ public static class Loc
         { "[E] Plow field", "[E] احرث الأرض" },
         { "[E] Plant", "[E] ازرع" },
         { "[E] Water", "[E] اسقِ" },
-        { "No seeds - buy them at a Farm Shop", "مفيش بذور - اشتريها من محل المزرعة" },
+        { "No seeds - buy them at a Farm Shop", "ما فيه بذور - اشترها من محل المزرعة" },
         { "In season", "في موسمه" },
-        { "Out of season - slow", "مش موسمه - بطيء" },
+        { "Out of season - slow", "مو موسمه - بطيء" },
         { "Field plowed", "تم حرث الأرض" },
         { "Planted", "تمت زراعة" },
-        { "Start the well first to get water", "شغّل البئر الأول عشان المياه" },
+        { "Start the well first to get water", "شغّل البئر أول عشان الماء" },
         { "Field watered", "تم ري الحقل" },
         { "Harvested", "تم حصاد" },
         { "kg", "كجم" },
         { "Seeds", "بذور" },
         { "[0-9] or click to buy   [Esc] close", "[0-9] أو اضغط للشراء   [Esc] إغلاق" },
         { "All missions complete - free play", "كل المهمات اكتملت - لعب حر" },
-        { "Bigger truck bed", "صندوق عربية أكبر" },
+        { "Bigger truck bed", "صندوق وانيت أكبر" },
         { "Bought", "تم الشراء" },
-        { "Bump!", "خبطة!" },
+        { "Bump!", "صدمة!" },
         { "Cargo {0}/{1} kg", "الحمولة {0}/{1} كجم" },
         { "Collected", "تم الجمع" },
-        { "EGP", "جنيه" },
+        { "SAR", "ريال" },
         { "Farm Shop", "محل المزرعة" },
-        { "Farm storage is empty - harvest first", "مخزن المزرعة فاضي - احصد الأول" },
+        { "Farm storage is empty - harvest first", "مخزن المزرعة فاضي - احصد أول" },
         { "Faster growth", "نمو أسرع" },
         { "Fully upgraded", "تمت الترقية بالكامل" },
         { "Graphics: High", "الجرافيكس: عالي" },
         { "Graphics: Low", "الجرافيكس: منخفض" },
-        { "Loaded {0} kg onto the truck", "تم تحميل {0} كجم على العربية" },
+        { "Loaded {0} kg onto the truck", "تم تحميل {0} كجم على الوانيت" },
         { "Loading bay", "منطقة التحميل" },
         { "Market", "السوق" },
         { "Mission", "مهمة" },
         { "Mission complete", "المهمة اكتملت" },
-        { "Money: {0} EGP", "الفلوس: {0} جنيه" },
-        { "Money: {0} EGP   Feed: {1}", "الفلوس: {0} جنيه   العلف: {1}" },
+        { "Money: {0} SAR", "الرصيد: {0} ريال" },
+        { "Money: {0} SAR   Feed: {1}", "الرصيد: {0} ريال   العلف: {1}" },
         { "New game started", "بدأت لعبة جديدة" },
-        { "No feed - buy feed at the shop", "مفيش علف - اشتري علف من المحل" },
-        { "Not enough money", "الفلوس مش كفاية" },
-        { "Nothing to collect yet", "مفيش حاجة تتجمع لسه" },
+        { "No feed - buy feed at the shop", "ما فيه علف - اشترِ علف من المحل" },
+        { "Not enough money", "الفلوس ما تكفي" },
+        { "Nothing to collect yet", "ما فيه شي تجمعه للحين" },
         { "Paused", "إيقاف مؤقت" },
         { "Reward", "المكافأة" },
-        { "Sold the load for {0} EGP", "اتباعت الحمولة بـ {0} جنيه" },
+        { "Sold the load for {0} SAR", "انباعت الحمولة بـ {0} ريال" },
         { "Storage: {0} kg   Feed: {1}", "المخزن: {0} كجم   العلف: {1}" },
-        { "The pen is full for this animal", "الحظيرة مليانة من الحيوان ده" },
-        { "Truck is full - drive to the market", "العربية مليانة - روح السوق" },
+        { "The pen is full for this animal", "الحظيرة مليانة من هالحيوان" },
+        { "Truck is full - drive to the market", "الوانيت مليان - رح السوق" },
         { "[Backspace] New game (clears saved progress)", "[Backspace] لعبة جديدة (يمسح التقدم المحفوظ)" },
         { "[E] Collect animal products", "[E] اجمع منتجات الحيوانات" },
-        { "[E] Drive truck", "[E] سوق العربية" },
-        { "[E] Exit   [Space] Brake   [R] Reset truck", "[E] انزل   [Space] فرامل   [R] عدّل العربية" },
+        { "[E] Drive truck", "[E] سُق الوانيت" },
+        { "[E] Exit   [Space] Brake   [R] Reset truck", "[E] انزل   [Space] فرامل   [R] عدّل الوانيت" },
         { "[E] Open shop", "[E] افتح المحل" },
         { "[P] Resume", "[P] استكمال" },
         { "{0} km/h", "{0} كم/س" },
@@ -180,10 +180,10 @@ public static class Loc
     private static readonly Dictionary<string, string> englishLong = new Dictionary<string, string>
     {
         { "STORY_BODY",
-            "Your grandfather left you his small farm in the Nile Delta: two greenhouses, an old well and empty land.\n\n" +
+            "Your grandfather left you his small farm in Al-Qassim: two greenhouses, an old well and empty land.\n\n" +
             "Get the water running, bring the greenhouses back to life, plow and plant the fields, raise animals " +
             "and drive your harvest to the market. Follow the orange marker for your next task.\n\n" +
-            "Make Mazraa the finest farm in the Delta." },
+            "Make Mazraa the finest farm in Al-Qassim." },
         { "HELP_BODY",
             "WASD - move    Mouse - look    E - interact\n" +
             "Start the well, then use the Control Station to optimize\n" +
@@ -203,10 +203,10 @@ public static class Loc
     private static readonly Dictionary<string, string> arabicLong = new Dictionary<string, string>
     {
         { "STORY_BODY",
-            "جدّك ساب لك مزرعته الصغيرة في دلتا النيل: صوبتين وبئر قديم وأرض فاضية.\n\n" +
-            "شغّل المياه، رجّع الصوب للحياة، احرث وازرع الحقول، ربّي الحيوانات " +
-            "ووصّل محصولك للسوق. اتبع العلامة البرتقالي عشان تعرف المهمة الجاية.\n\n" +
-            "خلّي المزرعة أحسن مزرعة في الدلتا." },
+            "جدّك ترك لك مزرعته الصغيرة في القصيم: بيتين محميين وبئر قديم وأرض فاضية.\n\n" +
+            "شغّل الماء، رجّع البيوت المحمية للحياة، احرث وازرع الحقول، ربِّ الحيوانات " +
+            "ووصّل محصولك للسوق. اتبع العلامة البرتقالية عشان تعرف المهمة الجاية.\n\n" +
+            "خلّ مزرعتك أفضل مزرعة في القصيم." },
         { "HELP_BODY",
             "WASD - حركة    الماوس - نظر    E - تفاعل\n" +
             "شغّل البئر ثم استخدم محطة التحكم لتحسين\n" +
@@ -214,13 +214,13 @@ public static class Loc
             "الأحواض السليمة (الخضراء) تنمو - اضغط E على الحوض الناضج للحصاد.\n" +
             "Esc - إغلاق    H - مساعدة    L - عربي/إنجليزي\n" +
             "T - بدء/إيقاف سيناريو تدريب    N - السيناريو التالي\n" +
-            "العربية: E ركوب/نزول، WASD قيادة، Space فرامل، R تعديل. الأخضر تحميل، الذهبي بيع.\n" +
-            "المحلات فيها علف وحيوانات وترقيات. اجمع البيض واللبن والصوف من صندوق الحظيرة.\n" +
+            "الوانيت: E ركوب/نزول، WASD قيادة، Space فرامل، R تعديل. الأخضر تحميل، الذهبي بيع.\n" +
+            "المحلات فيها علف وحيوانات وترقيات. اجمع البيض والحليب والصوف من صندوق الحظيرة.\n" +
             "G - جودة الجرافيكس    P - إيقاف / لعبة جديدة\n" +
-            "الحقول: E للحرث والزراعة (اشتري بذور) والري (البئر لازم يشتغل) والحصاد. المواسم والطقس بيأثروا على النمو.\n" +
-            "M - أسعار السوق وعقود المشترين (العقود بتدفع زيادة لما تبيع في السوق)\n" +
-            "الجرار: Q لتغيير المعدّة (محراث، بذّارة، حصّادة) - سوقه فوق الحقل. اركن على المنطقة الخضراء للتموين.\n" +
-            "الحيوانات محتاجة علف وحوض مياه مليان وحظيرة نضيفة (باب الجرن). الأزواج المبسوطة بتخلّف." },
+            "الحقول: E للحرث والزراعة (اشترِ بذور) والري (البئر لازم يشتغل) والحصاد. المواسم والطقس تأثر على النمو.\n" +
+            "M - أسعار السوق وعقود المشترين (العقود تدفع أكثر لما تبيع في السوق)\n" +
+            "الجرار: Q لتغيير المعدّة (محراث، بذّارة، حصّادة) - سُقه فوق الحقل. وقّف على المنطقة الخضراء للتموين.\n" +
+            "الحيوانات تحتاج علف وحوض ماء مليان وحظيرة نظيفة (باب الحظيرة). الأزواج المرتاحة تتكاثر." },
     };
 
     private static TMP_FontAsset arabicFont;

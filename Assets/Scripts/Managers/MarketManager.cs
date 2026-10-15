@@ -26,9 +26,9 @@ public class MarketManager : MonoBehaviour
 
     private static readonly (string en, string ar)[] Buyers =
     {
-        ("Cairo Fresh Market", "سوق القاهرة للخضار"), ("Nile Hotel Kitchen", "مطبخ فندق النيل"),
-        ("Delta Food Factory", "مصنع الدلتا للأغذية"), ("Alexandria Exporters", "مصدّرين إسكندرية"),
-        ("School Meals Program", "برنامج وجبات المدارس"), ("Giza Supermarket", "سوبرماركت الجيزة"),
+        ("Riyadh Central Market", "سوق الرياض المركزي"), ("Qassim Hotel Kitchen", "مطبخ فندق القصيم"),
+        ("Najd Food Factory", "مصنع نجد للأغذية"), ("Jeddah Exporters", "مصدّرين جدة"),
+        ("School Meals Program", "برنامج وجبات المدارس"), ("Dammam Supermarket", "سوبرماركت الدمام"),
     };
 
     private void Awake() => Instance = this;
@@ -49,7 +49,7 @@ public class MarketManager : MonoBehaviour
 
     private void OnDestroy() { WorldClock.DayStarted -= OnNewDay; if (Instance == this) Instance = null; }
 
-    /// <summary>Today's price per unit (EGP).</summary>
+    /// <summary>Today's price per unit (SAR).</summary>
     public float Price(string goodId)
     {
         var g = EconomyManager.Instance?.Good(goodId);
@@ -70,7 +70,7 @@ public class MarketManager : MonoBehaviour
         return 1.3f;
     }
 
-    /// <summary>Sell goods: contracts first (bonus price), the rest at today's price. Returns EGP earned.</summary>
+    /// <summary>Sell goods: contracts first (bonus price), the rest at today's price. Returns SAR earned.</summary>
     public int Sell(Dictionary<string, float> cargo, List<string> messages)
     {
         float earned = 0f;

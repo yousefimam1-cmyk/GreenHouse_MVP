@@ -28,7 +28,7 @@ public class FeedbackFX : MonoBehaviour
     private void OnDelivered(float kg, int money)
     {
         var truck = FarmTruck.Instance;
-        if (truck != null) Float(truck.transform.position + Vector3.up * 3f, "+" + money.ToString("N0") + " EGP", new Color(1f, 0.8f, 0.25f));
+        if (truck != null) Float(truck.transform.position + Vector3.up * 3f, "+" + money.ToString("N0") + " SAR", new Color(1f, 0.8f, 0.25f));
     }
 
     public static void Float(Vector3 pos, string text, Color color)

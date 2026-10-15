@@ -7,9 +7,9 @@
       "target": 1,
       "reward": 150,
       "titleEn": "Get the water running",
-      "titleAr": "شغّل المياه",
+      "titleAr": "شغّل الماء",
       "descEn": "Start the well next to Greenhouse 1.",
-      "descAr": "شغّل البئر بجوار الصوبة 1."
+      "descAr": "شغّل البئر جنب البيت المحمي 1."
     },
     {
       "id": "optimize",
@@ -17,7 +17,7 @@
       "target": 2,
       "reward": 200,
       "titleEn": "Tune the greenhouse",
-      "titleAr": "اضبط الصوبة",
+      "titleAr": "اضبط البيت المحمي",
       "descEn": "Optimize 2 modules at a Control Station.",
       "descAr": "حسّن وحدتين من محطة التحكم."
     },
@@ -27,9 +27,9 @@
       "target": 1,
       "reward": 300,
       "titleEn": "A healthy greenhouse",
-      "titleAr": "صوبة سليمة",
+      "titleAr": "بيت محمي سليم",
       "descEn": "Make every bed in one greenhouse healthy.",
-      "descAr": "اجعل كل أحواض صوبة واحدة سليمة."
+      "descAr": "خلّ كل أحواض بيت محمي واحد سليمة."
     },
     {
       "id": "harvest1",
@@ -59,7 +59,7 @@
       "titleEn": "Field harvest",
       "titleAr": "حصاد الحقل",
       "descEn": "Keep the field watered and harvest 60 kg when it is ripe.",
-      "descAr": "اسقِ الحقل واحصد 60 كجم لما ينضج."
+      "descAr": "اسقِ الحقل واحصد 60 كجم إذا نضج."
     },
     {
       "id": "tractor",
@@ -67,9 +67,9 @@
       "target": 2,
       "reward": 350,
       "titleEn": "Bigger fields, bigger tools",
-      "titleAr": "أدوات أكبر",
+      "titleAr": "معدات أكبر",
       "descEn": "Drive the red tractor with the plow (Q) over 2 field plots.",
-      "descAr": "سوق الجرار الأحمر بالمحراث (Q) فوق قطعتين أرض."
+      "descAr": "سُق الجرار الأحمر بالمحراث (Q) فوق قطعتين أرض."
     },
     {
       "id": "seed",
@@ -77,9 +77,9 @@
       "target": 4,
       "reward": 300,
       "titleEn": "Mechanised farm",
-      "titleAr": "مزرعة بالمكن",
+      "titleAr": "مزرعة بالمكائن",
       "descEn": "Do 4 jobs with tractor implements (plow, seeder, harvester).",
-      "descAr": "اعمل 4 شغلانات بمعدات الجرار (محراث، بذّارة، حصّادة)."
+      "descAr": "سوِّ 4 أشغال بمعدات الجرار (محراث، بذّارة، حصّادة)."
     },
     {
       "id": "truck",
@@ -87,9 +87,9 @@
       "target": 1,
       "reward": 100,
       "titleEn": "Meet the farm truck",
-      "titleAr": "تعرّف على عربية المزرعة",
-      "descEn": "Get in the orange truck by the loading bay.",
-      "descAr": "اركب العربية البرتقالي جنب منطقة التحميل."
+      "titleAr": "تعرّف على وانيت المزرعة",
+      "descEn": "Get in the orange pickup by the loading bay.",
+      "descAr": "اركب الوانيت البرتقالي جنب منطقة التحميل."
     },
     {
       "id": "load1",
@@ -97,9 +97,9 @@
       "target": 50,
       "reward": 100,
       "titleEn": "Load up",
-      "titleAr": "حمّل العربية",
+      "titleAr": "حمّل الوانيت",
       "descEn": "Park on the green loading bay to load 50 kg.",
-      "descAr": "اركن على منطقة التحميل الخضراء لتحميل 50 كجم."
+      "descAr": "وقّف على منطقة التحميل الخضراء وحمّل 50 كجم."
     },
     {
       "id": "deliver1",
@@ -109,7 +109,7 @@
       "titleEn": "To the market",
       "titleAr": "إلى السوق",
       "descEn": "Drive to the gold market pad and sell 50 kg.",
-      "descAr": "سوق إلى منطقة السوق الذهبية وبيع 50 كجم."
+      "descAr": "سُق لمنطقة السوق الذهبية وبع 50 كجم."
     },
     {
       "id": "contract",
@@ -127,9 +127,9 @@
       "target": 1,
       "reward": 100,
       "titleEn": "Stock up on feed",
-      "titleAr": "اشتري علف",
+      "titleAr": "اشترِ علف",
       "descEn": "Buy animal feed at a Farm Shop.",
-      "descAr": "اشتري علف من محل المزرعة."
+      "descAr": "اشترِ علف من محل المزرعة."
     },
     {
       "id": "chicken",
@@ -139,7 +139,7 @@
       "titleEn": "First animals",
       "titleAr": "أول حيوانات",
       "descEn": "Buy an animal for the pen.",
-      "descAr": "اشتري حيوان للحظيرة."
+      "descAr": "اشترِ حيوان للحظيرة."
     },
     {
       "id": "collect",
@@ -157,9 +157,9 @@
       "target": 1,
       "reward": 150,
       "titleEn": "Happy animals",
-      "titleAr": "حيوانات مبسوطة",
+      "titleAr": "حيوانات مرتاحة",
       "descEn": "Clean the pen at the barn door and keep the water trough full.",
-      "descAr": "نضّف الحظيرة من باب الجرن وخلي حوض المياه مليان."
+      "descAr": "نظّف الحظيرة من بابها وخلّ حوض الماء مليان."
     },
     {
       "id": "allhealthy",
@@ -169,7 +169,7 @@
       "titleEn": "Whole farm thriving",
       "titleAr": "المزرعة كلها بخير",
       "descEn": "Make all crop beds in both greenhouses healthy.",
-      "descAr": "اجعل كل الأحواض في الصوبتين سليمة."
+      "descAr": "خلّ كل الأحواض في البيتين المحميين سليمة."
     },
     {
       "id": "upgrade",
@@ -179,7 +179,7 @@
       "titleEn": "Invest in the farm",
       "titleAr": "استثمر في المزرعة",
       "descEn": "Buy a truck or growth upgrade.",
-      "descAr": "اشتري ترقية للعربية أو للنمو."
+      "descAr": "اشترِ ترقية للوانيت أو للنمو."
     },
     {
       "id": "deliver2",
@@ -189,7 +189,7 @@
       "titleEn": "Big supplier",
       "titleAr": "مورّد كبير",
       "descEn": "Sell 400 kg at the market.",
-      "descAr": "بيع 400 كجم في السوق."
+      "descAr": "بع 400 كجم في السوق."
     },
     {
       "id": "money",
@@ -198,8 +198,8 @@
       "reward": 1500,
       "titleEn": "Profitable farm",
       "titleAr": "مزرعة رابحة",
-      "descEn": "Earn 10,000 EGP from sales.",
-      "descAr": "اكسب 10,000 جنيه من المبيعات."
+      "descEn": "Earn 10,000 SAR from sales.",
+      "descAr": "اكسب 10,000 ريال من المبيعات."
     },
     {
       "id": "breed",
@@ -209,7 +209,7 @@
       "titleEn": "New arrivals",
       "titleAr": "مواليد جديدة",
       "descEn": "Keep a pair of animals fed, watered and clean until one is born.",
-      "descAr": "خلي زوج حيوانات متأكّل ومتشرّب ونضيف لحد ما يتولد واحد."
+      "descAr": "خلّ زوج حيوانات شبعان ومرتوي ونظيف لين ينولد واحد."
     },
     {
       "id": "season",
@@ -219,7 +219,7 @@
       "titleEn": "Through the seasons",
       "titleAr": "عبر المواسم",
       "descEn": "Keep the farm running until day 6, when the season changes.",
-      "descAr": "خلي المزرعة شغالة لحد اليوم 6 لما الموسم يتغير."
+      "descAr": "خلّ المزرعة شغالة لين اليوم 6 لما يتغير الموسم."
     },
     {
       "id": "zoo",
@@ -229,7 +229,7 @@
       "titleEn": "Mixed farm",
       "titleAr": "مزرعة متكاملة",
       "descEn": "Own chickens, sheep and cows.",
-      "descAr": "امتلك فراخ وخرفان وبقر."
+      "descAr": "امتلك دجاج وخرفان وبقر."
     },
     {
       "id": "harvest",
@@ -246,10 +246,10 @@
       "type": "haveMoney",
       "target": 25000,
       "reward": 2500,
-      "titleEn": "Delta's finest farm",
-      "titleAr": "أحسن مزرعة في الدلتا",
-      "descEn": "Have 25,000 EGP in the bank.",
-      "descAr": "يكون معاك 25,000 جنيه."
+      "titleEn": "Al-Qassim's finest farm",
+      "titleAr": "أفضل مزرعة في القصيم",
+      "descEn": "Have 25,000 SAR in the bank.",
+      "descAr": "يكون عندك 25,000 ريال."
     }
   ]
 }

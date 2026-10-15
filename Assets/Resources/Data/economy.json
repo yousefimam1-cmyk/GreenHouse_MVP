@@ -1,5 +1,5 @@
 {
-  "notes": "Game economy. Prices are game-balance values in EGP, not market quotes. weight = kg of truck space per unit. Animals produce 'amount' of their product every 'interval' seconds while the pen trough has feed (feedPerCycle consumed per cycle). fieldCrops: open-field crops; seasons lists when they grow at full speed (Egyptian calendar: wheat/onion winter, watermelon summer); growSeconds is real time at full water and season; yieldKg per plot.",
+  "notes": "Game economy. Prices are game-balance values in SAR, not market quotes. weight = kg of truck space per unit. Animals produce 'amount' of their product every 'interval' seconds while the pen trough has feed (feedPerCycle consumed per cycle). fieldCrops: open-field crops; seasons lists when they grow at full speed (Saudi climate: main season Oct-Apr; wheat/onion/potato in the cool months, watermelon spring and autumn, little open-field growth in the summer heat); growSeconds is real time at full water and season; yieldKg per plot.",
   "goods": [
     {
       "id": "crops",
@@ -13,7 +13,7 @@
     {
       "id": "milk",
       "nameEn": "Milk",
-      "nameAr": "لبن",
+      "nameAr": "حليب",
       "unitEn": "L",
       "unitAr": "لتر",
       "price": 25,
@@ -67,7 +67,7 @@
     {
       "id": "watermelon",
       "nameEn": "Watermelon",
-      "nameAr": "بطيخ",
+      "nameAr": "حبحب",
       "unitEn": "kg",
       "unitAr": "كجم",
       "price": 6,
@@ -78,7 +78,7 @@
     {
       "id": "chicken",
       "nameEn": "Chicken",
-      "nameAr": "فرخة",
+      "nameAr": "دجاجة",
       "price": 300,
       "product": "eggs",
       "amount": 1,
@@ -165,11 +165,11 @@
     {
       "id": "watermelon",
       "nameEn": "Watermelon",
-      "nameAr": "بطيخ",
+      "nameAr": "حبحب",
       "seedPrice": 200,
       "seasons": [
         "spring",
-        "summer"
+        "autumn"
       ],
       "growSeconds": 280,
       "yieldKg": 120,

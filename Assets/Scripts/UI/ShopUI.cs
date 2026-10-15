@@ -187,14 +187,14 @@ public class ShopUI : MonoBehaviour
             else if (id.StartsWith("seed_")) detail = " (" + eco.Seeds(id.Substring(5)) + ")";
             else if (id == "capacity") detail = " (" + eco.TruckCapacity.ToString("F0") + " kg)";
             else if (id == "growth") detail = " (x" + EconomyManager.GrowthSpeed.ToString("F2") + ")";
-            string priceText = price < 0 ? Loc.Raw("Fully upgraded") : price.ToString("N0") + " " + Loc.Raw("EGP");
+            string priceText = price < 0 ? Loc.Raw("Fully upgraded") : price.ToString("N0") + " " + Loc.Raw("SAR");
             label.text = "<color=#FF9A3C>" + ((i + 1) % 10) + "</color>   " + Loc.Display(Name(id) + detail + "   " + priceText);
             label.alignment = Loc.IsArabic ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
             bool affordable = price >= 0 && eco.Money >= price;
             btn.interactable = affordable;
             label.color = affordable ? Color.white : new Color(1f, 1f, 1f, 0.45f);
         }
-        footer.text = Loc.T("Money: {0} EGP   Feed: {1}", eco.Money.ToString("N0"), eco.Feed.ToString("F1")) + "\n" + Loc.T("[0-9] or click to buy   [Esc] close");
+        footer.text = Loc.T("Money: {0} SAR   Feed: {1}", eco.Money.ToString("N0"), eco.Feed.ToString("F1")) + "\n" + Loc.T("[0-9] or click to buy   [Esc] close");
         footer.alignment = title.alignment;
     }
 }

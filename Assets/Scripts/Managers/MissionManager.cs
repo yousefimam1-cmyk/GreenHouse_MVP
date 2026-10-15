@@ -156,7 +156,7 @@ public class MissionManager : MonoBehaviour
         SaveData.Save();
         if (EconomyManager.Instance != null) EconomyManager.Instance.AddMoney(m.reward);
         if (UIManager.Instance != null)
-            UIManager.Instance.ShowAlertMessage(Loc.Display(Loc.Raw("Mission complete") + ": " + Title(m) + "  +" + m.reward.ToString("N0") + " " + Loc.Raw("EGP")));
+            UIManager.Instance.ShowAlertMessage(Loc.Display(Loc.Raw("Mission complete") + ": " + Title(m) + "  +" + m.reward.ToString("N0") + " " + Loc.Raw("SAR")));
         if (AudioManager.Instance != null) AudioManager.Instance.PlayHarvest();
         GameEvents.RaiseMissionCompleted(m);
         if (Current != null) GameEvents.RaiseMissionStarted(Current);

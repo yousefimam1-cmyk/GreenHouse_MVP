@@ -55,7 +55,7 @@ public class DeliveryZone : MonoBehaviour
                 var notes = new System.Collections.Generic.List<string>();
                 int earned = eco.SellAll(truck.Cargo, notes);
                 truck.SaveCargo();
-                notes.Insert(0, Loc.T("Sold the load for {0} EGP", earned.ToString("N0")));
+                notes.Insert(0, Loc.T("Sold the load for {0} SAR", earned.ToString("N0")));
                 Alert(string.Join("\n", notes));
             }
         }
@@ -81,7 +81,7 @@ public class DeliveryZone : MonoBehaviour
         {
             int cost = Mathf.CeilToInt(added) * FuelPricePerLitre;
             eco.AddMoney(-cost);
-            Alert(Loc.T("Refuelled {0} L for {1} EGP", added.ToString("F0"), cost.ToString("N0")));
+            Alert(Loc.T("Refuelled {0} L for {1} SAR", added.ToString("F0"), cost.ToString("N0")));
         }
         else Alert(Loc.T("Not enough money"));
     }
