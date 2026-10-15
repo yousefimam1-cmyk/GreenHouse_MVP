@@ -290,7 +290,7 @@ public class FieldPlot : Interactable
                 plant.localRotation = Quaternion.Euler(0, (x * 37 + z * 61) % 360, 0);
                 string modelName = PlantModel(CropId, stage);
                 float fit = stage == 1 ? 0.45f : stage == 2 ? 0.65f : 0.9f;
-                if (modelName != null && Build.TryModel("Crops/" + modelName, plant, fit, 0f) != null) { }
+                if (CropVisuals.Spawn(CropId, stage / 4f, plant, fit) != null || (modelName != null && Build.TryModel("Crops/" + modelName, plant, fit, 0f) != null)) { }
                 else if (CropId == "wheat")
                 {
                     var stalk = stage == 4 ? fruit : leaf;

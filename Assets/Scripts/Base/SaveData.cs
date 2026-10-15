@@ -107,7 +107,7 @@ public static class SaveData
         Load();
         foreach (var k in new List<string>(map.Keys))
         {
-            if (k == "mazraa.language" || k == "mazraa.gfxHigh") continue; // keep settings
+            if (k == "mazraa.language" || k.StartsWith("mazraa.gfx") || k.StartsWith("mazraa.vol.")) continue; // keep settings
             if (homeMap == null) PlayerPrefs.DeleteKey(k);
             map.Remove(k);
         }

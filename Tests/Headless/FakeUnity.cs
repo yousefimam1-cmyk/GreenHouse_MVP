@@ -294,6 +294,8 @@ namespace UnityEngine
         public void Rotate(Vector3 euler) { localRotation = localRotation * Quaternion.Euler(euler); }
         public void LookAt(Vector3 t) { var d = t - position; if (d.sqrMagnitude > 0) rotation = Quaternion.LookRotation(d); }
         public void LookAt(Transform t) => LookAt(t.position);
+        public Matrix4x4 localToWorldMatrix => Matrix4x4.identity; public Matrix4x4 worldToLocalMatrix => Matrix4x4.identity;
+        public bool IsChildOf(Transform p) { for (var t = this; t != null; t = t._parent) if (t == p) return true; return false; }
         public Transform Find(string n) => children.FirstOrDefault(c => c.name == n || c.gameObject.name == n);
         internal T[] GetComponentsInChildren<T>(bool inc)
         {
@@ -450,6 +452,9 @@ namespace UnityEngine
         public static int RoundToInt(float v) => (int)Math.Round(v, MidpointRounding.ToEven);
         public static int FloorToInt(float v) => (int)Math.Floor(v); public static int CeilToInt(float v) => (int)Math.Ceiling(v);
         public static float Floor(float v) => (float)Math.Floor(v);
+        public static float Pow(float a, float b) => (float)Math.Pow(a, b);
+        public static float InverseLerp(float a, float b, float v) => a == b ? 0 : Clamp01((v - a) / (b - a));
+        public static float PerlinNoise(float x, float y) => 0.5f + 0.25f * (float)(Math.Sin(x * 1.7 + y * 0.3) + Math.Sin(y * 1.3 - x * 0.2)) * 0.5f;
     }
     public static class Random
     {
@@ -478,6 +483,7 @@ namespace UnityEngine
         public static RuntimePlatform platform => RuntimePlatform.LinuxEditor;
         public static bool isEditor => true;
         public static void Quit() { }
+        public static bool isMobilePlatform => false;
     }
     public static class PlayerPrefs
     {
@@ -527,20 +533,25 @@ namespace UnityEngine
     public class Material : Object
     {
         public Material(Shader s) { } public Material(Material m) { }
-        public Color color; public MaterialGlobalIlluminationFlags globalIlluminationFlags;
+        public Color color; public MaterialGlobalIlluminationFlags globalIlluminationFlags; public int renderQueue; public Texture mainTexture; public void SetTexture(string n, Texture t) { mainTexture = t; }
         public void SetColor(string n, Color c) { } public void SetFloat(string n, float v) { } public float GetFloat(string n) => 1; public bool HasProperty(string n) => true; public void EnableKeyword(string k) { }
     }
-    public class Mesh : Object { public int subMeshCount = 1; }
+    public class Mesh : Object { public int subMeshCount = 1; public Bounds bounds; public int vertexCount => vertices.Length; public void CombineMeshes(CombineInstance[] c, bool merge, bool useMatrices) { } public Vector3[] vertices = new Vector3[0]; public int[] triangles = new int[0]; public Rendering.IndexFormat indexFormat; public void RecalculateNormals() { } public void RecalculateBounds() { } }
+    public class MeshCollider : Collider { public Mesh sharedMesh; }
+    public struct CombineInstance { public Mesh mesh; public Matrix4x4 transform; public int subMeshIndex; }
+    public struct Matrix4x4 { public static Matrix4x4 identity => new Matrix4x4(); public static Matrix4x4 operator *(Matrix4x4 a, Matrix4x4 b) => a; }
+    public class TerrainCollider : Collider { }
+    public static class StaticBatchingUtility { public static void Combine(GameObject root) { } }
     public class MeshFilter : Component { public Mesh mesh, sharedMesh = new Mesh(); }
     public class Renderer : Component
     {
-        public Material material, sharedMaterial; public Material[] materials, sharedMaterials;
+        public bool enabled = true; public Material material, sharedMaterial; public Material[] materials, sharedMaterials;
         public Rendering.ShadowCastingMode shadowCastingMode; public bool receiveShadows;
         public Bounds bounds => new Bounds(transform.position, transform.lossyScale);
     }
     public class MeshRenderer : Renderer { }
     public class SkinnedMeshRenderer : Renderer { }
-    public class Collider : Component { public bool enabled = true; public PhysicsMaterial material; }
+    public class Collider : Component { public bool enabled = true; public PhysicsMaterial material; public Bounds bounds => new Bounds(transform.position, Vector3.Scale(transform.lossyScale, this is BoxCollider b ? b.size : Vector3.one)); }
     public class BoxCollider : Collider { public Vector3 center, size; }
     public class CharacterController : Collider { }
     public class PhysicsMaterial : Object { public PhysicsMaterial(string n) { name = n; } public float dynamicFriction, staticFriction; public PhysicsMaterialCombine frictionCombine; }
@@ -591,8 +602,9 @@ namespace UnityEngine
         public Vector3 WorldToScreenPoint(Vector3 p) => new Vector3(0, 0, 1);
     }
     public class AudioListener : Behaviour { public static float volume = 1f; }
-    public class AudioClip : Object { }
-    public class AudioSource : Behaviour { public float volume = 1f; public bool isPlaying; public void Play() => isPlaying = true; public void PlayOneShot(AudioClip c) { } }
+    public class AudioClip : Object { public int samples, channels, frequency; public float[] data; public float length => frequency > 0 ? samples / (float)frequency : 0; public static AudioClip Create(string n, int len, int ch, int freq, bool stream) => new AudioClip { name = n, samples = len, channels = ch, frequency = freq }; public bool SetData(float[] d, int off) { data = d; return true; } }
+    public class AudioSource : Behaviour { public bool isPlaying, loop, playOnAwake = true; public AudioClip clip; public float volume = 1, pitch = 1, spatialBlend, dopplerLevel = 1, minDistance = 1, maxDistance = 500; public AudioRolloffMode rolloffMode; public int oneShots; public void Play() => isPlaying = true; public void Stop() => isPlaying = false; public void PlayOneShot(AudioClip c) { oneShots++; } public void PlayOneShot(AudioClip c, float v) { oneShots++; } }
+    public enum AudioRolloffMode { Logarithmic, Linear, Custom }
     public enum WrapMode { Once, Loop }
     public class AnimationState { public string name; public WrapMode wrapMode; }
     public class Animation : Behaviour, IEnumerable { public IEnumerator GetEnumerator() { yield break; } public void CrossFade(string n, float t) { } }
@@ -616,6 +628,9 @@ namespace UnityEngine
     }
     public class ParticleSystemRenderer : Renderer { public ParticleSystemRenderMode renderMode; public float lengthScale; }
 
+    public enum TextureWrapMode { Repeat, Clamp }
+    public class Sprite : Object { public Texture2D texture; public static Sprite Create(Texture2D t, Rect r, Vector2 pivot, float ppu) => new Sprite { texture = t }; }
+
     // attributes
     public class SerializeField : Attribute { }
     public class HeaderAttribute : Attribute { public HeaderAttribute(string s) { } }
@@ -632,6 +647,8 @@ namespace UnityEngine.Serialization { public class FormerlySerializedAsAttribute
 namespace UnityEngine.Rendering
 {
     public enum ShadowCastingMode { Off, On }
+    public enum IndexFormat { UInt16, UInt32 }
+    public enum BlendMode { Zero, One, DstColor, SrcColor, OneMinusDstColor, SrcAlpha, OneMinusSrcColor, DstAlpha, OneMinusDstAlpha, SrcAlphaSaturate, OneMinusSrcAlpha }
     public class RenderPipeline { }
     public abstract class RenderPipelineAsset : UnityEngine.ScriptableObject { public abstract RenderPipeline CreatePipeline(); }
     public static class GraphicsSettings { public static RenderPipelineAsset currentRenderPipeline; }

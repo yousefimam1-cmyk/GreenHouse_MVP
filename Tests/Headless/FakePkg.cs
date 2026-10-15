@@ -3,7 +3,7 @@ using System;
 namespace UnityEngine.UI
 {
     public class Graphic : UnityEngine.EventSystems.UIBehaviour { public Color color; public bool raycastTarget; public RectTransform rectTransform => (RectTransform)transform; }
-    public class Image : Graphic { }
+    public class Image : Graphic { public UnityEngine.Sprite sprite; }
     public class Button : UnityEngine.EventSystems.UIBehaviour { public bool interactable; public UnityEngine.Events.UnityEvent onClick = new UnityEngine.Events.UnityEvent(); }
     public class LayoutElement : UnityEngine.EventSystems.UIBehaviour { public float minHeight; public bool ignoreLayout; }
     public class GraphicRaycaster : UnityEngine.EventSystems.UIBehaviour { }
@@ -71,7 +71,7 @@ namespace UnityEngine.Rendering.Universal
     public enum TonemappingMode { None, Neutral, ACES }
     public class Tonemapping : VolumeComponent { public VolumeParameter<TonemappingMode> mode; }
     public class Bloom : VolumeComponent { public VolumeParameter<float> intensity, threshold, scatter; }
-    public class ColorAdjustments : VolumeComponent { public VolumeParameter<float> postExposure, contrast, saturation; }
+    public class ColorAdjustments : VolumeComponent { public VolumeParameter<float> postExposure, contrast, saturation; public VolumeParameter<UnityEngine.Color> colorFilter; }
     public class WhiteBalance : VolumeComponent { public VolumeParameter<float> temperature; }
     public class Vignette : VolumeComponent { public VolumeParameter<float> intensity, smoothness; }
     public class UniversalRenderPipelineAsset : RenderPipelineAsset { public int msaaSampleCount; public float renderScale, shadowDistance;
@@ -234,16 +234,16 @@ namespace UnityEngine.EventSystems
 }
 namespace UnityEngine
 {
-    public enum TextureFormat { RGBA32, ARGB32 }
+    public enum TextureFormat { RGBA32 = 4, ARGB32 = 5 }
     public enum FilterMode { Point, Bilinear }
     public enum CameraClearFlags { Skybox = 1, SolidColor = 2, Depth = 3, Nothing = 4 }
     public enum SendMessageOptions { RequireReceiver, DontRequireReceiver }
-    public class Texture : Object { public int width, height; public FilterMode filterMode; }
+    public class Texture : Object { public int width, height; public FilterMode filterMode; public TextureWrapMode wrapMode; }
     public class Texture2D : Texture
     {
         public Color[] pixels;
         public Texture2D(int w, int h, TextureFormat f, bool mips) { width = w; height = h; }
-        public void SetPixels(Color[] c) => pixels = c; public void Apply() { }
+        public void SetPixels(Color[] c) => pixels = c; public void Apply() { } public void SetPixel(int x, int y, Color c) { }
     }
     public class RenderTexture : Texture { public bool released; public RenderTexture(int w, int h, int depth) { width = w; height = h; } public void Release() => released = true; }
     public class DefaultExecutionOrder : Attribute { public DefaultExecutionOrder(int order) { } }
@@ -261,4 +261,19 @@ namespace UnityEngine.SceneManagement
         /// <summary>Fake: no real objects are swapped; the unload / load callbacks run straight away.</summary>
         public static void LoadScene(int index) { LoadCount++; var s = new Scene { buildIndex = index }; sceneUnloaded?.Invoke(s); sceneLoaded?.Invoke(s, LoadSceneMode.Single); }
     }
+}
+// Added for art/audio/touch (DesertWeatherFX, TouchControls)
+namespace UnityEngine.Rendering.Universal
+{
+    using UnityEngine.Rendering;
+    public class LensDistortion : VolumeComponent { public VolumeParameter<float> intensity, scale; }
+    public class ChromaticAberration : VolumeComponent { public VolumeParameter<float> intensity; }
+}
+namespace UnityEngine.EventSystems { public class EventSystem : UIBehaviour { public static EventSystem current; } }
+namespace UnityEngine.InputSystem.UI { public class InputSystemUIInputModule : UnityEngine.EventSystems.UIBehaviour { } }
+namespace UnityEngine.InputSystem.OnScreen
+{
+    public abstract class OnScreenControl : UnityEngine.MonoBehaviour { public string controlPath { get; set; } }
+    public class OnScreenStick : OnScreenControl { public float movementRange { get; set; } = 50f; }
+    public class OnScreenButton : OnScreenControl { }
 }

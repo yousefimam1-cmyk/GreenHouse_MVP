@@ -740,6 +740,7 @@ static class Program
 
         FishTests();
         MpTests.MultiplayerTests(args[0]);
+        ArtTests.Run();
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
@@ -1859,5 +1860,145 @@ static class CozyTests
         T.Check("Settings kept: look + analytics opt-in", Appearance.CurrentStyle == OutfitStyle.Abaya && SaveData.GetInt("mazraa.cozy.look.style", 0) == 1 && CozyAnalytics.OptIn && SaveData.GetInt("mazraa.learn.analytics", 0) == 1);
         T.Check("Sponsor bonuses reset", SponsorManager.Instance.FertilizerCharges == 0 && !SponsorManager.Instance.Owns("sp_solar"));
         CozyAnalytics.SetOptIn(false);
+    }
+}
+
+/// <summary>Art, sound, quality presets and touch controls (CropVisuals, DesertDressing, DesertWeatherFX, AmbientAudio, TouchControls).</summary>
+static class ArtTests
+{
+    static float Flat(Vector3 a, Vector3 b) { a.y = 0; b.y = 0; return Vector3.Distance(a, b); }
+
+    public static void Run()
+    {
+        Console.WriteLine("Crop visuals (FarmCrops stages)");
+        T.Check("Tomato seedling -> FarmCrops/Tomato_01", CropVisuals.Get("tomato", 0f) == "FarmCrops/Tomato_01", CropVisuals.Get("tomato", 0f));
+        T.Check("Ripe wheat -> FarmCrops/Wheat_04a", CropVisuals.Get("wheat", 1f) == "FarmCrops/Wheat_04a", CropVisuals.Get("wheat", 1f));
+        T.Check("Melon uses the watermelon stages", CropVisuals.Get("melon", 0.5f) == "FarmCrops/Watermelon_02", CropVisuals.Get("melon", 0.5f));
+        T.Check("Crop without FarmCrops model falls back to Kenney", CropVisuals.Get("pepper", 1f) == "Crops/crops_leafsStageB", CropVisuals.Get("pepper", 1f));
+        var missing = new List<string>();
+        foreach (var crop in CropVisuals.Crops)
+            for (int i = 0; i < 4; i++)
+            {
+                string path = Path.Combine(FakeEngine.ResourcesRoot, "Models", CropVisuals.Get(crop, i / 3f) + ".fbx");
+                if (!File.Exists(path) || !File.ReadAllText(path + ".meta").Contains("externalObjects:\n  - first")) missing.Add(crop + i);
+            }
+        T.Check("Every crop stage model is in Resources with its material mapping", missing.Count == 0, string.Join(",", missing));
+        foreach (var id in EconomyManager.Instance.Data.fieldCrops.Select(c => c.id))
+            T.Check("Field crop '" + id + "' has FarmCrops stages", CropVisuals.HasModels(id));
+        var holder = new GameObject("CropTest");
+        var model = CropVisuals.Spawn("potato", 0.5f, holder.transform, 0.6f);
+        T.Check("Spawn places the stage model", model != null && model.name == "FarmCrops/Potato_02", model != null ? model.name : "null");
+        UnityEngine.Object.Destroy(holder);
+
+        // greenhouse bed swaps track growth
+        var gm = GameManager.Instance;
+        var bed = gm.Greenhouses.First(g => g.name == "GreenHouse").Cropbeds.First(b => b.name == "CropA");
+        var plant = new GameObject("Tomato_03"); plant.transform.SetParent(bed.foliage[0].transform.GetChild(0), false);
+        plant.AddComponent<MeshFilter>(); plant.AddComponent<MeshRenderer>();
+        var cv = UnityEngine.Object.FindAnyObjectByType<CropbedVisuals>();
+        T.Check("CropbedVisuals system running", cv != null);
+        typeof(CropbedVisuals).GetMethod("Collect", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(cv, null);
+        T.Check("Greenhouse plants found for stage swaps", cv.SwappedPlants >= 1, "" + cv.SwappedPlants);
+        T.SetProp(bed, "Growth", 0.7f); FakeEngine.Run(1f);
+        T.Check("Bed shows the stage for its growth", cv.StageOf(bed) == CropVisuals.StageIndex(bed.Growth), cv.StageOf(bed) + " vs " + CropVisuals.StageIndex(bed.Growth));
+
+        Console.WriteLine("Desert dressing");
+        var dd = DesertDressing.Instance;
+        T.Check("DesertDressing built", dd != null && dd.Palms > 0 && dd.Trees > 0 && dd.Dunes > 0 && dd.SandCells > 0,
+            dd == null ? "null" : $"palms {dd.Palms} trees {dd.Trees} dunes {dd.Dunes} sand {dd.SandCells}");
+        T.Check("Cooling pads on both greenhouses", dd.CoolingWalls == 2, "" + dd.CoolingWalls);
+        T.Check("Track from loading bay to market", dd.Track.Count >= 2 && Flat(dd.Track[0], DeliveryZone.LoadingBay.transform.position) < 1f);
+        T.Check("Parts merged into few meshes", dd.MergedParts > 100, "" + dd.MergedParts);
+        var player = GameObject.Find("PlayerCapsule").transform;
+        T.Check("Najdi farmhouse near the start", dd.HasHouse && Flat(dd.HousePosition, player.position) < 45f, dd.HousePosition.ToString());
+        var plots = FieldManager.Instance.Plots;
+        var zones = new[] { DeliveryZone.LoadingBay.transform.position, DeliveryZone.Market.transform.position };
+        var pen = AnimalPen.Instance.transform.position;
+        T.Check("Farmhouse clear of plots, zones, pen and start",
+            plots.All(p => Flat(p.transform.position, dd.HousePosition) > 11f) && zones.All(z => Flat(z, dd.HousePosition) > 15f) && Flat(pen, dd.HousePosition) > 18f && Flat(player.position, dd.HousePosition) > 10f);
+        var props = UnityEngine.Object.FindObjectsByType<BoxCollider>(FindObjectsSortMode.None).Where(c => c.gameObject.layer == DesertProps.PropLayer && (c.name == "Date Palm" || c.name == "Acacia" || c.name == "Sidr")).ToList();
+        var bad = props.Where(c => plots.Any(p => Flat(p.transform.position, c.transform.position) < 6f) || zones.Any(z => Flat(z, c.transform.position) < 11f) || Flat(pen, c.transform.position) < 12f
+            || gm.Greenhouses.Any(g => Flat(g.transform.position, c.transform.position) < 6f)).Select(c => c.name + c.transform.position).ToList();
+        T.Check("Palms and trees keep off plots, pads, pen and greenhouses (" + props.Count + " props)", props.Count > 0 && bad.Count == 0, string.Join(" ", bad.Take(3)));
+        T.Check("Prop colliders are ignored by ground raycasts", props.All(c => (Build.GroundMask & (1 << c.gameObject.layer)) == 0));
+
+        Console.WriteLine("Quality presets");
+        int palmsHigh = dd.Palms + dd.Trees;
+        GraphicsEnhancer.SetPreset(0);
+        T.Check("SetPreset(0) = Low, no post", GraphicsEnhancer.Preset == 0 && !GraphicsEnhancer.PostEnabled && !GraphicsEnhancer.High);
+        T.Check("Low preset places fewer props", dd.Palms + dd.Trees < palmsHigh, (dd.Palms + dd.Trees) + " vs " + palmsHigh);
+        GraphicsEnhancer.SetPreset(1);
+        T.Check("Medium preset", GraphicsEnhancer.Preset == 1 && GraphicsEnhancer.PostEnabled && GraphicsEnhancer.DressingDensity < 1f);
+        GraphicsEnhancer.SetPreset(7);
+        T.Check("Preset clamps and saves", GraphicsEnhancer.Preset == 2 && SaveData.GetInt("mazraa.gfxPreset", -1) == 2);
+        T.Check("Medium has an Arabic name", Loc.Raw("Graphics: Medium") == "Graphics: Medium" && LocHas("Graphics: Medium"));
+
+        Console.WriteLine("Desert weather");
+        var clock = WorldClock.Instance;
+        T.SetProp(clock, "Weather", Weather.Heatwave);
+        float fog0 = RenderSettings.fogDensity;
+        FakeEngine.Run(20f, 0.5f);
+        T.Check("Heatwave raises the wind", DesertWeatherFX.Wind01 > 0.5f, "" + DesertWeatherFX.Wind01);
+        T.Check("Blowing dust in a heatwave", DesertWeatherFX.Instance.DustRate > 10f, "" + DesertWeatherFX.Instance.DustRate);
+        T.Check("Dust thickens the fog", RenderSettings.fog && RenderSettings.fogDensity > fog0, fog0 + " -> " + RenderSettings.fogDensity);
+        T.SetProp(clock, "Weather", Weather.Sunny);
+        FakeEngine.Run(30f, 0.5f);
+        T.Check("Dust stops when calm", DesertWeatherFX.Instance.DustRate < 1f, "" + DesertWeatherFX.Instance.DustRate);
+
+        Console.WriteLine("Sound");
+        var aa = AmbientAudio.Instance;
+        T.Check("AmbientAudio running", aa != null);
+        var badClips = new List<string>();
+        foreach (var n in new[] { "engine", "wind", "crickets", "birds", "step0", "step3", "cow", "sheep", "goat", "camel", "chicken" })
+        {
+            var c = ProceduralAudio.Get(n);
+            if (c == null || c.data == null || c.data.Length < 1000 || c.data.Any(x => float.IsNaN(x) || Math.Abs(x) > 1f)) badClips.Add(n);
+        }
+        T.Check("All procedural clips synthesise cleanly (no NaN, no clipping)", badClips.Count == 0, string.Join(",", badClips));
+        T.Check("Wind ambience playing", aa.WindVolume > 0f, "" + aa.WindVolume);
+        int steps0 = aa.Footsteps;
+        for (int i = 0; i < 40; i++) { player.position += new Vector3(0.25f, 0, 0); FakeEngine.Tick(0.1f); }
+        T.Check("Footsteps while walking", aa.Footsteps > steps0 + 3, (aa.Footsteps - steps0) + " steps");
+        var truck = FarmTruck.Instance;
+        truck.Interact(); FakeEngine.Run(0.5f);
+        for (int i = 0; i < 20; i++) { T.SetProp(truck, "Speed", truck.maxSpeed); FakeEngine.Tick(0.1f); }
+        float pFast = aa.EnginePitch;
+        T.Check("Engine plays while driving", aa.EnginePlaying);
+        T.SetProp(truck, "Speed", 0f); FakeEngine.Run(2f, 0.1f);
+        T.Check("Engine pitch follows speed", pFast > aa.EnginePitch + 0.2f, pFast + " vs " + aa.EnginePitch);
+        truck.Exit(); FakeEngine.Run(0.5f);
+        T.Check("Engine stops after exit", !aa.EnginePlaying);
+        EconomyManager.Instance.AddMoney(2000);
+        EconomyManager.Instance.TryBuy("chicken"); EconomyManager.Instance.TryBuy("sheep");
+        FakeEngine.Run(1f);
+        player.position = AnimalPen.Instance.transform.position + new Vector3(0, 0, 12f);
+        FakeEngine.Run(40f, 0.5f);
+        T.Check("Animal calls near the pen", aa.LastCall == "chicken" || aa.LastCall == "sheep", aa.LastCall);
+        T.SetProp(clock, "DayProgress", 0.95f); FakeEngine.Run(20f, 0.5f);
+        T.Check("Crickets at night", aa.NightVolume > 0.05f, "" + aa.NightVolume);
+        MazraaAudio.SetMaster(0.4f);
+        T.Check("Master volume drives the listener", Math.Abs(AudioListener.volume - 0.4f) < 0.001f);
+        MazraaAudio.SetMaster(1f);
+
+        Console.WriteLine("Touch controls");
+        T.Check("No touch UI on desktop", !TouchControls.Instance.Active);
+        TouchControls.ForceShow = true;
+        var tc = new GameObject("TouchTest").AddComponent<TouchControls>();
+        FakeEngine.Tick(0.1f);
+        var sticks = tc.GetComponentsInChildren<UnityEngine.InputSystem.OnScreen.OnScreenStick>(true);
+        var buttons = tc.GetComponentsInChildren<UnityEngine.InputSystem.OnScreen.OnScreenButton>(true);
+        T.Check("Touch UI: 2 sticks, 10+ buttons", tc.Active && sticks.Length == 2 && buttons.Length >= 10, sticks.Length + " sticks, " + buttons.Length + " buttons");
+        T.Check("Sticks drive the gamepad sticks", sticks.Any(s => s.controlPath == "<Gamepad>/leftStick") && sticks.Any(s => s.controlPath == "<Gamepad>/rightStick"));
+        T.Check("Drive pad uses WASD", new[] { "w", "a", "s", "d" }.All(k => buttons.Any(b => b.controlPath == "<Keyboard>/" + k)));
+        TouchControls.ForceShow = false;
+        UnityEngine.Object.Destroy(tc.gameObject);
+    }
+
+    static bool LocHas(string en)
+    {
+        Loc.SetLanguage(Language.Arabic);
+        string ar = Loc.Raw(en);
+        Loc.SetLanguage(Language.English);
+        return ar != en;
     }
 }

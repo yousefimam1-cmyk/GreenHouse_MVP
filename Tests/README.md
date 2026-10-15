@@ -8,6 +8,13 @@ Run without Unity (Linux/macOS with mono, or WSL):
   truck deliveries, market, shop, animals, animated life (dog follows you, eagles, shopkeepers, drivers), calendar, missions (incl. the last one), training, Arabic, save/restart, new game,
   10 simulated days without errors.
 
+- `Tests/Headless/run.sh` also covers crop stage models, desert dressing keep-outs, quality presets, weather FX,
+  procedural sounds (engine pitch, footsteps, animal calls, crickets) and touch controls.
+- `python3 Tests/unused_assets.py . > Tests/UNUSED_ASSETS.md` - assets nothing in the build uses (report only).
+
+On GitHub: `.github/workflows/tests.yml` runs the headless and static tests on every push/PR to mazraa-dev, and the
+Unity EditMode tests when the UNITY_LICENSE secret is set.
+
 These do not replace playing the game in the Unity editor (rendering, physics, input and UI layout are not simulated).
 
 In Unity: Window > General > Test Runner > EditMode > Run All (Assets/Tests/Editor/MazraaEditorTests.cs):
