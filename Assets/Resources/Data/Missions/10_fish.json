@@ -1,0 +1,45 @@
+{
+  "notes": "Fish feature missions (appended after missions.json). Types: catchFish, harvestTank, processBatch (GameEvents.RaiseCustom) and ownCamel (MissionManager.StateMissions). Rewards in SAR.",
+  "missions": [
+    {
+      "id": "fish_catch",
+      "type": "catchFish",
+      "target": 1,
+      "reward": 200,
+      "titleEn": "Gone fishing",
+      "titleAr": "رحلة صيد",
+      "descEn": "Cast a line at the farm reservoir and press E when the bobber dips.",
+      "descAr": "ارمِ السنارة في بركة المزرعة واضغط E أول ما تغطس العوامة."
+    },
+    {
+      "id": "fish_tank",
+      "type": "harvestTank",
+      "target": 1,
+      "reward": 500,
+      "titleEn": "Fish farmer",
+      "titleAr": "مزارع سمك",
+      "descEn": "Stock the aquaculture tank with fingerlings, feed them every day and harvest the tilapia.",
+      "descAr": "حط إصبعيات بلطي في حوض الاستزراع، أكّلها كل يوم، وحصّد السمك."
+    },
+    {
+      "id": "fish_process",
+      "type": "processBatch",
+      "target": 1,
+      "reward": 300,
+      "titleEn": "Added value",
+      "titleAr": "قيمة مضافة",
+      "descEn": "Buy a processing building at the shop (Processing) and finish one batch.",
+      "descAr": "اشترِ مبنى تصنيع من المحل (تصنيع) وخلّص دفعة وحدة."
+    },
+    {
+      "id": "fish_camel",
+      "type": "ownCamel",
+      "target": 1,
+      "reward": 1000,
+      "titleEn": "Ship of the desert",
+      "titleAr": "سفينة الصحراء",
+      "descEn": "Buy a camel for the animal pen.",
+      "descAr": "اشترِ ناقة للحظيرة."
+    }
+  ]
+}

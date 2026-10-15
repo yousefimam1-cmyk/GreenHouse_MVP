@@ -1,0 +1,174 @@
+{
+  "notes": "Fish feature pack: fish (reservoir + tank), processed goods, Saudi animals (camel, Ardi goat) and hive/dovecote products. Merged into economy.json by id. 'dates' is also produced by the orchards feature; whichever pack loads last defines it.",
+  "goods": [
+    {
+      "id": "fish_tilapia",
+      "nameEn": "Tilapia",
+      "nameAr": "بلطي",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 22,
+      "weight": 1
+    },
+    {
+      "id": "fish_catfish",
+      "nameEn": "Catfish",
+      "nameAr": "قرموط",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 18,
+      "weight": 1
+    },
+    {
+      "id": "fish_carp",
+      "nameEn": "Carp",
+      "nameAr": "كارب",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 20,
+      "weight": 1
+    },
+    {
+      "id": "fish_hamour",
+      "nameEn": "Hamour",
+      "nameAr": "هامور",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 90,
+      "weight": 1
+    },
+    {
+      "id": "fish_najil",
+      "nameEn": "Najil",
+      "nameAr": "نجل",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 75,
+      "weight": 1
+    },
+    {
+      "id": "dates",
+      "nameEn": "Dates",
+      "nameAr": "تمر",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 22,
+      "weight": 1
+    },
+    {
+      "id": "packed_dates",
+      "nameEn": "Packed dates",
+      "nameAr": "تمور معبأة",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 60,
+      "weight": 1
+    },
+    {
+      "id": "laban",
+      "nameEn": "Laban",
+      "nameAr": "لبن",
+      "unitEn": "L",
+      "unitAr": "لتر",
+      "price": 32,
+      "weight": 1
+    },
+    {
+      "id": "cheese",
+      "nameEn": "Cheese",
+      "nameAr": "جبن",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 160,
+      "weight": 1
+    },
+    {
+      "id": "flour",
+      "nameEn": "Flour",
+      "nameAr": "دقيق",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 15,
+      "weight": 1
+    },
+    {
+      "id": "juice",
+      "nameEn": "Juice",
+      "nameAr": "عصير",
+      "unitEn": "L",
+      "unitAr": "لتر",
+      "price": 20,
+      "weight": 1
+    },
+    {
+      "id": "camel_milk",
+      "nameEn": "Camel milk",
+      "nameAr": "حليب نوق",
+      "unitEn": "L",
+      "unitAr": "لتر",
+      "price": 45,
+      "weight": 1
+    },
+    {
+      "id": "goat_milk",
+      "nameEn": "Goat milk",
+      "nameAr": "حليب ماعز",
+      "unitEn": "L",
+      "unitAr": "لتر",
+      "price": 30,
+      "weight": 1
+    },
+    {
+      "id": "honey",
+      "nameEn": "Sidr honey",
+      "nameAr": "عسل سدر",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 280,
+      "weight": 1
+    },
+    {
+      "id": "squab",
+      "nameEn": "Squab",
+      "nameAr": "زغاليل",
+      "unitEn": "pcs",
+      "unitAr": "حبة",
+      "price": 25,
+      "weight": 0.4
+    },
+    {
+      "id": "manure",
+      "nameEn": "Pigeon manure",
+      "nameAr": "سماد حمام",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 4,
+      "weight": 1
+    }
+  ],
+  "animals": [
+    {
+      "id": "camel",
+      "nameEn": "Camel",
+      "nameAr": "ناقة",
+      "price": 18000,
+      "product": "camel_milk",
+      "amount": 6,
+      "interval": 150,
+      "feedPerCycle": 2,
+      "max": 2
+    },
+    {
+      "id": "goat",
+      "nameEn": "Ardi goat",
+      "nameAr": "ماعز عارضي",
+      "price": 1800,
+      "product": "goat_milk",
+      "amount": 2,
+      "interval": 70,
+      "feedPerCycle": 0.4,
+      "max": 6
+    }
+  ],
+  "fieldCrops": []
+}

@@ -1,0 +1,16 @@
+{
+  "notes": "Processing buildings (shop page Processing). E starts a batch: takes up to inputAmount of the first input good in storage (inputs are alternatives), works 'seconds' game seconds, gives outputAmount (proportional for smaller batches). Buildings with several recipes take turns. r/g/b = wall colour. Prices in SAR (game balance).",
+  "buildings": [
+    { "id": "proc_dates", "nameEn": "Date packing house", "nameAr": "مصنع تعبئة التمور", "price": 4000, "seconds": 60, "r": 0.85, "g": 0.74, "b": 0.55,
+      "recipes": [ { "inputs": ["dates"], "inputAmount": 20, "output": "packed_dates", "outputAmount": 18 } ] },
+    { "id": "proc_dairy", "nameEn": "Dairy", "nameAr": "معمل ألبان", "price": 5000, "seconds": 75, "r": 0.92, "g": 0.92, "b": 0.9,
+      "recipes": [
+        { "inputs": ["milk", "goat_milk", "camel_milk"], "inputAmount": 10, "output": "laban", "outputAmount": 10 },
+        { "inputs": ["milk", "goat_milk"], "inputAmount": 10, "output": "cheese", "outputAmount": 2 }
+      ] },
+    { "id": "proc_mill", "nameEn": "Flour mill", "nameAr": "مطحنة دقيق", "price": 3500, "seconds": 50, "r": 0.78, "g": 0.66, "b": 0.48,
+      "recipes": [ { "inputs": ["wheat"], "inputAmount": 20, "output": "flour", "outputAmount": 16 } ] },
+    { "id": "proc_juice", "nameEn": "Juice press", "nameAr": "معصرة عصير", "price": 3000, "seconds": 45, "r": 0.95, "g": 0.68, "b": 0.3,
+      "recipes": [ { "inputs": ["watermelon", "grapes", "pomegranate", "orange", "citrus", "lemon", "mango", "figs", "apple", "strawberry", "fruit"], "inputAmount": 10, "output": "juice", "outputAmount": 6 } ] }
+  ]
+}

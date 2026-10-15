@@ -13,6 +13,9 @@ public class FarmAnimal : MonoBehaviour
     private readonly List<Transform> legs = new List<Transform>();
     private float walkPhase;
 
+    /// <summary>Hook for animals added by data packs: build the body and return true (e.g. camel, goat).</summary>
+    public static System.Func<FarmAnimal, bool> CustomBody;
+
     public static FarmAnimal Create(string id, AnimalPen pen, Vector3 pos)
     {
         var root = new GameObject("Animal " + id);
@@ -20,10 +23,13 @@ public class FarmAnimal : MonoBehaviour
         root.transform.rotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
         var a = root.AddComponent<FarmAnimal>();
         a.animalId = id; a.pen = pen;
-        float fit = id == "cow" ? 2.2f : id == "sheep" ? 1.3f : 0.55f;
-        var model = Build.TryModel(id, root.transform, fit, 0f);
-        if (model == null) a.BuildBody();
-        else a.SetupAnimation(model);
+        if (CustomBody == null || !CustomBody(a))
+        {
+            float fit = id == "cow" ? 2.2f : id == "sheep" ? 1.3f : 0.55f;
+            var model = Build.TryModel(id, root.transform, fit, 0f);
+            if (model == null) a.BuildBody();
+            else a.SetupAnimation(model);
+        }
         a.speed = id == "chicken" ? 1.1f : id == "sheep" ? 0.8f : 0.6f;
         a.PickTarget();
         return a;

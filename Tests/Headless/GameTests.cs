@@ -278,10 +278,11 @@ static class Program
 
         Console.WriteLine("Mission chain");
         var mm = MissionManager.Instance;
-        // jump to the last mission ("haveMoney") which used to recurse forever
-        T.Set(mm, "<Index>k__BackingField", mm.Missions.Length - 1);
+        // jump to the last core mission ("haveMoney") which used to recurse forever (feature mission packs come after it)
+        int haveMoney = Array.FindLastIndex(mm.Missions, x => x.type == "haveMoney");
+        T.Set(mm, "<Index>k__BackingField", haveMoney);
         int errs = FakeEngine.Errors.Count;
-        try { EconomyManager.Instance.AddMoney(30000); T.Check("Last mission completes without stack overflow", mm.AllDone); }
+        try { EconomyManager.Instance.AddMoney(30000); T.Check("Last mission completes without stack overflow", mm.Index > haveMoney); }
         catch (Exception e) { T.Check("Last mission completes without stack overflow", false, e.GetType().Name); }
 
         Console.WriteLine("Training scenario");
@@ -331,8 +332,205 @@ static class Program
         FakeEngine.Run(WorldClock.Instance.secondsPerDay * 10, 1f);
         T.Check("No errors over 10 simulated days", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
 
+        FishTests();
+
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
         Environment.Exit(T.Fail == 0 ? 0 : 1);
+    }
+
+    // ---------------- Fish feature group: fishing, aquaculture, processing, Saudi animals ----------------
+    static void JumpToMission(string id)
+    {
+        var mm = MissionManager.Instance;
+        int i = Array.FindIndex(mm.Missions, x => x.id == id);
+        T.Set(mm, "<Index>k__BackingField", i);
+        T.Set(mm, "<Progress>k__BackingField", 0f);
+    }
+
+    static bool BiteOrTimeout(FishingManager fm)
+    {
+        for (int i = 0; i < 200 && fm.State == FishState.Waiting; i++) FakeEngine.Run(0.1f, 0.1f);
+        return fm.State == FishState.Bite;
+    }
+
+    static void FishTests()
+    {
+        Console.WriteLine("Fish: boot");
+        BuildWorld();
+        FakeEngine.Run(2f);
+        int e0 = FakeEngine.Errors.Count;
+        var eco = EconomyManager.Instance; var mm = MissionManager.Instance;
+        var fm = FishingManager.Instance; var aqua = AquaFarm.Instance; var yard = ProcessingYard.Instance; var hives = HiveFarm.Instance; var dove = Dovecote.Instance;
+        T.Check("Fish systems created", fm != null && aqua != null && yard != null && hives != null && dove != null && UnityEngine.Object.FindAnyObjectByType<SaudiAnimals>() != null);
+        T.Check("Reservoir, tank, apiary and dovecote are E-interactable (layer 7)", UnityEngine.Object.FindObjectsByType<FishSpot>(FindObjectsSortMode.None).Count(x => x.gameObject.layer == 7) >= 4);
+        T.Check("Reservoir is clear of the pen, loading bay and fields", fm.Pond != null && Vector3.Distance(fm.Pond.position, AnimalPen.Instance.transform.position) > 20f
+            && Vector3.Distance(fm.Pond.position, DeliveryZone.LoadingBay.transform.position) > 14f && Vector3.Distance(fm.Pond.position, FieldManager.Instance.Plots[0].transform.position) > 20f);
+        T.Check("fish.json: 5 species, 2 rods, 2 baits", fm.Data.species.Length == 5 && fm.Data.rods.Length == 2 && fm.Data.baits.Length == 2);
+        T.Check("Economy pack: fish goods, coast fish sell much higher", eco.Good("fish_tilapia") != null && eco.Good("fish_hamour").price > eco.Good("fish_tilapia").price * 3 && eco.Good("fish_najil").price > eco.Good("fish_carp").price * 3);
+        T.Check("Economy pack: processed goods + dates + honey + squab", new[] { "dates", "packed_dates", "laban", "cheese", "flour", "juice", "honey", "squab", "manure", "camel_milk", "goat_milk" }.All(g => eco.Good(g) != null));
+        T.Check("Camel (max 2) and Ardi goat are pen animals", eco.Animal("camel") != null && eco.Animal("camel").max == 2 && eco.Animal("camel").product == "camel_milk" && eco.Animal("goat")?.product == "goat_milk");
+        T.Check("Shop pages Fishing / Processing / Animals", ShopCatalog.Find("rod_bamboo")?.category == "Fishing" && ShopCatalog.Find("fish_fingerlings")?.category == "Fishing"
+            && ShopCatalog.Find("proc_dairy")?.category == "Processing" && ShopCatalog.Find("bee_hive")?.category == "Animals" && ShopCatalog.Find("dovecote")?.category == "Animals");
+        T.Check("4 fish missions appended", new[] { "fish_catch", "fish_tank", "fish_process", "fish_camel" }.All(id => mm.Missions.Any(x => x.id == id && !string.IsNullOrEmpty(x.titleAr) && !string.IsNullOrEmpty(x.descAr))));
+        // every English key used by the feature has Arabic in Resources/Data/Loc/10_fish.json (or the core table)
+        var keys = new HashSet<string>();
+        foreach (var f in Directory.GetFiles(Path.Combine(FakeEngine.ResourcesRoot, "..", "Scripts", "Fish"), "*.cs"))
+        {
+            string src = File.ReadAllText(f);
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(src, "FishText\\.(?:T|Raw)\\(\"((?:[^\"\\\\]|\\\\.)*)\"")) keys.Add(m.Groups[1].Value);
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(src, "(?:string label|category) = \"([^\"]+)\"")) keys.Add(m.Groups[1].Value);
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(src, "blockReason = \\(\\) => [^;]*")) foreach (System.Text.RegularExpressions.Match q in System.Text.RegularExpressions.Regex.Matches(m.Value, "\"([^\"]+)\"")) keys.Add(q.Groups[1].Value);
+        }
+        foreach (var b in yard.Data.buildings) keys.Add(b.nameEn);
+        Loc.Raw("x");
+        var missing = keys.Where(k => !Loc.HasTranslation(k)).ToList();
+        T.Check("Fish texts all have Arabic (" + keys.Count + " keys)", keys.Count > 40 && missing.Count == 0, string.Join(" | ", missing));
+
+        Console.WriteLine("Fish: rules");
+        T.Check("Time bands", FishRules.Band(6) == "dawn" && FishRules.Band(12) == "day" && FishRules.Band(18) == "dusk" && FishRules.Band(23) == "night" && FishRules.Band(2) == "night");
+        var night = FishRules.Eligible(fm.Data, "spring", "night", 0, "");
+        T.Check("Night: only catfish bite", night.Count == 1 && night[0].id == "catfish", string.Join(",", night.Select(x => x.id)));
+        var day0 = FishRules.Eligible(fm.Data, "spring", "day", 0, "");
+        T.Check("Day, hand line: tilapia only (carp needs a rod)", day0.Count == 1 && day0[0].id == "tilapia");
+        var dayBest = FishRules.Eligible(fm.Data, "autumn", "dusk", 2, "shrimp").Select(x => x.id).ToList();
+        T.Check("Carbon rod + shrimp at dusk reach the coast fish", dayBest.Contains("hamour") && dayBest.Contains("najil") && !FishRules.Eligible(fm.Data, "autumn", "dusk", 2, "worms").Any(x => x.coast));
+        T.Check("Carp out of season in winter", !FishRules.Eligible(fm.Data, "winter", "day", 2, "").Any(x => x.id == "carp"));
+        T.Check("Weighted pick", FishRules.Pick(dayBest.Select(id => fm.Data.species.First(x => x.id == id)).ToList(), 0f).id == dayBest[0] && FishRules.Pick(new List<FishSpecies>(), 0.5f) == null);
+        T.Check("Rods and bait raise the catch chance", FishRules.CatchChance(fm.Data, fm.Data.rods[1], fm.Data.baits[1]) > FishRules.CatchChance(fm.Data, fm.Data.rods[0], null)
+            && FishRules.CatchChance(fm.Data, fm.Data.rods[0], null) > FishRules.CatchChance(fm.Data, null, null) && FishRules.Window(fm.Data, fm.Data.rods[1]) > FishRules.Window(fm.Data, null));
+
+        Console.WriteLine("Fish: casting minigame");
+        eco.AddMoney(100000);
+        T.SetProp(WorldClock.Instance, "DayProgress", 0.17f); // 10:00
+        T.Check("Buy carbon rod", eco.TryBuy("rod_carbon") && fm.RodLevel == 2);
+        T.Check("Cannot buy a rod you already outrank", !eco.TryBuy("rod_bamboo"));
+        T.Check("Buy shrimp bait x10", eco.TryBuy("bait_shrimp") && fm.Bait("bait_shrimp") == 10);
+        fm.Use();
+        T.Check("E casts (uses one bait)", fm.State == FishState.Waiting && fm.Bait("bait_shrimp") == 9);
+        T.Check("Bobber shown while casting", fm.Pond.Find("Bobber").gameObject.activeSelf);
+        fm.Use();
+        T.Check("E too early reels in empty", fm.State == FishState.Idle && !fm.Pond.Find("Bobber").gameObject.activeSelf);
+        fm.Use();
+        T.Check("Bite comes after a random wait", BiteOrTimeout(fm));
+        T.Check("HUD shows the bite", HudLines.Status.Any(l => (l() ?? "").Contains("BITE")));
+        FakeEngine.Run(FishRules.Window(fm.Data, fm.Rod) + 0.5f, 0.1f);
+        T.Check("Missing the bite window loses the fish", fm.State == FishState.Idle);
+        JumpToMission("fish_catch");
+        float stockBefore = fm.Data.species.Sum(x => eco.Stored(x.good));
+        int caught = fm.CaughtTotal;
+        for (int i = 0; i < 10 && fm.CaughtTotal == caught; i++) { fm.Use(); if (BiteOrTimeout(fm)) fm.Use(); }
+        T.Check("E within the window lands a fish", fm.CaughtTotal == caught + 1 && fm.LastCatch != null && fm.LastKg >= fm.LastCatch.minKg - 0.05f && fm.LastKg <= fm.LastCatch.maxKg + 0.05f, fm.CaughtTotal + "");
+        T.Check("Caught fish go to farm storage", fm.Data.species.Sum(x => eco.Stored(x.good)) > stockBefore);
+        T.Check("Mission 'catch a fish' completes", mm.Current?.id == "fish_tank", mm.Current?.id);
+
+        Console.WriteLine("Fish: aquaculture tank");
+        T.Check("Empty tank asks for fingerlings", aqua.Use().Contains("fingerlings"));
+        T.Check("Buy 100 fingerlings", eco.TryBuy("fish_fingerlings") && aqua.Fish == 100);
+        T.Check("Tank can't be restocked while full", !eco.TryBuy("fish_fingerlings"));
+        eco.AddFeed(10f);
+        WorldClock.Instance.NextDay();
+        T.Check("An unfed day costs fish and no growth", aqua.Survival < 0.99f && aqua.Growth < 0.01f);
+        float feed = eco.Feed;
+        aqua.Use();
+        T.Check("E feeds the fish once a day", aqua.FedToday && eco.Feed < feed && aqua.Use().Length > 0 && Math.Abs(eco.Feed - (feed - 1f)) < 0.01f);
+        for (int d = 0; d < 3; d++) { if (!aqua.FedToday) aqua.Use(); WorldClock.Instance.NextDay(); }
+        T.Check("Fed fish grow in 3 days", aqua.Ready, aqua.Growth + "");
+        float til = eco.Stored("fish_tilapia");
+        aqua.Use();
+        T.Check("Harvest gives ~36 kg tilapia (100 x 0.45 kg x 80%)", Math.Abs(eco.Stored("fish_tilapia") - til - 36f) < 1f && aqua.Fish == 0, (eco.Stored("fish_tilapia") - til) + "");
+        T.Check("Mission 'harvest the tank' completes", mm.Current?.id == "fish_process", mm.Current?.id);
+
+        Console.WriteLine("Fish: processing");
+        T.Check("Building must be bought first", yard.Use("proc_mill").Length > 0 && !yard.Get("proc_mill").busy);
+        T.Check("Buy flour mill (built in the yard)", eco.TryBuy("proc_mill") && yard.Get("proc_mill").owned && yard.Get("proc_mill").visual != null);
+        T.Check("Mill can't be bought twice", !eco.TryBuy("proc_mill"));
+        eco.AddGood("wheat", 25f - eco.Stored("wheat"));
+        yard.Use("proc_mill");
+        T.Check("Batch takes 20 kg wheat", yard.Get("proc_mill").busy && Math.Abs(eco.Stored("wheat") - 5f) < 0.01f);
+        float flour = eco.Stored("flour");
+        FakeEngine.Run(52f, 0.5f);
+        T.Check("After 50 s: +16 kg flour", !yard.Get("proc_mill").busy && Math.Abs(eco.Stored("flour") - flour - 16f) < 0.01f);
+        T.Check("Mission 'process something' completes", mm.Current?.id == "fish_camel", mm.Current?.id);
+        eco.TryBuy("proc_dairy");
+        eco.AddGood("milk", 20f);
+        float laban = eco.Stored("laban"), cheese = eco.Stored("cheese");
+        yard.Use("proc_dairy"); FakeEngine.Run(77f, 0.5f);
+        yard.Use("proc_dairy"); FakeEngine.Run(77f, 0.5f);
+        T.Check("Dairy alternates laban and cheese", Math.Abs(eco.Stored("laban") - laban - 10f) < 0.01f && Math.Abs(eco.Stored("cheese") - cheese - 2f) < 0.01f);
+        eco.TryBuy("proc_juice");
+        eco.TakeGood("watermelon", eco.Stored("watermelon"));
+        eco.AddGood("watermelon", 5f);
+        yard.Use("proc_juice"); FakeEngine.Run(47f, 0.5f);
+        T.Check("Juice press: a half batch of fruit gives half the juice", Math.Abs(eco.Stored("juice") - 3f) < 0.01f);
+        eco.TryBuy("proc_dates");
+        T.Check("No input -> tells what it needs", yard.Use("proc_dates").Length > 0 && !yard.Get("proc_dates").busy);
+        eco.AddGood("dates", 20f);
+        yard.Use("proc_dates"); FakeEngine.Run(62f, 0.5f);
+        T.Check("Date packing: 20 kg dates -> 18 kg packed dates", Math.Abs(eco.Stored("packed_dates") - 18f) < 0.01f);
+        T.Check("Packed dates are worth more than the dates", eco.Good("packed_dates").price * 18 > eco.Good("dates").price * 20);
+
+        Console.WriteLine("Fish: Saudi animals");
+        T.Check("Buy 2 camels, a third is refused (max 2)", eco.TryBuy("camel") && eco.TryBuy("camel") && !eco.TryBuy("camel"));
+        T.Check("Buy an Ardi goat", eco.TryBuy("goat"));
+        FakeEngine.Run(1.5f);
+        var camels = UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Where(a => a.animalId == "camel").ToList();
+        T.Check("Camels appear in the pen (horse model tinted + hump)", camels.Count == 2 && camels[0].transform.Find("Hump") != null);
+        T.Check("Goat appears in the pen", UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Count(a => a.animalId == "goat") == 1);
+        T.Check("Mission 'own a camel' completes", mm.Current == null || mm.Current.id != "fish_camel", mm.Current?.id);
+        T.SetProp(AnimalPen.Instance, "WaterLevel", 1f);
+        eco.AddFeed(20f);
+        FakeEngine.Run(170f, 0.5f);
+        T.Check("Camels give camel milk", AnimalPen.Instance.Waiting.TryGetValue("camel", out var cm) && cm > 0);
+
+        Console.WriteLine("Fish: bees and pigeons");
+        T.Check("Buy 2 bee hives", eco.TryBuy("bee_hive") && eco.TryBuy("bee_hive") && hives.Hives == 2);
+        T.Check("Sidr honey flows best in autumn", HiveFarm.SeasonFactor(Season.Autumn) > HiveFarm.SeasonFactor(Season.Spring) && HiveFarm.SeasonFactor(Season.Spring) > HiveFarm.SeasonFactor(Season.Summer));
+        FakeEngine.Run(WorldClock.Instance.secondsPerDay * 0.5f, 1f);
+        float honey = eco.Stored("honey");
+        hives.Collect();
+        T.Check("Hives make honey; E collects it", eco.Stored("honey") > honey + 0.1f, (eco.Stored("honey") - honey) + "");
+        T.Check("Pigeons need the dovecote first", !eco.TryBuy("pigeon_pair"));
+        T.Check("Buy dovecote (4 pigeons) + a pair", eco.TryBuy("dovecote") && dove.Built && eco.TryBuy("pigeon_pair") && dove.Pigeons == 6);
+        eco.AddFeed(10f);
+        FakeEngine.Run(Dovecote.Interval + 2f, 0.5f);
+        float squab = eco.Stored("squab"), manure = eco.Stored("manure");
+        dove.Collect();
+        T.Check("Dovecote gives squab and manure", eco.Stored("squab") > squab && eco.Stored("manure") > manure);
+
+        Console.WriteLine("Fish: market");
+        eco.AddGood("fish_hamour", 5f);
+        var truck = FarmTruck.Instance;
+        truck.transform.position = DeliveryZone.LoadingBay.transform.position;
+        truck.Interact();
+        FakeEngine.Run(2f);
+        T.Check("Truck loads fish from storage", eco.Stored("fish_hamour") < 5f);
+        int money = eco.Money;
+        truck.transform.position = DeliveryZone.Market.transform.position;
+        FakeEngine.Run(2f);
+        T.Check("Market buys the load (fish included)", eco.Money > money);
+        T.SetProp(truck, "Speed", 0f); truck.Exit();
+        T.Check("Hamour priced above tilapia at the market", MarketManager.Instance.Price("fish_hamour") > MarketManager.Instance.Price("fish_tilapia"));
+
+        Console.WriteLine("Fish: Arabic");
+        Loc.SetLanguage(Language.Arabic);
+        FakeEngine.Run(0.5f);
+        var prompts = UnityEngine.Object.FindObjectsByType<FishSpot>(FindObjectsSortMode.None).Select(x => x.InteractionPrompt).ToList();
+        T.Check("Fish prompts in Arabic", prompts.Count >= 8 && prompts.All(x => x.Any(c => c >= '؀')), string.Join(" | ", prompts.Take(3)));
+        Loc.SetLanguage(Language.English);
+
+        Console.WriteLine("Fish: save + new game");
+        SaveData.Flush(true);
+        BuildWorld();
+        FakeEngine.Run(2f);
+        T.Check("Fishing gear restored", FishingManager.Instance.RodLevel == 2 && FishingManager.Instance.Bait("bait_shrimp") < 10 && FishingManager.Instance.CaughtTotal >= 1);
+        T.Check("Buildings, hives, dovecote restored", ProcessingYard.Instance.Get("proc_mill").owned && ProcessingYard.Instance.Get("proc_mill").visual != null && HiveFarm.Instance.Hives == 2 && Dovecote.Instance.Built);
+        T.Check("Camels restored in the pen", UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Count(a => a.animalId == "camel") == 2);
+        var hud = UnityEngine.Object.FindAnyObjectByType<GameHUD>();
+        typeof(GameHUD).GetMethod("NewGame", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(hud, null);
+        FakeEngine.Run(0.5f);
+        T.Check("New game resets the fish feature", FishingManager.Instance.RodLevel == 0 && FishingManager.Instance.Bait("bait_shrimp") == 0 && AquaFarm.Instance.Fish == 0
+            && !ProcessingYard.Instance.Get("proc_mill").owned && ProcessingYard.Instance.Get("proc_mill").visual == null && HiveFarm.Instance.Hives == 0 && !Dovecote.Instance.Built && EconomyManager.Instance.Owned("camel") == 0);
+        T.Check("No errors in the fish feature", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
     }
 }
