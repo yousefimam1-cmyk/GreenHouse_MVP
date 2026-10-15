@@ -20,6 +20,9 @@ public class WorldClock : MonoBehaviour
     public Season Season => (Season)(((Day - 1) / Mathf.Max(1, daysPerSeason)) % 4);
     public int DayOfSeason => (Day - 1) % Mathf.Max(1, daysPerSeason) + 1;
 
+    /// <summary>Co-op client: the host's calendar is applied every second (ApplyRemote); the day doesn't roll over here.</summary>
+    public bool FollowRemote { get; set; }
+
     public static event System.Action<int> DayStarted;
     public static event System.Action<Season> SeasonChanged;
     public static event System.Action<Weather> WeatherChanged;
@@ -54,7 +57,8 @@ public class WorldClock : MonoBehaviour
     private void Update()
     {
         DayProgress += Time.deltaTime / Mathf.Max(10f, secondsPerDay);
-        if (DayProgress >= 1f)
+        if (FollowRemote) DayProgress = Mathf.Min(DayProgress, 0.9999f);
+        else if (DayProgress >= 1f)
         {
             DayProgress -= 1f;
             NextDay();
@@ -127,6 +131,18 @@ public class WorldClock : MonoBehaviour
         SaveData.SetFloat("mazraa.dayProgress", DayProgress);
         SaveData.SetInt("mazraa.weather", (int)Weather);
         SaveData.Save();
+    }
+
+    /// <summary>Co-op: take the host's day, time and weather (also used to restore your own calendar after leaving).</summary>
+    public void ApplyRemote(int day, float progress, Weather weather)
+    {
+        Season before = Season;
+        bool newDay = day > Day;
+        Day = Mathf.Max(1, day);
+        DayProgress = Mathf.Clamp(progress, 0f, 0.9999f);
+        if (weather != Weather) { Weather = weather; ApplyWeatherVisuals(); WeatherChanged?.Invoke(Weather); }
+        if (newDay) DayStarted?.Invoke(Day);
+        if (Season != before) SeasonChanged?.Invoke(Season);
     }
 
     public void ResetCalendar()

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum ActorMode { Wander, FollowPlayer, Fly, Stand, Driver, Worker }
+public enum ActorMode { Wander, FollowPlayer, Fly, Stand, Driver, Worker, Remote }   // Remote: moved by RemotePlayer (co-op)
 
 /// <summary>
 /// Animated ambient life (CC0 models with legacy animation clips): wandering animals and people, a dog that
@@ -85,7 +85,7 @@ public class Actor : MonoBehaviour
             case ActorMode.Fly: Fly(); break;
             case ActorMode.Stand: if ((wait -= Time.deltaTime) <= 0f) Play("idle"); break;
             case ActorMode.Driver:
-                bool show = vehicle != null && vehicle.IsDriving;
+                bool show = vehicle != null && (vehicle.IsDriving || vehicle.RemoteDriven);
                 if (model.activeSelf != show) model.SetActive(show);
                 if (show) Play("drive", "sit", "idle");
                 break;

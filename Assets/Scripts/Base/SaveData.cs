@@ -14,12 +14,14 @@ public static class SaveData
     [Serializable] private class FileData { public int version = 1; public string savedAt; public List<Entry> entries = new List<Entry>(); }
 
     private static Dictionary<string, Entry> map;
+    private static Dictionary<string, Entry> homeMap;   // the player's own save while a co-op session uses a throwaway map
+    private static bool flusherMade;
     private static bool dirty;
     private static float lastFlush;
     public static string Path => System.IO.Path.Combine(Application.persistentDataPath, "mazraa_save.json");
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStatics() { map = null; dirty = false; }
+    private static void ResetStatics() { map = null; homeMap = null; dirty = false; flusherMade = false; }
 
     private static void Load()
     {
@@ -34,20 +36,44 @@ public static class SaveData
             }
         }
         catch (Exception ex) { Debug.LogWarning("[SaveData] Could not read save, starting fresh: " + ex.Message); }
+        if (flusherMade) return;
+        flusherMade = true;
         var go = new GameObject("SaveData Flusher") { hideFlags = HideFlags.HideAndDontSave };
         UnityEngine.Object.DontDestroyOnLoad(go);
         go.AddComponent<SaveFlusher>();
     }
 
-    public static int GetInt(string k, int d = 0) { Load(); return map.TryGetValue(k, out var e) && int.TryParse(e.v, out var r) ? r : PlayerPrefs.GetInt(k, d); }
-    public static float GetFloat(string k, float d = 0f) { Load(); return map.TryGetValue(k, out var e) && float.TryParse(e.v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var r) ? r : PlayerPrefs.GetFloat(k, d); }
-    public static string GetString(string k, string d = "") { Load(); return map.TryGetValue(k, out var e) ? e.v : PlayerPrefs.GetString(k, d); }
-    public static bool HasKey(string k) { Load(); return map.ContainsKey(k) || PlayerPrefs.HasKey(k); }
+    public static int GetInt(string k, int d = 0) { Load(); return map.TryGetValue(k, out var e) && int.TryParse(e.v, out var r) ? r : homeMap != null ? d : PlayerPrefs.GetInt(k, d); }
+    public static float GetFloat(string k, float d = 0f) { Load(); return map.TryGetValue(k, out var e) && float.TryParse(e.v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var r) ? r : homeMap != null ? d : PlayerPrefs.GetFloat(k, d); }
+    public static string GetString(string k, string d = "") { Load(); return map.TryGetValue(k, out var e) ? e.v : homeMap != null ? d : PlayerPrefs.GetString(k, d); }
+    public static bool HasKey(string k) { Load(); return map.ContainsKey(k) || (homeMap == null && PlayerPrefs.HasKey(k)); }
+
+    /// <summary>True while a co-op client session is active (writes go to a copy that is never saved).</summary>
+    public static bool InSession => homeMap != null;
+
+    /// <summary>
+    /// Co-op client joined someone's farm: from now on reads and writes use a copy of the save, and the file on disk
+    /// keeps the player's own farm. EndSession() switches back (the copy is thrown away).
+    /// </summary>
+    public static void BeginSession()
+    {
+        Load();
+        if (homeMap != null) return;
+        homeMap = map;
+        map = new Dictionary<string, Entry>(homeMap);
+    }
+
+    public static void EndSession()
+    {
+        if (homeMap == null) return;
+        map = homeMap;
+        homeMap = null;
+    }
 
     public static void SetInt(string k, int v) => Set(k, v.ToString(), 0);
     public static void SetFloat(string k, float v) => Set(k, v.ToString("R", System.Globalization.CultureInfo.InvariantCulture), 1);
     public static void SetString(string k, string v) => Set(k, v ?? "", 2);
-    public static void DeleteKey(string k) { Load(); map.Remove(k); PlayerPrefs.DeleteKey(k); dirty = true; }
+    public static void DeleteKey(string k) { Load(); map.Remove(k); if (homeMap == null) PlayerPrefs.DeleteKey(k); dirty = true; }
 
     private static void Set(string k, string v, int t)
     {
@@ -66,7 +92,7 @@ public static class SaveData
         try
         {
             var f = new FileData { savedAt = DateTime.UtcNow.ToString("o") };
-            f.entries.AddRange(map.Values);
+            f.entries.AddRange((homeMap ?? map).Values);   // during a co-op session only the player's own farm is written
             File.WriteAllText(Path, JsonUtility.ToJson(f, true));
             dirty = false;
         }
@@ -80,7 +106,7 @@ public static class SaveData
         foreach (var k in new List<string>(map.Keys))
         {
             if (k == "mazraa.language" || k == "mazraa.gfxHigh") continue; // keep settings
-            PlayerPrefs.DeleteKey(k);
+            if (homeMap == null) PlayerPrefs.DeleteKey(k);
             map.Remove(k);
         }
         dirty = true;

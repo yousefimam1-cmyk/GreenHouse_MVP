@@ -83,7 +83,7 @@ public class GameManager : MonoBehaviour
     private void Update()
     {
         var kb = Keyboard.current;
-        if (kb == null) return;
+        if (kb == null || NetSession.Typing) return;
         if (kb.lKey.wasPressedThisFrame) Loc.Toggle();
         if (kb.hKey.wasPressedThisFrame) hud.ToggleHelp();
     }

@@ -543,7 +543,7 @@ namespace UnityEngine
     public enum CollisionDetectionMode { Discrete, ContinuousDynamic }
     public class Rigidbody : Component
     {
-        public float mass; public RigidbodyInterpolation interpolation; public CollisionDetectionMode collisionDetectionMode; public bool freezeRotation, useGravity = true;
+        public float mass; public RigidbodyInterpolation interpolation; public CollisionDetectionMode collisionDetectionMode; public bool freezeRotation, useGravity = true, isKinematic;
         public Vector3 linearVelocity;
         public Vector3 position { get => transform.position; set => transform.position = value; }
         public Quaternion rotation { get => transform.rotation; set => transform.rotation = value; }
@@ -629,3 +629,29 @@ namespace UnityEngine.Rendering
     public static class GraphicsSettings { public static RenderPipelineAsset currentRenderPipeline; }
 }
 namespace UnityEngine.Events { public class UnityEvent { readonly System.Collections.Generic.List<System.Action> l = new System.Collections.Generic.List<System.Action>(); public void AddListener(System.Action a) => l.Add(a); public void Invoke() { foreach (var a in l) a(); } } }
+// IMGUI (used by the co-op menu; OnGUI is never called headless)
+namespace UnityEngine
+{
+    public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } }
+    public static class Screen { public static int width = 1920, height = 1080; }
+    public enum TextAnchor { UpperLeft, MiddleLeft, MiddleCenter, MiddleRight }
+    public class GUIStyleState { public Color textColor; }
+    public class GUIStyle
+    {
+        public GUIStyle() { }
+        public GUIStyle(GUIStyle other) { if (other != null) { font = other.font; fontSize = other.fontSize; alignment = other.alignment; wordWrap = other.wordWrap; } }
+        public Font font; public int fontSize; public TextAnchor alignment; public bool wordWrap;
+        public GUIStyleState normal = new GUIStyleState();
+    }
+    public class GUISkin { public GUIStyle label = new GUIStyle(), button = new GUIStyle(), box = new GUIStyle(), textField = new GUIStyle(); }
+    public static class GUI
+    {
+        public static GUISkin skin = new GUISkin();
+        public static void Box(Rect r, string t, GUIStyle s) { }
+        public static void Label(Rect r, string t, GUIStyle s) { }
+        public static bool Button(Rect r, string t, GUIStyle s) => false;
+        public static string TextField(Rect r, string t, int max, GUIStyle s) => t;
+        public static void SetNextControlName(string n) { }
+        public static void FocusControl(string n) { }
+    }
+}

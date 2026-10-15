@@ -35,7 +35,7 @@ public class GraphicsEnhancer : MonoBehaviour
     private void Update()
     {
         var kb = Keyboard.current;
-        if (kb != null && kb.gKey.wasPressedThisFrame)
+        if (kb != null && !NetSession.Typing && kb.gKey.wasPressedThisFrame)
         {
             High = !High;
             SaveData.SetInt("mazraa.gfxHigh", High ? 1 : 0);

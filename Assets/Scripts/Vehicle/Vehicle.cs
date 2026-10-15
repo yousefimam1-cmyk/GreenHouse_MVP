@@ -43,8 +43,11 @@ public abstract class Vehicle : Interactable
     private int enteredFrame;
     private float camYaw;
 
+    /// <summary>Co-op: another player is driving this vehicle; it follows their poses and can't be entered here.</summary>
+    public bool RemoteDriven { get; private set; }
+
     protected abstract string SaveId { get; }
-    public override bool CanInteract => !IsDriving;
+    public override bool CanInteract => !IsDriving && !RemoteDriven;
 
     protected override void Awake()
     {
@@ -136,7 +139,7 @@ public abstract class Vehicle : Interactable
         UpdateWheels();
         if (!IsDriving || Time.timeScale == 0f) return;
         var kb = Keyboard.current;
-        if (kb == null || Time.frameCount == enteredFrame) return;
+        if (kb == null || Time.frameCount == enteredFrame || NetSession.Typing) return;
         if (kb.eKey.wasPressedThisFrame && Mathf.Abs(Speed) < 4f) { Exit(); return; }
         if (kb.rKey.wasPressedThisFrame) Recover();
         DrivingUpdate(kb);
@@ -154,9 +157,10 @@ public abstract class Vehicle : Interactable
 
     private void FixedUpdate()
     {
+        if (RemoteDriven) return;
         float throttle = 0f, steer = 0f; bool brake = false;
         var kb = Keyboard.current;
-        if (IsDriving && kb != null)
+        if (IsDriving && kb != null && !NetSession.Typing)
         {
             if (kb.wKey.isPressed || kb.upArrowKey.isPressed) throttle += 1f;
             if (kb.sKey.isPressed || kb.downArrowKey.isPressed) throttle -= 1f;
@@ -256,6 +260,26 @@ public abstract class Vehicle : Interactable
         if (wheels == null) return;
         float deg = Speed / 0.45f * Mathf.Rad2Deg * Time.deltaTime;
         foreach (var w in wheels) if (w != null) w.Rotate(Vector3.right, deg, Space.Self);
+    }
+
+    public void SetRemoteDriven(bool on)
+    {
+        if (RemoteDriven == on || (on && IsDriving)) return;
+        RemoteDriven = on;
+        rb.isKinematic = on;
+        if (!on) { Speed = 0f; rb.position = transform.position; rb.rotation = transform.rotation; }
+    }
+
+    /// <summary>Move to the pose another player's copy of this vehicle reported (smoothed).</summary>
+    public void ApplyRemotePose(Vector3 pos, float newYaw, float speed)
+    {
+        if (!RemoteDriven) return;
+        yaw = newYaw;
+        Speed = speed;
+        Vector3 p = (pos - transform.position).sqrMagnitude > 100f ? pos : Vector3.Lerp(transform.position, pos, 0.5f);
+        Quaternion r = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0f, newYaw, 0f), 0.5f);
+        transform.SetPositionAndRotation(p, r);
+        rb.position = p; rb.rotation = r;
     }
 
     protected virtual void OnDestroy() { if (Current == this) Current = null; }
