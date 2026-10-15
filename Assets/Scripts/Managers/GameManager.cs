@@ -50,6 +50,8 @@ public class GameManager : MonoBehaviour
         if (GetComponent<GraphicsEnhancer>() == null) gameObject.AddComponent<GraphicsEnhancer>();
         if (GetComponent<FeedbackFX>() == null) gameObject.AddComponent<FeedbackFX>();
         if (GetComponent<ShopUI>() == null) gameObject.AddComponent<ShopUI>();
+        if (GetComponent<WorldClock>() == null) gameObject.AddComponent<WorldClock>();
+        if (GetComponent<FieldManager>() == null) gameObject.AddComponent<FieldManager>();
     }
 
     private void Start()
@@ -94,6 +96,19 @@ public class GameManager : MonoBehaviour
             UIManager.Instance.ShowAlertMessage(Loc.T("Harvested {0} kg of {1}", kg.ToString("F0"), crop));
         OnHarvest?.Invoke(kg);
         GameEvents.RaiseHarvested(bed, kg);
+        OnStatsChanged?.Invoke();
+    }
+
+    /// <summary>Open-field harvest: counts toward totals and missions (the plot already stored the goods).</summary>
+    public void RegisterFieldHarvest(float kg)
+    {
+        TotalHarvestKg += kg;
+        HarvestCount++;
+        PlayerPrefs.SetFloat(KgKey, TotalHarvestKg);
+        PlayerPrefs.SetInt(CountKey, HarvestCount);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayHarvest();
+        OnHarvest?.Invoke(kg);
+        GameEvents.RaiseHarvested(null, kg);
         OnStatsChanged?.Invoke();
     }
 

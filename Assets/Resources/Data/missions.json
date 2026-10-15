@@ -1,19 +1,165 @@
 {
-  "notes": "Mission chain, played in order. type: startWell | optimize | healthyGreenhouse | allHealthy | harvestKg | enterVehicle | loadKg | deliverKg | earnMoney | buyFeed | buyAnimal | collectProducts | buyUpgrade. target = amount needed (counted from when the mission starts). reward in EGP.",
+  "notes": "Mission chain, played in order. type: startWell | optimize | healthyGreenhouse | allHealthy | harvestKg | enterVehicle | loadKg | deliverKg | earnMoney | buyFeed | buyAnimal | collectProducts | buyUpgrade | plantField | harvestField. target = amount needed (counted from when the mission starts). reward in EGP.",
   "missions": [
-    { "id": "well",      "type": "startWell",         "target": 1,    "reward": 150,  "titleEn": "Get the water running",  "titleAr": "شغّل المياه",           "descEn": "Start the well next to Greenhouse 1.",                         "descAr": "شغّل البئر بجوار الصوبة 1." },
-    { "id": "optimize",  "type": "optimize",          "target": 2,    "reward": 200,  "titleEn": "Tune the greenhouse",    "titleAr": "اضبط الصوبة",           "descEn": "Optimize 2 modules at a Control Station.",                     "descAr": "حسّن وحدتين من محطة التحكم." },
-    { "id": "healthy1",  "type": "healthyGreenhouse", "target": 1,    "reward": 300,  "titleEn": "A healthy greenhouse",   "titleAr": "صوبة سليمة",            "descEn": "Make every bed in one greenhouse healthy.",                    "descAr": "اجعل كل أحواض صوبة واحدة سليمة." },
-    { "id": "harvest1",  "type": "harvestKg",         "target": 100,  "reward": 250,  "titleEn": "First harvest",          "titleAr": "أول حصاد",              "descEn": "Harvest 100 kg of vegetables.",                                "descAr": "احصد 100 كجم خضروات." },
-    { "id": "truck",     "type": "enterVehicle",      "target": 1,    "reward": 100,  "titleEn": "Meet the farm truck",    "titleAr": "تعرّف على عربية المزرعة", "descEn": "Get in the orange truck by the loading bay.",                 "descAr": "اركب العربية البرتقالي جنب منطقة التحميل." },
-    { "id": "load1",     "type": "loadKg",            "target": 50,   "reward": 100,  "titleEn": "Load up",                "titleAr": "حمّل العربية",           "descEn": "Park on the green loading bay to load 50 kg.",               "descAr": "اركن على منطقة التحميل الخضراء لتحميل 50 كجم." },
-    { "id": "deliver1",  "type": "deliverKg",         "target": 50,   "reward": 300,  "titleEn": "To the market",          "titleAr": "إلى السوق",             "descEn": "Drive to the gold market pad and sell 50 kg.",                "descAr": "سوق إلى منطقة السوق الذهبية وبيع 50 كجم." },
-    { "id": "feed",      "type": "buyFeed",           "target": 1,    "reward": 100,  "titleEn": "Stock up on feed",       "titleAr": "اشتري علف",             "descEn": "Buy animal feed at a Farm Shop.",                             "descAr": "اشتري علف من محل المزرعة." },
-    { "id": "chicken",   "type": "buyAnimal",         "target": 1,    "reward": 200,  "titleEn": "First animals",          "titleAr": "أول حيوانات",           "descEn": "Buy an animal for the pen.",                                  "descAr": "اشتري حيوان للحظيرة." },
-    { "id": "collect",   "type": "collectProducts",   "target": 1,    "reward": 200,  "titleEn": "Collect the eggs",       "titleAr": "اجمع البيض",            "descEn": "Collect animal products at the pen crate.",                  "descAr": "اجمع منتجات الحيوانات من صندوق الحظيرة." },
-    { "id": "allhealthy","type": "allHealthy",        "target": 1,    "reward": 500,  "titleEn": "Whole farm thriving",    "titleAr": "المزرعة كلها بخير",      "descEn": "Make all crop beds in both greenhouses healthy.",             "descAr": "اجعل كل الأحواض في الصوبتين سليمة." },
-    { "id": "upgrade",   "type": "buyUpgrade",        "target": 1,    "reward": 300,  "titleEn": "Invest in the farm",     "titleAr": "استثمر في المزرعة",      "descEn": "Buy a truck or growth upgrade.",                              "descAr": "اشتري ترقية للعربية أو للنمو." },
-    { "id": "deliver2",  "type": "deliverKg",         "target": 400,  "reward": 800,  "titleEn": "Big supplier",           "titleAr": "مورّد كبير",            "descEn": "Sell 400 kg at the market.",                                  "descAr": "بيع 400 كجم في السوق." },
-    { "id": "money",     "type": "earnMoney",         "target": 10000,"reward": 1500, "titleEn": "Profitable farm",        "titleAr": "مزرعة رابحة",           "descEn": "Earn 10,000 EGP from sales.",                                 "descAr": "اكسب 10,000 جنيه من المبيعات." }
+    {
+      "id": "well",
+      "type": "startWell",
+      "target": 1,
+      "reward": 150,
+      "titleEn": "Get the water running",
+      "titleAr": "شغّل المياه",
+      "descEn": "Start the well next to Greenhouse 1.",
+      "descAr": "شغّل البئر بجوار الصوبة 1."
+    },
+    {
+      "id": "optimize",
+      "type": "optimize",
+      "target": 2,
+      "reward": 200,
+      "titleEn": "Tune the greenhouse",
+      "titleAr": "اضبط الصوبة",
+      "descEn": "Optimize 2 modules at a Control Station.",
+      "descAr": "حسّن وحدتين من محطة التحكم."
+    },
+    {
+      "id": "healthy1",
+      "type": "healthyGreenhouse",
+      "target": 1,
+      "reward": 300,
+      "titleEn": "A healthy greenhouse",
+      "titleAr": "صوبة سليمة",
+      "descEn": "Make every bed in one greenhouse healthy.",
+      "descAr": "اجعل كل أحواض صوبة واحدة سليمة."
+    },
+    {
+      "id": "harvest1",
+      "type": "harvestKg",
+      "target": 100,
+      "reward": 250,
+      "titleEn": "First harvest",
+      "titleAr": "أول حصاد",
+      "descEn": "Harvest 100 kg of vegetables.",
+      "descAr": "احصد 100 كجم خضروات."
+    },
+    {
+      "id": "plant",
+      "type": "plantField",
+      "target": 1,
+      "reward": 150,
+      "titleEn": "Open-field farming",
+      "titleAr": "زراعة في الأرض المكشوفة",
+      "descEn": "Plow a field plot, then plant your wheat seeds (E twice).",
+      "descAr": "احرث قطعة أرض وازرع بذور القمح (E مرتين)."
+    },
+    {
+      "id": "fieldharvest",
+      "type": "harvestField",
+      "target": 60,
+      "reward": 400,
+      "titleEn": "Field harvest",
+      "titleAr": "حصاد الحقل",
+      "descEn": "Keep the field watered and harvest 60 kg when it is ripe.",
+      "descAr": "اسقِ الحقل واحصد 60 كجم لما ينضج."
+    },
+    {
+      "id": "truck",
+      "type": "enterVehicle",
+      "target": 1,
+      "reward": 100,
+      "titleEn": "Meet the farm truck",
+      "titleAr": "تعرّف على عربية المزرعة",
+      "descEn": "Get in the orange truck by the loading bay.",
+      "descAr": "اركب العربية البرتقالي جنب منطقة التحميل."
+    },
+    {
+      "id": "load1",
+      "type": "loadKg",
+      "target": 50,
+      "reward": 100,
+      "titleEn": "Load up",
+      "titleAr": "حمّل العربية",
+      "descEn": "Park on the green loading bay to load 50 kg.",
+      "descAr": "اركن على منطقة التحميل الخضراء لتحميل 50 كجم."
+    },
+    {
+      "id": "deliver1",
+      "type": "deliverKg",
+      "target": 50,
+      "reward": 300,
+      "titleEn": "To the market",
+      "titleAr": "إلى السوق",
+      "descEn": "Drive to the gold market pad and sell 50 kg.",
+      "descAr": "سوق إلى منطقة السوق الذهبية وبيع 50 كجم."
+    },
+    {
+      "id": "feed",
+      "type": "buyFeed",
+      "target": 1,
+      "reward": 100,
+      "titleEn": "Stock up on feed",
+      "titleAr": "اشتري علف",
+      "descEn": "Buy animal feed at a Farm Shop.",
+      "descAr": "اشتري علف من محل المزرعة."
+    },
+    {
+      "id": "chicken",
+      "type": "buyAnimal",
+      "target": 1,
+      "reward": 200,
+      "titleEn": "First animals",
+      "titleAr": "أول حيوانات",
+      "descEn": "Buy an animal for the pen.",
+      "descAr": "اشتري حيوان للحظيرة."
+    },
+    {
+      "id": "collect",
+      "type": "collectProducts",
+      "target": 1,
+      "reward": 200,
+      "titleEn": "Collect the eggs",
+      "titleAr": "اجمع البيض",
+      "descEn": "Collect animal products at the pen crate.",
+      "descAr": "اجمع منتجات الحيوانات من صندوق الحظيرة."
+    },
+    {
+      "id": "allhealthy",
+      "type": "allHealthy",
+      "target": 1,
+      "reward": 500,
+      "titleEn": "Whole farm thriving",
+      "titleAr": "المزرعة كلها بخير",
+      "descEn": "Make all crop beds in both greenhouses healthy.",
+      "descAr": "اجعل كل الأحواض في الصوبتين سليمة."
+    },
+    {
+      "id": "upgrade",
+      "type": "buyUpgrade",
+      "target": 1,
+      "reward": 300,
+      "titleEn": "Invest in the farm",
+      "titleAr": "استثمر في المزرعة",
+      "descEn": "Buy a truck or growth upgrade.",
+      "descAr": "اشتري ترقية للعربية أو للنمو."
+    },
+    {
+      "id": "deliver2",
+      "type": "deliverKg",
+      "target": 400,
+      "reward": 800,
+      "titleEn": "Big supplier",
+      "titleAr": "مورّد كبير",
+      "descEn": "Sell 400 kg at the market.",
+      "descAr": "بيع 400 كجم في السوق."
+    },
+    {
+      "id": "money",
+      "type": "earnMoney",
+      "target": 10000,
+      "reward": 1500,
+      "titleEn": "Profitable farm",
+      "titleAr": "مزرعة رابحة",
+      "descEn": "Earn 10,000 EGP from sales.",
+      "descAr": "اكسب 10,000 جنيه من المبيعات."
+    }
   ]
 }

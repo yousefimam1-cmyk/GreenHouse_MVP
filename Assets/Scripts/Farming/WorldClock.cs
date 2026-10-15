@@ -1,0 +1,145 @@
+using UnityEngine;
+
+public enum Season { Spring, Summer, Autumn, Winter }
+public enum Weather { Sunny, Cloudy, Rain, Heatwave }
+
+/// <summary>
+/// In-game calendar: days, four seasons and daily weather (rolled per Egyptian climate: rain mostly in winter,
+/// heatwaves in summer). Rain waters every field; heatwaves dry them twice as fast. Saved.
+/// </summary>
+public class WorldClock : MonoBehaviour
+{
+    public static WorldClock Instance;
+
+    [Tooltip("Real seconds per in-game day")] public float secondsPerDay = 360f;
+    [Tooltip("Days per season")] public int daysPerSeason = 5;
+
+    public int Day { get; private set; }               // 1-based day of the whole game
+    public float DayProgress { get; private set; }     // 0..1 through the current day
+    public Weather Weather { get; private set; }
+    public Season Season => (Season)(((Day - 1) / Mathf.Max(1, daysPerSeason)) % 4);
+    public int DayOfSeason => (Day - 1) % Mathf.Max(1, daysPerSeason) + 1;
+
+    public static event System.Action<int> DayStarted;
+    public static event System.Action<Season> SeasonChanged;
+    public static event System.Action<Weather> WeatherChanged;
+
+    private ParticleSystem rain;
+    private Light sun;
+    private float sunBaseIntensity = 1f;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics() { DayStarted = null; SeasonChanged = null; WeatherChanged = null; }
+
+    private void Awake()
+    {
+        Instance = this;
+        Day = Mathf.Max(1, PlayerPrefs.GetInt("mazraa.day", 1));
+        DayProgress = PlayerPrefs.GetFloat("mazraa.dayProgress", 0.25f);
+        Weather = (Weather)PlayerPrefs.GetInt("mazraa.weather", 0);
+    }
+
+    private void Start()
+    {
+        sun = RenderSettings.sun;
+        if (sun == null) foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None)) if (l.type == LightType.Directional) { sun = l; break; }
+        if (sun != null) sunBaseIntensity = sun.intensity;
+        BuildRain();
+        ApplyWeatherVisuals();
+        InvokeRepeating(nameof(SaveState), 10f, 10f);
+    }
+
+    private void OnDestroy() { if (Instance == this) Instance = null; }
+
+    private void Update()
+    {
+        DayProgress += Time.deltaTime / Mathf.Max(10f, secondsPerDay);
+        if (DayProgress >= 1f)
+        {
+            DayProgress -= 1f;
+            NextDay();
+        }
+        if (rain != null && Camera.main != null) rain.transform.position = Camera.main.transform.position + Vector3.up * 12f;
+        else if (rain != null && FarmTruck.Instance != null && FarmTruck.Instance.IsDriving) rain.transform.position = FarmTruck.Instance.transform.position + Vector3.up * 14f;
+    }
+
+    /// <summary>Skip to the next morning (used by beds, and for testing).</summary>
+    public void NextDay()
+    {
+        Season before = Season;
+        Day++;
+        RollWeather();
+        DayStarted?.Invoke(Day);
+        if (Season != before) SeasonChanged?.Invoke(Season);
+        SaveState();
+        if (UIManager.Instance != null)
+            UIManager.Instance.ShowAlertMessage(Loc.Display(Loc.Raw("Day") + " " + Day + " - " + SeasonName() + " - " + WeatherName()));
+    }
+
+    private void RollWeather()
+    {
+        float r = Random.value;
+        switch (Season)
+        {
+            case Season.Winter: Weather = r < 0.35f ? Weather.Rain : r < 0.65f ? Weather.Cloudy : Weather.Sunny; break;
+            case Season.Summer: Weather = r < 0.3f ? Weather.Heatwave : r < 0.4f ? Weather.Cloudy : Weather.Sunny; break;
+            default: Weather = r < 0.12f ? Weather.Rain : r < 0.35f ? Weather.Cloudy : Weather.Sunny; break;
+        }
+        ApplyWeatherVisuals();
+        WeatherChanged?.Invoke(Weather);
+    }
+
+    private void BuildRain()
+    {
+        var go = new GameObject("Rain");
+        go.transform.SetParent(transform, false);
+        rain = go.AddComponent<ParticleSystem>();
+        rain.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        var main = rain.main;
+        main.startLifetime = 1.4f; main.startSpeed = 18f; main.startSize = 0.05f; main.maxParticles = 3000;
+        main.startColor = new Color(0.75f, 0.82f, 0.9f, 0.6f);
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.gravityModifier = 0.4f;
+        var em = rain.emission; em.rateOverTime = 1500f;
+        var shape = rain.shape; shape.shapeType = ParticleSystemShapeType.Box; shape.scale = new Vector3(40f, 1f, 40f);
+        go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+        var pr = go.GetComponent<ParticleSystemRenderer>();
+        pr.renderMode = ParticleSystemRenderMode.Stretch;
+        pr.lengthScale = 6f;
+        pr.sharedMaterial = Build.Mat(new Color(0.75f, 0.82f, 0.9f, 1f), 0.8f);
+        pr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+    }
+
+    private void ApplyWeatherVisuals()
+    {
+        if (rain != null)
+        {
+            if (Weather == Weather.Rain && !rain.isPlaying) rain.Play();
+            else if (Weather != Weather.Rain && rain.isPlaying) rain.Stop();
+        }
+        if (sun != null)
+        {
+            float k = Weather == Weather.Rain ? 0.45f : Weather == Weather.Cloudy ? 0.7f : Weather == Weather.Heatwave ? 1.2f : 1f;
+            sun.intensity = sunBaseIntensity * k;
+        }
+    }
+
+    private void SaveState()
+    {
+        PlayerPrefs.SetInt("mazraa.day", Day);
+        PlayerPrefs.SetFloat("mazraa.dayProgress", DayProgress);
+        PlayerPrefs.SetInt("mazraa.weather", (int)Weather);
+        PlayerPrefs.Save();
+    }
+
+    public void ResetCalendar()
+    {
+        Day = 1; DayProgress = 0.25f; Weather = Weather.Sunny;
+        ApplyWeatherVisuals();
+        SaveState();
+    }
+
+    public static string SeasonId(Season s) => s.ToString().ToLowerInvariant();
+    public string SeasonName() => Loc.Raw(Season.ToString());
+    public string WeatherName() => Loc.Raw(Weather.ToString());
+}

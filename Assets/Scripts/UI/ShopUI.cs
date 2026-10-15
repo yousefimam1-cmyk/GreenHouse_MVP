@@ -40,6 +40,7 @@ public class ShopUI : MonoBehaviour
     {
         var ids = new List<string> { "feed" };
         var eco = EconomyManager.Instance;
+        if (eco != null) foreach (var c in eco.Data.fieldCrops) ids.Add("seed_" + c.id);
         if (eco != null) foreach (var a in eco.Data.animals) ids.Add(a.id);
         ids.Add("capacity");
         ids.Add("growth");
@@ -77,9 +78,9 @@ public class ShopUI : MonoBehaviour
         foreach (var id in Items())
         {
             var row = NewRect("Row " + id, list, typeof(Image), typeof(Button), typeof(LayoutElement));
-            row.GetComponent<LayoutElement>().minHeight = 58;
+            row.GetComponent<LayoutElement>().minHeight = 48;
             row.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.06f);
-            var label = NewText(row, 24, Color.white);
+            var label = NewText(row, 22, Color.white);
             var lrt = label.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one; lrt.offsetMin = new Vector2(16, 6); lrt.offsetMax = new Vector2(-16, -6);
             label.alignment = TextAlignmentOptions.MidlineLeft;
@@ -134,7 +135,7 @@ public class ShopUI : MonoBehaviour
         var kb = Keyboard.current;
         if (kb == null) return;
         if (Time.frameCount != openedFrame && (kb.escapeKey.wasPressedThisFrame || kb.eKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame)) { Close(); return; }
-        Key[] keys = { Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5, Key.Digit6, Key.Digit7, Key.Digit8, Key.Digit9 };
+        Key[] keys = { Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5, Key.Digit6, Key.Digit7, Key.Digit8, Key.Digit9, Key.Digit0 };
         for (int i = 0; i < rows.Count && i < keys.Length; i++)
             if (kb[keys[i]].wasPressedThisFrame) Buy(rows[i].id);
     }
@@ -163,6 +164,7 @@ public class ShopUI : MonoBehaviour
         if (id == "feed") return Loc.IsArabic ? eco.Data.feed.nameAr : eco.Data.feed.nameEn;
         if (id == "capacity") return Loc.Raw("Bigger truck bed");
         if (id == "growth") return Loc.Raw("Faster growth");
+        if (id.StartsWith("seed_")) return Loc.Raw("Seeds") + ": " + FieldCropText.Name(eco.FieldCrop(id.Substring(5)));
         return EconomyManager.AnimalName(eco.Animal(id));
     }
 
@@ -182,16 +184,17 @@ public class ShopUI : MonoBehaviour
             var a = eco.Animal(id);
             if (a != null) detail = " (" + eco.Owned(id) + "/" + a.max + ")";
             else if (id == "feed") detail = " (" + eco.Feed.ToString("F1") + ")";
+            else if (id.StartsWith("seed_")) detail = " (" + eco.Seeds(id.Substring(5)) + ")";
             else if (id == "capacity") detail = " (" + eco.TruckCapacity.ToString("F0") + " kg)";
             else if (id == "growth") detail = " (x" + EconomyManager.GrowthSpeed.ToString("F2") + ")";
             string priceText = price < 0 ? Loc.Raw("Fully upgraded") : price.ToString("N0") + " " + Loc.Raw("EGP");
-            label.text = "<color=#FF9A3C>" + (i + 1) + "</color>   " + Loc.Display(Name(id) + detail + "   " + priceText);
+            label.text = "<color=#FF9A3C>" + ((i + 1) % 10) + "</color>   " + Loc.Display(Name(id) + detail + "   " + priceText);
             label.alignment = Loc.IsArabic ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
             bool affordable = price >= 0 && eco.Money >= price;
             btn.interactable = affordable;
             label.color = affordable ? Color.white : new Color(1f, 1f, 1f, 0.45f);
         }
-        footer.text = Loc.T("Money: {0} EGP   Feed: {1}", eco.Money.ToString("N0"), eco.Feed.ToString("F1")) + "\n" + Loc.T("[1-9] or click to buy   [Esc] close");
+        footer.text = Loc.T("Money: {0} EGP   Feed: {1}", eco.Money.ToString("N0"), eco.Feed.ToString("F1")) + "\n" + Loc.T("[0-9] or click to buy   [Esc] close");
         footer.alignment = title.alignment;
     }
 }

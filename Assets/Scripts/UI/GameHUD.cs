@@ -85,6 +85,8 @@ public class GameHUD : MonoBehaviour
         if (EconomyManager.Instance != null) EconomyManager.Instance.ResetAll();
         if (MissionManager.Instance != null) MissionManager.Instance.ResetChain();
         if (GameManager.Instance != null) GameManager.Instance.ResetProgress();
+        if (WorldClock.Instance != null) WorldClock.Instance.ResetCalendar();
+        if (FieldManager.Instance != null) FieldManager.Instance.ResetAll();
         SetPaused(false);
         if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T("New game started"));
     }
@@ -316,6 +318,9 @@ public class GameHUD : MonoBehaviour
         var gm = GameManager.Instance;
         var sb = new StringBuilder();
         sb.Append(Title(Loc.T("Mazraa Greenhouse")));
+        var clock = WorldClock.Instance;
+        if (clock != null)
+            sb.Append('\n').Append("<color=#9FD3FF>").Append(Loc.Display(Loc.Raw("Day") + " " + clock.Day + " - " + clock.SeasonName() + " " + clock.DayOfSeason + "/" + clock.daysPerSeason + " - " + clock.WeatherName())).Append("</color>");
         if (gm != null)
         {
             sb.Append('\n').Append(Loc.T("Harvested: {0} kg", gm.TotalHarvestKg.ToString("F0")));

@@ -1,15 +1,181 @@
 {
-  "notes": "Game economy. Prices are game-balance values in EGP, not market quotes. weight = kg of truck space per unit. Animals produce 'amount' of their product every 'interval' seconds while the pen trough has feed (feedPerCycle consumed per cycle).",
+  "notes": "Game economy. Prices are game-balance values in EGP, not market quotes. weight = kg of truck space per unit. Animals produce 'amount' of their product every 'interval' seconds while the pen trough has feed (feedPerCycle consumed per cycle). fieldCrops: open-field crops; seasons lists when they grow at full speed (Egyptian calendar: wheat/onion winter, watermelon summer); growSeconds is real time at full water and season; yieldKg per plot.",
   "goods": [
-    { "id": "crops", "nameEn": "Vegetables", "nameAr": "خضروات", "unitEn": "kg",  "unitAr": "كجم",  "price": 10, "weight": 1 },
-    { "id": "milk",  "nameEn": "Milk",       "nameAr": "لبن",    "unitEn": "L",   "unitAr": "لتر",  "price": 25, "weight": 1 },
-    { "id": "wool",  "nameEn": "Wool",       "nameAr": "صوف",    "unitEn": "kg",  "unitAr": "كجم",  "price": 45, "weight": 1 },
-    { "id": "eggs",  "nameEn": "Eggs",       "nameAr": "بيض",    "unitEn": "pcs", "unitAr": "بيضة", "price": 4,  "weight": 0.06 }
+    {
+      "id": "crops",
+      "nameEn": "Vegetables",
+      "nameAr": "خضروات",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 10,
+      "weight": 1
+    },
+    {
+      "id": "milk",
+      "nameEn": "Milk",
+      "nameAr": "لبن",
+      "unitEn": "L",
+      "unitAr": "لتر",
+      "price": 25,
+      "weight": 1
+    },
+    {
+      "id": "wool",
+      "nameEn": "Wool",
+      "nameAr": "صوف",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 45,
+      "weight": 1
+    },
+    {
+      "id": "eggs",
+      "nameEn": "Eggs",
+      "nameAr": "بيض",
+      "unitEn": "pcs",
+      "unitAr": "بيضة",
+      "price": 4,
+      "weight": 0.06
+    },
+    {
+      "id": "wheat",
+      "nameEn": "Wheat",
+      "nameAr": "قمح",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 9,
+      "weight": 1
+    },
+    {
+      "id": "potato",
+      "nameEn": "Potatoes",
+      "nameAr": "بطاطس",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 8,
+      "weight": 1
+    },
+    {
+      "id": "onion",
+      "nameEn": "Onions",
+      "nameAr": "بصل",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 7,
+      "weight": 1
+    },
+    {
+      "id": "watermelon",
+      "nameEn": "Watermelon",
+      "nameAr": "بطيخ",
+      "unitEn": "kg",
+      "unitAr": "كجم",
+      "price": 6,
+      "weight": 1
+    }
   ],
   "animals": [
-    { "id": "chicken", "nameEn": "Chicken", "nameAr": "فرخة", "price": 300,  "product": "eggs", "amount": 1, "interval": 25, "feedPerCycle": 0.1, "max": 12 },
-    { "id": "sheep",   "nameEn": "Sheep",   "nameAr": "خروف", "price": 2500, "product": "wool", "amount": 2, "interval": 90, "feedPerCycle": 0.5, "max": 6 },
-    { "id": "cow",     "nameEn": "Cow",     "nameAr": "بقرة", "price": 6000, "product": "milk", "amount": 8, "interval": 60, "feedPerCycle": 1,   "max": 4 }
+    {
+      "id": "chicken",
+      "nameEn": "Chicken",
+      "nameAr": "فرخة",
+      "price": 300,
+      "product": "eggs",
+      "amount": 1,
+      "interval": 25,
+      "feedPerCycle": 0.1,
+      "max": 12
+    },
+    {
+      "id": "sheep",
+      "nameEn": "Sheep",
+      "nameAr": "خروف",
+      "price": 2500,
+      "product": "wool",
+      "amount": 2,
+      "interval": 90,
+      "feedPerCycle": 0.5,
+      "max": 6
+    },
+    {
+      "id": "cow",
+      "nameEn": "Cow",
+      "nameAr": "بقرة",
+      "price": 6000,
+      "product": "milk",
+      "amount": 8,
+      "interval": 60,
+      "feedPerCycle": 1,
+      "max": 4
+    }
   ],
-  "feed": { "nameEn": "Animal feed x10", "nameAr": "علف ×10", "price": 200, "units": 10 }
+  "feed": {
+    "nameEn": "Animal feed x10",
+    "nameAr": "علف ×10",
+    "price": 200,
+    "units": 10
+  },
+  "fieldCrops": [
+    {
+      "id": "wheat",
+      "nameEn": "Wheat",
+      "nameAr": "قمح",
+      "seedPrice": 120,
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "growSeconds": 240,
+      "yieldKg": 70,
+      "r": 0.86,
+      "g": 0.72,
+      "b": 0.32
+    },
+    {
+      "id": "potato",
+      "nameEn": "Potatoes",
+      "nameAr": "بطاطس",
+      "seedPrice": 160,
+      "seasons": [
+        "autumn",
+        "winter",
+        "spring"
+      ],
+      "growSeconds": 200,
+      "yieldKg": 90,
+      "r": 0.62,
+      "g": 0.45,
+      "b": 0.28
+    },
+    {
+      "id": "onion",
+      "nameEn": "Onions",
+      "nameAr": "بصل",
+      "seedPrice": 100,
+      "seasons": [
+        "winter",
+        "spring"
+      ],
+      "growSeconds": 180,
+      "yieldKg": 80,
+      "r": 0.8,
+      "g": 0.55,
+      "b": 0.75
+    },
+    {
+      "id": "watermelon",
+      "nameEn": "Watermelon",
+      "nameAr": "بطيخ",
+      "seedPrice": 200,
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "growSeconds": 280,
+      "yieldKg": 120,
+      "r": 0.2,
+      "g": 0.55,
+      "b": 0.2
+    }
+  ]
 }

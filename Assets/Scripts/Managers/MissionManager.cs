@@ -45,6 +45,8 @@ public class MissionManager : MonoBehaviour
         GameEvents.Delivered += OnDelivered;
         GameEvents.UpgradeBought += OnBought;
         GameEvents.ProductsCollected += OnCollected;
+        FieldPlot.FieldPlanted += OnPlanted;
+        FieldPlot.FieldHarvested += OnFieldHarvest;
     }
 
     private void OnDisable()
@@ -57,6 +59,8 @@ public class MissionManager : MonoBehaviour
         GameEvents.Delivered -= OnDelivered;
         GameEvents.UpgradeBought -= OnBought;
         GameEvents.ProductsCollected -= OnCollected;
+        FieldPlot.FieldPlanted -= OnPlanted;
+        FieldPlot.FieldHarvested -= OnFieldHarvest;
     }
 
     private void OnDestroy() { if (Instance == this) Instance = null; }
@@ -78,6 +82,8 @@ public class MissionManager : MonoBehaviour
     private void OnLoaded(float kg) => Add("loadKg", kg);
     private void OnDelivered(float kg, int money) { Add("deliverKg", kg); Add("earnMoney", money); }
     private void OnCollected() => Add("collectProducts", 1f);
+    private void OnPlanted(FieldPlot p) => Add("plantField", 1f);
+    private void OnFieldHarvest(FieldPlot p, string crop, float kg) => Add("harvestField", kg);
     private void OnBought(string id)
     {
         if (id == "feed") Add("buyFeed", 1f);

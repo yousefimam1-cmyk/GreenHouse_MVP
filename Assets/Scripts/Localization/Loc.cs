@@ -63,6 +63,29 @@ public static class Loc
         { "Silver", "فضي" },
         { "Bronze", "برونزي" },
         { "Partners", "الشركاء" },
+        { "Day", "اليوم" },
+        { "Spring", "الربيع" },
+        { "Summer", "الصيف" },
+        { "Autumn", "الخريف" },
+        { "Winter", "الشتاء" },
+        { "Sunny", "مشمس" },
+        { "Cloudy", "غائم" },
+        { "Rain", "مطر" },
+        { "Heatwave", "موجة حر" },
+        { "[E] Plow field", "[E] احرث الأرض" },
+        { "[E] Plant", "[E] ازرع" },
+        { "[E] Water", "[E] اسقِ" },
+        { "No seeds - buy them at a Farm Shop", "مفيش بذور - اشتريها من محل المزرعة" },
+        { "In season", "في موسمه" },
+        { "Out of season - slow", "مش موسمه - بطيء" },
+        { "Field plowed", "تم حرث الأرض" },
+        { "Planted", "تمت زراعة" },
+        { "Start the well first to get water", "شغّل البئر الأول عشان المياه" },
+        { "Field watered", "تم ري الحقل" },
+        { "Harvested", "تم حصاد" },
+        { "kg", "كجم" },
+        { "Seeds", "بذور" },
+        { "[0-9] or click to buy   [Esc] close", "[0-9] أو اضغط للشراء   [Esc] إغلاق" },
         { "All missions complete - free play", "كل المهمات اكتملت - لعب حر" },
         { "Bigger truck bed", "صندوق عربية أكبر" },
         { "Bought", "تم الشراء" },
@@ -93,7 +116,6 @@ public static class Loc
         { "Storage: {0} kg   Feed: {1}", "المخزن: {0} كجم   العلف: {1}" },
         { "The pen is full for this animal", "الحظيرة مليانة من الحيوان ده" },
         { "Truck is full - drive to the market", "العربية مليانة - روح السوق" },
-        { "[1-9] or click to buy   [Esc] close", "[1-9] أو اضغط للشراء   [Esc] إغلاق" },
         { "[Backspace] New game (clears saved progress)", "[Backspace] لعبة جديدة (يمسح التقدم المحفوظ)" },
         { "[E] Collect animal products", "[E] اجمع منتجات الحيوانات" },
         { "[E] Drive truck", "[E] سوق العربية" },
@@ -135,7 +157,8 @@ public static class Loc
             "T - start/stop a timed training scenario    N - next scenario\n" +
             "Truck: E get in/out, WASD drive, Space brake, R reset. Green pad loads, gold pad sells.\n" +
             "Shops sell feed, animals and upgrades. Collect eggs, milk and wool at the pen crate.\n" +
-            "G - graphics quality    P - pause / new game" },
+            "G - graphics quality    P - pause / new game\n" +
+            "Fields: E to plow, plant (buy seeds), water (well must run), harvest. Seasons and weather change growth." },
     };
 
     private static readonly Dictionary<string, string> arabicLong = new Dictionary<string, string>
@@ -149,7 +172,8 @@ public static class Loc
             "T - بدء/إيقاف سيناريو تدريب    N - السيناريو التالي\n" +
             "العربية: E ركوب/نزول، WASD قيادة، Space فرامل، R تعديل. الأخضر تحميل، الذهبي بيع.\n" +
             "المحلات فيها علف وحيوانات وترقيات. اجمع البيض واللبن والصوف من صندوق الحظيرة.\n" +
-            "G - جودة الجرافيكس    P - إيقاف / لعبة جديدة" },
+            "G - جودة الجرافيكس    P - إيقاف / لعبة جديدة\n" +
+            "الحقول: E للحرث والزراعة (اشتري بذور) والري (البئر لازم يشتغل) والحصاد. المواسم والطقس بيأثروا على النمو." },
     };
 
     private static TMP_FontAsset arabicFont;
