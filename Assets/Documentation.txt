@@ -101,3 +101,25 @@ CHATS 1-6 (open fields, economy, vehicles, animals, missions, graphics)
 --- UI/ObjectiveMarker.cs, StoryIntro.cs; Resources/Data/missions.json (25 missions).
 --- Graphics/DayNightCycle.cs  Sun follows the clock, night dimming, headlights and pad lamps.
 --- Real models: Kenney CC0 truck, tractor, crops (Assets/ThirdParty/CREDITS.md). Build.TryModel scales any model to fit.
+
+FISH FEATURE GROUP (fishing, aquaculture, processing, Saudi animals) - Scripts/Fish/
+--- FishingManager.cs  Farm reservoir (~22 m right, 18 m behind the start; scene object "FishPondSpot" moves it).
+    E at the water casts (uses the best bait), random wait, the bobber dips + HUD/alert "BITE!", E within the window
+    reels in. Species in Resources/Data/fish.json: tilapia, catfish, carp, plus coast fish hamour and najil (carbon rod
+    + shrimp bait, sold ~4x higher). Season and time-of-day rules use WorldClock (dawn/day/dusk/night).
+    Shop page "Fishing": bamboo / carbon rod (catch chance + longer bite window), worm / shrimp bait.
+--- AquaFarm.cs        Aquaculture tanks next to the reservoir ("FishTankSpot"). Buy 100 tilapia fingerlings (shop),
+    E feeds once per day (1 feed), grows over 3 fed days, unfed days lose 20% of the stock, E harvests kg of tilapia.
+--- ProcessingYard.cs  Shop page "Processing": date packing house (dates -> packed dates), dairy (milk/goat/camel milk ->
+    laban, milk -> cheese, alternating), flour mill (wheat -> flour), juice press (any fruit good -> juice).
+    Built in a row behind the start ("ProcessingSpot"). E starts a batch from storage; output goes to storage when done.
+    Recipes in Resources/Data/processing.json.
+--- SaudiAnimals.cs    Camel (camel milk, max 2) and Ardi goat (goat milk) are pen animals from the Economy pack; bodies via
+    the FarmAnimal.CustomBody hook (horse model tinted sandy + hump, sheep model tinted black, primitive fallbacks).
+--- HiveFarm.cs        Bee hives (shop "Animals", max 6) make Sidr honey with no feed, fastest in autumn; E collects.
+--- Dovecote.cs        Pigeon tower (shop "Animals") + pigeon pairs; eat a little feed, give squab + manure, breed daily.
+--- FishSpot.cs        Small Interactable with a prompt/action delegate used by all of the above. FishData.cs: data + rules.
+Data: Resources/Data/Economy/10_fish.json (fish, dates, processed goods, honey, squab, manure, camel, goat),
+      Resources/Data/Missions/10_fish.json (catchFish, harvestTank, processBatch, ownCamel), Resources/Data/Loc/10_fish.json.
+Custom mission events: catchFish, catchFishKg, catchCoastFish, harvestTank, harvestTankKg, feedFish, processBatch,
+      process_<good>, collectHoney, collectPigeons. State missions: ownCamel, ownGoats. Save keys: mazraa.fish.*
