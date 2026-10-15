@@ -95,6 +95,7 @@ public class GameHUD : MonoBehaviour
         if (AnimalPen.Instance != null) AnimalPen.Instance.ResetPen();
         if (FarmTruck.Instance != null) FarmTruck.Instance.ClearCargo();
         foreach (var v in FindObjectsByType<Vehicle>(FindObjectsSortMode.None)) v.Refuel(v.fuelCapacity);
+        GameEvents.RaiseNewGameStarted();
         SetPaused(false);
         if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T("New game started"));
     }
