@@ -191,6 +191,7 @@ namespace UnityEngine
             return c;
         }
         public T GetComponent<T>() => components.Where(c => !c.destroyed).OfType<T>().FirstOrDefault();
+        public Component GetComponent(Type t) => components.Where(c => !c.destroyed).FirstOrDefault(c => t.IsInstanceOfType(c));
         public T[] GetComponentsInChildren<T>(bool inc = false) => transform.GetComponentsInChildren<T>(inc);
         public T GetComponentInChildren<T>() => transform.GetComponentsInChildren<T>(false).FirstOrDefault();
         public void SetActive(bool v) => active = v;
@@ -210,6 +211,7 @@ namespace UnityEngine
         public Transform transform => gameObject.transform;
         public string tag { get => gameObject.tag; set => gameObject.tag = value; }
         public T GetComponent<T>() => gameObject.GetComponent<T>();
+        public Component GetComponent(Type t) => gameObject.GetComponent(t);
         public bool TryGetComponent<T>(out T c) { c = GetComponent<T>(); return c != null; }
         public T GetComponentInParent<T>()
         {
@@ -462,6 +464,7 @@ namespace UnityEngine
     {
         public static void Log(object o) => FakeEngine.Logs.Add("" + o);
         public static void LogWarning(object o) => FakeEngine.Logs.Add("WARN " + o);
+        public static void LogException(Exception e) => FakeEngine.Errors.Add("EXC " + e);
         public static void LogError(object o) => FakeEngine.Errors.Add("" + o);
     }
     public enum RuntimePlatform { WindowsPlayer, WebGLPlayer, LinuxEditor }
@@ -489,6 +492,13 @@ namespace UnityEngine
     }
     public static class Resources
     {
+        public static T[] LoadAll<T>(string path) where T : Object
+        {
+            var dir = Path.Combine(FakeEngine.ResourcesRoot, path);
+            if (typeof(T) != typeof(TextAsset) || !Directory.Exists(dir)) return new T[0];
+            return Directory.GetFiles(dir, "*.json").OrderBy(f => f, StringComparer.Ordinal)
+                .Select(f => (T)(Object)new TextAsset { text = File.ReadAllText(f), name = Path.GetFileNameWithoutExtension(f) }).ToArray();
+        }
         public static T Load<T>(string path) where T : Object
         {
             if (typeof(T) == typeof(TextAsset))

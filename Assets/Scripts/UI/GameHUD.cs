@@ -394,6 +394,11 @@ public class GameHUD : MonoBehaviour
                 sb.Append('\n').Append(Loc.T("Storage: {0} kg   Feed: {1}", eco.StorageWeight.ToString("F0"), eco.Feed.ToString("F1")));
                 var pen = AnimalPen.Instance;
                 if (pen != null && pen.AnimalCount > 0) sb.Append('\n').Append("<size=85%>").Append(pen.StatusLine()).Append("</size>");
+                foreach (var line in HudLines.Status)
+                {
+                    string l = null; try { l = line(); } catch (System.Exception e) { Debug.LogException(e); }
+                    if (!string.IsNullOrEmpty(l)) sb.Append('\n').Append("<size=85%>").Append(l).Append("</size>");
+                }
             }
             for (int i = 0; i < gm.Greenhouses.Count; i++)
             {

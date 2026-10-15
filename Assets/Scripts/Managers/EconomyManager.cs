@@ -61,6 +61,21 @@ public class EconomyManager : MonoBehaviour
         if (Data.animals == null) Data.animals = new AnimalDef[0];
         if (Data.fieldCrops == null) Data.fieldCrops = new FieldCropDef[0];
         if (Data.feed == null) Data.feed = new FeedDef { nameEn = "Animal feed x10", nameAr = "علف ×10" };
+        // Feature packs (Resources/Data/Economy/*.json) add or replace goods, animals and field crops by id.
+        foreach (var pack in DataPacks.LoadAs<EconomyFile>("Economy"))
+        {
+            Data.goods = Merge(Data.goods, pack.goods, g => g.id);
+            Data.animals = Merge(Data.animals, pack.animals, a => a.id);
+            Data.fieldCrops = Merge(Data.fieldCrops, pack.fieldCrops, c => c.id);
+        }
+    }
+
+    private static T[] Merge<T>(T[] baseArr, T[] add, Func<T, string> id)
+    {
+        if (add == null || add.Length == 0) return baseArr;
+        var list = new List<T>(baseArr ?? new T[0]);
+        foreach (var x in add) { int i = list.FindIndex(y => id(y) == id(x)); if (i >= 0) list[i] = x; else list.Add(x); }
+        return list.ToArray();
     }
 
     private void OnEnable() => GameEvents.Harvested += OnHarvested;
@@ -169,8 +184,37 @@ public class EconomyManager : MonoBehaviour
     // ---------------- shop ----------------
 
     /// <summary>Buy something by shop id: "feed", "capacity", "growth" or an animal id.</summary>
+    /// <summary>Pay money if there is enough. Used by features that sell things outside the shop.</summary>
+    public bool Spend(int amount)
+    {
+        if (amount < 0 || Money < amount) return false;
+        Money -= amount; Save(); GameEvents.RaiseMoneyChanged(Money);
+        return true;
+    }
+
+    /// <summary>Remove goods from farm storage; returns false (and takes nothing) if there isn't enough.</summary>
+    public bool TakeGood(string id, float amount)
+    {
+        if (amount <= 0f || Stored(id) + 1e-4f < amount) return false;
+        storage[id] = Mathf.Max(0f, Stored(id) - amount); Save();
+        return true;
+    }
+
+    public void AddFeed(float units) { if (units <= 0f) return; Feed += units; Save(); }
+
     public bool TryBuy(string id)
     {
+        var extra = ShopCatalog.Find(id);
+        if (extra != null && Animal(id) == null && id != "feed" && id != "capacity" && id != "growth" && !id.StartsWith("seed_"))
+        {
+            int p = extra.price != null ? extra.price() : -1;
+            if (p < 0 || Money < p || (extra.blockReason != null && !string.IsNullOrEmpty(extra.blockReason()))) return false;
+            Money -= p; Save();
+            GameEvents.RaiseMoneyChanged(Money);
+            extra.onBought?.Invoke();
+            GameEvents.RaiseUpgradeBought(id);
+            return true;
+        }
         int cost = PriceOf(id);
         if (cost < 0 || Money < cost) return false;
         var animal = Animal(id);
@@ -190,6 +234,9 @@ public class EconomyManager : MonoBehaviour
 
     public int PriceOf(string id)
     {
+        var extra = ShopCatalog.Find(id);
+        if (extra != null && Animal(id) == null && !id.StartsWith("seed_") && id != "feed" && id != "capacity" && id != "growth")
+            return extra.price != null ? extra.price() : -1;
         if (id == "feed") return Data.feed.price;
         if (id == "capacity") return NextCapacityCost;
         if (id == "growth") return NextGrowthCost;

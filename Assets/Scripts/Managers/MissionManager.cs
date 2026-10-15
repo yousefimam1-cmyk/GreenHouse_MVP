@@ -33,6 +33,10 @@ public class MissionManager : MonoBehaviour
         var json = Resources.Load<TextAsset>("Data/missions");
         try { if (json != null) Missions = JsonUtility.FromJson<MissionFile>(json.text)?.missions ?? Missions; }
         catch (Exception e) { Debug.LogError("[Missions] Invalid missions.json: " + e.Message); }
+        // Feature mission packs (Resources/Data/Missions/*.json) are appended in file-name order.
+        var all = new System.Collections.Generic.List<MissionDef>(Missions ?? new MissionDef[0]);
+        foreach (var pack in DataPacks.LoadAs<MissionFile>("Missions")) if (pack.missions != null) all.AddRange(pack.missions);
+        Missions = all.ToArray();
         Index = Mathf.Clamp(SaveData.GetInt(IndexKey, 0), 0, Missions.Length);
         Progress = SaveData.GetFloat(ProgressKey, 0f);
     }
@@ -51,6 +55,7 @@ public class MissionManager : MonoBehaviour
         GameEvents.AnimalBorn += OnBorn;
         GameEvents.TractorWorked += OnTractor;
         GameEvents.ContractCompleted += OnContract;
+        GameEvents.Custom += Add;
         GameEvents.MoneyChanged += OnMoney;
         GameEvents.PenCleaned += OnCleaned;
         FieldPlot.FieldHarvested += OnFieldHarvest;
@@ -70,6 +75,7 @@ public class MissionManager : MonoBehaviour
         GameEvents.AnimalBorn -= OnBorn;
         GameEvents.TractorWorked -= OnTractor;
         GameEvents.ContractCompleted -= OnContract;
+        GameEvents.Custom -= Add;
         GameEvents.MoneyChanged -= OnMoney;
         GameEvents.PenCleaned -= OnCleaned;
         FieldPlot.FieldHarvested -= OnFieldHarvest;
@@ -114,10 +120,15 @@ public class MissionManager : MonoBehaviour
         else if (EconomyManager.Instance != null && EconomyManager.Instance.Animal(id) != null) Add("buyAnimal", 1f);
     }
 
+    /// <summary>State-based mission types added by features: type -> current value (checked every second).</summary>
+    public static readonly System.Collections.Generic.Dictionary<string, Func<float>> StateMissions =
+        new System.Collections.Generic.Dictionary<string, Func<float>>(StringComparer.OrdinalIgnoreCase);
+
     // State-based missions
     private void CheckState()
     {
         if (Current == null) return;
+        if (Current.type != null && StateMissions.TryGetValue(Current.type, out var state)) { Progress = state(); CheckDone(); return; }
         var gm = GameManager.Instance;
         if (Is("startWell"))
         {

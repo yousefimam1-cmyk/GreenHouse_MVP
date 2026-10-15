@@ -23,13 +23,15 @@ public static class GameEvents
     public static event Action PenCleaned;
     public static event Action<Implement> TractorWorked;
     public static event Action ContractCompleted;
+    /// <summary>Generic event for features added later: mission type + amount (e.g. "catchFish", 1).</summary>
+    public static event Action<string, float> Custom;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void Reset()
     {
         WellStarted = null; ModuleOptimized = null; BedStateChanged = null; Harvested = null;
         CargoLoaded = null; Delivered = null; VehicleChanged = null; UpgradeBought = null;
-        MoneyChanged = null; MissionStarted = null; MissionCompleted = null; ProductsCollected = null; AnimalBorn = null; PenCleaned = null; TractorWorked = null; ContractCompleted = null;
+        MoneyChanged = null; MissionStarted = null; MissionCompleted = null; ProductsCollected = null; AnimalBorn = null; PenCleaned = null; TractorWorked = null; ContractCompleted = null; Custom = null;
     }
 
     public static void RaiseWellStarted(WellController w) => WellStarted?.Invoke(w);
@@ -48,4 +50,5 @@ public static class GameEvents
     public static void RaisePenCleaned() => PenCleaned?.Invoke();
     public static void RaiseTractorWorked(Implement i) => TractorWorked?.Invoke(i);
     public static void RaiseContractCompleted() => ContractCompleted?.Invoke();
+    public static void RaiseCustom(string type, float amount = 1f) => Custom?.Invoke(type, amount);
 }

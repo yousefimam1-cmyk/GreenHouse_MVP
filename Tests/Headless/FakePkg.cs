@@ -29,9 +29,24 @@ namespace UnityEngine.InputSystem
     public class Keyboard
     {
         public static Keyboard current;
-        public KeyControl enterKey, qKey, mKey, eKey, lKey, hKey, escapeKey, tabKey, tKey, nKey, wKey, aKey, sKey, dKey, rKey, gKey, pKey, spaceKey, backspaceKey, upArrowKey, downArrowKey, leftArrowKey, rightArrowKey;
+        public KeyControl aKey, bKey, cKey, dKey, eKey, fKey, gKey, hKey, iKey, jKey, kKey, lKey, mKey, nKey, oKey, pKey, qKey, rKey, sKey, tKey, uKey, vKey, wKey, xKey, yKey, zKey, f1Key, f2Key, f3Key, f4Key, f5Key, f6Key, f7Key, f8Key, f9Key, f10Key, f11Key, f12Key, digit0Key, digit1Key, digit2Key, digit3Key, digit4Key, digit5Key, digit6Key, digit7Key, digit8Key, digit9Key, enterKey, escapeKey, tabKey, spaceKey, backspaceKey, upArrowKey, downArrowKey, leftArrowKey, rightArrowKey, leftShiftKey, rightShiftKey, leftCtrlKey, numpadEnterKey, pageUpKey, pageDownKey, homeKey, endKey, deleteKey, insertKey, minusKey, equalsKey, commaKey, periodKey, slashKey, backquoteKey;
         public KeyControl this[Key k] => null;
     }
+    public class ButtonControl { public bool wasPressedThisFrame, isPressed, wasReleasedThisFrame; public float value; public float ReadValue() => value; }
+    public class StickControl { public UnityEngine.Vector2 value; public UnityEngine.Vector2 ReadValue() => value; }
+    public class InputDevice { public string displayName = "", name = "", description_product = ""; }
+    public class Gamepad : InputDevice
+    {
+        public static Gamepad current;
+        public static Gamepad[] all = new Gamepad[0];
+        public ButtonControl buttonSouth = new ButtonControl(), buttonEast = new ButtonControl(), buttonWest = new ButtonControl(), buttonNorth = new ButtonControl(),
+            leftShoulder = new ButtonControl(), rightShoulder = new ButtonControl(), leftTrigger = new ButtonControl(), rightTrigger = new ButtonControl(),
+            startButton = new ButtonControl(), selectButton = new ButtonControl(), leftStickButton = new ButtonControl(), rightStickButton = new ButtonControl();
+        public StickControl leftStick = new StickControl(), rightStick = new StickControl();
+        public DpadControl dpad = new DpadControl();
+    }
+    public class DpadControl { public ButtonControl up = new ButtonControl(), down = new ButtonControl(), left = new ButtonControl(), right = new ButtonControl(); public UnityEngine.Vector2 ReadValue() => UnityEngine.Vector2.zero; }
+    public class Mouse : InputDevice { public static Mouse current; public ButtonControl leftButton = new ButtonControl(), rightButton = new ButtonControl(); public StickControl delta = new StickControl(), position = new StickControl(), scroll = new StickControl(); }
     public class InputValue { }
 }
 namespace UnityEngine.Rendering

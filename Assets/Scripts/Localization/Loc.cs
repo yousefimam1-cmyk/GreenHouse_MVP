@@ -257,9 +257,21 @@ public static class Loc
     public static void Toggle() => SetLanguage(IsArabic ? Language.English : Language.Arabic);
 
     /// <summary>Translate an English key (unshaped). Unknown keys are returned as-is.</summary>
+    private static bool packsLoaded;
+    /// <summary>Load feature translations from Resources/Data/Loc/*.json once (never overrides built-in keys).</summary>
+    private static void LoadPacks()
+    {
+        packsLoaded = true;
+        foreach (var p in DataPacks.LoadAs<LocPack>("Loc"))
+            if (p.entries != null)
+                foreach (var e in p.entries)
+                    if (!string.IsNullOrEmpty(e.en) && !string.IsNullOrEmpty(e.ar) && !arabic.ContainsKey(e.en)) arabic[e.en] = e.ar;
+    }
+
     public static string Raw(string english)
     {
         if (english == null) return "";
+        if (!packsLoaded) LoadPacks();
         if (!IsArabic) return englishLong.TryGetValue(english, out var e) ? e : english;
         if (arabicLong.TryGetValue(english, out var l)) return l;
         return arabic.TryGetValue(english, out var a) ? a : english;

@@ -5,8 +5,9 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
-/// Shop panel built in code: feed, animals and upgrades. Click a row or press its number; Esc closes.
-/// Opened by a ShopStall. Prices and items come from EconomyManager (economy.json).
+/// Shop panel built in code, one page per category (feed, seeds, animals, upgrades, plus anything features
+/// register in ShopCatalog). Click a row or press its number; Left/Right (or A/D) change page; Esc closes.
+/// Opened by a ShopStall. Prices come from EconomyManager (economy.json) and ShopCatalog.
 /// </summary>
 public class ShopUI : MonoBehaviour
 {
@@ -16,7 +17,10 @@ public class ShopUI : MonoBehaviour
     private Canvas canvas;
     private RectTransform panel, list;
     private TextMeshProUGUI title, footer;
-    private readonly List<(string id, Button btn, TextMeshProUGUI label)> rows = new List<(string, Button, TextMeshProUGUI)>();
+    private const int PageSize = 10;
+    private readonly List<(Button btn, TextMeshProUGUI label)> rows = new List<(Button, TextMeshProUGUI)>();
+    private readonly List<(string category, List<string> ids)> pages = new List<(string, List<string>)>();
+    private int page;
     private int openedFrame;
 
     private void Awake() => Instance = this;
@@ -36,16 +40,36 @@ public class ShopUI : MonoBehaviour
 
     private void OnMoney(int m) { if (IsOpen) Refresh(); }
 
-    private List<string> Items()
+    /// <summary>All items grouped by category, in shop order.</summary>
+    private List<(string category, string id)> Items()
     {
-        var ids = new List<string> { "feed" };
+        var items = new List<(string, string)> { ("Supplies", "feed") };
         var eco = EconomyManager.Instance;
-        if (eco != null) foreach (var c in eco.Data.fieldCrops) ids.Add("seed_" + c.id);
-        if (eco != null) foreach (var a in eco.Data.animals) ids.Add(a.id);
-        ids.Add("capacity");
-        ids.Add("growth");
-        return ids;
+        if (eco != null) foreach (var c in eco.Data.fieldCrops) items.Add(("Seeds", "seed_" + c.id));
+        if (eco != null) foreach (var a in eco.Data.animals) items.Add(("Animals", a.id));
+        items.Add(("Upgrades", "capacity"));
+        items.Add(("Upgrades", "growth"));
+        foreach (var e in ShopCatalog.Entries) items.Add((string.IsNullOrEmpty(e.category) ? "Other" : e.category, e.id));
+        return items;
     }
+
+    private void BuildPages()
+    {
+        pages.Clear();
+        var order = new List<string>(); var byCat = new Dictionary<string, List<string>>();
+        foreach (var item in Items())
+        {
+            string cat = item.category, id = item.id;
+            if (!byCat.ContainsKey(cat)) { byCat[cat] = new List<string>(); order.Add(cat); }
+            if (!byCat[cat].Contains(id)) byCat[cat].Add(id);
+        }
+        foreach (var cat in order)
+            for (int i = 0; i < byCat[cat].Count; i += PageSize)
+                pages.Add((cat, byCat[cat].GetRange(i, Mathf.Min(PageSize, byCat[cat].Count - i))));
+        page = Mathf.Clamp(page, 0, Mathf.Max(0, pages.Count - 1));
+    }
+
+    private List<string> PageIds => page < pages.Count ? pages[page].ids : new List<string>();
 
     private void Build()
     {
@@ -74,20 +98,18 @@ public class ShopUI : MonoBehaviour
         ll.spacing = 8; ll.childControlWidth = ll.childControlHeight = true; ll.childForceExpandWidth = true; ll.childForceExpandHeight = false;
         footer = NewText(panel, 20, new Color(0.8f, 0.78f, 0.74f));
 
-        int n = 1;
-        foreach (var id in Items())
+        for (int n = 0; n < PageSize; n++)
         {
-            var row = NewRect("Row " + id, list, typeof(Image), typeof(Button), typeof(LayoutElement));
+            var row = NewRect("Row " + n, list, typeof(Image), typeof(Button), typeof(LayoutElement));
             row.GetComponent<LayoutElement>().minHeight = 48;
             row.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.06f);
             var label = NewText(row, 22, Color.white);
             var lrt = label.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one; lrt.offsetMin = new Vector2(16, 6); lrt.offsetMax = new Vector2(-16, -6);
             label.alignment = TextAlignmentOptions.MidlineLeft;
-            string captured = id;
-            row.GetComponent<Button>().onClick.AddListener(() => Buy(captured));
-            rows.Add((id, row.GetComponent<Button>(), label));
-            n++;
+            int captured = n;
+            row.GetComponent<Button>().onClick.AddListener(() => BuySlot(captured));
+            rows.Add((row.GetComponent<Button>(), label));
         }
         canvas.gameObject.SetActive(false);
     }
@@ -118,6 +140,7 @@ public class ShopUI : MonoBehaviour
         openedFrame = Time.frameCount;
         canvas.gameObject.SetActive(true);
         if (UIManager.Instance != null) UIManager.Instance.SetExternalPanel(true);
+        BuildPages();
         Refresh();
     }
 
@@ -137,7 +160,22 @@ public class ShopUI : MonoBehaviour
         if (Time.frameCount != openedFrame && (kb.escapeKey.wasPressedThisFrame || kb.eKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame)) { Close(); return; }
         Key[] keys = { Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5, Key.Digit6, Key.Digit7, Key.Digit8, Key.Digit9, Key.Digit0 };
         for (int i = 0; i < rows.Count && i < keys.Length; i++)
-            if (kb[keys[i]].wasPressedThisFrame) Buy(rows[i].id);
+            if (kb[keys[i]].wasPressedThisFrame) BuySlot(i);
+        if (pages.Count > 1)
+        {
+            if (kb.rightArrowKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame) { page = (page + 1) % pages.Count; Refresh(); }
+            if (kb.leftArrowKey.wasPressedThisFrame || kb.aKey.wasPressedThisFrame) { page = (page + pages.Count - 1) % pages.Count; Refresh(); }
+        }
+    }
+
+    private void BuySlot(int slot) { var ids = PageIds; if (slot >= 0 && slot < ids.Count) Buy(ids[slot]); }
+
+    /// <summary>Show the page that holds this category (e.g. a feature's own stall opening its items).</summary>
+    public void OpenCategory(string category)
+    {
+        Open(); BuildPages();
+        int i = pages.FindIndex(p => p.category == category);
+        if (i >= 0) { page = i; Refresh(); }
     }
 
     private void Buy(string id)
@@ -152,7 +190,9 @@ public class ShopUI : MonoBehaviour
         else if (UIManager.Instance != null)
         {
             var a = eco.Animal(id);
-            string why = eco.PriceOf(id) < 0 ? "Fully upgraded" : (a != null && eco.Owned(id) >= a.max) ? "The pen is full for this animal" : "Not enough money";
+            var extra = a == null ? ShopCatalog.Find(id) : null;
+            string block = extra != null && extra.blockReason != null ? extra.blockReason() : null;
+            string why = !string.IsNullOrEmpty(block) ? block : eco.PriceOf(id) < 0 ? "Fully upgraded" : (a != null && eco.Owned(id) >= a.max) ? "The pen is full for this animal" : "Not enough money";
             UIManager.Instance.ShowAlertMessage(Loc.T(why));
         }
         Refresh();
@@ -165,7 +205,10 @@ public class ShopUI : MonoBehaviour
         if (id == "capacity") return Loc.Raw("Bigger truck bed");
         if (id == "growth") return Loc.Raw("Faster growth");
         if (id.StartsWith("seed_")) return Loc.Raw("Seeds") + ": " + FieldCropText.Name(eco.FieldCrop(id.Substring(5)));
-        return EconomyManager.AnimalName(eco.Animal(id));
+        var animal = eco.Animal(id);
+        if (animal != null) return EconomyManager.AnimalName(animal);
+        var extra = ShopCatalog.Find(id);
+        return extra != null && extra.name != null ? extra.name() : id;
     }
 
     private void Refresh()
@@ -173,20 +216,27 @@ public class ShopUI : MonoBehaviour
         var eco = EconomyManager.Instance;
         if (eco == null || title == null) return;
         foreach (var t in new[] { title, footer }) Loc.ApplyFont(t);
-        title.text = Loc.T("Farm Shop");
+        string cat = page < pages.Count ? pages[page].category : "";
+        title.text = Loc.Display(Loc.Raw("Farm Shop") + (cat != "" ? " - " + Loc.Raw(cat) : "") + (pages.Count > 1 ? "  (" + (page + 1) + "/" + pages.Count + ")" : ""));
         title.alignment = Loc.IsArabic ? TextAlignmentOptions.Right : TextAlignmentOptions.Left;
+        var ids = PageIds;
         for (int i = 0; i < rows.Count; i++)
         {
-            var (id, btn, label) = rows[i];
+            var (btn, label) = rows[i];
+            btn.gameObject.SetActive(i < ids.Count);
+            if (i >= ids.Count) continue;
+            string id = ids[i];
             Loc.ApplyFont(label);
             int price = eco.PriceOf(id);
             string detail = "";
             var a = eco.Animal(id);
+            var extra = a == null ? ShopCatalog.Find(id) : null;
             if (a != null) detail = " (" + eco.Owned(id) + "/" + a.max + ")";
             else if (id == "feed") detail = " (" + eco.Feed.ToString("F1") + ")";
             else if (id.StartsWith("seed_")) detail = " (" + eco.Seeds(id.Substring(5)) + ")";
             else if (id == "capacity") detail = " (" + eco.TruckCapacity.ToString("F0") + " kg)";
             else if (id == "growth") detail = " (x" + EconomyManager.GrowthSpeed.ToString("F2") + ")";
+            else if (extra != null && extra.detail != null) detail = " " + extra.detail();
             string priceText = price < 0 ? Loc.Raw("Fully upgraded") : price.ToString("N0") + " " + Loc.Raw("SAR");
             label.text = "<color=#FF9A3C>" + ((i + 1) % 10) + "</color>   " + Loc.Display(Name(id) + detail + "   " + priceText);
             label.alignment = Loc.IsArabic ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
@@ -194,7 +244,7 @@ public class ShopUI : MonoBehaviour
             btn.interactable = affordable;
             label.color = affordable ? Color.white : new Color(1f, 1f, 1f, 0.45f);
         }
-        footer.text = Loc.T("Money: {0} SAR   Feed: {1}", eco.Money.ToString("N0"), eco.Feed.ToString("F1")) + "\n" + Loc.T("[0-9] or click to buy   [Esc] close");
+        footer.text = Loc.T("Money: {0} SAR   Feed: {1}", eco.Money.ToString("N0"), eco.Feed.ToString("F1")) + "\n" + Loc.T(pages.Count > 1 ? "[0-9] or click to buy   [<- ->] page   [Esc] close" : "[0-9] or click to buy   [Esc] close");
         footer.alignment = title.alignment;
     }
 }

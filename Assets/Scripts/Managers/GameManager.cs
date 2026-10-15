@@ -57,6 +57,7 @@ public class GameManager : MonoBehaviour
         if (GetComponent<StoryIntro>() == null) gameObject.AddComponent<StoryIntro>();
         if (GetComponent<DayNightCycle>() == null) gameObject.AddComponent<DayNightCycle>();
         if (GetComponent<AmbientLife>() == null) gameObject.AddComponent<AmbientLife>();
+        AddFeatureSystems();
     }
 
     private void Start()
@@ -141,5 +142,19 @@ public class GameManager : MonoBehaviour
             allHealthyAnnounced = true;
             if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T("All crop beds are healthy!"));
         }
+    }
+
+    /// <summary>Adds every MonoBehaviour marked [MazraaSystem] (features added in their own files).</summary>
+    private void AddFeatureSystems()
+    {
+        var found = new System.Collections.Generic.List<(int order, System.Type type)>();
+        foreach (var t in typeof(GameManager).Assembly.GetTypes())
+        {
+            if (t.IsAbstract || !typeof(MonoBehaviour).IsAssignableFrom(t)) continue;
+            var attr = (MazraaSystemAttribute)System.Attribute.GetCustomAttribute(t, typeof(MazraaSystemAttribute));
+            if (attr != null) found.Add((attr.Order, t));
+        }
+        found.Sort((x, y) => x.order != y.order ? x.order.CompareTo(y.order) : string.CompareOrdinal(x.type.Name, y.type.Name));
+        foreach (var f in found) if (GetComponent(f.type) == null) gameObject.AddComponent(f.type);
     }
 }
