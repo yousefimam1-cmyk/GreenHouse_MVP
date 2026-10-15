@@ -3,7 +3,7 @@ using System;
 namespace UnityEngine.UI
 {
     public class Graphic : UnityEngine.EventSystems.UIBehaviour { public Color color; public bool raycastTarget; public RectTransform rectTransform => (RectTransform)transform; }
-    public class Image : Graphic { }
+    public class Image : Graphic { public UnityEngine.Sprite sprite; }
     public class Button : UnityEngine.EventSystems.UIBehaviour { public bool interactable; public UnityEngine.Events.UnityEvent onClick = new UnityEngine.Events.UnityEvent(); }
     public class LayoutElement : UnityEngine.EventSystems.UIBehaviour { public float minHeight; public bool ignoreLayout; }
     public class GraphicRaycaster : UnityEngine.EventSystems.UIBehaviour { }
@@ -70,7 +70,7 @@ namespace UnityEngine.Rendering.Universal
     public enum TonemappingMode { None, Neutral, ACES }
     public class Tonemapping : VolumeComponent { public VolumeParameter<TonemappingMode> mode; }
     public class Bloom : VolumeComponent { public VolumeParameter<float> intensity, threshold, scatter; }
-    public class ColorAdjustments : VolumeComponent { public VolumeParameter<float> postExposure, contrast, saturation; }
+    public class ColorAdjustments : VolumeComponent { public VolumeParameter<float> postExposure, contrast, saturation; public VolumeParameter<UnityEngine.Color> colorFilter; }
     public class WhiteBalance : VolumeComponent { public VolumeParameter<float> temperature; }
     public class Vignette : VolumeComponent { public VolumeParameter<float> intensity, smoothness; }
     public class UniversalRenderPipelineAsset : RenderPipelineAsset { public int msaaSampleCount; public float renderScale, shadowDistance;
@@ -100,4 +100,20 @@ namespace DG.Tweening
         public static T SetLoops<T>(this T t, int l, LoopType lt) where T : Tween => t; public static T SetLink<T>(this T t, UnityEngine.GameObject g) where T : Tween => t;
         public static T OnComplete<T>(this T t, TweenCallback c) where T : Tween => t;
     }
+}
+
+// Added for art/audio/touch (DesertWeatherFX, TouchControls)
+namespace UnityEngine.Rendering.Universal
+{
+    using UnityEngine.Rendering;
+    public class LensDistortion : VolumeComponent { public VolumeParameter<float> intensity, scale; }
+    public class ChromaticAberration : VolumeComponent { public VolumeParameter<float> intensity; }
+}
+namespace UnityEngine.EventSystems { public class EventSystem : UIBehaviour { public static EventSystem current; } }
+namespace UnityEngine.InputSystem.UI { public class InputSystemUIInputModule : UnityEngine.EventSystems.UIBehaviour { } }
+namespace UnityEngine.InputSystem.OnScreen
+{
+    public abstract class OnScreenControl : UnityEngine.MonoBehaviour { public string controlPath { get; set; } }
+    public class OnScreenStick : OnScreenControl { public float movementRange { get; set; } = 50f; }
+    public class OnScreenButton : OnScreenControl { }
 }

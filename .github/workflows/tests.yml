@@ -1,0 +1,71 @@
+# Tests on every push / pull request to mazraa-dev.
+#   headless: gameplay logic on a fake UnityEngine (mono) + static checks (python). No Unity licence needed.
+#   editmode: Unity EditMode tests (Assets/Tests/Editor) with game-ci. Needs the repo secrets
+#             UNITY_LICENSE (contents of Unity_v20xx.ulf), UNITY_EMAIL, UNITY_PASSWORD;
+#             without UNITY_LICENSE the job is skipped with a notice instead of failing.
+name: Tests
+on:
+  workflow_dispatch:
+  push:
+    branches: [mazraa-dev]
+  pull_request:
+    branches: [mazraa-dev]
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  headless:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mono
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q mono-complete
+      - name: Headless gameplay tests
+        run: bash Tests/Headless/run.sh
+      - name: Static checks (metas, GUIDs, scripts, Resources paths, data, translations)
+        run: python3 Tests/static_tests.py .
+
+  editmode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check for a Unity licence
+        id: licence
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Unity EditMode tests skipped::Add the UNITY_LICENSE, UNITY_EMAIL and UNITY_PASSWORD secrets to run them."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.licence.outputs.ok == 'true'
+      - name: Free disk space
+        if: steps.licence.outputs.ok == 'true'
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
+      - uses: actions/cache@v4
+        if: steps.licence.outputs.ok == 'true'
+        with:
+          path: Library
+          key: Library-Tests-${{ hashFiles('Packages/packages-lock.json') }}
+          restore-keys: Library-Tests-
+      - uses: game-ci/unity-test-runner@v4
+        if: steps.licence.outputs.ok == 'true'
+        id: unity
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          testMode: editmode
+          artifactsPath: test-results
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.licence.outputs.ok == 'true'
+        with:
+          name: EditMode-test-results
+          path: test-results

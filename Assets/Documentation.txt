@@ -101,3 +101,39 @@ CHATS 1-6 (open fields, economy, vehicles, animals, missions, graphics)
 --- UI/ObjectiveMarker.cs, StoryIntro.cs; Resources/Data/missions.json (25 missions).
 --- Graphics/DayNightCycle.cs  Sun follows the clock, night dimming, headlights and pad lamps.
 --- Real models: Kenney CC0 truck, tractor, crops (Assets/ThirdParty/CREDITS.md). Build.TryModel scales any model to fit.
+
+ART, SOUND, QUALITY, ANDROID, CI (feat/artci)
+--- Graphics/CropVisuals.cs   Crop models by growth stage. Original FarmCrops plants (stages _01-_04 = seedling..ripe;
+    _05-_07 in the pack are harvested produce) copied to Resources/Models/FarmCrops (FBX + .meta with new GUIDs; the
+    .meta keeps the material remap to Assets/FarmCrops/Materials, so textures/shader graphs come along in builds).
+    CropVisuals.Get(cropId, growth01) -> model path ("FarmCrops/Tomato_03"), Kenney placeholder if the crop has none,
+    null = primitives. Spawn() places it (real size, capped 1.15 m across), TryGetMesh() gives mesh + materials.
+    Crops: wheat potato onion watermelon tomato cucumber corn cabbage pumpkin carrot (+ aliases melon, lettuce, garlic...).
+    FieldPlot calls CropVisuals.Spawn in its plant loop (one-line hook).
+--- Graphics/CropbedVisuals.cs   Greenhouse beds swap each living plant's mesh to the stage for the bed's growth
+    (bed crop if FarmCrops has it, else the plant's own kind). Size limited to 1.3x the original plant.
+--- Graphics/DesertDressing.cs (+ DesertProps.cs, ProcMesh.cs)   Al-Qassim look built at runtime 1.6 s after start:
+    sand ground around the farm, low dunes (with colliders) along the terrain edges, compacted-sand track from the
+    loading bay to the market lined with date palms, palm grove + Najdi mud-brick farmhouse (triangle vents, crenellations,
+    decorated door) near the start, acacia and sidr trees, evaporative cooling pads + exhaust fans on the greenhouse walls.
+    Keep-out circles around plots, zones, pen, stalls, greenhouses, vehicles, interactables and every scene collider.
+    Prop colliders are on layer 2 (Ignore Raycast) so ground raycasts never land on them. Primitive parts are merged
+    into a few meshes per material. Drop a model at Resources/Models/DatePalm, Acacia, Sidr or NajdiHouse to replace one.
+--- Graphics/DesertWeatherFX.cs   Blowing dust particles (Cloudy = windy, Heatwave = strong), sandy fog (thicker in dust,
+    dark at night), heat haze volume on hot afternoons. DesertWeatherFX.Wind01 / Heat01 for other systems.
+    ProjectSettings/GraphicsSettings: fog variants are kept in builds (the scene itself has fog off).
+--- Graphics/GraphicsEnhancer.cs   Quality presets Low / Medium / High (shadow distance, render scale, MSAA, post on/off,
+    SMAA, dressing density). G cycles. Settings menus: GraphicsEnhancer.SetPreset(0..2), Preset, PresetChanged event.
+    Default Low on phones and WebGL, High on PC. Saved as mazraa.gfxPreset (kept on New Game).
+--- Audio/ProceduralAudio.cs, AmbientAudio.cs, MazraaAudio.cs   Procedural sounds (no files): engine (pitch follows
+    speed, tractor lower), footsteps walk/sprint, wind (louder in dust), birds by day, crickets at night, cow / sheep /
+    goat / camel / chicken calls when you are within 32 m of the animals. A clip at Resources/Sounds/<name> (engine,
+    wind, crickets, birds, step0-3, cow, sheep, goat, camel, chicken) replaces the synthesised one.
+    Volumes: MazraaAudio.SetMaster / SetAmbience / SetEffects (0..1, saved; Master = AudioListener.volume).
+--- UI/TouchControls.cs   On phones only (Application.isMobilePlatform, or TouchControls.ForceShow): Input System
+    OnScreenStick (move = gamepad left stick, look = right stick) and OnScreenButtons (E, Jump, Run; W/A/S/D, Brake,
+    Reset, Tool while driving; Pause).
+--- Editor/MazraaBuild.cs   Mazraa > Build Android (.apk): IL2CPP, ARM64, build/Android/Mazraa.apk.
+--- .github/workflows/tests.yml   Push/PR to mazraa-dev: headless tests + static checks; Unity EditMode tests with
+    game-ci (skipped with a notice if the UNITY_LICENSE secret is empty). android.yml: APK artifact "Mazraa-Android".
+--- Tests/unused_assets.py -> Tests/UNUSED_ASSETS.md   Assets nothing in the build uses, with sizes (nothing deleted).

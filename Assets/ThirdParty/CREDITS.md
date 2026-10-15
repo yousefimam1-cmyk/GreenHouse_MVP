@@ -10,6 +10,8 @@
 | Animal Pack Vol.2 (dog, cat, eagle) | Quaternius | CC0 1.0 | Resources/Models/dog, cat, eagle |
 | Farm Animals Pack (horse) | Quaternius | CC0 1.0 | Resources/Models/horse |
 | Tajawal Bold font | Boutros Fonts | SIL OFL 1.1 | Resources/Fonts (Arabic UI) |
+| Farm Crops (crop growth stages) | asset already in the project (Assets/FarmCrops) | its original licence | Resources/Models/FarmCrops: copies of 40 stage meshes (materials stay in Assets/FarmCrops) |
+| Sounds (engine, wind, crickets, birds, footsteps, animal calls) | generated in code (Audio/ProceduralAudio.cs) | project's own | no audio files |
 
 Recommended next imports (all free):
 - Quaternius "Farm Buildings" (CC0) - barn, silo, shop stall: Resources/Models/Barn, ShopStall.

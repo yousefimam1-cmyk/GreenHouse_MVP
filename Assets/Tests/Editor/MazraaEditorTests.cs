@@ -38,6 +38,31 @@ public class MazraaEditorTests
         Assert.IsNotNull(cow.GetComponentInChildren<Animation>(), "animal models should import with legacy Animation");
     }
 
+    [Test]
+    public void FarmCrops_StageModels_ImportWithMaterials()
+    {
+        foreach (var crop in CropVisuals.Crops)
+            for (int i = 0; i < 4; i++)
+            {
+                float g = i / 3f;
+                Assert.IsNotNull(CropVisuals.Prefab(crop, g), crop + " stage " + i + " (" + CropVisuals.Get(crop, g) + ")");
+                Mesh mesh; Material[] mats;
+                Assert.IsTrue(CropVisuals.TryGetMesh(crop, g, out mesh, out mats), crop + " stage " + i + " mesh");
+                Assert.IsTrue(mats.Length > 0 && mats.All(m => m != null && m.shader != null), crop + " stage " + i + " materials");
+            }
+    }
+
+    [Test]
+    public void ProceduralSounds_Create()
+    {
+        foreach (var n in new[] { "engine", "wind", "crickets", "birds", "step0", "cow", "sheep", "chicken", "camel", "goat" })
+        {
+            var clip = ProceduralAudio.Get(n);
+            Assert.IsNotNull(clip, n);
+            Assert.Greater(clip.length, 0.1f, n);
+        }
+    }
+
     [UnityTest]
     public IEnumerator PlaysTheMainScene()
     {
