@@ -1,3 +1,4 @@
+import json
 """Static test suite for GreenHouse_MVP. Usage: python3 -I static_tests.py <repo root>"""
 import os, re, sys, json, collections, subprocess
 
@@ -191,6 +192,11 @@ def dict_keys(name):
     return re.findall(r'^\s*\{ "((?:[^"\\]|\\.)*)",', m.group(1), re.M)
 
 ar_keys = set(dict_keys('arabic')); long_en = set(dict_keys('englishLong')); long_ar = set(dict_keys('arabicLong'))
+# feature translation packs (Resources/Data/Loc/*.json) count as translated too
+import glob as _glob
+for _f in _glob.glob(os.path.join(A, 'Resources', 'Data', 'Loc', '*.json')):
+    for _e in json.load(open(_f, encoding='utf-8')).get('entries', []):
+        if _e.get('en') and _e.get('ar'): ar_keys.add(_e['en'])
 
 @test('No duplicate translation keys')
 def _():
