@@ -33,6 +33,9 @@ public class FarmEventDef
 [MazraaSystem(40)]
 public class EventDirector : MonoBehaviour
 {
+    /// <summary>Daily random rolls on/off (tests switch them off for deterministic runs).</summary>
+    public static bool RandomEventsEnabled = true;
+
     public static EventDirector Instance;
 
     public FarmEventFile Data { get; private set; }
@@ -110,7 +113,7 @@ public class EventDirector : MonoBehaviour
             var p = Pending; Pending = null;
             if (Active == null) Activate(p, day, false);
         }
-        if (Pending == null && (Active == null || lastDay <= day) && UnityEngine.Random.value < Data.dailyChance)
+        if (RandomEventsEnabled && Pending == null && (Active == null || lastDay <= day) && UnityEngine.Random.value < Data.dailyChance)
         {
             var next = Roll(day + 1);
             if (next != null) Schedule(next.id, day + 1);
