@@ -49,8 +49,10 @@ public class DeliveryZone : MonoBehaviour
             }
             else if (truck.Cargo.Count > 0)
             {
-                int earned = eco.SellAll(truck.Cargo);
-                Alert(Loc.T("Sold the load for {0} EGP", earned.ToString("N0")));
+                var notes = new System.Collections.Generic.List<string>();
+                int earned = eco.SellAll(truck.Cargo, notes);
+                notes.Insert(0, Loc.T("Sold the load for {0} EGP", earned.ToString("N0")));
+                Alert(string.Join("\n", notes));
             }
         }
         if (!inside) warned = false;

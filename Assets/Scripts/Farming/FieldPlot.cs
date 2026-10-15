@@ -52,10 +52,10 @@ public class FieldPlot : Interactable
     public void Setup(int idx, Vector2 plotSize)
     {
         index = idx; size = plotSize;
-        State = (PlotState)PlayerPrefs.GetInt(Key + "state", 0);
-        CropId = PlayerPrefs.GetString(Key + "crop", "");
-        Growth = PlayerPrefs.GetFloat(Key + "growth", 0f);
-        Water = PlayerPrefs.GetFloat(Key + "water", 0f);
+        State = (PlotState)SaveData.GetInt(Key + "state", 0);
+        CropId = SaveData.GetString(Key + "crop", "");
+        Growth = SaveData.GetFloat(Key + "growth", 0f);
+        Water = SaveData.GetFloat(Key + "water", 0f);
         BuildSoil();
         Refresh();
     }
@@ -213,13 +213,13 @@ public class FieldPlot : Interactable
 
     private void Save()
     {
-        PlayerPrefs.SetInt(Key + "state", (int)State);
-        PlayerPrefs.SetString(Key + "crop", CropId);
-        PlayerPrefs.SetFloat(Key + "growth", Growth);
-        PlayerPrefs.SetFloat(Key + "water", Water);
+        SaveData.SetInt(Key + "state", (int)State);
+        SaveData.SetString(Key + "crop", CropId);
+        SaveData.SetFloat(Key + "growth", Growth);
+        SaveData.SetFloat(Key + "water", Water);
     }
 
-    private void OnApplicationQuit() { Save(); PlayerPrefs.Save(); }
+    private void OnApplicationQuit() { Save(); SaveData.Save(); }
 
     public void ResetPlot()
     {

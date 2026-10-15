@@ -39,8 +39,8 @@ public class GameManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        TotalHarvestKg = PlayerPrefs.GetFloat(KgKey, 0f);
-        HarvestCount = PlayerPrefs.GetInt(CountKey, 0);
+        TotalHarvestKg = SaveData.GetFloat(KgKey, 0f);
+        HarvestCount = SaveData.GetInt(CountKey, 0);
         hud = GetComponent<GameHUD>();
         if (hud == null) hud = gameObject.AddComponent<GameHUD>();
         if (GetComponent<ScenarioManager>() == null) gameObject.AddComponent<ScenarioManager>();
@@ -52,6 +52,7 @@ public class GameManager : MonoBehaviour
         if (GetComponent<ShopUI>() == null) gameObject.AddComponent<ShopUI>();
         if (GetComponent<WorldClock>() == null) gameObject.AddComponent<WorldClock>();
         if (GetComponent<FieldManager>() == null) gameObject.AddComponent<FieldManager>();
+        if (GetComponent<MarketManager>() == null) gameObject.AddComponent<MarketManager>();
     }
 
     private void Start()
@@ -86,9 +87,9 @@ public class GameManager : MonoBehaviour
     {
         TotalHarvestKg += kg;
         HarvestCount++;
-        PlayerPrefs.SetFloat(KgKey, TotalHarvestKg);
-        PlayerPrefs.SetInt(CountKey, HarvestCount);
-        PlayerPrefs.Save();
+        SaveData.SetFloat(KgKey, TotalHarvestKg);
+        SaveData.SetInt(CountKey, HarvestCount);
+        SaveData.Save();
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayHarvest();
         string crop = bed != null && bed.Crop != null ? Loc.CropName(bed.Crop) : (bed != null ? bed.name : "");
@@ -104,8 +105,8 @@ public class GameManager : MonoBehaviour
     {
         TotalHarvestKg += kg;
         HarvestCount++;
-        PlayerPrefs.SetFloat(KgKey, TotalHarvestKg);
-        PlayerPrefs.SetInt(CountKey, HarvestCount);
+        SaveData.SetFloat(KgKey, TotalHarvestKg);
+        SaveData.SetInt(CountKey, HarvestCount);
         if (AudioManager.Instance != null) AudioManager.Instance.PlayHarvest();
         OnHarvest?.Invoke(kg);
         GameEvents.RaiseHarvested(null, kg);
@@ -118,9 +119,9 @@ public class GameManager : MonoBehaviour
     {
         TotalHarvestKg = 0f;
         HarvestCount = 0;
-        PlayerPrefs.DeleteKey(KgKey);
-        PlayerPrefs.DeleteKey(CountKey);
-        PlayerPrefs.Save();
+        SaveData.DeleteKey(KgKey);
+        SaveData.DeleteKey(CountKey);
+        SaveData.Save();
         OnStatsChanged?.Invoke();
     }
 

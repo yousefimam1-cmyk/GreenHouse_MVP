@@ -11,7 +11,7 @@ using UnityEngine;
 /// <summary>
 /// Money, farm storage (all goods), feed, animals owned and upgrades. Data from Resources/Data/economy.json.
 /// Harvests and animal products go into storage; the truck loads storage at the loading bay and
-/// sells it at the market. Saved in PlayerPrefs.
+/// sells it at the market. Saved in SaveData.
 /// </summary>
 public class EconomyManager : MonoBehaviour
 {
@@ -41,13 +41,13 @@ public class EconomyManager : MonoBehaviour
     {
         Instance = this;
         LoadData();
-        Money = PlayerPrefs.GetInt("mazraa.money", 500);
-        Feed = PlayerPrefs.GetFloat("mazraa.feed", 5f);
-        CapacityLevel = PlayerPrefs.GetInt("mazraa.capLevel", 0);
-        GrowthLevel = PlayerPrefs.GetInt("mazraa.growLevel", 0);
-        foreach (var g in Data.goods) storage[g.id] = PlayerPrefs.GetFloat("mazraa.store." + g.id, 0f);
-        foreach (var a in Data.animals) animalsOwned[a.id] = PlayerPrefs.GetInt("mazraa.animal." + a.id, 0);
-        foreach (var c in Data.fieldCrops) seeds[c.id] = PlayerPrefs.GetInt("mazraa.seed." + c.id, c.id == "wheat" ? 2 : 0);
+        Money = SaveData.GetInt("mazraa.money", 500);
+        Feed = SaveData.GetFloat("mazraa.feed", 5f);
+        CapacityLevel = SaveData.GetInt("mazraa.capLevel", 0);
+        GrowthLevel = SaveData.GetInt("mazraa.growLevel", 0);
+        foreach (var g in Data.goods) storage[g.id] = SaveData.GetFloat("mazraa.store." + g.id, 0f);
+        foreach (var a in Data.animals) animalsOwned[a.id] = SaveData.GetInt("mazraa.animal." + a.id, 0);
+        foreach (var c in Data.fieldCrops) seeds[c.id] = SaveData.GetInt("mazraa.seed." + c.id, c.id == "wheat" ? 2 : 0);
     }
 
     private void LoadData()
@@ -118,7 +118,10 @@ public class EconomyManager : MonoBehaviour
     }
 
     /// <summary>Sell every good in the cargo. Returns money earned.</summary>
-    public int SellAll(Dictionary<string, float> cargo)
+    public int SellAll(Dictionary<string, float> cargo) => SellAll(cargo, new List<string>());
+
+    /// <summary>Sell every good in the cargo at today's market prices (contracts first). Returns money earned.</summary>
+    public int SellAll(Dictionary<string, float> cargo, List<string> messages)
     {
         float total = 0f, weight = 0f;
         foreach (var kv in cargo)
@@ -128,6 +131,7 @@ public class EconomyManager : MonoBehaviour
             total += kv.Value * g.price;
             weight += kv.Value * g.weight;
         }
+        if (MarketManager.Instance != null) total = MarketManager.Instance.Sell(cargo, messages);
         cargo.Clear();
         int earned = Mathf.RoundToInt(total);
         AddMoney(earned);
@@ -197,14 +201,14 @@ public class EconomyManager : MonoBehaviour
 
     private void Save()
     {
-        PlayerPrefs.SetInt("mazraa.money", Money);
-        PlayerPrefs.SetFloat("mazraa.feed", Feed);
-        PlayerPrefs.SetInt("mazraa.capLevel", CapacityLevel);
-        PlayerPrefs.SetInt("mazraa.growLevel", GrowthLevel);
-        foreach (var kv in storage) PlayerPrefs.SetFloat("mazraa.store." + kv.Key, kv.Value);
-        foreach (var kv in animalsOwned) PlayerPrefs.SetInt("mazraa.animal." + kv.Key, kv.Value);
-        foreach (var kv in seeds) PlayerPrefs.SetInt("mazraa.seed." + kv.Key, kv.Value);
-        PlayerPrefs.Save();
+        SaveData.SetInt("mazraa.money", Money);
+        SaveData.SetFloat("mazraa.feed", Feed);
+        SaveData.SetInt("mazraa.capLevel", CapacityLevel);
+        SaveData.SetInt("mazraa.growLevel", GrowthLevel);
+        foreach (var kv in storage) SaveData.SetFloat("mazraa.store." + kv.Key, kv.Value);
+        foreach (var kv in animalsOwned) SaveData.SetInt("mazraa.animal." + kv.Key, kv.Value);
+        foreach (var kv in seeds) SaveData.SetInt("mazraa.seed." + kv.Key, kv.Value);
+        SaveData.Save();
     }
 
     public static string GoodName(GoodDef g) => g == null ? "" : (Loc.IsArabic && !string.IsNullOrEmpty(g.nameAr) ? g.nameAr : g.nameEn);

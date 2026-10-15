@@ -150,7 +150,7 @@ public class ScenarioManager : MonoBehaviour
         return progress + "\n" + Loc.T("Time left {0}s", left);
     }
 
-    public float BestTime(ScenarioDef d) => d == null ? -1f : PlayerPrefs.GetFloat("mazraa.best." + d.id, -1f);
+    public float BestTime(ScenarioDef d) => d == null ? -1f : SaveData.GetFloat("mazraa.best." + d.id, -1f);
 
     private void Finish()
     {
@@ -160,8 +160,8 @@ public class ScenarioManager : MonoBehaviour
         float best = BestTime(d);
         if (best < 0f || Elapsed < best)
         {
-            PlayerPrefs.SetFloat("mazraa.best." + d.id, Elapsed);
-            PlayerPrefs.Save();
+            SaveData.SetFloat("mazraa.best." + d.id, Elapsed);
+            SaveData.Save();
         }
         string msg = Loc.Raw("Training complete: {0}");
         msg = string.Format(msg, Loc.Raw(grade)) + " - " + Elapsed.ToString("F0") + "s, " +

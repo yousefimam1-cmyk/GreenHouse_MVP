@@ -62,6 +62,12 @@ public class AnimalPen : MonoBehaviour
         }
     }
 
+    public void ResetPen()
+    {
+        foreach (var a in animals) if (a != null) Destroy(a.gameObject);
+        animals.Clear(); timers.Clear(); waiting.Clear();
+    }
+
     /// <summary>Move all waiting products into farm storage. Returns a localized summary.</summary>
     public string Collect()
     {

@@ -17,7 +17,8 @@ public class GameHUD : MonoBehaviour
     private Canvas canvas;
     private RectTransform statusPanel, infoPanel, hintPanel, helpPanel, trainingPanel, partnerPanel, truckPanel, pausePanel;
     private TextMeshProUGUI statusText, infoText, hintText, helpText, trainingText, partnerText, truckText, pauseText;
-    private RectTransform arrow;
+    private RectTransform arrow, pricePanel;
+    private TextMeshProUGUI priceText;
     private bool paused;
     private GreenhouseManager partnerGreenhouse;
     private SponsorFile sponsors;
@@ -59,6 +60,7 @@ public class GameHUD : MonoBehaviour
             RefreshTraining();
             RefreshStatus();
             RefreshTruck();
+            RefreshPrices();
             if (infoBed != null) ShowCropInfo(infoBed);
         }
     }
@@ -67,6 +69,7 @@ public class GameHUD : MonoBehaviour
     {
         var kb = Keyboard.current;
         if (kb != null && kb.pKey.wasPressedThisFrame) SetPaused(!paused);
+        if (kb != null && kb.mKey.wasPressedThisFrame && pricePanel != null) { pricePanel.gameObject.SetActive(!pricePanel.gameObject.activeSelf); RefreshPrices(); }
         if (paused && kb != null && kb.backspaceKey.wasPressedThisFrame) NewGame();
         UpdateArrow();
     }
@@ -82,11 +85,14 @@ public class GameHUD : MonoBehaviour
 
     private void NewGame()
     {
+        SaveData.DeleteAll();
         if (EconomyManager.Instance != null) EconomyManager.Instance.ResetAll();
         if (MissionManager.Instance != null) MissionManager.Instance.ResetChain();
         if (GameManager.Instance != null) GameManager.Instance.ResetProgress();
         if (WorldClock.Instance != null) WorldClock.Instance.ResetCalendar();
         if (FieldManager.Instance != null) FieldManager.Instance.ResetAll();
+        if (MarketManager.Instance != null) MarketManager.Instance.ResetMarket();
+        if (AnimalPen.Instance != null) AnimalPen.Instance.ResetPen();
         SetPaused(false);
         if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T("New game started"));
     }
@@ -110,6 +116,37 @@ public class GameHUD : MonoBehaviour
         var eco = EconomyManager.Instance;
         bool loaded = truck.CargoWeight > 0.5f && (eco == null || truck.CargoWeight >= eco.TruckCapacity * 0.98f || eco.StorageWeight < 0.5f);
         return loaded ? DeliveryZone.Market : DeliveryZone.LoadingBay;
+    }
+
+    private void RefreshPrices()
+    {
+        if (pricePanel == null || !pricePanel.gameObject.activeSelf) return;
+        var eco = EconomyManager.Instance; var market = MarketManager.Instance;
+        if (eco == null) return;
+        Loc.ApplyFont(priceText);
+        priceText.alignment = Loc.IsArabic ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
+        var sb = new StringBuilder();
+        sb.Append(Title(Loc.T("Market prices today")));
+        foreach (var g in eco.Data.goods)
+        {
+            float p = market != null ? market.Price(g.id) : g.price;
+            string arrowColor = p > g.price * 1.05f ? "#8CD95A" : p < g.price * 0.95f ? "#FF7B6B" : "#DDDDDD";
+            sb.Append('\n').Append("<color=").Append(arrowColor).Append('>')
+              .Append(Loc.Display(EconomyManager.GoodName(g) + ": " + p.ToString("F1") + " " + Loc.Raw("EGP") + " / " + EconomyManager.Unit(g)))
+              .Append("</color>");
+        }
+        if (market != null && market.Contracts.Count > 0)
+        {
+            sb.Append("\n\n").Append(Title(Loc.T("Contracts")));
+            foreach (var c in market.Contracts)
+            {
+                var g = eco.Good(c.good);
+                sb.Append('\n').Append(Loc.Display(MarketManager.BuyerName(c) + ": " + c.delivered.ToString("F0") + "/" + c.amount.ToString("F0") + " " + EconomyManager.Unit(g) + " " + EconomyManager.GoodName(g)));
+                sb.Append("\n<size=80%><color=#BBBBBB>").Append(Loc.Display("+" + Mathf.RoundToInt((c.bonus - 1f) * 100f) + "% - " + Loc.Raw("due day") + " " + c.dueDay)).Append("</color></size>");
+            }
+        }
+        sb.Append("\n<size=80%>").Append(Loc.T("[M] close")).Append("</size>");
+        priceText.text = sb.ToString();
     }
 
     private void RefreshTruck()
@@ -175,6 +212,8 @@ public class GameHUD : MonoBehaviour
             var img = bar.GetComponent<Image>(); img.color = new Color(1f, 0.6f, 0.15f, 0.95f); img.raycastTarget = false;
         }
         arrow.SetParent(truckPanel, true);
+        pricePanel = MakePanel("Prices", new Vector2(1, 1), new Vector2(-24, -24), new Vector2(440, 0), out priceText, 20);
+        pricePanel.gameObject.SetActive(false);
         pausePanel = MakePanel("Pause", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760, 0), out pauseText, 30);
         pauseText.alignment = TextAlignmentOptions.Top;
         pausePanel.gameObject.SetActive(false);
@@ -233,7 +272,7 @@ public class GameHUD : MonoBehaviour
         Loc.ApplyFont(truckText);
         Loc.ApplyFont(pauseText);
         trainingText.alignment = TextAlignmentOptions.Top;
-        hintText.text = Loc.T("[H] Help   [L] Arabic   [T] Training") + "\n" + Loc.T("[G] Graphics   [P] Pause");
+        hintText.text = Loc.T("[H] Help   [L] Arabic   [T] Training") + "\n" + Loc.T("[G] Graphics   [P] Pause   [M] Prices");
         pauseText.text = Title(Loc.T("Paused")) + "\n" + Loc.T("[P] Resume") + "\n<size=75%>" + Loc.T("[Backspace] New game (clears saved progress)") + "</size>";
         helpText.text = Title(Loc.T("HELP")) + "\n" + Loc.T("HELP_BODY");
         RefreshStatus();

@@ -34,9 +34,9 @@ public class WorldClock : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        Day = Mathf.Max(1, PlayerPrefs.GetInt("mazraa.day", 1));
-        DayProgress = PlayerPrefs.GetFloat("mazraa.dayProgress", 0.25f);
-        Weather = (Weather)PlayerPrefs.GetInt("mazraa.weather", 0);
+        Day = Mathf.Max(1, SaveData.GetInt("mazraa.day", 1));
+        DayProgress = SaveData.GetFloat("mazraa.dayProgress", 0.25f);
+        Weather = (Weather)SaveData.GetInt("mazraa.weather", 0);
     }
 
     private void Start()
@@ -126,10 +126,10 @@ public class WorldClock : MonoBehaviour
 
     private void SaveState()
     {
-        PlayerPrefs.SetInt("mazraa.day", Day);
-        PlayerPrefs.SetFloat("mazraa.dayProgress", DayProgress);
-        PlayerPrefs.SetInt("mazraa.weather", (int)Weather);
-        PlayerPrefs.Save();
+        SaveData.SetInt("mazraa.day", Day);
+        SaveData.SetFloat("mazraa.dayProgress", DayProgress);
+        SaveData.SetInt("mazraa.weather", (int)Weather);
+        SaveData.Save();
     }
 
     public void ResetCalendar()

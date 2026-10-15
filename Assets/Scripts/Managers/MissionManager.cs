@@ -32,7 +32,7 @@ public class MissionManager : MonoBehaviour
         var json = Resources.Load<TextAsset>("Data/missions");
         try { if (json != null) Missions = JsonUtility.FromJson<MissionFile>(json.text)?.missions ?? Missions; }
         catch (Exception e) { Debug.LogError("[Missions] Invalid missions.json: " + e.Message); }
-        Index = Mathf.Clamp(PlayerPrefs.GetInt(IndexKey, 0), 0, Missions.Length);
+        Index = Mathf.Clamp(SaveData.GetInt(IndexKey, 0), 0, Missions.Length);
     }
 
     private void OnEnable()
@@ -126,15 +126,15 @@ public class MissionManager : MonoBehaviour
         GameEvents.RaiseMissionCompleted(m);
         Index++;
         Progress = 0f;
-        PlayerPrefs.SetInt(IndexKey, Index);
-        PlayerPrefs.Save();
+        SaveData.SetInt(IndexKey, Index);
+        SaveData.Save();
         if (Current != null) GameEvents.RaiseMissionStarted(Current);
     }
 
     public void ResetChain()
     {
         Index = 0; Progress = 0f;
-        PlayerPrefs.SetInt(IndexKey, 0);
+        SaveData.SetInt(IndexKey, 0);
         if (Current != null) GameEvents.RaiseMissionStarted(Current);
     }
 

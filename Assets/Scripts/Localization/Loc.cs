@@ -63,6 +63,14 @@ public static class Loc
         { "Silver", "فضي" },
         { "Bronze", "برونزي" },
         { "Partners", "الشركاء" },
+        { "Contract complete", "العقد اكتمل" },
+        { "Contract expired", "العقد انتهى" },
+        { "New contract", "عقد جديد" },
+        { "Market prices today", "أسعار السوق النهارده" },
+        { "Contracts", "العقود" },
+        { "due day", "آخر يوم" },
+        { "[M] close", "[M] إغلاق" },
+        { "[G] Graphics   [P] Pause   [M] Prices", "[G] الجرافيكس   [P] إيقاف   [M] الأسعار" },
         { "Day", "اليوم" },
         { "Spring", "الربيع" },
         { "Summer", "الصيف" },
@@ -121,7 +129,6 @@ public static class Loc
         { "[E] Drive truck", "[E] سوق العربية" },
         { "[E] Exit   [Space] Brake   [R] Reset truck", "[E] انزل   [Space] فرامل   [R] عدّل العربية" },
         { "[E] Open shop", "[E] افتح المحل" },
-        { "[G] Graphics   [P] Pause", "[G] الجرافيكس   [P] إيقاف" },
         { "[P] Resume", "[P] استكمال" },
         { "{0} km/h", "{0} كم/س" },
         { "Animal products", "منتجات الحيوانات" },
@@ -158,7 +165,8 @@ public static class Loc
             "Truck: E get in/out, WASD drive, Space brake, R reset. Green pad loads, gold pad sells.\n" +
             "Shops sell feed, animals and upgrades. Collect eggs, milk and wool at the pen crate.\n" +
             "G - graphics quality    P - pause / new game\n" +
-            "Fields: E to plow, plant (buy seeds), water (well must run), harvest. Seasons and weather change growth." },
+            "Fields: E to plow, plant (buy seeds), water (well must run), harvest. Seasons and weather change growth.\n" +
+            "M - market prices and buyer contracts (contracts pay a bonus when you sell at the market)" },
     };
 
     private static readonly Dictionary<string, string> arabicLong = new Dictionary<string, string>
@@ -173,7 +181,8 @@ public static class Loc
             "العربية: E ركوب/نزول، WASD قيادة، Space فرامل، R تعديل. الأخضر تحميل، الذهبي بيع.\n" +
             "المحلات فيها علف وحيوانات وترقيات. اجمع البيض واللبن والصوف من صندوق الحظيرة.\n" +
             "G - جودة الجرافيكس    P - إيقاف / لعبة جديدة\n" +
-            "الحقول: E للحرث والزراعة (اشتري بذور) والري (البئر لازم يشتغل) والحصاد. المواسم والطقس بيأثروا على النمو." },
+            "الحقول: E للحرث والزراعة (اشتري بذور) والري (البئر لازم يشتغل) والحصاد. المواسم والطقس بيأثروا على النمو.\n" +
+            "M - أسعار السوق وعقود المشترين (العقود بتدفع زيادة لما تبيع في السوق)" },
     };
 
     private static TMP_FontAsset arabicFont;
@@ -196,13 +205,13 @@ public static class Loc
     }
 
     /// <summary>Restore the language the player chose last time.</summary>
-    public static void LoadSaved() => SetLanguage((Language)Mathf.Clamp(PlayerPrefs.GetInt(PrefKey, 0), 0, 1));
+    public static void LoadSaved() => SetLanguage((Language)Mathf.Clamp(SaveData.GetInt(PrefKey, 0), 0, 1));
 
     public static void SetLanguage(Language lang)
     {
         Current = lang;
-        PlayerPrefs.SetInt(PrefKey, (int)lang);
-        PlayerPrefs.Save();
+        SaveData.SetInt(PrefKey, (int)lang);
+        SaveData.Save();
         LocalizeScene();
         OnLanguageChanged?.Invoke();
     }

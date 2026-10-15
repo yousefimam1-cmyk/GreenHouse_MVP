@@ -19,7 +19,7 @@ public class GraphicsEnhancer : MonoBehaviour
     {
         urpAsset = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
         if (urpAsset != null) { origMsaa = urpAsset.msaaSampleCount; origScale = urpAsset.renderScale; origShadow = urpAsset.shadowDistance; }
-        High = PlayerPrefs.GetInt("mazraa.gfxHigh", Application.platform == RuntimePlatform.WebGLPlayer ? 0 : 1) == 1;
+        High = SaveData.GetInt("mazraa.gfxHigh", Application.platform == RuntimePlatform.WebGLPlayer ? 0 : 1) == 1;
         BuildVolume();
         Apply();
     }
@@ -38,8 +38,8 @@ public class GraphicsEnhancer : MonoBehaviour
         if (kb != null && kb.gKey.wasPressedThisFrame)
         {
             High = !High;
-            PlayerPrefs.SetInt("mazraa.gfxHigh", High ? 1 : 0);
-            PlayerPrefs.Save();
+            SaveData.SetInt("mazraa.gfxHigh", High ? 1 : 0);
+            SaveData.Save();
             Apply();
             if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T(High ? "Graphics: High" : "Graphics: Low"));
         }
