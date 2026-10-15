@@ -51,6 +51,9 @@ public class MazraaEditorTests
         Assert.AreEqual("[E] Use", Glyphs.Apply("[E] Use"));
         Loc.Raw("x");
         Assert.IsTrue(Loc.HasTranslation("Farm map"), "UI translations (Data/Loc/50_ui.json)");
+    }
+
+    [Test]
     public void FarmCrops_StageModels_ImportWithMaterials()
     {
         foreach (var crop in CropVisuals.Crops)
