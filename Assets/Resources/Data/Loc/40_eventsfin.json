@@ -1,0 +1,268 @@
+{
+ "entries": [
+  {
+   "en": "Workers",
+   "ar": "العمال"
+  },
+  {
+   "en": "Land",
+   "ar": "أراضي"
+  },
+  {
+   "en": "Bank",
+   "ar": "البنك"
+  },
+  {
+   "en": "Land office",
+   "ar": "مكتب الأراضي"
+  },
+  {
+   "en": "Greenhouse vents",
+   "ar": "فتحات البيت المحمي"
+  },
+  {
+   "en": "Field hand",
+   "ar": "عامل الحقل"
+  },
+  {
+   "en": "Greenhouse worker",
+   "ar": "عامل البيت المحمي"
+  },
+  {
+   "en": "Herder",
+   "ar": "راعي الحلال"
+  },
+  {
+   "en": "Driver",
+   "ar": "سوّاق الوانيت"
+  },
+  {
+   "en": "Hire",
+   "ar": "وظّف"
+  },
+  {
+   "en": "Dismiss",
+   "ar": "استغنِ عن"
+  },
+  {
+   "en": "day",
+   "ar": "يوم"
+  },
+  {
+   "en": "wages",
+   "ar": "الأجور"
+  },
+  {
+   "en": "driver on the road",
+   "ar": "السوّاق بالطريق"
+  },
+  {
+   "en": "{0} hired - wage {1} SAR a day",
+   "ar": "توظّف {0} - أجرته {1} ريال باليوم"
+  },
+  {
+   "en": "{0} dismissed",
+   "ar": "تم الاستغناء عن {0}"
+  },
+  {
+   "en": "Couldn't pay the {0} - they left the farm",
+   "ar": "ما قدرت تدفع أجرة {0} - ترك المزرعة"
+  },
+  {
+   "en": "The driver took {0} kg to the market",
+   "ar": "السوّاق ودّى {0} كجم للسوق"
+  },
+  {
+   "en": "The driver sold the load: {0} SAR (fee {1} SAR)",
+   "ar": "السوّاق باع الحمولة: {0} ريال (أجرته {1} ريال)"
+  },
+  {
+   "en": "Loan",
+   "ar": "قرض"
+  },
+  {
+   "en": "Debt",
+   "ar": "الدين"
+  },
+  {
+   "en": "Credit left",
+   "ar": "المتاح"
+  },
+  {
+   "en": "Repay loan",
+   "ar": "سدّد من القرض"
+  },
+  {
+   "en": "Repay the whole loan",
+   "ar": "سدّد القرض كامل"
+  },
+  {
+   "en": "Auto-repay: ON (turn off)",
+   "ar": "السداد التلقائي: شغّال (وقّفه)"
+  },
+  {
+   "en": "Auto-repay: OFF (turn on)",
+   "ar": "السداد التلقائي: موقّف (شغّله)"
+  },
+  {
+   "en": "auto-repay",
+   "ar": "سداد تلقائي"
+  },
+  {
+   "en": "You have no loan",
+   "ar": "ما عليك قرض"
+  },
+  {
+   "en": "Not available",
+   "ar": "غير متاح"
+  },
+  {
+   "en": "Over your credit limit",
+   "ar": "فوق حدّك الائتماني"
+  },
+  {
+   "en": "The bank won't lend during a savings goal",
+   "ar": "البنك ما يقرضك وأنت في مهمة التوفير"
+  },
+  {
+   "en": "Loan approved: {0} SAR. Interest 1.5% a day",
+   "ar": "انقبل القرض: {0} ريال. الفايدة 1.5% باليوم"
+  },
+  {
+   "en": "Loan fully repaid!",
+   "ar": "سدّدت القرض كامل!"
+  },
+  {
+   "en": "Repaid {0} SAR. Still owed: {1} SAR",
+   "ar": "سدّدت {0} ريال. باقي عليك {1} ريال"
+  },
+  {
+   "en": "Auto-repay on: an instalment is paid every morning",
+   "ar": "السداد التلقائي شغّال: ينخصم قسط كل صباح"
+  },
+  {
+   "en": "Auto-repay off",
+   "ar": "السداد التلقائي موقّف"
+  },
+  {
+   "en": "[E] Bank - repay",
+   "ar": "[E] البنك - سدّد"
+  },
+  {
+   "en": "[E] Bank - loans",
+   "ar": "[E] البنك - قروض"
+  },
+  {
+   "en": "Farmland parcel",
+   "ar": "قطعة أرض زراعية"
+  },
+  {
+   "en": "Large plot block",
+   "ar": "مخطط أرض كبير"
+  },
+  {
+   "en": "plots",
+   "ar": "قطع"
+  },
+  {
+   "en": "Farmland - all land bought",
+   "ar": "الأراضي - اشتريت كل شي"
+  },
+  {
+   "en": "All land bought",
+   "ar": "اشتريت كل الأراضي"
+  },
+  {
+   "en": "New farmland: {0} plots added beyond the fields",
+   "ar": "أرض جديدة: انضافت {0} قطع ورا الحقول"
+  },
+  {
+   "en": "[E] Land office - buy",
+   "ar": "[E] مكتب الأراضي - اشترِ"
+  },
+  {
+   "en": "[E] Land office",
+   "ar": "[E] مكتب الأراضي"
+  },
+  {
+   "en": "Water restriction today - no irrigation until tomorrow",
+   "ar": "اليوم تقنين موية - ما فيه سقي لين بكرة"
+  },
+  {
+   "en": "Locust pesticide",
+   "ar": "مبيد جراد"
+  },
+  {
+   "en": "Forecast for tomorrow",
+   "ar": "توقعات بكرة"
+  },
+  {
+   "en": "now",
+   "ar": "الحين"
+  },
+  {
+   "en": "h left",
+   "ar": "ساعة باقية"
+  },
+  {
+   "en": "today at",
+   "ar": "اليوم الساعة"
+  },
+  {
+   "en": "over",
+   "ar": "انتهى"
+  },
+  {
+   "en": "Greenhouse vents closed",
+   "ar": "فتحات البيوت المحمية مسكّرة"
+  },
+  {
+   "en": "Greenhouse vents were closed - no damage. Fields need water.",
+   "ar": "الفتحات كانت مسكّرة - ما فيه خسارة. الحقول تبي سقي."
+  },
+  {
+   "en": "Sand got into the open greenhouses: {0} beds lost their growth",
+   "ar": "الرمل دخل البيوت المفتوحة: {0} أحواض راح نموّها"
+  },
+  {
+   "en": "{0} plots flooded ({1} crops lost). The silt will make their next harvest bigger.",
+   "ar": "السيل غطى {0} قطع (راح {1} محصول). الطمي بيكبّر حصادها الجاي."
+  },
+  {
+   "en": "You sprayed pesticide - the crops are safe",
+   "ar": "رشّيت المبيد - المحاصيل سليمة"
+  },
+  {
+   "en": "Locusts ate {0} field crops. Keep pesticide in stock!",
+   "ar": "الجراد أكل {0} محاصيل. خلّ عندك مبيد دايم!"
+  },
+  {
+   "en": "Wants",
+   "ar": "يبي"
+  },
+  {
+   "en": "today only",
+   "ar": "اليوم بس"
+  },
+  {
+   "en": "Wadi silt bonus: +{0} kg",
+   "ar": "زيادة من طمي الوادي: +{0} كجم"
+  },
+  {
+   "en": "[E] Open the greenhouse vents",
+   "ar": "[E] افتح فتحات البيت المحمي"
+  },
+  {
+   "en": "[E] Close the greenhouse vents (dust storms)",
+   "ar": "[E] سكّر فتحات البيت المحمي (عواصف الغبار)"
+  },
+  {
+   "en": "Vents closed - the greenhouse is sealed",
+   "ar": "تسكّرت الفتحات - البيت المحمي مقفول"
+  },
+  {
+   "en": "Vents open",
+   "ar": "الفتحات مفتوحة"
+  }
+ ]
+}

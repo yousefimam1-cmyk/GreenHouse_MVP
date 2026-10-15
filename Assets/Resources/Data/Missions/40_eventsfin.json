@@ -1,0 +1,28 @@
+{
+  "missions": [
+    {
+      "id": "fin_hire", "type": "hireWorker", "target": 1, "reward": 300,
+      "titleEn": "An extra pair of hands", "titleAr": "يد زيادة",
+      "descEn": "Hire a worker at the Farm Shop (Workers page). Wages are paid every morning.",
+      "descAr": "وظّف عامل من محل المزرعة (صفحة العمال). الأجرة تنصرف كل صباح."
+    },
+    {
+      "id": "fin_land", "type": "buyLand", "target": 1, "reward": 500,
+      "titleEn": "More land", "titleAr": "أرض زيادة",
+      "descEn": "Buy a farmland parcel at the land office sign beside the fields.",
+      "descAr": "اشترِ قطعة أرض من لوحة مكتب الأراضي جنب الحقول."
+    },
+    {
+      "id": "fin_loan", "type": "repayLoan", "target": 1, "reward": 800,
+      "titleEn": "Clear the debt", "titleAr": "سدّد الدين",
+      "descEn": "Take a bank loan (bank sign by the market) and pay it back in full.",
+      "descAr": "خذ قرض من البنك (اللوحة جنب السوق) وسدّده كامل."
+    },
+    {
+      "id": "fin_storm", "type": "surviveDustStorm", "target": 1, "reward": 1000,
+      "titleEn": "Ride out the haboob", "titleAr": "اصمد في وجه الهبوب",
+      "descEn": "When a dust storm is forecast, close every greenhouse's vents and get through it with no damage.",
+      "descAr": "إذا جات توقعات عاصفة غبار، سكّر فتحات كل البيوت المحمية واطلع منها بدون خسارة."
+    }
+  ]
+}

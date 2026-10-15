@@ -430,6 +430,7 @@ namespace UnityEngine
     {
         public const float PI = (float)Math.PI, Rad2Deg = 57.29578f, Deg2Rad = 0.0174533f;
         public static float Abs(float v) => Math.Abs(v); public static int Abs(int v) => Math.Abs(v);
+        public static float Repeat(float t, float length) => Math.Max(0f, Math.Min(t - (float)Math.Floor(t / length) * length, length));
         public static float Max(float a, float b) => Math.Max(a, b); public static int Max(int a, int b) => Math.Max(a, b);
         public static float Max(params float[] v) => v.Max();
         public static float Min(float a, float b) => Math.Min(a, b); public static int Min(int a, int b) => Math.Min(a, b);
@@ -573,7 +574,8 @@ namespace UnityEngine
     public enum LightType { Spot, Directional, Point }
     public enum LightShadows { None, Soft }
     public class Light : Behaviour { public LightType type; public float intensity = 1, range, spotAngle; public Color color; public LightShadows shadows; }
-    public static class RenderSettings { public static Light sun; public static float ambientIntensity = 1; public static Color ambientLight; public static Material skybox; }
+    public static class RenderSettings { public static Light sun; public static float ambientIntensity = 1; public static Color ambientLight; public static Material skybox; public static bool fog; public static float fogDensity = 0.01f; public static Color fogColor; public static FogMode fogMode = FogMode.Exponential; }
+    public enum FogMode { Linear = 1, Exponential = 2, ExponentialSquared = 3 }
     public class Camera : Behaviour
     {
         public static Camera main => FindObjectsByType<Camera>(FindObjectsSortMode.None).FirstOrDefault(c => c.tag == "MainCamera");

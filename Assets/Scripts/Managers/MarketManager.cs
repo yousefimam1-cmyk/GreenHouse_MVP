@@ -56,7 +56,7 @@ public class MarketManager : MonoBehaviour
         if (g == null) return 0f;
         float t = trend.TryGetValue(goodId, out var v) ? v : 1f;
         float s = glut.TryGetValue(goodId, out var q) ? q : 0f;
-        return g.price * t * SeasonFactor(goodId) * (1f - s);
+        return g.price * t * SeasonFactor(goodId) * (1f - s) * FarmModifiers.Price(goodId);
     }
 
     // Out-of-season produce is scarcer and sells higher.

@@ -106,6 +106,7 @@ public class FieldPlot : Interactable
             case PlotState.Untilled: TryPlow(true); break;
             case PlotState.Plowed: TrySeed(true); break;
             case PlotState.Growing:
+                if (FarmModifiers.IrrigationBanned) { Say(FarmModifiers.BanText()); return; }
                 if (!WellRunning()) { Say(Loc.T("Start the well first to get water")); return; }
                 Water = 1f;
                 Say(Loc.T("Field watered"));
@@ -177,13 +178,13 @@ public class FieldPlot : Interactable
         var clock = WorldClock.Instance;
         bool raining = clock != null && clock.Weather == Weather.Rain;
         if (raining) Water = 1f;
-        float dry = (clock != null && clock.Weather == Weather.Heatwave ? 2f : 1f) / 150f;
+        float dry = (clock != null && clock.Weather == Weather.Heatwave ? 2f : 1f) * FarmModifiers.FieldDry / 150f;
         Water = Mathf.Max(0f, Water - dry * Time.deltaTime);
         if (Water > 0.05f)
         {
             var crop = EconomyManager.Instance?.FieldCrop(CropId);
             float seconds = crop != null ? crop.growSeconds : 200f;
-            float rate = (InSeason() ? 1f : 0.25f) * EconomyManager.GrowthSpeed / Mathf.Max(10f, seconds);
+            float rate = (InSeason() ? 1f : 0.25f) * EconomyManager.GrowthSpeed * FarmModifiers.FieldGrowth(CropId) / Mathf.Max(10f, seconds);
             Growth = Mathf.Min(1f, Growth + rate * Time.deltaTime);
             if (Growth >= 1f) { State = PlotState.Ripe; Save(); }
         }
@@ -273,6 +274,9 @@ public class FieldPlot : Interactable
     }
 
     private void OnApplicationQuit() { Save(); SaveData.Save(); }
+
+    /// <summary>Add (or remove) water directly: hired field hands, dust storms.</summary>
+    public void AddWater(float amount) { Water = Mathf.Clamp01(Water + amount); Refresh(); Save(); }
 
     public void ResetPlot()
     {
