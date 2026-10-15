@@ -5,5 +5,19 @@
     { "module": "Nutrient",       "nameEn": "Fertilizer partner - slot available",  "nameAr": "شريك الأسمدة - مساحة متاحة", "taglineEn": "Fertigation solutions",       "taglineAr": "حلول التسميد مع الري" },
     { "module": "Energy",         "nameEn": "Energy partner - slot available",      "nameAr": "شريك الطاقة - مساحة متاحة",  "taglineEn": "Solar power for farms",       "taglineAr": "طاقة شمسية للمزارع" },
     { "module": "ClimateControl", "nameEn": "Climate partner - slot available",     "nameAr": "شريك المناخ - مساحة متاحة",  "taglineEn": "Cooling pads, fans, sensors", "taglineAr": "خلايا تبريد ومراوح وحساسات" }
+  ],
+  "brandsNotes": "Sample partner brands (fictional placeholders) used by the cozy features: shop page 'Sponsors', roadside billboards, sponsor missions and the collection book. Replace with real partners once agreed. kind: seeds (gives 'amount' seeds of 'crop'), fertilizer ('amount' field harvests get +bonus), equipment (permanent +bonus on harvests of 'crop': greenhouse or field).",
+  "brands": [
+    {"id": "qassim_seeds", "module": "Nutrient", "nameEn": "Qassim Seeds Co. (sample)", "nameAr": "بذور القصيم (نموذج)", "taglineEn": "Seeds for Najd soil", "taglineAr": "بذور تناسب أرض نجد"},
+    {"id": "najd_fert", "module": "Nutrient", "nameEn": "Najd Fertilizers (sample)", "nameAr": "أسمدة نجد (نموذج)", "taglineEn": "Feed the soil, not just the plant", "taglineAr": "غذِّ التربة مو بس النبتة"},
+    {"id": "rawdah_drip", "module": "Irrigation", "nameEn": "Rawdah Drip (sample)", "nameAr": "روضة للتنقيط (نموذج)", "taglineEn": "Every drop counts", "taglineAr": "كل نقطة لها قيمة"},
+    {"id": "sahra_solar", "module": "Energy", "nameEn": "Sahra Solar (sample)", "nameAr": "صحراء للطاقة الشمسية (نموذج)", "taglineEn": "Sun-powered farms", "taglineAr": "مزارع تشتغل بالشمس"}
+  ],
+  "products": [
+    {"id": "sp_wheat_pack", "brand": "qassim_seeds", "kind": "seeds", "crop": "wheat", "amount": 6, "bonus": 0, "price": 550, "nameEn": "Wheat seed pack x6", "nameAr": "كيس بذور قمح ×6"},
+    {"id": "sp_melon_pack", "brand": "qassim_seeds", "kind": "seeds", "crop": "watermelon", "amount": 4, "bonus": 0, "price": 650, "nameEn": "Watermelon seed pack x4", "nameAr": "كيس بذور حبحب ×4"},
+    {"id": "sp_fert", "brand": "najd_fert", "kind": "fertilizer", "crop": "", "amount": 3, "bonus": 0.25, "price": 400, "nameEn": "Organic fertilizer (3 field harvests +25%)", "nameAr": "سماد عضوي (3 حصادات +25%)"},
+    {"id": "sp_drip", "brand": "rawdah_drip", "kind": "equipment", "crop": "field", "amount": 1, "bonus": 0.1, "price": 2200, "nameEn": "Drip irrigation kit (fields +10%)", "nameAr": "شبكة ري بالتنقيط (الحقول +10%)"},
+    {"id": "sp_solar", "brand": "sahra_solar", "kind": "equipment", "crop": "greenhouse", "amount": 1, "bonus": 0.1, "price": 3000, "nameEn": "Solar fans for the greenhouse (+10%)", "nameAr": "مراوح شمسية للبيت المحمي (+10%)"}
   ]
 }

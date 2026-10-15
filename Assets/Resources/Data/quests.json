@@ -1,0 +1,23 @@
+{
+  "notes": "Daily quest templates (3 random ones a day at the market board). type: deliver (hand in goods from the farm store at the board; goods picked from 'goods'), collectEggs, earn (SAR from market sales), harvestKg, plantField, petSaluki, flyFalcon, talkVillager. Target = min..max in 'step's; reward = rewardBase + target x rewardPerUnit. needsAnimal: only offered when that animal is owned. Titles: {0} amount, {1} unit, {2} good name.",
+  "templates": [
+    { "id": "deliver_field", "type": "deliver", "goods": ["wheat", "potato", "onion", "watermelon"], "min": 20, "max": 60, "step": 10, "rewardBase": 40, "rewardPerUnit": 4,
+      "titleEn": "Deliver {0} {1} of {2}", "titleAr": "سلّم {0} {1} {2}" },
+    { "id": "deliver_veg", "type": "deliver", "goods": ["crops"], "min": 30, "max": 90, "step": 15, "rewardBase": 30, "rewardPerUnit": 3,
+      "titleEn": "Deliver {0} {1} of greenhouse {2}", "titleAr": "سلّم {0} {1} {2} من البيت المحمي" },
+    { "id": "eggs", "type": "collectEggs", "min": 6, "max": 24, "step": 6, "rewardBase": 30, "rewardPerUnit": 3, "needsAnimal": "chicken",
+      "titleEn": "Collect {0} eggs", "titleAr": "اجمع {0} بيضة" },
+    { "id": "earn", "type": "earn", "min": 300, "max": 1200, "step": 100, "rewardBase": 30, "rewardPerUnit": 0.12,
+      "titleEn": "Earn {0} SAR at the market", "titleAr": "اكسب {0} ريال من السوق" },
+    { "id": "harvest", "type": "harvestKg", "min": 40, "max": 120, "step": 20, "rewardBase": 30, "rewardPerUnit": 1.5,
+      "titleEn": "Harvest {0} kg of crops", "titleAr": "احصد {0} كجم من المحاصيل" },
+    { "id": "plant", "type": "plantField", "min": 1, "max": 3, "step": 1, "rewardBase": 20, "rewardPerUnit": 30,
+      "titleEn": "Plant {0} fields", "titleAr": "ازرع {0} حقول" },
+    { "id": "pet", "type": "petSaluki", "min": 1, "max": 1, "step": 1, "rewardBase": 60, "rewardPerUnit": 0,
+      "titleEn": "Pet your saluki", "titleAr": "دلّع السلوقي حقك" },
+    { "id": "falcon", "type": "flyFalcon", "min": 1, "max": 1, "step": 1, "rewardBase": 80, "rewardPerUnit": 0,
+      "titleEn": "Fly the falcon", "titleAr": "طيّر الصقر" },
+    { "id": "talk", "type": "talkVillager", "min": 2, "max": 3, "step": 1, "rewardBase": 20, "rewardPerUnit": 25,
+      "titleEn": "Chat with {0} villagers", "titleAr": "سولف مع {0} من أهل القرية" }
+  ]
+}

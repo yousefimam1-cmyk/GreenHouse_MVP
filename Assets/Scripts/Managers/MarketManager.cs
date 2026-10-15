@@ -31,6 +31,9 @@ public class MarketManager : MonoBehaviour
         ("School Meals Program", "برنامج وجبات المدارس"), ("Dammam Supermarket", "سوبرماركت الدمام"),
     };
 
+    /// <summary>Feature hooks: extra price multipliers per good (seasonal events, friendships...). Return 1 for no change.</summary>
+    public static readonly List<Func<string, float>> PriceMultipliers = new List<Func<string, float>>();
+
     private void Awake() => Instance = this;
 
     private void Start()
@@ -56,7 +59,9 @@ public class MarketManager : MonoBehaviour
         if (g == null) return 0f;
         float t = trend.TryGetValue(goodId, out var v) ? v : 1f;
         float s = glut.TryGetValue(goodId, out var q) ? q : 0f;
-        return g.price * t * SeasonFactor(goodId) * (1f - s) * FarmModifiers.Price(goodId);
+        float extra = FarmModifiers.Price(goodId);
+        foreach (var m in PriceMultipliers) extra *= m(goodId);
+        return g.price * t * SeasonFactor(goodId) * (1f - s) * extra;
     }
 
     // Out-of-season produce is scarcer and sells higher.
