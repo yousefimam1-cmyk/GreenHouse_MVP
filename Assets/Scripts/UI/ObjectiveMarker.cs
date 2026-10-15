@@ -12,6 +12,9 @@ public class ObjectiveMarker : MonoBehaviour
     private Transform target;
     private float height = 3f;
 
+    /// <summary>Where the current mission wants the player to go (null if nowhere). Used by the minimap.</summary>
+    public static Transform CurrentTarget { get; private set; }
+
     private void Start()
     {
         var root = new GameObject("Objective Marker");
@@ -30,13 +33,13 @@ public class ObjectiveMarker : MonoBehaviour
         GameEvents.MissionStarted += OnMission;
     }
 
-    private void OnDestroy() => GameEvents.MissionStarted -= OnMission;
+    private void OnDestroy() { GameEvents.MissionStarted -= OnMission; CurrentTarget = null; }
     private void OnMission(MissionDef m) => retarget = 0f;
 
     private void Update()
     {
         retarget -= Time.deltaTime;
-        if (retarget <= 0f) { retarget = 1f; target = FindTarget(out height); }
+        if (retarget <= 0f) { retarget = 1f; target = FindTarget(out height); CurrentTarget = target; }
         bool uiOpen = UIManager.Instance != null && UIManager.Instance.IsUIOpened;
         bool show = target != null && !uiOpen;
         if (marker.gameObject.activeSelf != show) marker.gameObject.SetActive(show);
@@ -55,7 +58,7 @@ public class ObjectiveMarker : MonoBehaviour
 
     private static Camera FindViewCamera()
     {
-        foreach (var c in Camera.allCameras) if (c.isActiveAndEnabled) return c;
+        foreach (var c in Camera.allCameras) if (c.isActiveAndEnabled && c.targetTexture == null) return c; // skip the minimap camera
         return null;
     }
 

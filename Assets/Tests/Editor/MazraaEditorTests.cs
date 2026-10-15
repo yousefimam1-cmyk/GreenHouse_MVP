@@ -38,11 +38,28 @@ public class MazraaEditorTests
         Assert.IsNotNull(cow.GetComponentInChildren<Animation>(), "animal models should import with legacy Animation");
     }
 
+    [Test]
+    public void Controls_GamepadBindingsAndGlyphs()
+    {
+        Assert.AreEqual("<Gamepad>/buttonSouth", GameInput.GamepadPath(GameAction.Interact));
+        Assert.AreEqual(2, GameInput.Get(GameAction.Interact).bindings.Count, "keyboard + gamepad binding");
+        GameInput.ForceDevice(true, true);
+        StringAssert.Contains("\u2715", Glyphs.Apply("[E] Use"));
+        GameInput.ForceDevice(true, false);
+        StringAssert.Contains(">A<", Glyphs.Apply("[E] Use"));
+        GameInput.ForceDevice(false, false);
+        Assert.AreEqual("[E] Use", Glyphs.Apply("[E] Use"));
+        Loc.Raw("x");
+        Assert.IsTrue(Loc.HasTranslation("Farm map"), "UI translations (Data/Loc/50_ui.json)");
+    }
+
     [UnityTest]
     public IEnumerator PlaysTheMainScene()
     {
         EditorSceneManager.OpenScene("Assets/Scenes/Blak_Pulse_Main.unity");
         yield return new EnterPlayMode();
+        for (int i = 0; i < 20; i++) yield return null;
+        if (GameMenu.Instance != null) GameMenu.Instance.Close();   // the main menu pauses the game at start
         for (int i = 0; i < 240; i++) yield return null;   // ~4 seconds of frames
         Assert.IsNotNull(GameManager.Instance, "GameManager");
         Assert.IsNotNull(FarmTruck.Instance, "truck");

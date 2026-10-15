@@ -275,10 +275,244 @@ static class Program
         T.Check("Crops: no errors", FakeEngine.Errors.Count == 0, string.Join(" | ", FakeEngine.Errors.Take(3)));
     }
 
+    // ------------------------------------------------------------------ UI, input, menus (feat/ui)
+    static void PressKey(UnityEngine.InputSystem.KeyControl k) { k.wasPressedThisFrame = true; k.isPressed = true; FakeEngine.Tick(0.02f); k.wasPressedThisFrame = false; k.isPressed = false; }
+    static void PressPad(UnityEngine.InputSystem.ButtonControl b) { b.wasPressedThisFrame = true; b.isPressed = true; FakeEngine.Tick(0.02f); b.wasPressedThisFrame = false; b.isPressed = false; }
+
+    static void UiSection(string resources)
+    {
+        Console.WriteLine("UI, controllers, menus, saves");
+        var kb = new UnityEngine.InputSystem.Keyboard();
+        foreach (var f in typeof(UnityEngine.InputSystem.Keyboard).GetFields())
+            if (f.FieldType == typeof(UnityEngine.InputSystem.KeyControl)) f.SetValue(kb, new UnityEngine.InputSystem.KeyControl());
+        UnityEngine.InputSystem.Keyboard.current = kb;
+        T.Static(typeof(SaveSlots), "Hook");   // [RuntimeInitializeOnLoadMethod]: scene load / unload callbacks
+        int errs = FakeEngine.Errors.Count;
+        FakeEngine.Run(3f);
+        T.Check("UI systems created (minimap, menu, info screens, tutorial, third person, gamepad bridge)",
+            Minimap.Instance && GameMenu.Instance && FarmInfoScreen.Instance && TutorialOverlay.Instance && ThirdPersonView.Instance && UnityEngine.Object.FindAnyObjectByType<GamepadBridge>() != null);
+
+        // Every UiText key (and the keys picked through variables) has Arabic in Data/Loc/50_ui.json.
+        var keys = new List<string>();
+        foreach (var file in Directory.GetFiles(Path.Combine(resources, "..", "Scripts"), "*.cs", SearchOption.AllDirectories))
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(file), @"UiText\.(?:T|Raw)\(([^;]*?)\)[;,)\s+.]"))
+                foreach (System.Text.RegularExpressions.Match lit in System.Text.RegularExpressions.Regex.Matches(m.Groups[1].Value, "\"((?:[^\"\\\\]|\\\\.)*)\""))
+                    keys.Add(lit.Groups[1].Value);
+        for (int i = 0; i < GameInput.Count; i++) keys.Add(GameInput.Label((GameAction)i));
+        keys.AddRange(new[] { "Low", "Medium", "High" });
+        foreach (var h in (string[])typeof(TutorialOverlay).GetField("Hints", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null)) keys.Add(h);
+        Loc.Raw("x");
+        var missing = keys.Distinct().Where(k => !Loc.HasTranslation(k)).ToList();
+        T.Check("All UI texts have Arabic (" + keys.Distinct().Count() + " keys)", keys.Count > 60 && missing.Count == 0, string.Join(" | ", missing.Take(5)));
+
+        // ---- glyphs and rebinding
+        GameInput.ForceDevice(false, false);
+        T.Check("Keyboard prompt keeps [E]", Glyphs.Apply("[E] Harvest") == "[E] Harvest");
+        GameInput.ForceDevice(true, false);
+        T.Check("Xbox pad shows A / X / Y in prompts", Glyphs.Apply("[E] Harvest").Contains(">A<") && Glyphs.Apply("[R] Reset").Contains(">X<") && Glyphs.Apply("[Q] Tool").Contains(">Y<"), Glyphs.Apply("[E] Harvest"));
+        GameInput.ForceDevice(true, true);
+        T.Check("PlayStation pad shows cross / square / triangle", Glyphs.Apply("[E] x").Contains("✕") && Glyphs.Apply("[R] x").Contains("□") && Glyphs.Apply("[Q] x").Contains("△") && Glyphs.Apply("[Esc] x").Contains("○"));
+        Loc.SetLanguage(Language.Arabic);
+        T.Check("Glyphs work in shaped Arabic prompts", Glyphs.Apply(Loc.T("[E] Harvest")).Contains("✕"), Glyphs.Apply(Loc.T("[E] Harvest")));
+        Loc.SetLanguage(Language.English);
+        T.Check("DualSense / DualShock detected as PlayStation, XInput as Xbox",
+            GameInput.IsPlayStationPad(new UnityEngine.InputSystem.Gamepad { name = "DualSenseGamepadHID", displayName = "DualSense Wireless Controller" }) &&
+            GameInput.IsPlayStationPad(new UnityEngine.InputSystem.Gamepad { name = "DualShock4GamepadHID" }) &&
+            !GameInput.IsPlayStationPad(new UnityEngine.InputSystem.Gamepad { name = "XInputControllerWindows", displayName = "Xbox Controller" }));
+        GameInput.ForceDevice(false, false);
+        GameInput.SetKey(GameAction.Interact, "<Keyboard>/f");
+        T.Check("Rebound Interact shows [F] in prompts", Glyphs.Apply("[E] Harvest") == "[F] Harvest", Glyphs.Apply("[E] Harvest"));
+        kb.fKey.wasPressedThisFrame = true;
+        bool fWorks = GameInput.Pressed(GameAction.Interact);
+        kb.fKey.wasPressedThisFrame = false; kb.eKey.wasPressedThisFrame = true;
+        bool eStill = GameInput.Pressed(GameAction.Interact);
+        kb.eKey.wasPressedThisFrame = false;
+        T.Check("Rebound key triggers the action, old key doesn't", fWorks && !eStill);
+        GameInput.StartRebind(GameAction.Implement, ok => { });
+        T.Check("Interactive rebind waits for a key", GameInput.Rebinding && UnityEngine.InputSystem.InputActionRebindingExtensions.RebindingOperation.Current != null);
+        UnityEngine.InputSystem.InputActionRebindingExtensions.RebindingOperation.Current.FakeComplete("<Keyboard>/z");
+        T.Check("Interactive rebind applies the new key", !GameInput.Rebinding && GameInput.KeyPath(GameAction.Implement) == "<Keyboard>/z");
+        string json = PlayerPrefs.GetString(GameInput.BindingsKey, "");
+        T.Static(typeof(GameInput), "ResetStatics");
+        T.Check("Bindings saved as JSON and loaded on restart", json.Contains("<Keyboard>/z") && GameInput.KeyPath(GameAction.Implement) == "<Keyboard>/z" && GameInput.KeyPath(GameAction.Interact) == "<Keyboard>/f", json);
+        GameInput.ResetBindings();
+        T.Check("Reset to defaults", GameInput.KeyPath(GameAction.Interact) == "<Keyboard>/e" && GameInput.KeyPath(GameAction.Implement) == "<Keyboard>/q");
+
+        // ---- gamepad
+        var pad = new UnityEngine.InputSystem.Gamepad { name = "DualSenseGamepadHID", displayName = "DualSense Wireless Controller" };
+        UnityEngine.InputSystem.Gamepad.current = pad;
+        PressPad(pad.buttonWest);
+        T.Check("Using a DualSense switches glyphs to PlayStation", GameInput.UsingGamepad && GameInput.IsPlayStation);
+        var mouse = new UnityEngine.InputSystem.Mouse(); UnityEngine.InputSystem.Mouse.current = mouse;
+        PressPad(mouse.leftButton);
+        T.Check("Mouse / keyboard switches glyphs back", !GameInput.UsingGamepad);
+        UnityEngine.InputSystem.Mouse.current = null;
+        var look = GamepadBridge.ScaleLook(new Vector2(2f, 3f), false, 2f, 1f, true);
+        T.Check("Look sensitivity and invert Y", Math.Abs(look.x - 4f) < 0.001f && Math.Abs(look.y + 6f) < 0.001f);
+
+        var truck = FarmTruck.Instance;
+        truck.transform.position = DeliveryZone.Market.transform.position + new Vector3(30, 0, 30);
+        PressPad(pad.buttonSouth); // nothing targeted in the fake world: just tracks the device
+        truck.Interact();
+        FakeEngine.Tick(0.02f);
+        pad.rightTrigger.value = 1f; pad.leftStick.value = new Vector2(1f, 0f);
+        FakeEngine.Run(1f, 0.05f);
+        T.Check("RT drives the truck, left stick steers", truck.Speed > 1f, "" + truck.Speed);
+        pad.rightTrigger.value = 0f; pad.leftTrigger.value = 1f;
+        FakeEngine.Run(1.5f, 0.05f);
+        T.Check("LT brakes", truck.Speed < 1f, "" + truck.Speed);
+        pad.leftTrigger.value = 0f; pad.leftStick.value = Vector2.zero;
+        T.SetProp(truck, "Speed", 0f);
+        PressPad(pad.buttonEast);
+        T.Check("B / Circle exits the vehicle", !truck.IsDriving && Vehicle.Current == null);
+
+        EconomyManager.Instance.AddMoney(5000);
+        var shop = ShopUI.Instance;
+        shop.Open(); FakeEngine.Tick(0.02f);
+        PressPad(pad.rightShoulder);
+        T.Check("RB turns the shop page", shop.Page == 1 && shop.CurrentCategory == "Seeds", shop.Page + " " + shop.CurrentCategory);
+        PressPad(pad.dpad.down);
+        T.Check("D-pad down selects the next row", shop.SelectedRow == 1);
+        string crop = EconomyManager.Instance.Data.fieldCrops[1].id;
+        int seeds = EconomyManager.Instance.Seeds(crop);
+        PressPad(pad.buttonSouth);
+        T.Check("A / Cross buys the selected row", EconomyManager.Instance.Seeds(crop) == seeds + 1, crop + " " + seeds + " -> " + EconomyManager.Instance.Seeds(crop));
+        PressPad(pad.leftShoulder);
+        T.Check("LB goes back a page", shop.Page == 0);
+        PressPad(pad.buttonEast);
+        T.Check("B / Circle closes the shop", !shop.IsOpen && !UIManager.Instance.IsUIOpened);
+
+        // ---- pause menu, settings, new game
+        var menu = GameMenu.Instance;
+        FakeEngine.Tick(0.02f);
+        PressPad(pad.startButton);
+        T.Check("Start / Options opens the pause menu and pauses", menu.CurrentMode == GameMenu.Mode.Pause && Time.timeScale == 0f && UIManager.Instance.IsUIOpened);
+        int settingsRow = menu.List.Rows.ToList().FindIndex(r => r.label() == UiText.T("Settings"));
+        menu.List.Choose(settingsRow);
+        PressPad(pad.dpad.down); PressPad(pad.dpad.down);   // to Sound effects
+        PressPad(pad.dpad.left);
+        T.Check("D-pad changes a setting (SFX volume 90%)", Math.Abs(GameSettings.SfxVolume - 0.9f) < 0.001f, "" + GameSettings.SfxVolume);
+        GameSettings.MasterVolume = 0.5f;
+        T.Check("Master volume drives AudioListener.volume", Math.Abs(AudioListener.volume - 0.5f) < 0.001f);
+        GameSettings.GraphicsPreset = 1;
+        T.Check("Graphics preset Medium applied", GraphicsEnhancer.Preset == 1 && !GraphicsEnhancer.High);
+        PressPad(pad.buttonEast);
+        T.Check("B goes back to the pause page", menu.List.Rows.Any(r => r.label() == UiText.T("Resume")));
+        PressPad(pad.buttonEast);
+        T.Check("B on the pause page resumes", menu.CurrentMode == GameMenu.Mode.Closed && Time.timeScale == 1f && !UIManager.Instance.IsUIOpened);
+        PressKey(kb.pKey);
+        T.Check("P opens the pause menu", GameMenu.IsOpen);
+        menu.List.Choose(menu.List.Rows.ToList().FindIndex(r => r.label() == UiText.T("New game")));
+        EconomyManager.Instance.AddMoney(1234);
+        menu.List.Choose(1); // "Yes, clear the current save"
+        FakeEngine.Run(0.5f);
+        T.Check("Pause menu New game resets the farm and resumes", EconomyManager.Instance.Money == 500 && !GameMenu.IsOpen && Time.timeScale == 1f, EconomyManager.Instance.Money + "");
+        T.Check("Settings survive a new game", Math.Abs(GameSettings.MasterVolume - 0.5f) < 0.001f && GameSettings.GraphicsPreset == 1);
+
+        // ---- inventory and stats
+        EconomyManager.Instance.AddMoney(300);
+        T.Check("Money earned is tracked", FarmInfoScreen.Instance.MoneyEarned == 300, "" + FarmInfoScreen.Instance.MoneyEarned);
+        EconomyManager.Instance.AddGood("eggs", 12f);
+        PressKey(kb.iKey);
+        T.Check("I opens the inventory", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Inventory && UIManager.Instance.IsUIOpened);
+        T.Check("Inventory lists goods, seeds, feed, animals", FarmInfoScreen.InventoryText().Contains("12.0") && FarmInfoScreen.InventoryText().Contains("Seeds") && FarmInfoScreen.InventoryText().Contains("Feed"), FarmInfoScreen.InventoryText());
+        PressKey(kb.oKey);
+        T.Check("O switches to farm stats", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Stats && FarmInfoScreen.StatsText().Contains("Money earned: 300") && FarmInfoScreen.StatsText().Contains("Days played"), FarmInfoScreen.StatsText());
+        PressKey(kb.escapeKey);
+        T.Check("Esc closes the info screen", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.None && !UIManager.Instance.IsUIOpened);
+
+        // ---- minimap
+        FakeEngine.Run(2.5f);
+        var mm = Minimap.Instance;
+        T.Check("Minimap icons registered (greenhouses, plots, vehicles, stalls, pen, bay, market)", MinimapIcon.All.Count >= 15, "" + MinimapIcon.All.Count);
+        T.Check("Minimap camera renders top-down to a texture", mm.MapCamera.orthographic && mm.MapCamera.targetTexture != null && mm.MapCamera.cullingMask == ~(1 << 5) && Math.Abs(mm.MapCamera.transform.eulerAngles.x - 90f) < 0.5f);
+        T.Check("Icons near the player are drawn", mm.VisibleMiniIcons > 0, "" + mm.VisibleMiniIcons);
+        T.Check("Objective shown on the minimap", ObjectiveMarker.CurrentTarget != null && mm.MiniObjective.gameObject.activeSelf);
+        var p = Minimap.ToMap(new Vector3(10, 0, 0), Vector3.zero, 90f, 2f);
+        T.Check("Minimap turns with the view (what you face is up)", Math.Abs(p.x) < 0.01f && Math.Abs(p.y - 20f) < 0.01f, p.x + "," + p.y);
+        PressKey(kb.nKey);
+        T.Check("N opens the full north-up map", mm.FullOpen && UIManager.Instance.IsUIOpened);
+        FakeEngine.Tick(0.02f);
+        T.Check("Full map frames the whole farm", mm.MapCamera.orthographicSize >= 60f && Math.Abs(mm.ViewYaw) < 0.01f, "" + mm.MapCamera.orthographicSize);
+        PressKey(kb.nKey);
+        T.Check("N closes the map", !mm.FullOpen && !UIManager.Instance.IsUIOpened);
+
+        // ---- third person
+        var player = GameObject.Find("PlayerCapsule").transform;
+        var fpCam = Camera.main;
+        PressKey(kb.vKey);
+        var tp = ThirdPersonView.Instance;
+        T.Check("V switches to third person (own camera becomes main)", tp.IsThirdPerson && Camera.main == tp.Camera && !fpCam.enabled && tp.Model != null);
+        FakeEngine.Tick(0.02f);
+        Vector3 back = tp.Camera.transform.position - player.position;
+        T.Check("Camera sits behind and above the player", Vector3.Dot(back, player.forward) < -2f && back.y > 0f, back.ToString());
+        player.position += player.forward * 0.1f;
+        FakeEngine.Tick(0.02f);
+        T.Check("Model animates from the capsule speed", tp.GroundSpeed > 0.4f, "" + tp.GroundSpeed);
+        PressKey(kb.vKey);
+        T.Check("V switches back to the StarterAssets first person camera", !tp.IsThirdPerson && Camera.main == fpCam && fpCam.enabled && !GameSettings.ThirdPerson);
+
+        // ---- tutorial (doesn't touch missions)
+        int missionBefore = MissionManager.Instance.Index;
+        var tut = TutorialOverlay.Instance;
+        tut.Begin();
+        T.Check("Tutorial starts at hint 1/6", tut.Running && tut.Step == 0 && tut.BodyText().Contains("1/6"));
+        PressKey(kb.enterKey);
+        T.Check("Enter skips to the next hint", tut.Step == 1);
+        T.Check("Tutorial leaves mission progress alone", MissionManager.Instance.Index == missionBefore && MissionManager.Instance.Index == 0);
+        GameEvents.RaiseModuleOptimized(null, ModuleType.Energy);
+        GameEvents.RaiseModuleOptimized(null, ModuleType.Nutrient);
+        T.Check("Doing the step ticks it off", tut.StepDone);
+        FakeEngine.Run(2f, 0.1f);
+        T.Check("...then moves to the next hint", tut.Step == 2, "" + tut.Step);
+        PressKey(kb.backspaceKey);
+        T.Check("Backspace closes the tutorial", !tut.Running);
+
+        // ---- save slots, autosave, loading
+        EconomyManager.Instance.AddMoney(777);
+        int moneyInSlot = EconomyManager.Instance.Money;
+        T.Check("Save to slot 2", SaveSlots.Save(2) && SaveSlots.HasSlot(2) && SaveSlots.ActiveSlot == 2 && SaveSlots.Describe(2).Contains(moneyInSlot.ToString("N0")), SaveSlots.Describe(2));
+        EconomyManager.Instance.AddMoney(1000);
+        File.SetLastWriteTimeUtc(SaveSlots.SlotPath(2), DateTime.UtcNow.AddMinutes(-5));
+        WorldClock.Instance.NextDay();
+        FakeEngine.Run(1f);
+        T.Check("Autosave each in-game day writes the active slot", File.GetLastWriteTimeUtc(SaveSlots.SlotPath(2)) > DateTime.UtcNow.AddMinutes(-1));
+        SaveSlots.Save(2);
+        int moneySaved2 = EconomyManager.Instance.Money;
+        EconomyManager.Instance.AddMoney(50);
+        SaveData.Flush(true);
+        int loads = UnityEngine.SceneManagement.SceneManager.LoadCount;
+        T.Check("Load slot reloads the scene", SaveSlots.Load(2) && UnityEngine.SceneManagement.SceneManager.LoadCount == loads + 1);
+        T.Check("Slot copied over the save file", SaveData.GetInt("mazraa.money", 0) == moneySaved2, SaveData.GetInt("mazraa.money", 0) + " vs " + moneySaved2);
+        BuildWorld();       // the reloaded scene
+        GameMenu.ShowOnStart = true;
+        FakeEngine.Run(2f);
+        T.Check("Loaded game has the slot's money", EconomyManager.Instance.Money == moneySaved2, EconomyManager.Instance.Money + " vs " + moneySaved2);
+        T.Check("Main menu is skipped after loading a slot", !GameMenu.IsOpen && Time.timeScale == 1f);
+
+        // ---- main menu at start
+        BuildWorld();
+        FakeEngine.Run(1f);
+        T.Check("Main menu at start pauses the game", GameMenu.Instance.CurrentMode == GameMenu.Mode.Main && Time.timeScale == 0f);
+        var labels = GameMenu.Instance.List.Rows.Select(r => r.label()).ToList();
+        T.Check("Main menu: Continue, New game, Load slot 1-3, Tutorial, Settings, Quit",
+            labels[0] == "Continue" && labels[1] == "New game" && labels.Count(l => l.StartsWith("Load slot")) == 3 && labels.Contains("Settings") && labels.Contains("Quit") && labels.Contains("Tutorial"), string.Join(",", labels));
+        T.Check("Empty slots can't be loaded", !GameMenu.Instance.List.Rows[2].IsEnabled && GameMenu.Instance.List.Rows[3].IsEnabled);
+        GameMenu.Instance.List.Choose(0);
+        T.Check("Continue closes the menu", !GameMenu.IsOpen && Time.timeScale == 1f && !UIManager.Instance.IsUIOpened);
+        GameMenu.ShowOnStart = false;
+        T.Check("No errors in the UI section", FakeEngine.Errors.Count == errs, string.Join(" | ", FakeEngine.Errors.Skip(errs).Take(3)));
+        UnityEngine.InputSystem.Keyboard.current = null;
+        UnityEngine.InputSystem.Gamepad.current = null;
+        GameInput.ForceDevice(false, false);
+    }
+
     static void Main(string[] args)
     {
         FakeEngine.ResourcesRoot = args[0];
         EventDirector.RandomEventsEnabled = false; // random farm events would make the core checks flaky; EventsFinTests turn them on
+        GameMenu.ShowOnStart = false;   // the main menu pauses the game; the UI section tests it on its own
+        FakeEngine.PersistentPath = Path.Combine(Path.GetTempPath(), "mazraa_test_" + System.Diagnostics.Process.GetCurrentProcess().Id); // parallel runs don't share saves
         if (Directory.Exists(FakeEngine.PersistentPath)) Directory.Delete(FakeEngine.PersistentPath, true);
         Directory.CreateDirectory(FakeEngine.PersistentPath);
 
@@ -355,7 +589,7 @@ static class Program
         T.Check("Plant-field mission done", MissionManager.Instance.Current?.id == "fieldharvest", MissionManager.Instance.Current?.id);
         plot.Interact(); FakeEngine.Run(0.2f);
         T.Check("E waters (well running)", plot.Water > 0.9f);
-        for (int i = 0; i < 40 && plot.State != PlotState.Ripe; i++) { plot.Interact(); FakeEngine.Run(30f, 0.5f); }
+        for (int i = 0; i < 120 && plot.State != PlotState.Ripe; i++) { plot.Interact(); FakeEngine.Run(30f, 0.5f); } // random pests can slow growth
         T.Check("Field ripens with watering", plot.State == PlotState.Ripe, plot.State + " " + plot.Growth);
         float wheat = EconomyManager.Instance.Stored("wheat");
         plot.Interact();
@@ -496,6 +730,8 @@ static class Program
         EventsFinTests.AfterNewGame();
 
         CozyTests.AfterNewGame();
+
+        UiSection(args[0]);
 
         Console.WriteLine("Long run (10 in-game days, everything ticking)");
         int e0 = FakeEngine.Errors.Count;
@@ -846,8 +1082,10 @@ static class UtilityTests
 
         // Daily bill on a new day
         money = eco.Money;
+        float billDue = g.Model.BillSoFar();
         WorldClock.Instance.NextDay();
-        T.Check("SEC bill is paid each morning", eco.Money < money, money + " -> " + eco.Money);
+        // other features may also pay out in the morning, so check the bill was booked and cleared rather than net money
+        T.Check("SEC bill is paid each morning", billDue > 0f && g.Model.BillSoFar() < billDue, billDue + " -> " + g.Model.BillSoFar() + " money " + money + " -> " + eco.Money);
 
         // Missions
         var mm = MissionManager.Instance;
@@ -1166,10 +1404,11 @@ static class MpTests
         plot.Interact();
         T.Check("Offline: plot plowed locally", plot.State == PlotState.Plowed);
         T.Check("Offline: Host fails with a clear message", !mp.Host() && mp.Status.Contains("Netcode"));
+        bool uiBefore = UIManager.Instance.IsUIOpened;   // another feature's panel may already hold the UI
         MultiplayerPanel.Instance.Open();
         T.Check("Menu open: typing mode holds the UI", NetSession.Typing && UIManager.Instance.IsUIOpened);
         MultiplayerPanel.Instance.Close();
-        T.Check("Menu closed: gameplay input back", !NetSession.Typing && !UIManager.Instance.IsUIOpened);
+        T.Check("Menu closed: gameplay input back", !NetSession.Typing && UIManager.Instance.IsUIOpened == uiBefore, NetSession.Typing + " " + UIManager.Instance.IsUIOpened + " before " + uiBefore);
         int errs = FakeEngine.Errors.Count;
         FakeEngine.Run(2f);
         T.Check("No errors offline", FakeEngine.Errors.Count == errs);

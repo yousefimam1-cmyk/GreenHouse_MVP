@@ -15,6 +15,9 @@ public class InteractionController : MonoBehaviour
     private Collider currentCollider;
     private string shownPrompt;
 
+    /// <summary>True while something interactable is under the crosshair (A / Cross then interacts instead of jumping).</summary>
+    public static bool HasTarget { get; private set; }
+
     private void Awake()
     {
         if (playerCamera == null) playerCamera = Camera.main;
@@ -26,9 +29,11 @@ public class InteractionController : MonoBehaviour
         if ((UIManager.Instance != null && UIManager.Instance.IsUIOpened) || UIManager.PanelClosedFrame == Time.frameCount || Time.timeScale == 0f)
         {
             ClearCurrent();
+            HasTarget = false;
             return;
         }
         DetectInteractable();
+        HasTarget = currentInteractable != null;
         DetectInteractInput();
     }
 
@@ -76,8 +81,8 @@ public class InteractionController : MonoBehaviour
     private void DetectInteractInput()
     {
         if (currentInteractable == null) return;
-        var kb = Keyboard.current;
-        if (kb != null && kb.eKey.wasPressedThisFrame)
+        // E on keyboard (rebindable) or A / Cross on a gamepad.
+        if (GameInput.Pressed(GameAction.Interact))
         {
             var target = currentInteractable;
             if (!NetSession.HandleInteract(target)) target.Interact();   // co-op client: sent to the host instead
@@ -85,6 +90,8 @@ public class InteractionController : MonoBehaviour
             else shownPrompt = null; // force prompt refresh
         }
     }
+
+    private void OnDisable() => HasTarget = false;
 
     private void ClearCurrent()
     {

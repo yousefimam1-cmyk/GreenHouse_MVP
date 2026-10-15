@@ -7,6 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Shop panel built in code, one page per category (feed, seeds, animals, upgrades, plus anything features
 /// register in ShopCatalog). Click a row or press its number; Left/Right (or A/D) change page; Esc closes.
+/// Gamepad: D-pad / stick up-down select a row, A (Cross) buys it, LB / RB (or D-pad left-right) change page, B closes.
 /// Opened by a ShopStall. Prices come from EconomyManager (economy.json) and ShopCatalog.
 /// </summary>
 public class ShopUI : MonoBehaviour
@@ -22,6 +23,10 @@ public class ShopUI : MonoBehaviour
     private readonly List<(string category, List<string> ids)> pages = new List<(string, List<string>)>();
     private int page;
     private int openedFrame;
+    private int selectedRow;
+
+    /// <summary>Row highlighted for D-pad / Enter buying.</summary>
+    public int SelectedRow => selectedRow;
 
     private void Awake() => Instance = this;
 
@@ -138,6 +143,7 @@ public class ShopUI : MonoBehaviour
         if (IsOpen || canvas == null) return;
         IsOpen = true;
         openedFrame = Time.frameCount;
+        selectedRow = 0;
         canvas.gameObject.SetActive(true);
         if (UIManager.Instance != null) UIManager.Instance.SetExternalPanel(true);
         BuildPages();
@@ -155,18 +161,38 @@ public class ShopUI : MonoBehaviour
     private void Update()
     {
         if (!IsOpen || Time.timeScale == 0f) return;
-        var kb = Keyboard.current;
-        if (kb == null) return;
-        if (Time.frameCount != openedFrame && (kb.escapeKey.wasPressedThisFrame || kb.eKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame)) { Close(); return; }
-        Key[] keys = { Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5, Key.Digit6, Key.Digit7, Key.Digit8, Key.Digit9, Key.Digit0 };
-        for (int i = 0; i < rows.Count && i < keys.Length; i++)
-            if (kb[keys[i]].wasPressedThisFrame) BuySlot(i);
+        if (Time.frameCount == openedFrame) return;
+        var pad = Gamepad.current;
+        bool padConfirm = pad != null && pad.buttonSouth.wasPressedThisFrame;
+        // Esc / Tab / B close; E closes too (on a gamepad A buys instead).
+        if (MenuNav.BackOrTab() || (GameInput.Pressed(GameAction.Interact) && !padConfirm)) { Close(); return; }
+        int digit = MenuNav.Digit();
+        if (digit >= 0 && digit < rows.Count) { selectedRow = digit; BuySlot(digit); }
+        int ids = PageIds.Count;
+        int v = MenuNav.Vertical();
+        if (v != 0 && ids > 0) { selectedRow = (selectedRow + v + ids) % ids; Refresh(); }
+        if (MenuNav.Confirm()) BuySlot(selectedRow);
         if (pages.Count > 1)
         {
-            if (kb.rightArrowKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame) { page = (page + 1) % pages.Count; Refresh(); }
-            if (kb.leftArrowKey.wasPressedThisFrame || kb.aKey.wasPressedThisFrame) { page = (page + pages.Count - 1) % pages.Count; Refresh(); }
+            int h = MenuNav.Horizontal();
+            if (MenuNav.PageNext()) h = 1;
+            if (MenuNav.PagePrev()) h = -1;
+            if (h != 0) { page = (page + h + pages.Count) % pages.Count; selectedRow = 0; Refresh(); }
         }
     }
+
+    /// <summary>Change page (tests, gamepad).</summary>
+    public void TurnPage(int dir)
+    {
+        if (pages.Count == 0) return;
+        page = (page + dir + pages.Count) % pages.Count;
+        selectedRow = 0;
+        Refresh();
+    }
+
+    public int Page => page;
+    public int PageCount => pages.Count;
+    public string CurrentCategory => page < pages.Count ? pages[page].category : "";
 
     private void BuySlot(int slot) { var ids = PageIds; if (slot >= 0 && slot < ids.Count) Buy(ids[slot]); }
 
@@ -243,8 +269,12 @@ public class ShopUI : MonoBehaviour
             bool affordable = price >= 0 && eco.Money >= price;
             btn.interactable = affordable;
             label.color = affordable ? Color.white : new Color(1f, 1f, 1f, 0.45f);
+            btn.GetComponent<Image>().color = i == selectedRow ? new Color(1f, 0.55f, 0.15f, 0.3f) : new Color(1f, 1f, 1f, 0.06f);
         }
-        footer.text = Loc.T("Money: {0} SAR   Feed: {1}", eco.Money.ToString("N0"), eco.Feed.ToString("F1")) + "\n" + Loc.T(pages.Count > 1 ? "[0-9] or click to buy   [<- ->] page   [Esc] close" : "[0-9] or click to buy   [Esc] close");
+        string keys = GameInput.UsingGamepad
+            ? Glyphs.Apply(UiText.T(pages.Count > 1 ? "[Enter] Buy   [LB] [RB] Page   [Esc] Close" : "[Enter] Buy   [Esc] Close"))
+            : Loc.T(pages.Count > 1 ? "[0-9] or click to buy   [<- ->] page   [Esc] close" : "[0-9] or click to buy   [Esc] close");
+        footer.text = Loc.T("Money: {0} SAR   Feed: {1}", eco.Money.ToString("N0"), eco.Feed.ToString("F1")) + "\n" + keys;
         footer.alignment = title.alignment;
     }
 }

@@ -49,6 +49,7 @@ public class UIManager : MonoBehaviour
     private StarterAssetsInputs inputs;
     private TMP_Text cropTitleText;
     private bool controlStationOpen, cropbedOpen;
+    private int openedFrame = -1;
 
     /// <summary>Raised when the crop bed panel opens (bed) or closes (null). Used by the HUD info panel.</summary>
     public event Action<Cropbed> OnCropbedPanelChanged;
@@ -85,9 +86,8 @@ public class UIManager : MonoBehaviour
 
     private void Update()
     {
-        var kb = Keyboard.current;
-        if (kb == null || !IsUIOpened) return;
-        if (kb.escapeKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame)
+        if (!IsUIOpened || Time.frameCount == openedFrame || GameMenu.IsOpen) return;
+        if (MenuNav.BackOrTab())   // Esc / Tab / B (Circle)
         {
             if (cropbedOpen) HideCropbedUI();
             if (controlStationOpen) HideControlStationUI();
@@ -148,6 +148,7 @@ public class UIManager : MonoBehaviour
         if (cropbedOpen) HideCropbedUI();
         currentGreenHouse = greenhouseManager;
         controlStationOpen = true;
+        openedFrame = Time.frameCount;
         FadeIn(controlStationUI);
         UpdateControlStationUI();
         SetGameplayInput(false);
@@ -204,6 +205,7 @@ public class UIManager : MonoBehaviour
         if (controlStationOpen) HideControlStationUI();
         currentCropData = data;
         cropbedOpen = true;
+        openedFrame = Time.frameCount;
         FadeIn(cropbedUI);
         UpdateCropbedUI();
         SetGameplayInput(false);

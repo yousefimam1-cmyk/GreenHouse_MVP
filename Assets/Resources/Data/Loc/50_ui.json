@@ -1,0 +1,388 @@
+{
+ "entries": [
+  {
+   "en": "[I] or [Esc] close   [O] Farm stats",
+   "ar": "[I] أو [Esc] للإغلاق   [O] إحصائيات المزرعة"
+  },
+  {
+   "en": "[O] or [Esc] close   [I] Inventory",
+   "ar": "[O] أو [Esc] للإغلاق   [I] المخزون"
+  },
+  {
+   "en": "Inventory",
+   "ar": "المخزون"
+  },
+  {
+   "en": "Goods in storage",
+   "ar": "البضاعة في المستودع"
+  },
+  {
+   "en": "Nothing stored",
+   "ar": "المستودع فاضي"
+  },
+  {
+   "en": "Truck cargo",
+   "ar": "حمولة الوانيت"
+  },
+  {
+   "en": "Seeds",
+   "ar": "بذور"
+  },
+  {
+   "en": "No seeds",
+   "ar": "ما عندك بذور"
+  },
+  {
+   "en": "Feed",
+   "ar": "علف"
+  },
+  {
+   "en": "Animals",
+   "ar": "حيوانات"
+  },
+  {
+   "en": "No animals yet",
+   "ar": "ما عندك حيوانات للحين"
+  },
+  {
+   "en": "Farm stats",
+   "ar": "إحصائيات المزرعة"
+  },
+  {
+   "en": "Money earned",
+   "ar": "الفلوس المكتسبة"
+  },
+  {
+   "en": "Money now",
+   "ar": "الرصيد الحالي"
+  },
+  {
+   "en": "Harvested",
+   "ar": "المحصود"
+  },
+  {
+   "en": "Days played",
+   "ar": "الأيام الملعوبة"
+  },
+  {
+   "en": "Missions done",
+   "ar": "المهام المنجزة"
+  },
+  {
+   "en": "Game loaded",
+   "ar": "تم تحميل اللعبة"
+  },
+  {
+   "en": "Autosaved",
+   "ar": "حفظ تلقائي"
+  },
+  {
+   "en": "[Enter] Choose   [Esc] Back",
+   "ar": "[Enter] اختيار   [Esc] رجوع"
+  },
+  {
+   "en": "Save game",
+   "ar": "حفظ اللعبة"
+  },
+  {
+   "en": "Load game",
+   "ar": "تحميل لعبة"
+  },
+  {
+   "en": "Settings",
+   "ar": "الإعدادات"
+  },
+  {
+   "en": "[<- ->] Change   [Esc] Back",
+   "ar": "[<- ->] تغيير   [Esc] رجوع"
+  },
+  {
+   "en": "Controls",
+   "ar": "التحكم"
+  },
+  {
+   "en": "Start a new game?",
+   "ar": "تبدأ لعبة جديدة؟"
+  },
+  {
+   "en": "No, go back",
+   "ar": "لا، ارجع"
+  },
+  {
+   "en": "Yes, clear the current save (slots are kept)",
+   "ar": "نعم، امسح الحفظ الحالي (الخانات تبقى)"
+  },
+  {
+   "en": "Continue",
+   "ar": "كمّل"
+  },
+  {
+   "en": "New game",
+   "ar": "لعبة جديدة"
+  },
+  {
+   "en": "Load slot",
+   "ar": "تحميل الخانة"
+  },
+  {
+   "en": "Resume",
+   "ar": "كمّل اللعب"
+  },
+  {
+   "en": "Tutorial",
+   "ar": "الشرح"
+  },
+  {
+   "en": "Main menu",
+   "ar": "القائمة الرئيسية"
+  },
+  {
+   "en": "Quit",
+   "ar": "خروج"
+  },
+  {
+   "en": "Save to slot",
+   "ar": "حفظ في الخانة"
+  },
+  {
+   "en": "Back",
+   "ar": "رجوع"
+  },
+  {
+   "en": "On",
+   "ar": "تشغيل"
+  },
+  {
+   "en": "Off",
+   "ar": "إيقاف"
+  },
+  {
+   "en": "Master volume",
+   "ar": "الصوت العام"
+  },
+  {
+   "en": "Music volume",
+   "ar": "صوت الموسيقى"
+  },
+  {
+   "en": "Sound effects volume",
+   "ar": "صوت المؤثرات"
+  },
+  {
+   "en": "Graphics",
+   "ar": "الرسومات"
+  },
+  {
+   "en": "Mouse sensitivity",
+   "ar": "حساسية الماوس"
+  },
+  {
+   "en": "Stick sensitivity",
+   "ar": "حساسية العصا"
+  },
+  {
+   "en": "Invert Y axis",
+   "ar": "عكس المحور الرأسي"
+  },
+  {
+   "en": "Language",
+   "ar": "اللغة"
+  },
+  {
+   "en": "Camera",
+   "ar": "الكاميرا"
+  },
+  {
+   "en": "Third person",
+   "ar": "منظور ثالث"
+  },
+  {
+   "en": "First person",
+   "ar": "منظور أول"
+  },
+  {
+   "en": "Controls (rebind keys)",
+   "ar": "التحكم (تغيير الأزرار)"
+  },
+  {
+   "en": "Press a key...",
+   "ar": "اضغط زر..."
+  },
+  {
+   "en": "Reset to defaults",
+   "ar": "رجّع الافتراضي"
+  },
+  {
+   "en": "Press the new key ([Esc] cancels)",
+   "ar": "اضغط الزر الجديد ([Esc] للإلغاء)"
+  },
+  {
+   "en": "[Enter] Change key   [Esc] Back",
+   "ar": "[Enter] غيّر الزر   [Esc] رجوع"
+  },
+  {
+   "en": "Saved to slot",
+   "ar": "انحفظت في الخانة"
+  },
+  {
+   "en": "Could not save",
+   "ar": "ما قدرنا نحفظ"
+  },
+  {
+   "en": "[G] Graphics   [P] Menu   [M] Prices",
+   "ar": "[G] الرسومات   [P] القائمة   [M] الأسعار"
+  },
+  {
+   "en": "[N] Map   [I] Inventory   [O] Stats   [V] View",
+   "ar": "[N] الخريطة   [I] المخزون   [O] الإحصائيات   [V] المنظور"
+  },
+  {
+   "en": "[T] Start   [B] Next scenario",
+   "ar": "[T] ابدأ   [B] السيناريو التالي"
+  },
+  {
+   "en": "[Enter] Buy   [LB] [RB] Page   [Esc] Close",
+   "ar": "[Enter] شراء   [LB] [RB] الصفحة   [Esc] إغلاق"
+  },
+  {
+   "en": "[Enter] Buy   [Esc] Close",
+   "ar": "[Enter] شراء   [Esc] إغلاق"
+  },
+  {
+   "en": "Farm map",
+   "ar": "خريطة المزرعة"
+  },
+  {
+   "en": "[N] or [Esc] close",
+   "ar": "[N] أو [Esc] للإغلاق"
+  },
+  {
+   "en": "Legend",
+   "ar": "دليل الخريطة"
+  },
+  {
+   "en": "You",
+   "ar": "أنت"
+  },
+  {
+   "en": "Objective",
+   "ar": "الهدف"
+  },
+  {
+   "en": "Vehicles",
+   "ar": "المركبات"
+  },
+  {
+   "en": "Greenhouses",
+   "ar": "البيوت المحمية"
+  },
+  {
+   "en": "Field plots",
+   "ar": "قطع الحقل"
+  },
+  {
+   "en": "Animal pen",
+   "ar": "حظيرة الحيوانات"
+  },
+  {
+   "en": "Shops",
+   "ar": "المحلات"
+  },
+  {
+   "en": "Loading bay",
+   "ar": "منطقة التحميل"
+  },
+  {
+   "en": "Market",
+   "ar": "السوق"
+  },
+  {
+   "en": "Tutorial complete",
+   "ar": "خلص الشرح"
+  },
+  {
+   "en": "Done!",
+   "ar": "تم!"
+  },
+  {
+   "en": "[D-pad right] Next   [D-pad down] Close",
+   "ar": "[D-pad right] التالي   [D-pad down] إغلاق"
+  },
+  {
+   "en": "[Enter] Next   [Backspace] Close",
+   "ar": "[Enter] التالي   [Backspace] إغلاق"
+  },
+  {
+   "en": "Empty",
+   "ar": "فاضية"
+  },
+  {
+   "en": "Saved game",
+   "ar": "لعبة محفوظة"
+  },
+  {
+   "en": "Interact",
+   "ar": "تفاعل"
+  },
+  {
+   "en": "Vehicle reset / tow",
+   "ar": "تعديل / سحب المركبة"
+  },
+  {
+   "en": "Tractor implement",
+   "ar": "معدّة الجرار"
+  },
+  {
+   "en": "Brake",
+   "ar": "فرامل"
+  },
+  {
+   "en": "Pause menu",
+   "ar": "قائمة الإيقاف"
+  },
+  {
+   "en": "Map",
+   "ar": "الخريطة"
+  },
+  {
+   "en": "Camera view",
+   "ar": "منظور الكاميرا"
+  },
+  {
+   "en": "Low",
+   "ar": "منخفض"
+  },
+  {
+   "en": "Medium",
+   "ar": "متوسط"
+  },
+  {
+   "en": "High",
+   "ar": "عالي"
+  },
+  {
+   "en": "Walk to the well next to Greenhouse 1 and press [E] to start the pump.",
+   "ar": "امشِ للبئر جنب البيت المحمي 1 واضغط [E] عشان تشغّل المضخة."
+  },
+  {
+   "en": "Open a Control Station with [E] and press Optimize on 2 modules.",
+   "ar": "افتح محطة التحكم بـ [E] واضغط تحسين على وحدتين."
+  },
+  {
+   "en": "Keep optimizing until every bed in one greenhouse turns green.",
+   "ar": "كمّل التحسين لين تصير كل أحواض بيت محمي واحد خضراء."
+  },
+  {
+   "en": "When a bed is fully grown, look at it and press [E] to harvest.",
+   "ar": "إذا اكتمل نمو الحوض، طالع فيه واضغط [E] عشان تحصد."
+  },
+  {
+   "en": "At a field plot press [E] to plow, then [E] again to plant seeds.",
+   "ar": "عند قطعة الحقل اضغط [E] عشان تحرث، وبعدها [E] مرة ثانية عشان تزرع البذور."
+  },
+  {
+   "en": "Water the plot with [E] while the well runs, then harvest it when ripe.",
+   "ar": "اسقِ القطعة بـ [E] والبئر شغّال، وبعدها احصدها إذا استوت."
+  }
+ ]
+}

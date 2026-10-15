@@ -15,13 +15,13 @@ public static class SaveData
 
     private static Dictionary<string, Entry> map;
     private static Dictionary<string, Entry> homeMap;   // the player's own save while a co-op session uses a throwaway map
-    private static bool flusherMade;
     private static bool dirty;
     private static float lastFlush;
+    private static GameObject flusher;
     public static string Path => System.IO.Path.Combine(Application.persistentDataPath, "mazraa_save.json");
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStatics() { map = null; homeMap = null; dirty = false; flusherMade = false; }
+    private static void ResetStatics() { map = null; homeMap = null; dirty = false; flusher = null; }
 
     private static void Load()
     {
@@ -36,12 +36,14 @@ public static class SaveData
             }
         }
         catch (Exception ex) { Debug.LogWarning("[SaveData] Could not read save, starting fresh: " + ex.Message); }
-        if (flusherMade) return;
-        flusherMade = true;
-        var go = new GameObject("SaveData Flusher") { hideFlags = HideFlags.HideAndDontSave };
-        UnityEngine.Object.DontDestroyOnLoad(go);
-        go.AddComponent<SaveFlusher>();
+        if (flusher != null) return;
+        flusher = new GameObject("SaveData Flusher") { hideFlags = HideFlags.HideAndDontSave };
+        UnityEngine.Object.DontDestroyOnLoad(flusher);
+        flusher.AddComponent<SaveFlusher>();
     }
+
+    /// <summary>Forget the in-memory values and read the file again (after a save slot was copied over it).</summary>
+    public static void Reload() { map = null; dirty = false; }
 
     public static int GetInt(string k, int d = 0) { Load(); return map.TryGetValue(k, out var e) && int.TryParse(e.v, out var r) ? r : homeMap != null ? d : PlayerPrefs.GetInt(k, d); }
     public static float GetFloat(string k, float d = 0f) { Load(); return map.TryGetValue(k, out var e) && float.TryParse(e.v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var r) ? r : homeMap != null ? d : PlayerPrefs.GetFloat(k, d); }

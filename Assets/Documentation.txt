@@ -62,7 +62,7 @@ IMPORTANT FOR GIT
   and their scene references broke on a fresh clone. The .gitignore is fixed.
 
 TRAINING SCENARIOS (idea from team chat: simulation-based training)
---- Managers/ScenarioManager.cs  Resources/Data/scenarios.json. T = start/stop, N = next scenario.
+--- Managers/ScenarioManager.cs  Resources/Data/scenarios.json. T = start/stop, B = next scenario.
     Objectives: allHealthy or harvestKg, with a time limit; setup can re-roll modules or break one module
     (pump failure, heatwave). Graded Gold/Silver/Bronze; best times saved.
 
@@ -88,12 +88,12 @@ Missions, Economy, HUD and FeedbackFX only listen. GameManager auto-creates ever
 --- Graphics/FeedbackFX.cs  Floating +kg / +SAR text and harvest pop.
 --- Helper/Build.cs  Placeholder geometry. Drop a prefab at Resources/Models/Truck, ShopStall, cow, sheep or chicken
     (e.g. free CC0 Quaternius / Kenney models) and it is used instead of the placeholder automatically.
-Keys: P pause (Backspace there = new game), G graphics, H help, L language, T training.
+Keys: P pause menu (New game is in the menu), G graphics, H help, L language, T training.
 
 CHATS 1-6 (open fields, economy, vehicles, animals, missions, graphics)
 --- Farming/WorldClock.cs + FieldManager.cs + FieldPlot.cs  Days, seasons, weather (rain waters fields); 6 field plots:
     plow / plant (seeds from shop) / water (well must run) / harvest. Field crops in economy.json (fieldCrops).
---- Base/SaveData.cs  All progress in one JSON file (persistentDataPath/mazraa_save.json). P > Backspace = new game.
+--- Base/SaveData.cs  All progress in one JSON file (persistentDataPath/mazraa_save.json). New game: pause menu.
 --- Managers/MarketManager.cs  Daily prices (drift, season, supply) + buyer contracts. M = price board.
 --- Vehicle/Vehicle.cs (base), FarmTruck.cs, Tractor.cs  Fuel, refuel on the green pad, R = reset/tow.
     Tractor: Q cycles plow / seeder / harvester; drive over plots to work them.
@@ -284,3 +284,33 @@ All in new files, added automatically through [MazraaSystem]. Keys: C look, B co
     Arabic texts: Resources/Data/Loc/60_cozy.json. Save keys: mazraa.cozy.*, mazraa.sponsor.*, mazraa.learn.*.
 --- Hooks in shared files: MarketManager.PriceMultipliers (static list of per-good multipliers used by Price()),
     EconomyManager.AddSeeds(cropId, count).
+UI, CONTROLLERS, MENUS AND SAVES (feat/ui)
+--- Input/GameInput.cs       Farm actions as an Input System action map built in code: Interact E, Vehicle reset R,
+    Tractor implement Q, Brake Space, Pause P, Map N, Inventory I, Farm stats O, Camera view V (+ gamepad buttons).
+    Keyboard keys are rebindable (Settings > Controls, Input System interactive rebinding); overrides saved with
+    SaveBindingOverridesAsJson in PlayerPrefs "mazraa.settings.bindings". Tracks keyboard vs gamepad and PlayStation vs Xbox.
+--- Input/Glyphs.cs          Glyphs.Apply("[E] Harvest") -> "[A] Harvest" / "[cross] Harvest" / "[F] Harvest" (rebound).
+    Used by InteractionPromptUI, the HUD hints, truck panel, shop footer and menus. Write new prompts with [E], [R], [Q]...
+--- Input/MenuNav.cs         Shared menu keys: arrows/WS/D-pad/stick, Enter/Space/A confirm, Esc/B back, LB/RB pages, digits.
+--- Input/GamepadBridge.cs   Mouse/stick sensitivity + invert Y on StarterAssetsInputs.look, A doesn't jump while it
+    interacts or confirms, applies saved audio/graphics settings. StarterAssets already binds left stick move, right stick
+    look, A jump, LT sprint (StarterAssets.inputactions has the Gamepad scheme, nothing to add).
+--- Input/GameSettings.cs    PlayerPrefs "mazraa.settings.*": master/music/SFX volume, graphics Low/Medium/High,
+    sensitivities, invert Y, third person. Not touched by New Game. (GraphicsEnhancer.SetPreset, AudioManager.SetVolumes.)
+--- Input/ThirdPersonView.cs V / right stick press: third-person camera behind the capsule with the
+    Characters/character-male-a model (idle/walk/sprint). First person (StarterAssets) stays the default.
+--- UI/Minimap.cs + MinimapIcon.cs  Round minimap top centre (orthographic RenderTexture camera, UI layer culled, turns
+    with the view) with icons; N / View(Share) = full north-up map with legend. Features: MinimapIcon.Add(go, kind, color).
+--- UI/GameMenu.cs           Main menu at start (Continue, New game, Load slot 1-3, Tutorial, Settings, Quit) and pause menu
+    (P / Start): Resume, Save / Load slots, Tutorial, Settings (+ Controls), New game, Main menu, Quit. Pauses the game.
+--- UI/SaveSlots.cs          3 slots = copies of mazraa_save.json (mazraa_slot1-3.json). Loading copies the slot back and reloads
+    the scene. Autosave every in-game day (save file + the slot last saved/loaded). Slot summaries in PlayerPrefs "mazraa.ui.*".
+--- UI/FarmInfoScreen.cs     I = inventory (goods, cargo, seeds, feed, animals), O = farm stats (money earned, kg, days, missions).
+--- UI/TutorialOverlay.cs    Replayable hints for the first 6 missions (menu "Tutorial"); ticks off as you do them,
+    Enter / D-pad right next, Backspace / D-pad down close. Mission progress is not changed.
+--- UI/MenuKit.cs, MenuClick.cs, UiText.cs  Code-built menu lists; Arabic for UI texts in Resources/Data/Loc/50_ui.json.
+Gamepad (PlayStation / Xbox): left stick move, right stick look, A/Cross interact (and jump), B/Circle back / exit vehicle /
+close panels, X/Square vehicle reset, Y/Triangle tractor implement, RT throttle, LT brake/reverse, LB/RB shop pages,
+D-pad menus and shop rows (A buys), Start/Options pause, Select/View/Share map, R3 camera view.
+Keys: P menu, N map, I inventory, O stats, V camera view, B next training scenario (N moved to the map).
+
