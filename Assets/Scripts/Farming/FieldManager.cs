@@ -13,6 +13,10 @@ public class FieldManager : MonoBehaviour
 
     private void Awake() => Instance = this;
 
+    /// <summary>Centre and facing of the plot grid (extra plots bought at the land office extend it).</summary>
+    public Vector3 GridCenter { get; private set; }
+    public Quaternion GridRotation { get; private set; } = Quaternion.identity;
+
     private void Start()
     {
         var inputs = FindAnyObjectByType<StarterAssetsInputs>();
@@ -20,21 +24,25 @@ public class FieldManager : MonoBehaviour
         Vector3 fwd = Vector3.ProjectOnPlane(start.forward, Vector3.up).normalized;
         if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
         var spot = GameObject.Find("FieldsSpot");
-        Vector3 center = spot != null ? spot.transform.position : start.position + fwd * 18f;
-        Quaternion rot = Quaternion.LookRotation(fwd);
-        int i = 0;
+        GridCenter = spot != null ? spot.transform.position : start.position + fwd * 18f;
+        GridRotation = Quaternion.LookRotation(fwd);
         for (int r = 0; r < rows; r++)
             for (int c = 0; c < columns; c++)
-            {
-                Vector3 local = new Vector3((c - (columns - 1) * 0.5f) * (plotSize.x + gap), 0, (r - (rows - 1) * 0.5f) * (plotSize.y + gap));
-                Vector3 p = Build.OnGround(center + rot * local);
-                var go = new GameObject("Field " + (i + 1));
-                go.transform.SetPositionAndRotation(p, rot);
-                var plot = go.AddComponent<FieldPlot>();
-                plot.Setup(i, plotSize);
-                Plots.Add(plot);
-                i++;
-            }
+                AddPlot(r, c);
+    }
+
+    /// <summary>Add a plot at grid cell (row, col); rows beyond `rows` extend the field. Index = Plots.Count (its save key).</summary>
+    public FieldPlot AddPlot(int r, int c)
+    {
+        int i = Plots.Count;
+        Vector3 local = new Vector3((c - (columns - 1) * 0.5f) * (plotSize.x + gap), 0, (r - (rows - 1) * 0.5f) * (plotSize.y + gap));
+        Vector3 p = Build.OnGround(GridCenter + GridRotation * local);
+        var go = new GameObject("Field " + (i + 1));
+        go.transform.SetPositionAndRotation(p, GridRotation);
+        var plot = go.AddComponent<FieldPlot>();
+        plot.Setup(i, plotSize);
+        Plots.Add(plot);
+        return plot;
     }
 
     public void ResetAll() { foreach (var p in Plots) if (p != null) p.ResetPlot(); }

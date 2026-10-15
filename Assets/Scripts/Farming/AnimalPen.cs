@@ -87,7 +87,7 @@ public class AnimalPen : MonoBehaviour
         float day = WorldClock.Instance != null ? WorldClock.Instance.secondsPerDay : 360f;
 
         // Needs decay over roughly one in-game day.
-        WaterLevel = Mathf.Max(0f, WaterLevel - Time.deltaTime / day * (0.6f + AnimalCount * 0.05f));
+        WaterLevel = Mathf.Max(0f, WaterLevel - Time.deltaTime / day * (0.6f + AnimalCount * 0.05f) * FarmModifiers.PenWaterUse);
         if (WorldClock.Instance != null && WorldClock.Instance.Weather == Weather.Rain) WaterLevel = Mathf.Min(1f, WaterLevel + Time.deltaTime / day);
         Cleanliness = Mathf.Max(0f, Cleanliness - Time.deltaTime / day * (0.3f + AnimalCount * 0.04f));
         hungryTime = HasFeed ? 0f : hungryTime + Time.deltaTime;

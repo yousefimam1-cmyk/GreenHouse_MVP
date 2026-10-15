@@ -161,3 +161,25 @@ SAUDI CROPS, ORCHARD, SOIL AND PESTS (feat/crops)
     RegrowHooks, FieldPlot.ReduceGrowth(); Cropbed.YieldModifiers / PromptExtras / InteractHandlers.
 --- Missions/30_crops.json: plant alfalfa, cure a pest, rotate crops, first date harvest. Text: Loc/30_crops.json.
     Save keys mazraa.crops.*; reset on GameEvents.NewGameStarted.
+WORKERS, LAND, BANK, RANDOM EVENTS (feat/eventsfin)
+--- Finance/WorkerManager.cs  Shop page "Workers": field hand (harvests, waters, plows, replants), greenhouse worker
+    (harvests ripe beds, closes vents before a haboob), herder (trough, cleaning, collects products), driver (takes a
+    storage load to the market on a 60 s trip, pays the sale minus a 15% fee). Daily wage (SAR) every morning; a worker
+    you can't pay leaves with a warning. Visible Actor NPCs (Worker mode) walk to the task; logic works without them.
+--- Finance/LandOffice.cs + LandOfficeSign.cs  Sign beside the fields (E = "Land" shop page): 3 parcels of 2 plots,
+    then a large 6-plot block (used instead of a third greenhouse: a greenhouse needs scene-authored beds/modules/crop
+    profiles). New plots come from FieldManager.AddPlot(row, col) and save as mazraa.plot.N like the others.
+--- Finance/BankManager.cs + BankSign.cs  Loans 10k / 25k / 50k SAR on the "Bank" shop page, limit = 5,000 + 80% of farm
+    value (cash, stock, animals, upgrades, plots, greenhouses). 1.5% interest a day. Repay with E at the bank sign by the
+    market (pays what you can), the Bank page (5,000 / all) or the auto-repay toggle (10% a morning, min 500).
+    No loans while the "have X SAR" mission is active. Debt is shown on the HUD.
+--- Events/EventDirector.cs + Resources/Data/events.json  Each morning a 30% chance to forecast an event for tomorrow's
+    season (alert + orange HUD line), then it runs at its hour: extreme heat, haboob (fog, beds in greenhouses with open
+    vents lose growth; switch beside each control station = Events/VentSwitch.cs), flash flood (2 plots lost, next
+    harvest there +40%), frost night (watermelon/potato x0.3 growth), locusts (buy pesticide under Supplies), water
+    restriction day (no irrigation), Ramadan demand (dates/laban/milk x1.5 for 3 days), big buyer (one-day x1.9 contract).
+--- Events/FarmModifiers.cs  Static hooks set by the EventDirector and read by existing code:
+    FieldPlot.Update (FieldDry, FieldGrowth), FieldPlot.Interact (IrrigationBanned), AnimalPen.Update (PenWaterUse),
+    MarketManager.Price (Price). FieldPlot.AddWater() was added for workers / storms.
+Missions: Resources/Data/Missions/40_eventsfin.json (hireWorker, buyLand, repayLoan, surviveDustStorm).
+Text: Resources/Data/Loc/40_eventsfin.json. Save keys mazraa.fin.* and mazraa.events.*; all reset on a new game.
