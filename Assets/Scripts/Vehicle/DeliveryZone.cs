@@ -40,6 +40,7 @@ public class DeliveryZone : MonoBehaviour
                 float moved = room > 0.01f ? eco.LoadInto(truck.Cargo, room) : 0f;
                 if (moved > 0.01f)
                 {
+                    truck.SaveCargo();
                     GameEvents.RaiseCargoLoaded(moved);
                     Alert(Loc.T("Loaded {0} kg onto the truck", moved.ToString("F0")));
                 }
@@ -53,6 +54,7 @@ public class DeliveryZone : MonoBehaviour
             {
                 var notes = new System.Collections.Generic.List<string>();
                 int earned = eco.SellAll(truck.Cargo, notes);
+                truck.SaveCargo();
                 notes.Insert(0, Loc.T("Sold the load for {0} EGP", earned.ToString("N0")));
                 Alert(string.Join("\n", notes));
             }

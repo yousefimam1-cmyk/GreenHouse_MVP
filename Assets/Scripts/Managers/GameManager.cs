@@ -120,6 +120,7 @@ public class GameManager : MonoBehaviour
     [ContextMenu("Reset saved progress")]
     public void ResetProgress()
     {
+        allHealthyAnnounced = false;
         TotalHarvestKg = 0f;
         HarvestCount = 0;
         SaveData.DeleteKey(KgKey);

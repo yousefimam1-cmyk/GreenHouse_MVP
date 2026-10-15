@@ -23,7 +23,7 @@ public class InteractionController : MonoBehaviour
     private void Update()
     {
         // Don't look for or trigger interactions while a panel is open (E used to re-trigger behind the UI).
-        if (UIManager.Instance != null && UIManager.Instance.IsUIOpened)
+        if ((UIManager.Instance != null && UIManager.Instance.IsUIOpened) || UIManager.PanelClosedFrame == Time.frameCount || Time.timeScale == 0f)
         {
             ClearCurrent();
             return;

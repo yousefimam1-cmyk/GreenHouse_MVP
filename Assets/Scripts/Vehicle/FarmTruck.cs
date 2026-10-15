@@ -31,7 +31,24 @@ public class FarmTruck : Vehicle
     {
         base.Awake();
         Instance = this;
+        // Restore cargo saved as "id=amount;id=amount"
+        foreach (var part in SaveData.GetString("mazraa.cargo", "").Split(';'))
+        {
+            var kv = part.Split('=');
+            if (kv.Length == 2 && float.TryParse(kv[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) && v > 0f) Cargo[kv[0]] = v;
+        }
     }
+
+    /// <summary>Persist the cargo (call after loading or selling).</summary>
+    public void SaveCargo()
+    {
+        var parts = new List<string>();
+        foreach (var kv in Cargo) parts.Add(kv.Key + "=" + kv.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+        SaveData.SetString("mazraa.cargo", string.Join(";", parts));
+        SaveData.Save();
+    }
+
+    public void ClearCargo() { Cargo.Clear(); SaveCargo(); }
 
     protected override void OnDestroy() { base.OnDestroy(); if (Instance == this) Instance = null; }
 

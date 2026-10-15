@@ -134,7 +134,7 @@ public abstract class Vehicle : Interactable
     protected virtual void Update()
     {
         UpdateWheels();
-        if (!IsDriving) return;
+        if (!IsDriving || Time.timeScale == 0f) return;
         var kb = Keyboard.current;
         if (kb == null || Time.frameCount == enteredFrame) return;
         if (kb.eKey.wasPressedThisFrame && Mathf.Abs(Speed) < 4f) { Exit(); return; }

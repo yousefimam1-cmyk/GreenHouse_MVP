@@ -131,7 +131,7 @@ public class ShopUI : MonoBehaviour
 
     private void Update()
     {
-        if (!IsOpen) return;
+        if (!IsOpen || Time.timeScale == 0f) return;
         var kb = Keyboard.current;
         if (kb == null) return;
         if (Time.frameCount != openedFrame && (kb.escapeKey.wasPressedThisFrame || kb.eKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame)) { Close(); return; }

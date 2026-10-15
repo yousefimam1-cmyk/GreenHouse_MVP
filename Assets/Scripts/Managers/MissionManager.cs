@@ -19,6 +19,7 @@ public class MissionManager : MonoBehaviour
 {
     public static MissionManager Instance;
     private const string IndexKey = "mazraa.mission";
+    private const string ProgressKey = "mazraa.missionProgress";
 
     public MissionDef[] Missions { get; private set; } = new MissionDef[0];
     public int Index { get; private set; }
@@ -33,6 +34,7 @@ public class MissionManager : MonoBehaviour
         try { if (json != null) Missions = JsonUtility.FromJson<MissionFile>(json.text)?.missions ?? Missions; }
         catch (Exception e) { Debug.LogError("[Missions] Invalid missions.json: " + e.Message); }
         Index = Mathf.Clamp(SaveData.GetInt(IndexKey, 0), 0, Missions.Length);
+        Progress = SaveData.GetFloat(ProgressKey, 0f);
     }
 
     private void OnEnable()
@@ -83,7 +85,13 @@ public class MissionManager : MonoBehaviour
     }
 
     private bool Is(string type) => Current != null && string.Equals(Current.type, type, StringComparison.OrdinalIgnoreCase);
-    private void Add(string type, float amount) { if (Is(type)) { Progress += amount; CheckDone(); } }
+    private void Add(string type, float amount)
+    {
+        if (!Is(type)) return;
+        Progress += amount;
+        SaveData.SetFloat(ProgressKey, Progress);
+        CheckDone();
+    }
 
     private void OnWell(WellController w) => Add("startWell", 1f);
     private void OnOptimized(GreenhouseManager g, ModuleType t) => Add("optimize", 1f);
@@ -103,7 +111,7 @@ public class MissionManager : MonoBehaviour
     {
         if (id == "feed") Add("buyFeed", 1f);
         else if (id == "capacity" || id == "growth") Add("buyUpgrade", 1f);
-        else Add("buyAnimal", 1f);
+        else if (EconomyManager.Instance != null && EconomyManager.Instance.Animal(id) != null) Add("buyAnimal", 1f);
     }
 
     // State-based missions
@@ -140,15 +148,17 @@ public class MissionManager : MonoBehaviour
     {
         var m = Current;
         if (m == null || Progress < m.target - 0.001f) return;
+        // Advance first: paying the reward raises MoneyChanged, which must not re-complete this mission.
+        Index++;
+        Progress = 0f;
+        SaveData.SetInt(IndexKey, Index);
+        SaveData.SetFloat(ProgressKey, 0f);
+        SaveData.Save();
         if (EconomyManager.Instance != null) EconomyManager.Instance.AddMoney(m.reward);
         if (UIManager.Instance != null)
             UIManager.Instance.ShowAlertMessage(Loc.Display(Loc.Raw("Mission complete") + ": " + Title(m) + "  +" + m.reward.ToString("N0") + " " + Loc.Raw("EGP")));
         if (AudioManager.Instance != null) AudioManager.Instance.PlayHarvest();
         GameEvents.RaiseMissionCompleted(m);
-        Index++;
-        Progress = 0f;
-        SaveData.SetInt(IndexKey, Index);
-        SaveData.Save();
         if (Current != null) GameEvents.RaiseMissionStarted(Current);
     }
 
@@ -156,6 +166,7 @@ public class MissionManager : MonoBehaviour
     {
         Index = 0; Progress = 0f;
         SaveData.SetInt(IndexKey, 0);
+        SaveData.SetFloat(ProgressKey, 0f);
         if (Current != null) GameEvents.RaiseMissionStarted(Current);
     }
 

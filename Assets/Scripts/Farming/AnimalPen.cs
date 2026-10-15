@@ -53,7 +53,14 @@ public class AnimalPen : MonoBehaviour
 
     public Vector3 RandomPoint()
     {
-        Vector3 local = new Vector3(Random.Range(-size.x * 0.42f, size.x * 0.42f), 0, Random.Range(-size.y * 0.42f, size.y * 0.42f));
+        Vector3 local = Vector3.zero;
+        for (int i = 0; i < 10; i++)
+        {
+            local = new Vector3(Random.Range(-size.x * 0.42f, size.x * 0.42f), 0, Random.Range(-size.y * 0.42f, size.y * 0.42f));
+            // Keep out of the barn (back right corner, about 6 x 5.5 m).
+            bool inBarn = local.x > size.x / 2f - 6.5f && local.z < -size.y / 2f + 5.8f;
+            if (!inBarn) break;
+        }
         return Build.OnGround(transform.TransformPoint(local));
     }
 

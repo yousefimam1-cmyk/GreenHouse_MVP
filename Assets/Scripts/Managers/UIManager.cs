@@ -94,13 +94,18 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    private bool externalOpen;
+    private int externalCount;
+    private bool externalOpen => externalCount > 0;
 
-    /// <summary>For panels built in code (shop, pause): unlocks the cursor and pauses interaction while open.</summary>
+    /// <summary>Frame on which a panel last closed; interaction ignores that frame so the closing key doesn't reopen it.</summary>
+    public static int PanelClosedFrame { get; private set; } = -1;
+
+    /// <summary>For panels built in code (shop, pause, intro): unlocks the cursor while any of them is open. Calls must be paired.</summary>
     public void SetExternalPanel(bool open)
     {
-        externalOpen = open;
-        if (!controlStationOpen && !cropbedOpen) SetGameplayInput(!open);
+        externalCount = Mathf.Max(0, externalCount + (open ? 1 : -1));
+        if (!open) PanelClosedFrame = Time.frameCount;
+        if (!controlStationOpen && !cropbedOpen) SetGameplayInput(!externalOpen);
     }
 
     private void SetGameplayInput(bool enabled)
@@ -163,6 +168,7 @@ public class UIManager : MonoBehaviour
 
     public void HideControlStationUI()
     {
+        PanelClosedFrame = Time.frameCount;
         currentGreenHouse = null;
         controlStationOpen = false;
         if (!cropbedOpen && !externalOpen) SetGameplayInput(true);
@@ -228,6 +234,7 @@ public class UIManager : MonoBehaviour
 
     public void HideCropbedUI()
     {
+        PanelClosedFrame = Time.frameCount;
         cropbedOpen = false;
         currentCropbed = null;
         currentCropData = null;

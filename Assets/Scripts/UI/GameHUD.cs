@@ -93,6 +93,8 @@ public class GameHUD : MonoBehaviour
         if (FieldManager.Instance != null) FieldManager.Instance.ResetAll();
         if (MarketManager.Instance != null) MarketManager.Instance.ResetMarket();
         if (AnimalPen.Instance != null) AnimalPen.Instance.ResetPen();
+        if (FarmTruck.Instance != null) FarmTruck.Instance.ClearCargo();
+        foreach (var v in FindObjectsByType<Vehicle>(FindObjectsSortMode.None)) v.Refuel(v.fuelCapacity);
         SetPaused(false);
         if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T("New game started"));
     }
@@ -233,6 +235,7 @@ public class GameHUD : MonoBehaviour
             var img = bar.GetComponent<Image>(); img.color = new Color(1f, 0.6f, 0.15f, 0.95f); img.raycastTarget = false;
         }
         arrow.SetParent(truckPanel, true);
+        holder.AddComponent<LayoutElement>().ignoreLayout = true;
         pricePanel = MakePanel("Prices", new Vector2(1, 1), new Vector2(-24, -24), new Vector2(440, 0), out priceText, 20);
         pricePanel.gameObject.SetActive(false);
         pausePanel = MakePanel("Pause", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760, 0), out pauseText, 30);

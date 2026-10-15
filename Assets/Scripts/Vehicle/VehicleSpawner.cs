@@ -249,6 +249,7 @@ public class VehicleSpawner : MonoBehaviour
             Build.Part(PrimitiveType.Cube, barn.transform, new Vector3(0, 1.2f, 2.29f), new Vector3(2.1f, 0.12f, 0.03f), trim, "Brace", new Vector3(0, 0, -50));
         }
         var walls = barn.AddComponent<BoxCollider>(); walls.center = new Vector3(0, 1.6f, 0); walls.size = new Vector3(5f, 3.2f, 4.5f);
+        barn.layer = 2; // Ignore Raycast: still solid, but never treated as ground
         var door = new GameObject("Barn Door");
         door.layer = 7;
         door.transform.SetParent(barn.transform, false);

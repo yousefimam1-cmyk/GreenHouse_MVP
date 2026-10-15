@@ -23,6 +23,7 @@ public class FieldPlot : Interactable
     private int shownStage = -1;
     private string shownCrop = "";
     private string Key => "mazraa.plot." + index + ".";
+    private float saveTimer = 5f;
 
     public static event System.Action<FieldPlot, string, float> FieldHarvested;
     public static event System.Action<FieldPlot> FieldPlanted;
@@ -186,6 +187,8 @@ public class FieldPlot : Interactable
             Growth = Mathf.Min(1f, Growth + rate * Time.deltaTime);
             if (Growth >= 1f) { State = PlotState.Ripe; Save(); }
         }
+        saveTimer -= Time.deltaTime;
+        if (saveTimer <= 0f) { saveTimer = 5f; Save(); }
         Refresh();
     }
 
@@ -197,7 +200,7 @@ public class FieldPlot : Interactable
         var soilColor = Color.Lerp(new Color(0.55f, 0.45f, 0.3f), new Color(0.28f, 0.2f, 0.13f), wet);
         if (State == PlotState.Untilled) soilColor = new Color(0.5f, 0.47f, 0.33f);
         var r = soil.GetComponent<MeshRenderer>();
-        r.sharedMaterial = Build.Mat(new Color(Mathf.Round(soilColor.r * 20f) / 20f, Mathf.Round(soilColor.g * 20f) / 20f, Mathf.Round(soilColor.b * 20f) / 20f), 0.05f + wet * 0.3f);
+        r.sharedMaterial = Build.Mat(new Color(Mathf.Round(soilColor.r * 20f) / 20f, Mathf.Round(soilColor.g * 20f) / 20f, Mathf.Round(soilColor.b * 20f) / 20f), 0.05f + Mathf.Round(wet * 5f) / 5f * 0.3f);
         for (int i = 0; i < soil.childCount; i++) soil.GetChild(i).gameObject.SetActive(State != PlotState.Untilled);
 
         int stage = State == PlotState.Growing ? (Growth < 0.34f ? 1 : Growth < 0.67f ? 2 : 3) : State == PlotState.Ripe ? 4 : 0;
@@ -266,6 +269,7 @@ public class FieldPlot : Interactable
         SaveData.SetString(Key + "crop", CropId);
         SaveData.SetFloat(Key + "growth", Growth);
         SaveData.SetFloat(Key + "water", Water);
+        SaveData.Save();
     }
 
     private void OnApplicationQuit() { Save(); SaveData.Save(); }

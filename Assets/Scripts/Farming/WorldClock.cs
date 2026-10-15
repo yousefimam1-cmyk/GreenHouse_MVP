@@ -101,7 +101,7 @@ public class WorldClock : MonoBehaviour
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         main.gravityModifier = 0.4f;
         var em = rain.emission; em.rateOverTime = 1500f;
-        var shape = rain.shape; shape.shapeType = ParticleSystemShapeType.Box; shape.scale = new Vector3(40f, 1f, 40f);
+        var shape = rain.shape; shape.shapeType = ParticleSystemShapeType.Box; shape.scale = new Vector3(40f, 40f, 1f);
         go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
         var pr = go.GetComponent<ParticleSystemRenderer>();
         pr.renderMode = ParticleSystemRenderMode.Stretch;
