@@ -87,13 +87,15 @@ public class GraphicsEnhancer : MonoBehaviour
     /// <summary>Switch quality preset (0 Low, 1 Medium, 2 High). Saved; safe to call before the game has started.</summary>
     public static void SetPreset(int preset)
     {
-        Preset = Mathf.Clamp(preset, 0, 2);
+        int next = Mathf.Clamp(preset, 0, 2);
+        bool changed = next != Preset;
+        Preset = next;
         SaveData.SetInt("mazraa.gfxPreset", Preset);
         SaveData.SetInt("mazraa.gfxHigh", Preset >= 2 ? 1 : 0);
         PlayerPrefs.SetInt("mazraa.settings.graphics", Preset);   // keep the Settings menu in step (G key)
         SaveData.Save();
         if (Instance != null) Instance.Apply();
-        PresetChanged?.Invoke(Preset);
+        if (changed) PresetChanged?.Invoke(Preset);   // settings saves call this often: only rebuild on a real change
     }
 
     private void BuildVolume()

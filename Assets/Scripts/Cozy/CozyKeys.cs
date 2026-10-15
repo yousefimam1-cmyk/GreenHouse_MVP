@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// All keyboard reads of the cozy features in one place (C look, B book, K learn, V place decor, 0-4 panel choices,
+/// All keyboard reads of the cozy features in one place (C look, J book (journal), K learn, X place decor, 0-4 panel choices,
 /// Up/Down in panels). Only one cozy panel is open at a time, so the panel keys never clash.
 /// </summary>
 public static class CozyKeys
@@ -14,9 +14,9 @@ public static class CozyKeys
         switch (key)
         {
             case "c": return kb.cKey != null && kb.cKey.wasPressedThisFrame;
-            case "b": return kb.bKey != null && kb.bKey.wasPressedThisFrame;
+            case "j": return kb.jKey != null && kb.jKey.wasPressedThisFrame;
             case "k": return kb.kKey != null && kb.kKey.wasPressedThisFrame;
-            case "v": return kb.vKey != null && kb.vKey.wasPressedThisFrame;
+            case "x": return kb.xKey != null && kb.xKey.wasPressedThisFrame;
             case "e": return kb.eKey != null && kb.eKey.wasPressedThisFrame;
             case "esc": return (kb.escapeKey != null && kb.escapeKey.wasPressedThisFrame) || (kb.tabKey != null && kb.tabKey.wasPressedThisFrame);
             case "0": return kb.digit0Key != null && kb.digit0Key.wasPressedThisFrame;

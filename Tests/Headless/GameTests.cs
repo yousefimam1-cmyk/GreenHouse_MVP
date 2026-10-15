@@ -45,7 +45,7 @@ static class Program
 
     static void ResetStatics()
     {
-        foreach (var t in new[] { typeof(GameEvents), typeof(Loc), typeof(CropDatabase), typeof(SaveData), typeof(WorldClock), typeof(FieldPlot), typeof(FarmModifiers), typeof(CozyFx), typeof(Appearance), typeof(SponsorManager), typeof(CozyAnalytics) })
+        foreach (var t in new[] { typeof(GameEvents), typeof(Loc), typeof(CropDatabase), typeof(SaveData), typeof(WorldClock), typeof(FieldPlot), typeof(FarmModifiers), typeof(DesertWeatherFX), typeof(CozyFx), typeof(Appearance), typeof(SponsorManager), typeof(CozyAnalytics) })
         {
             var m = t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
                 .FirstOrDefault(x => x.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false).Length > 0);
@@ -738,9 +738,9 @@ static class Program
         FakeEngine.Run(WorldClock.Instance.secondsPerDay * 10, 1f);
         T.Check("No errors over 10 simulated days", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
 
+        ArtTests.Run();   // before the sections that rebuild the world
         FishTests();
         MpTests.MultiplayerTests(args[0]);
-        ArtTests.Run();
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
@@ -1288,13 +1288,13 @@ static class EventsFinTests
         ed.Schedule("haboob", WorldClock.Instance.Day + 1);
         T.Check("Haboob forecast on the HUD", Hud().Contains("Forecast for tomorrow: Haboob"), Hud());
         Day(); SetProgress(0.2f); FakeEngine.Run(0.5f);
-        T.Check("Haboob waits for 14:00", ed.Active != null && !ed.Running && !RenderSettings.fog);
+        T.Check("Haboob waits for 14:00", ed.Active != null && !ed.Running && (!RenderSettings.fog || RenderSettings.fogDensity < 0.01f), RenderSettings.fogDensity + ""); // the desert keeps a light sandy haze
         FakeEngine.Run(20f, 0.5f);   // let beds grow a bit
         SetProgress(0.36f); FakeEngine.Run(2f, 0.5f);
         T.Check("Haboob running: dust fog on", ed.Running && RenderSettings.fog && RenderSettings.fogDensity > 0.01f, RenderSettings.fogDensity + "");
         float g2growth = g2.Cropbeds.Where(b => b.IsActive).Max(b => b.Growth);
         SetProgress(0.52f); FakeEngine.Run(0.5f);
-        T.Check("Haboob ends: fog restored", ed.Active == null && !RenderSettings.fog);
+        T.Check("Haboob ends: fog restored", ed.Active == null && (!RenderSettings.fog || RenderSettings.fogDensity < 0.01f) && !DesertWeatherFX.FogOverridden, RenderSettings.fogDensity + "");
         T.Check("Open greenhouse beds damaged, closed one safe", g2growth > 0f && g2.Cropbeds.Where(b => b.IsActive).All(b => b.Growth < 0.05f) && g1.Cropbeds.Any(b => b.Growth > 0.05f), g2growth + "");
         T.Check("Storm mission not done with a greenhouse open", mm.Current != null && mm.Current.id == "fin_storm");
         vents.First(v => v.greenhouse == g2).Interact();
@@ -1923,6 +1923,7 @@ static class ArtTests
         T.Check("Prop colliders are ignored by ground raycasts", props.All(c => (Build.GroundMask & (1 << c.gameObject.layer)) == 0));
 
         Console.WriteLine("Quality presets");
+        GraphicsEnhancer.SetPreset(2);   // start from High (settings may already have picked another preset)
         int palmsHigh = dd.Palms + dd.Trees;
         GraphicsEnhancer.SetPreset(0);
         T.Check("SetPreset(0) = Low, no post", GraphicsEnhancer.Preset == 0 && !GraphicsEnhancer.PostEnabled && !GraphicsEnhancer.High);
@@ -1935,6 +1936,7 @@ static class ArtTests
 
         Console.WriteLine("Desert weather");
         var clock = WorldClock.Instance;
+        T.SetProp(clock, "Weather", Weather.Sunny); FakeEngine.Run(20f, 0.5f);   // settle on a calm day first
         T.SetProp(clock, "Weather", Weather.Heatwave);
         float fog0 = RenderSettings.fogDensity;
         FakeEngine.Run(20f, 0.5f);

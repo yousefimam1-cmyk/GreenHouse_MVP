@@ -249,7 +249,7 @@ NOTE (merge): MAZRAA_NETCODE is OFF by default so the project always compiles. T
 project, wait for the Netcode packages to import, then menu Mazraa > Co-op > Enable Netcode. If NetcodeBackend.cs
 shows compile errors, use Mazraa > Co-op > Disable Netcode (single player keeps working either way).
 COZY EXTRAS, SPONSORS, LEARN MODE, ANALYTICS (Oct 2026)
-All in new files, added automatically through [MazraaSystem]. Keys: C look, B collection book, K learn, V place stored decor.
+All in new files, added automatically through [MazraaSystem]. Keys: C look, J collection book (journal), K learn, X place stored decor (B is training, V is first/third person).
 --- Cozy/PetSystem.cs       The AmbientLife dog becomes a saluki: E to pet once per in-game day (hearts + random gift:
     seeds, feed or 10-30 SAR). Falcon perch next to the farmhouse: E flies the falcon (eagle model circles, lands,
     20-50 SAR once a day; 5 flights = Falconer achievement +150 SAR).
@@ -350,9 +350,10 @@ ART, SOUND, QUALITY, ANDROID, CI (feat/artci)
     game-ci (skipped with a notice if the UNITY_LICENSE secret is empty). android.yml: APK artifact "Mazraa-Android".
 --- Tests/unused_assets.py -> Tests/UNUSED_ASSETS.md   Assets nothing in the build uses, with sizes (nothing deleted).
 
-KNOWN ISSUES AFTER THE BIG MERGE (Oct 16 2026) - 598/607 headless checks pass; 9 integration checks fail:
-- Haboob dust fog (EventDirector) is overwritten by DesertWeatherFX fog: "Haboob waits for 14:00", "dust fog on", "fog restored".
-- CropVisuals has no FarmCrops stage mapping for the new crops alfalfa, sorghum, millet.
-- DesertDressing can't place dunes / the Najdi farmhouse now that fish, utilities, orchard and processing yards use the free space;
-  "Low preset places fewer props" fails for the same reason.
-Fix in the "Integration fixes after merge" chat.
+INTEGRATION FIXES (Oct 16 2026) - all 607 headless checks and 16/16 static checks pass.
+- Haboob fog wins over the desert haze: EventDirector sets DesertWeatherFX.FogOverridden while the storm runs.
+- CropVisuals aliases: alfalfa/millet -> wheat stages, sorghum -> corn stages.
+- DesertDressing ignores its own (and a previous, being-destroyed) dressing when re-placing props; GraphicsEnhancer.SetPreset
+  only fires PresetChanged on a real change (settings saves used to rebuild the desert every time).
+- Keys: collection book moved B -> J, stored decor X (B = next training scenario, V = first/third person).
+- Headless test order: art checks run before the sections that rebuild the world.

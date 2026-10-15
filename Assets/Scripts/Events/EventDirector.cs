@@ -237,7 +237,7 @@ public class EventDirector : MonoBehaviour
         {
             case "haboob":
                 prevFog = RenderSettings.fog; prevDensity = RenderSettings.fogDensity; prevFogColor = RenderSettings.fogColor; prevFogMode = RenderSettings.fogMode;
-                fogSaved = true;
+                fogSaved = true; DesertWeatherFX.FogOverridden = true;
                 RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Exponential; RenderSettings.fogColor = new Color(0.78f, 0.62f, 0.42f);
                 break;
             case "flood": extra = Flood(e); break;
@@ -272,7 +272,7 @@ public class EventDirector : MonoBehaviour
     private void RestoreFog()
     {
         if (!fogSaved) return;
-        fogSaved = false;
+        fogSaved = false; DesertWeatherFX.FogOverridden = false;
         RenderSettings.fog = prevFog; RenderSettings.fogDensity = prevDensity; RenderSettings.fogColor = prevFogColor; RenderSettings.fogMode = prevFogMode;
     }
 
@@ -458,7 +458,7 @@ public class EventDirector : MonoBehaviour
             Running = true;
             if (Active.type == "haboob")
             {
-                prevFog = RenderSettings.fog; prevDensity = RenderSettings.fogDensity; prevFogColor = RenderSettings.fogColor; prevFogMode = RenderSettings.fogMode; fogSaved = true;
+                prevFog = RenderSettings.fog; prevDensity = RenderSettings.fogDensity; prevFogColor = RenderSettings.fogColor; prevFogMode = RenderSettings.fogMode; fogSaved = true; DesertWeatherFX.FogOverridden = true;
                 RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Exponential; RenderSettings.fogColor = new Color(0.78f, 0.62f, 0.42f);
             }
         }

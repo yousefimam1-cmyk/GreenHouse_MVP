@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// B = collection book: crops harvested (greenhouse + fields), animals owned, fish caught (GameEvents.Custom "catchFish",
+/// J = collection book: crops harvested (greenhouse + fields), animals owned, fish caught (GameEvents.Custom "catchFish",
 /// or "catchFish:&lt;species&gt;"), sponsors met, plus feats. Shows a percentage complete. Saved under mazraa.cozy.book.*.
 /// </summary>
 [MazraaSystem(65)]
@@ -153,8 +153,8 @@ public class CollectionBook : MonoBehaviour
     private void Update()
     {
         if (Panel == null) return;
-        if (Panel.IsOpen) { if (Panel.CloseRequested || (CozyKeys.Down("b") && Time.frameCount != Panel.OpenedFrame)) Panel.Close(); }
-        else if (CozyKeys.Free && CozyKeys.Down("b")) Open();
+        if (Panel.IsOpen) { if (Panel.CloseRequested || (CozyKeys.Down("j") && Time.frameCount != Panel.OpenedFrame)) Panel.Close(); }
+        else if (CozyKeys.Free && CozyKeys.Down("j")) Open();
     }
 
     public void Open() { Panel.Open(); Refresh(); }
@@ -180,7 +180,7 @@ public class CollectionBook : MonoBehaviour
         foreach (var id in found["sponsors"]) sp.Add(EntryName("sponsors", id));
         if (sp.Count > 0) lines.Add("   " + string.Join("   ", sp.ToArray()));
         lines.Add(Section("feats", "Feats"));
-        Panel.Show(Loc.Raw("Collection book") + "  " + Mathf.FloorToInt(Percent) + "%", lines, Loc.Raw("[B/Esc] close"));
+        Panel.Show(Loc.Raw("Collection book") + "  " + Mathf.FloorToInt(Percent) + "%", lines, Loc.Raw("[J/Esc] close"));
     }
 
     private string Section(string category, string key) => Loc.Raw(key) + ": " + Count(category) + "/" + Total(category);

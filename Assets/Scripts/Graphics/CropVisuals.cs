@@ -31,7 +31,7 @@ public static class CropVisuals
     private static readonly Dictionary<string, string> aliases = new Dictionary<string, string>
     {
         { "melon", "watermelon" }, { "lettuce", "cabbage" }, { "maize", "corn" }, { "sweetcorn", "corn" },
-        { "squash", "pumpkin" }, { "barley", "wheat" }, { "garlic", "onion" },
+        { "squash", "pumpkin" }, { "barley", "wheat" }, { "alfalfa", "wheat" }, { "millet", "wheat" }, { "sorghum", "corn" }, { "garlic", "onion" },
     };
 
     private static readonly Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();

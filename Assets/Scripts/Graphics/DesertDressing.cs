@@ -35,6 +35,8 @@ public class DesertDressing : MonoBehaviour
     private struct KeepOut { public Vector3 p; public float r; public bool major; public KeepOut(Vector3 p, float r, bool major) { this.p = p; this.r = r; this.major = major; } }
     private readonly List<KeepOut> keep = new List<KeepOut>();
     private readonly List<Vector3> placed = new List<Vector3>();
+    /// <summary>Props from this or an earlier (being destroyed) dressing are never obstacles for a rebuild.</summary>
+    private static bool IsDressing(Transform t) { for (; t != null; t = t.parent) if (t.name == "Desert Dressing") return true; return false; }
     private readonly List<Vector3> farmPoints = new List<Vector3>();   // plots, pads, pen, greenhouses, start
     private Transform root;
     private Vector3 mapMin, mapMax;
@@ -149,7 +151,7 @@ public class DesertDressing : MonoBehaviour
         }
         foreach (var c in FindObjectsByType<Collider>(FindObjectsSortMode.None))
         {
-            if (c == null || c is TerrainCollider || c.transform.IsChildOf(transform)) continue;
+            if (c == null || c is TerrainCollider || c.transform.IsChildOf(transform) || IsDressing(c.transform)) continue;
             var b = c.bounds;
             float span = Mathf.Max(b.size.x, b.size.z);
             if (span > 80f) continue;                   // ground planes and other huge colliders

@@ -7,7 +7,7 @@ using UnityEngine;
 
 /// <summary>
 /// Decorations bought in the shop page "Decor" (majlis tent, lantern, palm-frond fence, flower pot). After buying, a
-/// preview follows in front of the player: E places it, Esc keeps it in storage; V places the next stored piece.
+/// preview follows in front of the player: E places it, Esc keeps it in storage; X places the next stored piece.
 /// Placed pieces can be picked up again with E. Positions are saved (mazraa.cozy.decor).
 /// </summary>
 [MazraaSystem(64)]
@@ -144,7 +144,7 @@ public class Decorations : MonoBehaviour
             else if (CozyKeys.Down("esc")) { CancelPlacing(); CozyFx.Alert(Loc.T("Decoration kept in storage")); }
             return;
         }
-        if (CozyKeys.Free && CozyKeys.Down("v"))
+        if (CozyKeys.Free && CozyKeys.Down("x"))
         {
             foreach (var k in Kinds) if (Stock(k) > 0) { BeginPlacing(k); return; }
             CozyFx.Alert(Loc.T("No decorations in storage - buy some in the shop (Decor)"));

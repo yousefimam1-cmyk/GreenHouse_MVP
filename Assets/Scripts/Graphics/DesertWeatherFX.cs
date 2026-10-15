@@ -11,6 +11,12 @@ using UnityEngine.Rendering.Universal;
 [MazraaSystem(72)]
 public class DesertWeatherFX : MonoBehaviour
 {
+    /// <summary>True while a farm event (haboob) controls the fog; the desert fog then leaves RenderSettings alone.</summary>
+    public static bool FogOverridden;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics() => FogOverridden = false;
+
     public static DesertWeatherFX Instance { get; private set; }
     /// <summary>0 = calm .. 1 = sandstorm-ish. Smoothed.</summary>
     public static float Wind01 { get; private set; }
@@ -156,6 +162,7 @@ public class DesertWeatherFX : MonoBehaviour
 
     private void UpdateFog(float day)
     {
+        if (FogOverridden) return;
         float density = 0.0025f + 0.016f * Mathf.Clamp01((Wind01 - 0.3f) / 0.55f);
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Exponential;
