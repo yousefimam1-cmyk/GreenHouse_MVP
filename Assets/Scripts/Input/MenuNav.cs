@@ -79,8 +79,11 @@ public static class MenuNav
     {
         var kb = Keyboard.current;
         if (kb == null) return -1;
-        KeyControl[] keys = { kb.digit1Key, kb.digit2Key, kb.digit3Key, kb.digit4Key, kb.digit5Key, kb.digit6Key, kb.digit7Key, kb.digit8Key, kb.digit9Key, kb.digit0Key };
-        for (int i = 0; i < keys.Length; i++) if (K(keys[i])) return i;
+        // No array: this runs every frame while a menu or shop is open.
+        if (K(kb.digit1Key)) return 0; if (K(kb.digit2Key)) return 1; if (K(kb.digit3Key)) return 2;
+        if (K(kb.digit4Key)) return 3; if (K(kb.digit5Key)) return 4; if (K(kb.digit6Key)) return 5;
+        if (K(kb.digit7Key)) return 6; if (K(kb.digit8Key)) return 7; if (K(kb.digit9Key)) return 8;
+        if (K(kb.digit0Key)) return 9;
         return -1;
     }
 

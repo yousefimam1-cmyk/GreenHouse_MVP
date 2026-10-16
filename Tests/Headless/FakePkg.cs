@@ -83,7 +83,7 @@ namespace UnityEngine.Rendering.Universal
 }
 namespace StarterAssets
 {
-    public class StarterAssetsInputs : UnityEngine.MonoBehaviour { public bool cursorInputForLook; public void SetCursorState(bool b) { } public void LookInput(UnityEngine.Vector2 v) { } }
+    public class StarterAssetsInputs : UnityEngine.MonoBehaviour { public UnityEngine.Vector2 move, look; public bool jump, sprint; public bool cursorInputForLook; public void SetCursorState(bool b) { } public void LookInput(UnityEngine.Vector2 v) { } }
 }
 namespace DG.Tweening
 {

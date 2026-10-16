@@ -111,7 +111,7 @@ public class CollectionBook : MonoBehaviour
                 if (eco != null) foreach (var g in eco.Data.goods) if (g.id.Contains("fish")) fishGoods++;
                 return Mathf.Max(Count("fish"), fishGoods);     // 0 when no fishing in this build: not counted
             case "sponsors": return SponsorManager.Instance != null ? SponsorManager.Instance.Brands.Count : 0;
-            case "feats": return 1;
+            case "feats": return 2;   // falconer, Mazraa Academy
         }
         return 0;
     }

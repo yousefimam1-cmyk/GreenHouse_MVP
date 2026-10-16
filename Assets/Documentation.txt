@@ -357,3 +357,17 @@ INTEGRATION FIXES (Oct 16 2026) - all 607 headless checks and 16/16 static check
   only fires PresetChanged on a real change (settings saves used to rebuild the desert every time).
 - Keys: collection book moved B -> J, stored decor X (B = next training scenario, V = first/third person).
 - Headless test order: art checks run before the sections that rebuild the world.
+
+MAZRAA ACADEMY - CONTROLS TUTORIAL + AUDIT FIXES (Oct 16 2026)
+--- UI/ControlsTutorial.cs [MazraaSystem(66)] Branded controls tutorial (Mazraa palette: palm green, sand, gold; Tajawal
+    font in English and Arabic). 11 steps that tick off by themselves: look, walk 10 m, sprint, jump, V view, N map, E interact,
+    get in the tractor (distance shown), drive 25 m, brake, get out (vehicle steps hidden when no vehicle). Progress bar,
+    step dots, timer, cheers ("Mashallah!"), medal by time (gold < 2 min, silver < 4 min), first finish = +150 SAR and the
+    "Mazraa Academy" feat in the collection book. Starts by itself the first time the farm is played (save key
+    mazraa.academy.seen), and from the main/pause menu "Controls tutorial". [Enter]/D-pad right skips, [Backspace]/D-pad down
+    closes. The mission tutorial and the academy close each other. Text: Resources/Data/Loc/75_academy.json.
+--- Audit fixes: FarmCrops textures capped at 1024 (MetallicSmoothness 512), Old Water Well textures 1024, UI sprites
+    256/512, FarmMusic streamed + Vorbis, Gridbox demo materials no longer in a Resources folder (renamed DemoOnly),
+    VSync on (was uncapped), URP opaque texture off, fog stripping custom (keeps linear/exp/exp2 so haboob/runtime fog
+    show in builds), minimap camera without shadows/post FX, billboards ignore render-texture cameras, rain follows any
+    driven vehicle, U ignored while typing in chat, no per-frame arrays in MenuNav.Digit / emote keys.

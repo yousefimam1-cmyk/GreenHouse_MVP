@@ -452,6 +452,32 @@ static class Program
         PressKey(kb.vKey);
         T.Check("V switches back to the StarterAssets first person camera", !tp.IsThirdPerson && Camera.main == fpCam && fpCam.enabled && !GameSettings.ThirdPerson);
 
+        // ---- controls tutorial (Mazraa Academy)
+        var aca = ControlsTutorial.Instance;
+        T.Check("Mazraa Academy system exists", aca != null);
+        int moneyBeforeAca = EconomyManager.Instance.Money;
+        aca.Begin();
+        T.Check("Academy starts at Look around", aca.Running && aca.Step == ControlsTutorial.StepId.Look && aca.BodyText().Contains("Look around"));
+        T.Check("Academy header shows the brand and step", aca.HeaderText().Contains("MAZRAA") && aca.HeaderText().Contains("1/"));
+        var advance = typeof(ControlsTutorial).GetMethod("Advance", BindingFlags.Instance | BindingFlags.NonPublic);
+        aca.Skip();
+        advance.Invoke(aca, null);
+        T.Check("Skip moves to Walk", aca.Step == ControlsTutorial.StepId.Walk);
+        int guard = 0;
+        while (aca.Running && guard++ < 20)
+        {
+            var finishedField = (bool)typeof(ControlsTutorial).GetField("finished", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(aca);
+            if (finishedField) break;
+            aca.Skip(); advance.Invoke(aca, null);
+        }
+        T.Check("Finishing pays the reward once", EconomyManager.Instance.Money == moneyBeforeAca + ControlsTutorial.Reward, EconomyManager.Instance.Money + " vs " + moneyBeforeAca);
+        T.Check("Finish shows a medal", aca.BodyText().Contains("medal"));
+        aca.Stop();
+        aca.Begin(); for (int i = 0; i < 20 && aca.Running; i++) { aca.Skip(); advance.Invoke(aca, null); }
+        T.Check("Replaying does not pay again", EconomyManager.Instance.Money == moneyBeforeAca + ControlsTutorial.Reward);
+        aca.Stop();
+        EconomyManager.Instance.Spend(ControlsTutorial.Reward);
+
         // ---- tutorial (doesn't touch missions)
         int missionBefore = MissionManager.Instance.Index;
         var tut = TutorialOverlay.Instance;

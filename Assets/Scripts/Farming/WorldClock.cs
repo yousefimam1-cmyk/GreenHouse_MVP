@@ -64,7 +64,7 @@ public class WorldClock : MonoBehaviour
             NextDay();
         }
         if (rain != null && Camera.main != null) rain.transform.position = Camera.main.transform.position + Vector3.up * 12f;
-        else if (rain != null && FarmTruck.Instance != null && FarmTruck.Instance.IsDriving) rain.transform.position = FarmTruck.Instance.transform.position + Vector3.up * 14f;
+        else if (rain != null && Vehicle.Current != null) rain.transform.position = Vehicle.Current.transform.position + Vector3.up * 14f;
     }
 
     /// <summary>Skip to the next morning (used by beds, and for testing).</summary>

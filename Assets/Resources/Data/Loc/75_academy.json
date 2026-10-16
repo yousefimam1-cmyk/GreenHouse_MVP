@@ -1,0 +1,164 @@
+{
+ "entries": [
+  {
+   "en": "Controls tutorial",
+   "ar": "شرح التحكم"
+  },
+  {
+   "en": "Mazraa Academy",
+   "ar": "أكاديمية مزرعة"
+  },
+  {
+   "en": "Academy",
+   "ar": "الأكاديمية"
+  },
+  {
+   "en": "Step",
+   "ar": "خطوة"
+  },
+  {
+   "en": "Mouse",
+   "ar": "الماوس"
+  },
+  {
+   "en": "Look around",
+   "ar": "تلفّت حولك"
+  },
+  {
+   "en": "Walk",
+   "ar": "امشِ"
+  },
+  {
+   "en": "Sprint",
+   "ar": "اركض"
+  },
+  {
+   "en": "Jump",
+   "ar": "اقفز"
+  },
+  {
+   "en": "Switch camera",
+   "ar": "غيّر الكاميرا"
+  },
+  {
+   "en": "Open the map",
+   "ar": "افتح الخريطة"
+  },
+  {
+   "en": "Interact",
+   "ar": "تفاعل"
+  },
+  {
+   "en": "Get in the tractor",
+   "ar": "اركب التراكتور"
+  },
+  {
+   "en": "Drive",
+   "ar": "سُق"
+  },
+  {
+   "en": "Brake",
+   "ar": "فرامل"
+  },
+  {
+   "en": "Get out",
+   "ar": "انزل"
+  },
+  {
+   "en": "Move the mouse (or right stick) to look around the farm.",
+   "ar": "حرّك الماوس (أو العصا اليمنى) عشان تشوف المزرعة."
+  },
+  {
+   "en": "Walk 10 metres with W A S D (or the left stick).",
+   "ar": "امشِ ١٠ أمتار بـ W A S D (أو العصا اليسرى)."
+  },
+  {
+   "en": "Hold Shift while walking to sprint (left stick click on a controller).",
+   "ar": "اضغط Shift وأنت تمشي عشان تركض (اضغط العصا اليسرى في اليد)."
+  },
+  {
+   "en": "Press Space to jump (A / Cross on a controller).",
+   "ar": "اضغط Space عشان تقفز (A / ✕ في اليد)."
+  },
+  {
+   "en": "Press [V] to switch between first and third person.",
+   "ar": "اضغط [V] للتبديل بين منظور الشخص الأول والثالث."
+  },
+  {
+   "en": "Press [N] to open the map, then [N] again to close it.",
+   "ar": "اضغط [N] لفتح الخريطة، ثم [N] مرة ثانية لإغلاقها."
+  },
+  {
+   "en": "Look at anything with a prompt and press [E].",
+   "ar": "طالع أي شي عليه تلميح واضغط [E]."
+  },
+  {
+   "en": "Walk to the tractor and press [E] to drive it.",
+   "ar": "روح للتراكتور واضغط [E] عشان تسوقه."
+  },
+  {
+   "en": "Drive 25 metres. W / S to drive, A / D to steer.",
+   "ar": "سُق ٢٥ متر. W / S للقيادة، A / D للتوجيه."
+  },
+  {
+   "en": "Press [Space] to brake.",
+   "ar": "اضغط [Space] للفرامل."
+  },
+  {
+   "en": "Press [E] to get out of the tractor.",
+   "ar": "اضغط [E] عشان تنزل من التراكتور."
+  },
+  {
+   "en": "Mashallah!",
+   "ar": "ما شاء الله!"
+  },
+  {
+   "en": "Yalla, well done!",
+   "ar": "يلا، كفو!"
+  },
+  {
+   "en": "Nice one!",
+   "ar": "حلوة!"
+  },
+  {
+   "en": "Like a pro!",
+   "ar": "مثل المحترفين!"
+  },
+  {
+   "en": "Ya salam!",
+   "ar": "يا سلام!"
+  },
+  {
+   "en": "Gold medal",
+   "ar": "ميدالية ذهبية"
+  },
+  {
+   "en": "Silver medal",
+   "ar": "ميدالية فضية"
+  },
+  {
+   "en": "Bronze medal",
+   "ar": "ميدالية برونزية"
+  },
+  {
+   "en": "You know the controls! Time: {0}",
+   "ar": "صرت تعرف التحكم! الوقت: {0}"
+  },
+  {
+   "en": "+{0} SAR and a new collection book entry",
+   "ar": "+{0} ريال وإدخال جديد في دفتر المجموعة"
+  },
+  {
+   "en": "Tractor: {0} m",
+   "ar": "التراكتور: {0} م"
+  },
+  {
+   "en": "[D-pad right] Skip   [D-pad down] Close",
+   "ar": "[D-pad يمين] تخطَّ   [D-pad تحت] إغلاق"
+  },
+  {
+   "en": "[Enter] Skip   [Backspace] Close",
+   "ar": "[Enter] تخطَّ   [Backspace] إغلاق"
+  }
+ ]
+}

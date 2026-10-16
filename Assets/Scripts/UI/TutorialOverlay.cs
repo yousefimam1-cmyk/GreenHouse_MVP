@@ -74,6 +74,7 @@ public class TutorialOverlay : MonoBehaviour
     /// <summary>Start (or restart) the tutorial from step 1. Mission progress is not changed.</summary>
     public void Begin()
     {
+        if (ControlsTutorial.Instance != null && ControlsTutorial.Instance.Running) ControlsTutorial.Instance.Stop();
         Running = true;
         GoTo(0);
         if (canvas != null) canvas.gameObject.SetActive(true);

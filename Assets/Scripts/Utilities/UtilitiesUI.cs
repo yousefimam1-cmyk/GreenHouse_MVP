@@ -85,7 +85,7 @@ public class UtilitiesUI : MonoBehaviour
         if (kb != null && Time.timeScale > 0f)
         {
             bool shopOpen = ShopUI.Instance != null && ShopUI.Instance.IsOpen;
-            if (kb.uKey.wasPressedThisFrame && !shopOpen && Time.frameCount != openedFrame) Toggle();
+            if (kb.uKey.wasPressedThisFrame && !shopOpen && !NetSession.Typing && Time.frameCount != openedFrame) Toggle();
             else if (IsOpen && Time.frameCount != openedFrame && (kb.escapeKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame)) Close();
         }
         if (!IsOpen) return;

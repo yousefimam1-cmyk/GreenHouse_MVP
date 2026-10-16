@@ -14,6 +14,7 @@ using UnityEngine.InputSystem;
 [MazraaSystem(70)]
 public class MultiplayerManager : MonoBehaviour
 {
+    private static readonly Key[] EmoteKeys = { Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4 };
     public static MultiplayerManager Instance;
 
     public const string NameKey = "mazraa.mp.name";
@@ -272,9 +273,8 @@ public class MultiplayerManager : MonoBehaviour
         bool uiOpen = (UIManager.Instance != null && UIManager.Instance.IsUIOpened) || Time.timeScale == 0f;
         if (kb != null && !uiOpen && !NetSession.Typing && Vehicle.Current == null)
         {
-            Key[] keys = { Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4 };
-            for (int i = 0; i < keys.Length; i++)
-                if (kb[keys[i]].wasPressedThisFrame) SendEmote(i);
+            for (int i = 0; i < EmoteKeys.Length; i++)
+                if (kb[EmoteKeys[i]].wasPressedThisFrame) SendEmote(i);
         }
     }
 

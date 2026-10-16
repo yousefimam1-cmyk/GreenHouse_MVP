@@ -10,7 +10,7 @@ public class Billboard : MonoBehaviour
         if (cam == null || !cam.isActiveAndEnabled)
         {
             cam = Camera.main != null && Camera.main.isActiveAndEnabled ? Camera.main : null;
-            if (cam == null) foreach (var c in Camera.allCameras) if (c.isActiveAndEnabled) { cam = c; break; }
+            if (cam == null) foreach (var c in Camera.allCameras) if (c.isActiveAndEnabled && c.targetTexture == null) { cam = c; break; }
         }
         if (cam == null) return;
         transform.forward = cam.transform.forward;

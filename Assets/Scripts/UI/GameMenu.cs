@@ -168,6 +168,7 @@ public class GameMenu : MonoBehaviour
             rows.Add(MenuRow.Button(() => UiText.T("Save game"), () => Go(PageId.Save)));
             rows.Add(MenuRow.Button(() => UiText.T("Load game"), () => Go(PageId.Load)));
         }
+        rows.Add(MenuRow.Button(() => UiText.T("Controls tutorial"), StartControls));
         rows.Add(MenuRow.Button(() => UiText.T("Tutorial"), StartTutorial));
         rows.Add(MenuRow.Button(() => UiText.T("Settings"), () => Go(PageId.Settings)));
         if (mode == Mode.Pause)
@@ -285,6 +286,12 @@ public class GameMenu : MonoBehaviour
         if (!SaveSlots.HasSlot(slot)) return;
         Close();
         SaveSlots.Load(slot);
+    }
+
+    private void StartControls()
+    {
+        Close();
+        if (ControlsTutorial.Instance != null) ControlsTutorial.Instance.Begin();
     }
 
     private void StartTutorial()

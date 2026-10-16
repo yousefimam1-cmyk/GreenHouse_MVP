@@ -73,6 +73,9 @@ public class Minimap : MonoBehaviour
         mapCam.cullingMask = ~(1 << 5);        // everything but UI
         mapCam.depth = -10f;
         mapCam.targetTexture = rt;
+        // Top-down map needs no shadows or post FX: saves a full shadow pass + SSAO/outlines every frame.
+        var urp = UnityEngine.Rendering.Universal.CameraExtensions.GetUniversalAdditionalCameraData(mapCam);
+        if (urp != null) { urp.renderShadows = false; urp.renderPostProcessing = false; }
         go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
     }
 
