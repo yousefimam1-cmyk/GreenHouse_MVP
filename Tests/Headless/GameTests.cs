@@ -980,7 +980,8 @@ static class Program
         var season = WorldClock.Instance.Season;
         for (int i = 0; i < WorldClock.Instance.daysPerSeason; i++) WorldClock.Instance.NextDay();
         T.Check("Season changes after " + WorldClock.Instance.daysPerSeason + " days", WorldClock.Instance.Season != season);
-        T.Check("Contracts are offered", MarketManager.Instance.Contracts.Count > 0);
+        T.Check("Contracts are offered", MarketManager.Instance.Offers.Count + MarketManager.Instance.Contracts.Count > 0);
+        MarketTests.Run();
 
         Console.WriteLine("Mission chain");
         var mm = MissionManager.Instance;
@@ -1016,6 +1017,7 @@ static class Program
         EventsFinTests.Run(args[0]);
         EventDirector.RandomEventsEnabled = false;
         SoilTests();
+        MarketTests.Snapshot();
 
         Console.WriteLine("Saving");
         SaveData.Flush(true);
@@ -1033,6 +1035,7 @@ static class Program
             UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length + " vs " + EconomyManager.Instance.Owned("chicken"));
         T.Check("Field crop state restored", FieldManager.Instance.Plots[1].State == PlotState.Plowed);
         UtilityTests.AfterRestart();
+        MarketTests.AfterRestart();
         SoilAfterRestart();
         T.Check("Crops: orchard trees restored", OrchardManager.Instance.Trees.Count == 6 && OrchardManager.Instance.Trees[0].Kind == "palm_sukkari" && OrchardManager.Instance.Trees[0].Age >= 3f, OrchardManager.Instance.Trees.Count > 0 ? OrchardManager.Instance.Trees[0].Kind : "none");
         T.Check("Crops: soil fertility and alfalfa cuts restored", Math.Abs(CropCareManager.Instance.Plot(4).fertility - savedFertility) < 0.001f && CropCareManager.Instance.Plot(3).cuts == savedCuts,
@@ -1052,6 +1055,7 @@ static class Program
         T.Check("New game resets fields", FieldManager.Instance.Plots.All(x => x.State == PlotState.Untilled));
         T.Check("Time scale restored", Time.timeScale == 1f);
         UtilityTests.AfterNewGame();
+        MarketTests.AfterNewGame();
         SoilAfterNewGame();
         T.Check("Crops: new game clears orchard, soil and care items", OrchardManager.Instance.Trees.All(x => x.Kind == "") && CropCareManager.Instance.Plot(4).fertility == 1f
             && CropsData.Data.cures.All(c => CropCareManager.Instance.Items(c.id) == 0) && CropsData.Data.trees.All(t => OrchardManager.Instance.Saplings(t.id) == 0));
@@ -2422,5 +2426,279 @@ static class ArtTests
         string ar = Loc.Raw(en);
         Loc.SetLanguage(Language.English);
         return ar != en;
+    }
+}
+
+// ---------------------------------------------------------------- market, contracts board, production lines, finances
+static class MarketTests
+{
+    static void Pad(UnityEngine.InputSystem.ButtonControl b) { b.wasPressedThisFrame = true; b.isPressed = true; FakeEngine.Tick(0.02f); b.wasPressedThisFrame = false; b.isPressed = false; }
+    static void Day() => WorldClock.Instance.NextDay();
+
+    static string snapDest, snapOffers, snapActive;
+    static float snapGlut; static int snapLedgerSales, snapLedgerProd, snapHist; static bool snapAuto;
+
+    public static void Run()
+    {
+        Console.WriteLine("Market, contracts board, production lines, finances");
+        var m = MarketManager.Instance; var eco = EconomyManager.Instance; var clock = WorldClock.Instance;
+        var led = FinanceLedger.Instance; var yard = ProcessingYard.Instance;
+        int e0 = FakeEngine.Errors.Count;
+        float progress0 = clock.DayProgress;   // put the time of day back at the end (later sections depend on it)
+        T.Check("Market: systems created (ledger)", m != null && led != null && yard != null);
+
+        // ---- translations of every text key
+        var src = string.Join("\n", new[] { "Managers/MarketManager.cs", "UI/EconomyPages.cs", "Finance/FinanceLedger.cs" }.Select(f => File.ReadAllText("../../Assets/Scripts/" + f)));
+        var keys = System.Text.RegularExpressions.Regex.Matches(src, "Loc\\.(?:T|Raw)\\(\"([^\"]+)\"").Cast<System.Text.RegularExpressions.Match>().Select(x => x.Groups[1].Value).ToList();
+        keys.AddRange(Ledger.Names); keys.AddRange(EconomyPages.ProductionActions);
+        keys.AddRange(new[] { "Not available", "Contract limit reached", "Needs goods this map doesn't have", "on", "off", "Auto supply and collect: on", "Auto supply and collect: off",
+            "Up / Down: goods   Left / Right: where to sell   [Esc] close", "Up / Down: contracts   [Enter] accept   [Esc] close",
+            "Up / Down: buildings   Left / Right: action   [Enter] do it   [Esc] close", "[Esc] close", "[LB] [RB] or 1-7: Inventory / Stats / Fields / Prices / Contracts / Production / Finances", "Market prices", "Finances", "Production" });
+        keys.AddRange(m.Cfg.points.Select(p => p.nameEn)); keys.AddRange(yard.Plants.Select(p => p.def.nameEn));
+        keys = keys.Where(k => k != "SAR").Distinct().ToList();
+        var missing = keys.Where(k => !Loc.HasTranslation(k)).ToList();
+        T.Check("Market: every text key has Arabic (Loc/95_market.json)", keys.Count > 60 && missing.Count == 0, keys.Count + " " + string.Join(" | ", missing));
+        T.Check("Market: selling points and clients are bilingual", m.Cfg.points.All(p => !string.IsNullOrEmpty(p.nameAr)) && m.Cfg.contracts.clients.All(c => !string.IsNullOrEmpty(c.ar)));
+
+        // ---- selling points, generic over goods
+        T.Check("Market: souq, village souq, grain silo, dairy co-op, fodder traders, export port", new[] { "souq", "village", "mill", "dairy", "fodder", "port" }.All(id => m.Point(id) != null), string.Join(",", m.Points.Select(p => p.id)));
+        T.Check("Market: a point is hidden when none of its goods exist (cotton gin needs cotton)", (eco.Good("cotton") == null) == (m.Point("gin") == null));
+        T.Check("Market: every good (incl. packs) has a price at the souq", eco.Data.goods.All(g => m.Price(g.id) > 0f), string.Join(",", eco.Data.goods.Where(g => m.Price(g.id) <= 0f).Select(g => g.id)));
+        T.Check("Market: a point that doesn't buy a good pays nothing for it", m.Price("eggs", "mill") == 0f && m.Price("wheat", "mill") > 0f);
+        T.Check("Market: processed goods pack loaded (olive oil, tomato paste...)", eco.Good("olive_oil") != null && eco.Good("tomato_paste") != null);
+
+        // ---- supply and demand: selling lowers that point's price, it recovers over days
+        float silo0 = m.Price("wheat", "mill"), souq0 = m.Price("wheat", "souq"), haul = m.Point("mill").haul;
+        float sold = m.SellAt("mill", "wheat", 3000f);
+        float silo1 = m.Price("wheat", "mill");
+        T.Check("Market: selling 3,000 kg of wheat at the silo lowers its price", silo1 < silo0 * 0.8f, silo0 + " -> " + silo1);
+        T.Check("Market: ...but not the price at the souq", Math.Abs(m.Price("wheat", "souq") - souq0) < 0.001f);
+        T.Check("Market: the price falls while you sell (paid between start and end price, minus transport)", sold < 3000f * silo0 && sold > 3000f * (silo1 - haul) - 1f, sold + " for 3000 at " + silo0 + " -> " + silo1);
+        float glut1 = m.Glut("mill", "wheat");
+        Day(); Day();
+        T.Check("Market: the silo price recovers over the next days", m.Glut("mill", "wheat") < glut1 - 0.1f, glut1 + " -> " + m.Glut("mill", "wheat"));
+
+        // ---- demand events
+        m.Events.Clear();
+        float onion0 = m.Price("onion", "port");
+        var ev = m.AddDemandEvent("port", "onion", 1.4f, 3);
+        T.Check("Market: demand event - onions +40% at the port for 3 days", onion0 > 0f && Math.Abs(m.Price("onion", "port") - onion0 * 1.4f) < 0.01f, onion0 + " -> " + m.Price("onion", "port"));
+        T.Check("Market: event listed on the Prices page", EconomyPages.PricesText(0).Contains("High demand") && EconomyPages.PricesText(0).Contains("+40%"));
+        T.Check("Market: best-price hint points at the port while onions are in demand", m.BestPoint("onion") == "port");
+        Day(); Day();
+        T.Check("Market: event still on after 2 days", m.Events.Contains(ev));
+        Day();
+        T.Check("Market: event over after 3 days", !m.Events.Contains(ev));
+
+        // ---- history, trend arrows, best price
+        var h = m.History("souq", "wheat");
+        T.Check("Market: daily price history per good and point (30 days max)", h.Count >= 5 && h.Count <= MarketManager.HistoryDays, "" + h.Count);
+        T.Check("Market: trend arrows (rising / falling / steady)", MarketMath.Trend(new[] { 10f, 10f, 10f, 12f }, 12f) == 1 && MarketMath.Trend(new[] { 10f, 10f, 10f, 8f }, 8f) == -1 && MarketMath.Trend(new[] { 10f, 10f, 10f }, 10.1f) == 0);
+        T.Check("Market: best point has the best net price", eco.Data.goods.All(g => m.Points.Where(p => MarketMath.Accepts(p, g.id)).All(p => m.NetPrice(g.id, p.id) <= m.NetPrice(g.id, m.BestPoint(g.id)) + 0.0001f)));
+        int wheatRow = Array.FindIndex(eco.Data.goods, g => g.id == "wheat");
+        string pricesPage = EconomyPages.PricesText(wheatRow);
+        T.Check("Market: Prices page lists goods, points, trend and the 30-day range", pricesPage.Contains("Wheat") && pricesPage.Contains("Grain silo") && (pricesPage.Contains("▲") || pricesPage.Contains("▼") || pricesPage.Contains("■")) && pricesPage.Contains("d: "), pricesPage);
+
+        // ---- the old sell flow still works
+        m.SetDestination("");
+        var cargo = new Dictionary<string, float> { { "potato", 40f } };
+        int money0 = eco.Money;
+        int got = eco.SellAll(cargo);
+        T.Check("Market: SellAll still sells the truck load", got > 0 && cargo.Count == 0 && eco.Money == money0 + got, got + "");
+        m.CycleDestination(1);
+        T.Check("Market: Left / Right picks where truck loads are sold", m.Destination == m.Points[0].id);
+        m.SetDestination("");
+
+        // ---- contracts board
+        m.Contracts.Clear();
+        m.Offers.Clear();
+        var deliver = new List<Contract>(); Contract field = null;
+        for (int i = 0; i < 300 && (deliver.Count < 4 || field == null); i++)
+        {
+            var c = m.GenerateOffer(false);
+            if (c.Field()) { if (field == null) field = c; else m.Offers.Remove(c); }
+            else if (deliver.Count < 4 && !deliver.Any(d => d.good == c.good)) deliver.Add(c);
+            else m.Offers.Remove(c);
+        }
+        T.Check("Contracts: daily offers from named clients with good, amount, deadline, unit price, bonus and penalty",
+            deliver.Count == 4 && deliver.All(c => !string.IsNullOrEmpty(c.buyerEn) && c.amount > 0f && c.days >= 3 && c.unitPrice > 0f && c.reward > 0 && c.penalty > 0 && c.board));
+        T.Check("Contracts: field-work contracts (tractor jobs for neighbours)", field != null && field.amount >= 4 && field.reward > 0 && new[] { "Plow", "Seeder", "Harvester" }.Contains(field.task));
+        string board = EconomyPages.ContractsText(0);
+        T.Check("Contracts: board page lists the offers", board.Contains(deliver[0].buyerEn) && board.Contains("Contracts board"));
+        int completed = 0; Action onDone = () => completed++;
+        GameEvents.ContractCompleted += onDone;
+        int row0 = m.Contracts.Count + m.Offers.IndexOf(deliver[0]);
+        EconomyPages.Confirm(FarmInfoScreen.Page.Contracts, row0, 0);
+        T.Check("Contracts: [Enter] on the board accepts an offer", m.Contracts.Contains(deliver[0]) && !m.Offers.Contains(deliver[0]) && deliver[0].dueDay == clock.Day + deliver[0].days);
+        T.Check("Contracts: accept a second and third", m.Accept(deliver[1]) && m.Accept(deliver[2]));
+        T.Check("Contracts: no more than 3 at once", m.MaxActive == 3 && !m.Accept(deliver[3]) && m.Offers.Contains(deliver[3]));
+        var dc = deliver[0];
+        int contractsIn0 = led.Income(FinanceLedger.Today, Ledger.Contracts);
+        money0 = eco.Money;
+        float half = Mathf.Floor(dc.amount / 2f);
+        eco.SellAll(new Dictionary<string, float> { { dc.good, half } });
+        T.Check("Contracts: a delivery counts toward the contract", Math.Abs(dc.delivered - half) < 0.01f && m.Contracts.Contains(dc), dc.delivered + "/" + dc.amount);
+        float mul = Career.SellMultiplier * Regions.Current.market;
+        T.Check("Contracts: delivered goods are paid at the contract price", Math.Abs(eco.Money - money0 - half * dc.unitPrice * mul) <= 1.5f, (eco.Money - money0) + " vs " + half * dc.unitPrice);
+        money0 = eco.Money;
+        var notes = new List<string>();
+        eco.SellAll(new Dictionary<string, float> { { dc.good, dc.amount - half + 5f } }, notes);
+        T.Check("Contracts: finishing the delivery completes it (ContractCompleted raised, bonus paid)", !m.Contracts.Contains(dc) && completed == 1 && eco.Money - money0 >= dc.reward && notes.Any(n => n.Contains("Contract complete")), completed + " " + string.Join("|", notes));
+        T.Check("Finances: contract money booked under Contracts", led.Income(FinanceLedger.Today, Ledger.Contracts) - contractsIn0 >= dc.reward + (int)(dc.amount * dc.unitPrice * mul * 0.9f));
+        var fc = deliver[1];
+        fc.dueDay = clock.Day;
+        int contractsOut0 = led.Expense(clock.Day + 1, Ledger.Contracts);
+        Day();
+        T.Check("Contracts: missed deadline fails the contract with its penalty", !m.Contracts.Contains(fc) && completed == 1 && led.Expense(clock.Day, Ledger.Contracts) - contractsOut0 >= fc.penalty, led.Expense(clock.Day, Ledger.Contracts) + " vs " + fc.penalty);
+        m.Contracts.Remove(deliver[2]);
+        if (!m.Offers.Contains(field)) m.Offers.Add(field);
+        T.Check("Contracts: accept a field-work contract", m.Accept(field));
+        var imp = (Implement)Enum.Parse(typeof(Implement), field.task);
+        int passes = (int)field.amount;
+        for (int i = 0; i < passes - 1; i++) GameEvents.RaiseTractorWorked(imp);
+        T.Check("Contracts: tractor work counts toward the field job", Math.Abs(field.delivered - (passes - 1)) < 0.01f && m.Contracts.Contains(field));
+        money0 = eco.Money;
+        GameEvents.RaiseTractorWorked(imp);
+        T.Check("Contracts: last pass completes the field job and pays", !m.Contracts.Contains(field) && completed == 2 && eco.Money - money0 >= field.reward, (eco.Money - money0) + " vs " + field.reward);
+        GameEvents.ContractCompleted -= onDone;
+        int offers = m.Offers.Count;
+        for (int i = 0; i < 4; i++) Day();
+        T.Check("Contracts: new offers keep coming, old ones expire", m.Offers.Count >= 2 && m.Offers.All(o => o.offerUntil >= clock.Day), offers + " -> " + m.Offers.Count);
+
+        // ---- production lines
+        eco.AddMoney(30000);
+        var mill = yard.Get("proc_mill");
+        if (!mill.owned) eco.TryBuy("proc_mill");
+        T.Check("Production: flour mill built", mill.owned);
+        T.Check("Production: Production page lists buildings with input, output, rate and running cost", EconomyPages.ProductionText(0, 0).Contains("Flour mill") && EconomyPages.ProductionText(0, 0).Contains("running cost"));
+        if (eco.Good("cotton") == null) T.Check("Production: a building without its goods stays locked (cotton gin)", ShopCatalog.Find("proc_gin").blockReason() != null && !eco.TryBuy("proc_gin"));
+        float wheat0 = eco.Stored("wheat");
+        eco.AddGood("wheat", 100f);
+        float moved = yard.Supply(mill);
+        T.Check("Production: supply moves wheat from farm storage into the mill", moved >= 99.9f && eco.Stored("wheat") < 0.2f + Math.Max(0f, wheat0 + 100f - mill.def.inputCapacity), moved + "");
+        float load = mill.InTotal;
+        FakeEngine.Tick(0.1f);
+        T.Check("Production: the mill starts by itself from its input store", mill.busy && mill.line && Math.Abs(mill.InTotal - (load - 20f)) < 0.01f);
+        FakeEngine.Run(52f, 0.5f);
+        T.Check("Production: one batch later 16 kg of flour in the output store", Math.Abs(mill.OutTotal - 16f) < 0.01f, mill.OutTotal + "");
+        FakeEngine.Run(51f * (float)Math.Ceiling(load / 20f), 0.5f);
+        T.Check("Production: inputs converted over time into flour (20 -> 16)", mill.InTotal < 0.01f && !mill.busy && Math.Abs(mill.OutTotal - load * 0.8f) < 0.2f, mill.InTotal + " -> " + mill.OutTotal);
+        float flour0 = eco.Stored("flour");
+        float collected = yard.Collect(mill);
+        T.Check("Production: collect moves outputs to farm storage", Math.Abs(eco.Stored("flour") - flour0 - collected) < 0.01f && collected > 70f && mill.OutTotal == 0f);
+        int prodOut0 = led.Expense(clock.Day + 1, Ledger.Production);
+        Day();
+        T.Check("Production: running cost charged for a day the mill worked", led.Expense(clock.Day, Ledger.Production) - prodOut0 >= mill.def.dailyCost);
+        eco.AddGood("wheat", 20f); yard.Supply(mill); FakeEngine.Run(52f, 0.5f);
+        int sale = yard.SellOutputs(mill);
+        T.Check("Production: outputs sell straight from the building (higher value than the wheat)", sale > 0 && mill.OutTotal == 0f && m.Price("flour") > m.Price("wheat"));
+        eco.AddGood("wheat", 40f);
+        EconomyPages.Confirm(FarmInfoScreen.Page.Production, EconomyPages.Plants().IndexOf(mill), 3);
+        T.Check("Production: Auto mode supplies inputs by itself", mill.auto && mill.InTotal + (mill.busy ? 20f : 0f) >= 39f);
+        yard.SetAuto(mill, false);
+
+        // ---- finances
+        int purch0 = led.Expense(clock.Day, Ledger.Purchases);
+        eco.TryBuy("feed");
+        T.Check("Finances: shop purchases booked as Purchases", led.Expense(clock.Day, Ledger.Purchases) - purch0 == eco.Data.feed.price);
+        int sales0 = led.Income(clock.Day, Ledger.Sales);
+        int s = eco.SellAll(new Dictionary<string, float> { { "watermelon", 30f } });
+        T.Check("Finances: sales booked as Sales", led.Income(clock.Day, Ledger.Sales) - sales0 == s && s > 0, (led.Income(clock.Day, Ledger.Sales) - sales0) + " vs " + s);
+        var bank = BankManager.Instance;
+        if (bank.LoanBlock(10000) == null)
+        {
+            int loans0 = led.Income(clock.Day, Ledger.Loans);
+            bank.TakeLoan(10000);
+            T.Check("Finances: a loan is booked as Loans income", led.Income(clock.Day, Ledger.Loans) - loans0 == 10000);
+            Day();
+            T.Check("Finances: loan interest booked every day", led.Expense(clock.Day, Ledger.Interest) >= 150);
+            eco.AddMoney(20000);
+            int repay0 = led.Expense(clock.Day, Ledger.Loans);
+            int paid = bank.RepayWhatYouCan();
+            T.Check("Finances: repaying the loan booked as Loans expense", paid > 10000 && bank.Debt == 0 && led.Expense(clock.Day, Ledger.Loans) - repay0 == paid);
+        }
+        else Console.WriteLine("  (loan part skipped: " + bank.LoanBlock(10000) + ")");
+        int wages0 = led.Expense(clock.Day, Ledger.Wages);
+        using (Ledger.As(Ledger.Wages)) eco.Spend(100);
+        T.Check("Finances: wages scope", led.Expense(clock.Day, Ledger.Wages) - wages0 == 100);
+        T.Check("Finances: season totals add up the days", led.SeasonIncomeTotal >= led.DayIncome(clock.Day) && led.SeasonExpenseTotal >= led.DayExpense(clock.Day) && led.SeasonIncome(Ledger.Sales) >= s);
+        string fin = EconomyPages.FinancesText();
+        T.Check("Finances: page with categories, last 7 days and the season", fin.Contains("Sales") && fin.Contains("Purchases") && fin.Contains("Production") && fin.Contains("Season") && fin.Contains("Today") && fin.Contains("Net"), fin);
+
+        // ---- pages: pause menu, LB / RB, D-pad
+        GameMenu.Instance.Open(GameMenu.Mode.Pause);
+        var labels = GameMenu.Instance.List.Rows.Select(r => r.label()).ToList();
+        T.Check("Pages: pause menu has Market prices, Contracts, Production, Finances", new[] { "Market prices", "Contracts", "Production", "Finances" }.All(x => labels.Contains(UiText.T(x))));
+        GameMenu.Instance.List.Choose(labels.IndexOf(UiText.T("Finances")));
+        T.Check("Pages: Finances opens from the pause menu", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Finances && !GameMenu.IsOpen);
+        var prevPad = UnityEngine.InputSystem.Gamepad.current;
+        var pad = new UnityEngine.InputSystem.Gamepad();
+        UnityEngine.InputSystem.Gamepad.current = pad;
+        Pad(pad.rightShoulder);
+        T.Check("Pages: RB wraps from Finances to Inventory", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Inventory);
+        Pad(pad.leftShoulder); Pad(pad.leftShoulder); Pad(pad.leftShoulder); Pad(pad.leftShoulder);
+        T.Check("Pages: LB back to Prices", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Prices, FarmInfoScreen.Instance.Open.ToString());
+        Pad(pad.dpad.down); Pad(pad.dpad.down);
+        T.Check("Pages: D-pad down moves the goods row", FarmInfoScreen.Instance.Row == 2);
+        Pad(pad.dpad.right);
+        T.Check("Pages: D-pad right changes where loads are sold", m.Destination == m.Points[0].id);
+        Pad(pad.dpad.left);
+        Pad(pad.rightShoulder); Pad(pad.rightShoulder);
+        Pad(pad.dpad.right);
+        T.Check("Pages: Production page, D-pad right picks the next action", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Production && FarmInfoScreen.Instance.EconAction == 1);
+        Pad(pad.buttonEast);
+        T.Check("Pages: B closes", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.None && m.Destination == "");
+        UnityEngine.InputSystem.Gamepad.current = prevPad;
+        Loc.SetLanguage(Language.Arabic);
+        string ar = EconomyPages.PricesText(0) + EconomyPages.ContractsText(0) + EconomyPages.ProductionText(0, 0) + EconomyPages.FinancesText();
+        T.Check("Pages: in Arabic", ar.Any(ch => ch >= 'ﹰ') && !ar.Contains("Sell truck loads") && !ar.Contains("Contracts board") && !ar.Contains("Season"));
+        Loc.SetLanguage(Language.English);
+        yard.SetAuto(mill, false);
+        if (mill.inStore.Count > 0) { foreach (var kv in mill.inStore) eco.AddGood(kv.Key, kv.Value); mill.inStore.Clear(); }
+        T.SetProp(clock, "DayProgress", progress0);
+        T.Check("Market: no errors", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
+    }
+
+    /// <summary>Right before the save: set up and remember state to compare after the restart.</summary>
+    public static void Snapshot()
+    {
+        var m = MarketManager.Instance; var yard = ProcessingYard.Instance; var led = FinanceLedger.Instance; var eco = EconomyManager.Instance;
+        m.SetDestination("village");
+        if (m.Offers.Count > 0 && m.ActiveBoardContracts < m.MaxActive) m.Accept(m.Offers[0]);
+        m.SellAt("mill", "wheat", 1500f);
+        var mill = yard.Get("proc_mill");
+        if (!mill.owned) { eco.AddMoney(5000); eco.TryBuy("proc_mill"); }
+        yard.SetAuto(mill, true);
+        mill.inStore.Clear(); mill.inStore["wheat"] = 12.5f; mill.outStore.Clear();
+        mill.busy = true; mill.timeLeft = 30f; mill.output = "flour"; mill.outAmount = 16f; mill.line = true;
+        yard.Collect(mill);   // saves the plant
+        m.SetDestination("village");   // saves the market
+        snapDest = m.Destination; snapGlut = m.Glut("mill", "wheat"); snapHist = m.History("souq", "wheat").Count;
+        snapOffers = string.Join(",", m.Offers.Select(c => c.id + ":" + c.good + ":" + c.amount));
+        snapActive = string.Join(",", m.Contracts.Where(c => c.board).Select(c => c.id + ":" + c.dueDay + ":" + c.penalty));
+        snapLedgerSales = led.SeasonIncome(Ledger.Sales); snapLedgerProd = led.SeasonExpense(Ledger.Production);
+        snapAuto = mill.auto;
+    }
+
+    public static void AfterRestart()
+    {
+        var m = MarketManager.Instance; var yard = ProcessingYard.Instance; var led = FinanceLedger.Instance;
+        T.Check("Market: sell destination, supply pressure and price history restored", m.Destination == snapDest && Math.Abs(m.Glut("mill", "wheat") - snapGlut) < 0.0001f && m.History("souq", "wheat").Count == snapHist,
+            m.Destination + " " + m.Glut("mill", "wheat") + "/" + snapGlut + " " + m.History("souq", "wheat").Count + "/" + snapHist);
+        T.Check("Contracts: board and active contracts restored", string.Join(",", m.Offers.Select(c => c.id + ":" + c.good + ":" + c.amount)) == snapOffers
+            && string.Join(",", m.Contracts.Where(c => c.board).Select(c => c.id + ":" + c.dueDay + ":" + c.penalty)) == snapActive && snapActive.Length > 0, snapActive);
+        var mill = yard.Get("proc_mill");
+        T.Check("Production: building stores, running batch and auto mode restored", mill.owned && mill.auto == snapAuto && mill.line && mill.busy && Math.Abs(mill.InTotal - 12.5f) < 0.01f, mill.InTotal + " " + mill.auto + " " + mill.line);
+        T.Check("Finances: ledger restored", led.SeasonIncome(Ledger.Sales) == snapLedgerSales && led.SeasonExpense(Ledger.Production) == snapLedgerProd, led.SeasonIncome(Ledger.Sales) + " vs " + snapLedgerSales);
+        yard.SetAuto(mill, false);
+    }
+
+    public static void AfterNewGame()
+    {
+        var m = MarketManager.Instance; var yard = ProcessingYard.Instance; var led = FinanceLedger.Instance;
+        T.Check("New game resets the market (prices, events, destination, contracts)", m.Destination == "" && m.Events.Count == 0 && m.Glut("mill", "wheat") == 0f && m.ActiveBoardContracts == 0 && m.Offers.Count == 3,
+            m.Destination + " " + m.Events.Count + " " + m.ActiveBoardContracts + " " + m.Offers.Count);
+        T.Check("New game clears production lines and the ledger", yard.Plants.All(p => !p.owned && p.inStore.Count == 0 && p.outStore.Count == 0 && !p.auto) && Ledger.Categories.All(c => !led.Used(c)),
+            string.Join(",", Ledger.Categories.Where(c => led.Used(c))));
     }
 }

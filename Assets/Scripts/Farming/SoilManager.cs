@@ -263,7 +263,7 @@ public class SoilManager : MonoBehaviour
         int bill = Mathf.RoundToInt(WaterCostToday);
         if (bill > 0 && EconomyManager.Instance != null)
         {
-            EconomyManager.Instance.AddMoney(-bill);
+            using (Ledger.As(Ledger.Utilities)) EconomyManager.Instance.AddMoney(-bill);
             Say(SoilText.R("Groundwater pumping") + ": " + WaterTodayM3.ToString("F0") + " m3, " + bill + " " + Loc.Raw("SAR"));
         }
         WaterTodayM3 = 0f; WaterCostToday = 0f;
@@ -284,7 +284,7 @@ public class SoilManager : MonoBehaviour
         {
             int extra = Mathf.RoundToInt(crop.seedPrice * (SoilModel.DensitySeed[Density] - 1f));
             if (extra > 0 && eco.Money < extra) s.density = 1;            // can't pay for the extra seed: sow normally
-            else if (extra != 0) eco.AddMoney(-extra);                     // high density buys more seed; low density sells the rest back
+            else if (extra != 0) using (Ledger.As(Ledger.Purchases)) eco.AddMoney(-extra);                     // high density buys more seed; low density sells the rest back
             s.cycCost += crop.seedPrice * SoilModel.DensitySeed[s.density];
         }
         SavePlot(p.index);

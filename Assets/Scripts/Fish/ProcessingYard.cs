@@ -7,6 +7,11 @@ using UnityEngine;
 /// E at a building starts a batch: it takes up to inputAmount of an input good from farm storage, works for
 /// 'seconds' game seconds and puts the higher-value output into storage. Recipes in Resources/Data/processing.json
 /// (a recipe lists alternative inputs, e.g. any fruit for the juice press; buildings with several recipes take turns).
+/// Production lines (Production page, FarmInfoScreen): each building also has an input store and an output store. Supply
+/// moves inputs from farm storage into the input store; the building then runs batches by itself at the same rate into its
+/// output store; Collect moves outputs to farm storage, Sell sells them straight from the building (best selling point),
+/// Auto supplies and collects after every batch and each morning. A building that worked during a day costs its dailyCost
+/// (booked as production costs). Buildings whose goods don't exist in this game stay locked.
 /// </summary>
 [MazraaSystem(62)]
 public class ProcessingYard : MonoBehaviour
@@ -21,6 +26,12 @@ public class ProcessingYard : MonoBehaviour
         public int nextRecipe;
         public string output;
         public GameObject visual;
+        // production line
+        public readonly Dictionary<string, float> inStore = new Dictionary<string, float>();
+        public readonly Dictionary<string, float> outStore = new Dictionary<string, float>();
+        public bool auto, line, worked;
+        public float InTotal { get { float s = 0f; foreach (var v in inStore.Values) s += v; return s; } }
+        public float OutTotal { get { float s = 0f; foreach (var v in outStore.Values) s += v; return s; } }
     }
 
     public ProcFile Data { get; private set; }
@@ -47,6 +58,11 @@ public class ProcessingYard : MonoBehaviour
             p.outAmount = SaveData.GetFloat(k + "out", 0f);
             p.output = SaveData.GetString(k + "output", "");
             p.nextRecipe = SaveData.GetInt(k + "next", 0);
+            p.auto = SaveData.GetInt(k + "auto", 0) == 1;
+            p.line = SaveData.GetInt(k + "line", 0) == 1;
+            p.worked = SaveData.GetInt(k + "worked", 0) == 1;
+            ReadStore(SaveData.GetString(k + "in", ""), p.inStore);
+            ReadStore(SaveData.GetString(k + "outStore", ""), p.outStore);
             Plants.Add(p);
             var plant = p;
             ShopCatalog.Register(new ShopEntry
@@ -55,7 +71,7 @@ public class ProcessingYard : MonoBehaviour
                 name = () => FishRules.Name(plant.def.nameEn, plant.def.nameAr),
                 detail = () => plant.owned ? "(" + FishText.Raw("Built") + ")" : "",
                 price = () => plant.def.price,
-                blockReason = () => plant.owned ? "Already built" : null,
+                blockReason = () => plant.owned ? "Already built" : !Usable(plant) ? "Needs goods this map doesn't have" : null,
                 onBought = () => { plant.owned = true; SavePlant(plant); if (Instance != null) Instance.BuildVisual(plant); }
             });
         }
@@ -68,19 +84,22 @@ public class ProcessingYard : MonoBehaviour
         yard = FishSite.At("ProcessingSpot", -8f, -18f);
         yardRot = FishSite.Facing();
         built = true;
+        int rows = Mathf.Max(1, (Plants.Count + 3) / 4);
         var sign = new GameObject("Processing Yard");
         sign.transform.SetPositionAndRotation(yard, yardRot);
-        Build.Part(PrimitiveType.Cube, sign.transform, new Vector3(0, 0.03f, 0), new Vector3(30f, 0.04f, 7f), Build.Mat(new Color(0.55f, 0.53f, 0.5f), 0.1f), "Yard floor");
+        Build.Part(PrimitiveType.Cube, sign.transform, new Vector3(0, 0.03f, -(rows - 1) * 3.75f), new Vector3(30f, 0.04f, 7f + (rows - 1) * 7.5f), Build.Mat(new Color(0.55f, 0.53f, 0.5f), 0.1f), "Yard floor");
         string label = "Processing yard";
         Build.Label(sign.transform, new Vector3(0, 5.2f, 3.6f), label, 3f, Color.white);
         foreach (var p in Plants) if (p.owned) BuildVisual(p);
         GameEvents.NewGameStarted += ResetAll;
+        WorldClock.DayStarted += OnNewDay;
         if (!HudLines.Status.Contains(HudLine)) HudLines.Status.Add(HudLine);
     }
 
     private void OnDestroy()
     {
         GameEvents.NewGameStarted -= ResetAll;
+        WorldClock.DayStarted -= OnNewDay;
         if (Instance == this) Instance = null;
     }
 
@@ -122,7 +141,7 @@ public class ProcessingYard : MonoBehaviour
             if (input == null) continue;
             float take = Mathf.Min(eco.Stored(input), r.inputAmount);
             if (!eco.TakeGood(input, take)) continue;
-            p.busy = true;
+            p.busy = true; p.worked = true; p.line = false;
             p.timeLeft = Mathf.Max(1f, p.def.seconds);
             p.output = r.output;
             p.outAmount = OutputFor(r, take);
@@ -155,6 +174,7 @@ public class ProcessingYard : MonoBehaviour
         bool any = false;
         foreach (var p in Plants)
         {
+            if (!p.busy && p.owned && p.inStore.Count > 0) StartLine(p);
             if (!p.busy) continue;
             any = true;
             p.timeLeft -= Time.deltaTime;
@@ -172,11 +192,15 @@ public class ProcessingYard : MonoBehaviour
         p.busy = false; p.timeLeft = 0f;
         var eco = EconomyManager.Instance;
         float amount = Mathf.Round(p.outAmount * 10f) / 10f;
-        if (eco != null && amount > 0f) eco.AddGood(p.output, amount);
+        bool line = p.line;
+        p.line = false;
+        if (line && amount > 0f) p.outStore[p.output] = Stored(p.outStore, p.output) + amount;
+        else if (eco != null && amount > 0f) eco.AddGood(p.output, amount);
         var g = eco != null ? eco.Good(p.output) : null;
         SavePlant(p);
         GameEvents.RaiseCustom("processBatch", 1f);
         GameEvents.RaiseCustom("process_" + p.output, amount);
+        if (line) { if (p.auto) { Collect(p); Supply(p); } return; }   // production line: quiet, see the Production page
         if (UIManager.Instance != null)
             UIManager.Instance.ShowAlertMessage(Loc.Display(FishRules.Name(p.def.nameEn, p.def.nameAr) + ": +" + amount.ToString("F0") + " " + EconomyManager.Unit(g) + " " + EconomyManager.GoodName(g)));
         if (AudioManager.Instance != null) AudioManager.Instance.PlayHarvest();
@@ -198,6 +222,153 @@ public class ProcessingYard : MonoBehaviour
         return Loc.Display(FishText.Raw("Processing") + ": " + string.Join(", ", parts.ToArray()));
     }
 
+    // ---------------- production lines ----------------
+
+    /// <summary>True if at least one recipe's output and one of its inputs exist in this game.</summary>
+    public static bool Usable(Plant p)
+    {
+        var eco = EconomyManager.Instance;
+        if (eco == null || p?.def?.recipes == null) return false;
+        foreach (var r in p.def.recipes)
+            if (r != null && eco.Good(r.output) != null && r.inputs != null)
+                foreach (var g in r.inputs) if (eco.Good(g) != null) return true;
+        return false;
+    }
+
+    /// <summary>Input goods of a building that exist in this game.</summary>
+    public static List<string> Inputs(Plant p)
+    {
+        var list = new List<string>();
+        var eco = EconomyManager.Instance;
+        if (eco == null || p?.def?.recipes == null) return list;
+        foreach (var r in p.def.recipes)
+            if (r?.inputs != null && eco.Good(r.output) != null)
+                foreach (var g in r.inputs) if (eco.Good(g) != null && !list.Contains(g)) list.Add(g);
+        return list;
+    }
+
+    /// <summary>Units of input per minute of work (first recipe).</summary>
+    public static float RatePerMinute(Plant p) => p?.def?.recipes == null || p.def.recipes.Length == 0 ? 0f : p.def.recipes[0].inputAmount * 60f / Mathf.Max(1f, p.def.seconds);
+
+    private static float Stored(Dictionary<string, float> d, string id) => d.TryGetValue(id, out var v) ? v : 0f;
+
+    /// <summary>Move inputs from farm storage into the building (up to its input capacity). Returns the amount moved.</summary>
+    public float Supply(Plant p)
+    {
+        var eco = EconomyManager.Instance;
+        if (p == null || !p.owned || eco == null) return 0f;
+        float moved = 0f;
+        foreach (var g in Inputs(p))
+        {
+            float room = Mathf.Max(0f, p.def.inputCapacity - p.InTotal);
+            float take = Mathf.Min(room, Mathf.Floor(eco.Stored(g) * 10f) / 10f);
+            if (take <= 0f || !eco.TakeGood(g, take)) continue;
+            p.inStore[g] = Stored(p.inStore, g) + take;
+            moved += take;
+        }
+        SavePlant(p);
+        return moved;
+    }
+
+    /// <summary>Move finished goods from the building to farm storage. Returns the amount moved.</summary>
+    public float Collect(Plant p)
+    {
+        var eco = EconomyManager.Instance;
+        if (p == null || eco == null) return 0f;
+        float moved = 0f;
+        foreach (var kv in new List<KeyValuePair<string, float>>(p.outStore))
+        {
+            if (kv.Value > 0f && eco.Good(kv.Key) != null) { eco.AddGood(kv.Key, kv.Value); moved += kv.Value; }
+            p.outStore.Remove(kv.Key);
+        }
+        SavePlant(p);
+        return moved;
+    }
+
+    /// <summary>Sell the building's output store straight away (best selling point, contracts first). Returns SAR earned.</summary>
+    public int SellOutputs(Plant p, List<string> notes = null)
+    {
+        var eco = EconomyManager.Instance;
+        if (p == null || eco == null || p.outStore.Count == 0) return 0;
+        var cargo = new Dictionary<string, float>(p.outStore);
+        p.outStore.Clear();
+        SavePlant(p);
+        return eco.SellAll(cargo, notes ?? new List<string>());
+    }
+
+    public void SetAuto(Plant p, bool on)
+    {
+        if (p == null) return;
+        p.auto = on;
+        if (on) { Collect(p); Supply(p); }
+        SavePlant(p);
+    }
+
+    /// <summary>Production line: start a batch from the building's own input store.</summary>
+    private void StartLine(Plant p)
+    {
+        var eco = EconomyManager.Instance;
+        if (eco == null || p.def.recipes == null || p.def.recipes.Length == 0 || p.OutTotal >= p.def.outputCapacity) return;
+        int n = p.def.recipes.Length;
+        for (int k = 0; k < n; k++)
+        {
+            int i = (p.nextRecipe + k) % n;
+            var r = p.def.recipes[i];
+            if (eco.Good(r.output) == null) continue;
+            string input = PickInput(r, g => Stored(p.inStore, g), g => eco.Good(g) != null);
+            if (input == null) continue;
+            float take = Mathf.Min(Stored(p.inStore, input), r.inputAmount);
+            float left = Stored(p.inStore, input) - take;
+            if (left < 0.05f) p.inStore.Remove(input); else p.inStore[input] = left;
+            p.busy = true; p.line = true; p.worked = true;
+            p.timeLeft = Mathf.Max(1f, p.def.seconds);
+            p.output = r.output;
+            p.outAmount = OutputFor(r, take);
+            p.nextRecipe = (i + 1) % n;
+            SavePlant(p);
+            return;
+        }
+        // leftovers under one unit can't start a batch: give them back to the farm
+        foreach (var kv in new List<KeyValuePair<string, float>>(p.inStore))
+            if (kv.Value < 1f) { p.inStore.Remove(kv.Key); eco.AddGood(kv.Key, kv.Value); }
+        SavePlant(p);
+    }
+
+    private void OnNewDay(int day)
+    {
+        if (NetSession.IsClient) return;   // co-op: the host runs daily costs
+        var eco = EconomyManager.Instance;
+        foreach (var p in Plants)
+        {
+            if (!p.owned) continue;
+            if (p.worked && p.def.dailyCost > 0 && eco != null)
+                using (Ledger.As(Ledger.Production)) eco.AddMoney(-p.def.dailyCost);
+            p.worked = p.busy;
+            if (p.auto) { Collect(p); Supply(p); }
+            SavePlant(p);
+        }
+    }
+
+    private static void ReadStore(string s, Dictionary<string, float> d)
+    {
+        d.Clear();
+        if (string.IsNullOrEmpty(s)) return;
+        foreach (var part in s.Split(';'))
+        {
+            int i = part.LastIndexOf(':');
+            if (i <= 0) continue;
+            if (float.TryParse(part.Substring(i + 1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) && v > 0f)
+                d[part.Substring(0, i)] = v;
+        }
+    }
+
+    private static string WriteStore(Dictionary<string, float> d)
+    {
+        var parts = new List<string>();
+        foreach (var kv in d) parts.Add(kv.Key + ":" + kv.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+        return string.Join(";", parts.ToArray());
+    }
+
     // ---------------- world ----------------
 
     private void BuildVisual(Plant p)
@@ -205,7 +376,7 @@ public class ProcessingYard : MonoBehaviour
         if (!built || p.visual != null) return;
         int index = Plants.IndexOf(p);
         var root = new GameObject("Processing " + p.def.id);
-        Vector3 local = new Vector3(-10.5f + index * 7f, 0, 0);
+        Vector3 local = new Vector3(-10.5f + (index % 4) * 7f, 0, -(index / 4) * 7.5f);   // rows of four
         root.transform.SetPositionAndRotation(Build.OnGround(yard + yardRot * local), yardRot);
         p.visual = root;
         var walls = Build.Mat(new Color(p.def.r, p.def.g, p.def.b), 0.2f);
@@ -247,6 +418,11 @@ public class ProcessingYard : MonoBehaviour
         SaveData.SetFloat(k + "out", p.outAmount);
         SaveData.SetString(k + "output", p.output ?? "");
         SaveData.SetInt(k + "next", p.nextRecipe);
+        SaveData.SetInt(k + "auto", p.auto ? 1 : 0);
+        SaveData.SetInt(k + "line", p.line ? 1 : 0);
+        SaveData.SetInt(k + "worked", p.worked ? 1 : 0);
+        SaveData.SetString(k + "in", WriteStore(p.inStore));
+        SaveData.SetString(k + "outStore", WriteStore(p.outStore));
         SaveData.Save();
     }
 
@@ -255,6 +431,7 @@ public class ProcessingYard : MonoBehaviour
         foreach (var p in Plants)
         {
             p.owned = false; p.busy = false; p.timeLeft = 0f; p.outAmount = 0f; p.output = ""; p.nextRecipe = 0;
+            p.auto = false; p.line = false; p.worked = false; p.inStore.Clear(); p.outStore.Clear();
             if (p.visual != null) { Destroy(p.visual); p.visual = null; }
             SavePlant(p);
         }

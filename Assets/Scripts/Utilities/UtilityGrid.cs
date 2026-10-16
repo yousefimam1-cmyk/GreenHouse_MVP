@@ -176,7 +176,7 @@ public class UtilityGrid : MonoBehaviour
         int bill = Mathf.RoundToInt(Model.EndDay(c != null ? c.Season : Season.Spring, c != null ? c.Weather : Weather.Sunny));
         if (bill > 0 && EconomyManager.Instance != null)
         {
-            EconomyManager.Instance.AddMoney(-bill);
+            using (Ledger.As(Ledger.Utilities)) EconomyManager.Instance.AddMoney(-bill);
             Say(Loc.T("SEC electricity bill: {0} SAR", bill));
         }
         if (okYesterday) GameEvents.RaiseCustom("powerOkDay", 1f);

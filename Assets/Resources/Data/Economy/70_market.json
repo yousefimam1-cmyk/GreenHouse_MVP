@@ -1,0 +1,10 @@
+{
+  "notes": "Processed goods made by the production buildings added with the market update (processing.json): olive oil, tomato paste, cotton lint, milled rice, sugar. Inputs for the last three (cotton, rice, sugarcane) come from the Egypt crops pack; those buildings stay locked when their inputs don't exist. Prices in SAR (game balance).",
+  "goods": [
+    { "id": "olive_oil",     "nameEn": "Olive oil",     "nameAr": "زيت زيتون",  "unitEn": "L",  "unitAr": "لتر", "price": 65, "weight": 0.9 },
+    { "id": "tomato_paste",  "nameEn": "Tomato paste",  "nameAr": "صلصة طماطم", "unitEn": "kg", "unitAr": "كجم", "price": 55, "weight": 1 },
+    { "id": "cotton_lint",   "nameEn": "Cotton lint",   "nameAr": "قطن محلوج",  "unitEn": "kg", "unitAr": "كجم", "price": 60, "weight": 1 },
+    { "id": "milled_rice",   "nameEn": "Milled rice",   "nameAr": "أرز أبيض",   "unitEn": "kg", "unitAr": "كجم", "price": 14, "weight": 1 },
+    { "id": "sugar",         "nameEn": "Sugar",         "nameAr": "سكر",        "unitEn": "kg", "unitAr": "كجم", "price": 14, "weight": 1 }
+  ]
+}

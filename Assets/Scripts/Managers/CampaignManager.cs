@@ -103,7 +103,7 @@ public class CampaignManager : MonoBehaviour
         if (SaveData.GetInt(PaidKey, 0) > chapterDone) return;
         SaveData.SetInt(PaidKey, chapterDone + 1);
         int reward = Chapters[chapterDone].reward;
-        if (reward > 0 && EconomyManager.Instance != null) EconomyManager.Instance.AddMoney(reward);
+        if (reward > 0 && EconomyManager.Instance != null) { using (Ledger.As(Ledger.Rewards)) EconomyManager.Instance.AddMoney(reward); }
         bool last = chapterDone + 1 >= Chapters.Length;
         Show(ChapterCard(chapterDone, false, reward), 14f);
         if (last && UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T("Campaign complete!"));

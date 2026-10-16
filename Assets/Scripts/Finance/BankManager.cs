@@ -119,7 +119,7 @@ public class BankManager : MonoBehaviour
         if (LoanBlock(size) != null || EconomyManager.Instance == null) return false;
         Debt += size;
         Save();
-        EconomyManager.Instance.AddMoney(size);
+        using (Ledger.As(Ledger.Loans)) EconomyManager.Instance.AddMoney(size);
         GameEvents.RaiseCustom("takeLoan", 1f);
         FinText.Alert(FinText.T("Loan approved: {0} SAR. Interest 1.5% a day", size.ToString("N0")));
         return true;
@@ -145,7 +145,8 @@ public class BankManager : MonoBehaviour
         var eco = EconomyManager.Instance;
         if (eco == null || Debt <= 0) return 0;
         int pay = Mathf.Min(Mathf.Min(Debt, max), eco.Money);
-        if (pay <= 0 || !eco.Spend(pay)) return 0;
+        bool ok; using (Ledger.As(Ledger.Loans)) ok = pay > 0 && eco.Spend(pay);
+        if (!ok) return 0;
         Paid(pay);
         return pay;
     }
@@ -163,6 +164,7 @@ public class BankManager : MonoBehaviour
         int interest = Mathf.CeilToInt(Debt * DailyInterest);
         Debt += interest; InterestPaid += interest;
         Save();
+        if (FinanceLedger.Instance != null) FinanceLedger.Instance.Add(Ledger.Interest, -interest);   // accrued on the loan, booked daily
         if (AutoRepay) RepayWhatYouCan(Mathf.Max(500, Mathf.CeilToInt(Debt * AutoRepayShare)));
     }
 

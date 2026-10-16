@@ -143,7 +143,7 @@ public class DailyQuests : MonoBehaviour
     private void Complete(ActiveQuest q)
     {
         q.done = true;
-        if (EconomyManager.Instance != null) EconomyManager.Instance.AddMoney(q.reward);
+        if (EconomyManager.Instance != null) { using (Ledger.As(Ledger.Rewards)) EconomyManager.Instance.AddMoney(q.reward); }
         CozyFx.Alert(Loc.Display(Loc.Raw("Daily quest complete") + ": " + Title(q) + "  +" + q.reward + " " + Loc.Raw("SAR")));
         GameEvents.RaiseCustom("dailyQuestDone", 1f);
     }

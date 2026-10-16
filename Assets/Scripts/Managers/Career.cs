@@ -33,7 +33,7 @@ public static class Career
         if (eco != null)
         {
             int diff = StartMoney(start) - eco.Money;
-            if (diff != 0) eco.AddMoney(diff);
+            if (diff != 0) using (Ledger.As(Ledger.Skip)) eco.AddMoney(diff);   // starting capital, not income
         }
     }
 }

@@ -111,7 +111,8 @@ public class WorkerManager : MonoBehaviour
         foreach (var d in Defs)
         {
             if (!hired.Contains(d.role)) continue;
-            if (!eco.Spend(d.wage)) Dismiss(d.role, true);
+            bool paid; using (Ledger.As(Ledger.Wages)) paid = eco.Spend(d.wage);
+            if (!paid) Dismiss(d.role, true);
         }
     }
 
@@ -240,7 +241,7 @@ public class WorkerManager : MonoBehaviour
         var notes = new List<string>();
         int earned = eco.SellAll(TripCargo, notes);
         int fee = Mathf.RoundToInt(earned * DriverFee);
-        eco.AddMoney(-fee);
+        using (Ledger.As(Ledger.Wages)) eco.AddMoney(-fee);
         LastTripEarned = earned - fee;
         Actor a;
         if (actors.TryGetValue(WorkerRole.Driver, out a) && a != null) a.gameObject.SetActive(true);

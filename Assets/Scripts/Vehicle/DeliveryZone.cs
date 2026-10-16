@@ -80,7 +80,7 @@ public class DeliveryZone : MonoBehaviour
         if (added > 0.5f)
         {
             int cost = Mathf.CeilToInt(added) * FuelPricePerLitre;
-            eco.AddMoney(-cost);
+            using (Ledger.As(Ledger.Fuel)) eco.AddMoney(-cost);
             Alert(Loc.T("Refuelled {0} L for {1} SAR", added.ToString("F0"), cost.ToString("N0")));
         }
         else Alert(Loc.T("Not enough money"));

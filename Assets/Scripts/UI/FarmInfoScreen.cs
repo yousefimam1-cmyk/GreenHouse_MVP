@@ -7,14 +7,17 @@ using UnityEngine.UI;
 /// I = inventory (goods in storage, truck cargo, seeds, feed, animals), O = farm stats (money earned, kg harvested,
 /// days played, missions done), Fields = precision farming (SoilManager: every field's soil, expected yield, limiting factor,
 /// yield history). LB / RB or 1-3 switch pages; on the Fields page Left / Right sets the sowing density and Up / Down scrolls
-/// the fields. Esc / B or the same key closes. Also tracks "money earned" (every increase of the
+/// the fields. Prices / Contracts / Production / Finances = the economy pages (EconomyPages: market prices per good and
+/// selling point, contracts board, production lines, farm accounts); LB / RB or 1-7 switch pages, Up / Down picks a row,
+/// Left / Right changes its value and A / Enter acts. Esc / B or the same key closes. Also tracks "money earned" (every increase of the
 /// balance), saved as "mazraa.ui.moneyEarned" in the save file, so a New Game resets it.
 /// </summary>
 [MazraaSystem(55)]
 public class FarmInfoScreen : MonoBehaviour
 {
     public const string EarnedKey = "mazraa.ui.moneyEarned";
-    public enum Page { None, Inventory, Stats, Fields }
+    public enum Page { None, Inventory, Stats, Fields, Prices, Contracts, Production, Finances }
+    public const int PageCount = 7;
     public const int FieldsPerPage = 4;
 
     public static FarmInfoScreen Instance { get; private set; }
@@ -84,12 +87,13 @@ public class FarmInfoScreen : MonoBehaviour
             if (Time.frameCount == openedFrame) return;
             Page key = GameInput.Pressed(GameAction.Inventory) ? Page.Inventory : GameInput.Pressed(GameAction.Stats) ? Page.Stats : Page.None;
             int digit = MenuNav.Digit();
-            if (digit >= 0 && digit <= 2) key = (Page)(digit + 1);
-            else if (MenuNav.PageNext()) key = (Page)((int)Open % 3 + 1);
-            else if (MenuNav.PagePrev()) key = (Page)(((int)Open + 1) % 3 + 1);
+            if (digit >= 0 && digit < PageCount) key = (Page)(digit + 1);
+            else if (MenuNav.PageNext()) key = (Page)((int)Open % PageCount + 1);
+            else if (MenuNav.PagePrev()) key = (Page)(((int)Open + PageCount - 2) % PageCount + 1);
             if (MenuNav.Back() || (key == Open && digit < 0 && (key == Page.Inventory || key == Page.Stats))) Close();
             else if (key != Page.None && key != Open) Show(key);
             else if (Open == Page.Fields) FieldsInput();
+            else if (Open >= Page.Prices) EconomyInput();
             return;
         }
         bool blocked = Time.timeScale == 0f || (UIManager.Instance != null && UIManager.Instance.IsUIOpened) || UIManager.PanelClosedFrame == Time.frameCount;
@@ -117,6 +121,29 @@ public class FarmInfoScreen : MonoBehaviour
 
     public int FieldOffset => fieldOffset;
 
+    // ---------------- economy pages (EconomyPages): Up / Down rows, Left / Right value, A / Enter acts ----------------
+    private readonly int[] econRow = new int[PageCount + 1];
+    public int EconAction { get; private set; }
+    public int Row => econRow[(int)Open];
+
+    private void EconomyInput()
+    {
+        int v = MenuNav.Vertical(), h = MenuNav.Horizontal();
+        if (v != 0) MoveRow(v);
+        if (h != 0) { int a = EconAction; if (EconomyPages.Adjust(Open, Row, ref a, h)) { EconAction = a; Refresh(); } }
+        if (MenuNav.Confirm()) { EconomyPages.Confirm(Open, Row, EconAction); Refresh(); }
+        refreshTimer -= Time.unscaledDeltaTime;
+        if (refreshTimer <= 0f) { refreshTimer = 1f; Refresh(); }
+    }
+
+    /// <summary>Move the selected row of an economy page.</summary>
+    public void MoveRow(int dir)
+    {
+        int n = EconomyPages.RowCount(Open);
+        econRow[(int)Open] = Mathf.Clamp(Row + dir, 0, Mathf.Max(0, n - 1));
+        Refresh();
+    }
+
     public void Show(Page page)
     {
         if (canvas == null || page == Page.None) return;
@@ -143,9 +170,24 @@ public class FarmInfoScreen : MonoBehaviour
         if (text == null || Open == Page.None) return;
         Loc.ApplyFont(text);
         text.alignment = Loc.IsArabic ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
-        string body = Open == Page.Inventory ? InventoryText() : Open == Page.Stats ? StatsText() : "<size=72%>" + SoilManager.FieldsText(fieldOffset, FieldsPerPage) + "</size>";
-        string hint = Open == Page.Inventory ? "[I] or [Esc] close   [O] Farm stats" : Open == Page.Stats ? "[O] or [Esc] close   [I] Inventory" : "Left / Right: sowing density   Up / Down: more fields   [Esc] close";
-        text.text = body + "\n\n<size=80%><color=#BBBBBB>" + Glyphs.Apply(UiText.T(hint)) + "\n" + Glyphs.Apply(UiText.T("[LB] [RB] or 1 2 3: Inventory / Farm stats / Fields")) + "</color></size>";
+        econRow[(int)Open] = Mathf.Clamp(Row, 0, Mathf.Max(0, EconomyPages.RowCount(Open) - 1));
+        string body;
+        switch (Open)
+        {
+            case Page.Inventory: body = InventoryText(); break;
+            case Page.Stats: body = StatsText(); break;
+            case Page.Fields: body = "<size=72%>" + SoilManager.FieldsText(fieldOffset, FieldsPerPage) + "</size>"; break;
+            case Page.Prices: body = "<size=72%>" + EconomyPages.PricesText(Row) + "</size>"; break;
+            case Page.Contracts: body = "<size=72%>" + EconomyPages.ContractsText(Row) + "</size>"; break;
+            case Page.Production: body = "<size=72%>" + EconomyPages.ProductionText(Row, EconAction) + "</size>"; break;
+            default: body = "<size=80%>" + EconomyPages.FinancesText() + "</size>"; break;
+        }
+        string hint = Open == Page.Inventory ? "[I] or [Esc] close   [O] Farm stats" : Open == Page.Stats ? "[O] or [Esc] close   [I] Inventory"
+            : Open == Page.Fields ? "Left / Right: sowing density   Up / Down: more fields   [Esc] close"
+            : Open == Page.Prices ? "Up / Down: goods   Left / Right: where to sell   [Esc] close"
+            : Open == Page.Contracts ? "Up / Down: contracts   [Enter] accept   [Esc] close"
+            : Open == Page.Production ? "Up / Down: buildings   Left / Right: action   [Enter] do it   [Esc] close" : "[Esc] close";
+        text.text = body + "\n\n<size=80%><color=#BBBBBB>" + Glyphs.Apply(UiText.T(hint)) + "\n" + Glyphs.Apply(UiText.T("[LB] [RB] or 1-7: Inventory / Stats / Fields / Prices / Contracts / Production / Finances")) + "</color></size>";
     }
 
     private static string Line(string s) => "\n" + Loc.Display(s);

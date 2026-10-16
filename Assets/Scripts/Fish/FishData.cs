@@ -33,7 +33,7 @@ public class FishFile
 }
 
 [Serializable] public class ProcRecipe { public string[] inputs; public float inputAmount = 10f; public string output; public float outputAmount = 5f; }
-[Serializable] public class ProcBuilding { public string id, nameEn, nameAr; public int price = 3000; public float seconds = 60f, r = 0.8f, g = 0.7f, b = 0.5f; public ProcRecipe[] recipes; }
+[Serializable] public class ProcBuilding { public string id, nameEn, nameAr; public int price = 3000, dailyCost = 40; public float seconds = 60f, r = 0.8f, g = 0.7f, b = 0.5f, inputCapacity = 200f, outputCapacity = 200f; public ProcRecipe[] recipes; }
 [Serializable] public class ProcFile { public ProcBuilding[] buildings; }
 
 /// <summary>Pure fishing rules (time bands, eligible species, weighted pick, catch chance). Tested headless.</summary>

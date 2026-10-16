@@ -257,7 +257,7 @@ public abstract class Vehicle : Interactable
         if (tow)
         {
             p = VehicleSpawner.Instance.LoadingBay + transform.right * 3f;
-            if (EconomyManager.Instance != null) EconomyManager.Instance.AddMoney(-TowFee);
+            if (EconomyManager.Instance != null) using (Ledger.As(Ledger.Repairs)) EconomyManager.Instance.AddMoney(-TowFee);
             Fuel = Mathf.Max(Fuel, 5f);
             if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T("Towed to the loading bay for {0} SAR", TowFee));
         }

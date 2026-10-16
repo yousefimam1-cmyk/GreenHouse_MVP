@@ -144,11 +144,13 @@ public class GameHUD : MonoBehaviour
             foreach (var c in market.Contracts)
             {
                 var g = eco.Good(c.good);
-                sb.Append('\n').Append(Loc.Display(MarketManager.BuyerName(c) + ": " + c.delivered.ToString("F0") + "/" + c.amount.ToString("F0") + " " + EconomyManager.Unit(g) + " " + EconomyManager.GoodName(g)));
-                sb.Append("\n<size=80%><color=#BBBBBB>").Append(Loc.Display("+" + Mathf.RoundToInt((c.bonus - 1f) * 100f) + "% - " + Loc.Raw("due day") + " " + c.dueDay)).Append("</color></size>");
+                string what = c.Field() ? Loc.Raw(c.task) : EconomyManager.Unit(g) + " " + EconomyManager.GoodName(g);
+                sb.Append('\n').Append(Loc.Display(MarketManager.BuyerName(c) + ": " + c.delivered.ToString("F0") + "/" + c.amount.ToString("F0") + " " + what));
+                string pay = c.unitPrice > 0f ? c.unitPrice.ToString("F1") + " " + Loc.Raw("SAR") : c.Field() ? c.reward.ToString("N0") + " " + Loc.Raw("SAR") : "+" + Mathf.RoundToInt((c.bonus - 1f) * 100f) + "%";
+                sb.Append("\n<size=80%><color=#BBBBBB>").Append(Loc.Display(pay + " - " + Loc.Raw("due day") + " " + c.dueDay)).Append("</color></size>");
             }
         }
-        sb.Append("\n<size=80%>").Append(Loc.T("[M] close")).Append("</size>");
+        sb.Append("\n<size=80%>").Append(Loc.T("[M] close")).Append(" · ").Append(Loc.T("Pause menu: Market prices, Contracts, Production, Finances")).Append("</size>");
         priceText.text = sb.ToString();
     }
 

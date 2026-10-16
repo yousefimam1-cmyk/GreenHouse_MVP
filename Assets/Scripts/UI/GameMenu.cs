@@ -213,6 +213,10 @@ public class GameMenu : MonoBehaviour
             rows.Add(MenuRow.Button(() => UiText.T("Farm overview"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Stats); }));
             rows.Add(MenuRow.Button(() => UiText.T("Inventory"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Inventory); }));
             rows.Add(MenuRow.Button(() => UiText.T("Fields (precision farming)"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Fields); }));
+            rows.Add(MenuRow.Button(() => UiText.T("Market prices"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Prices); }));
+            rows.Add(MenuRow.Button(() => UiText.T("Contracts"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Contracts); }));
+            rows.Add(MenuRow.Button(() => UiText.T("Production"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Production); }));
+            rows.Add(MenuRow.Button(() => UiText.T("Finances"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Finances); }));
             if (CampaignManager.Instance != null && CampaignManager.Instance.Chapters.Length > 0)
                 rows.Add(MenuRow.Button(() => UiText.T("Campaign"), () => Go(PageId.Campaign)));
             rows.Add(MenuRow.Button(() => UiText.T("Save game"), () => Go(PageId.Save)));

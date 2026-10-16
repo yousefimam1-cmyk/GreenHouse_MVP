@@ -153,7 +153,10 @@ public class EconomyManager : MonoBehaviour
         // Career economy difficulty and the region's market (both 1.0 on Normal in Najd).
         float mul = Career.SellMultiplier * (Regions.Current != null && Regions.Current.market > 0f ? Regions.Current.market : 1f);
         int earned = Mathf.RoundToInt(total * mul);
-        AddMoney(earned);
+        // Farm accounts: contract deliveries are booked as contracts, the rest as sales.
+        int fromContracts = MarketManager.Instance != null ? Mathf.Clamp(Mathf.RoundToInt(MarketManager.Instance.LastContractEarnings * mul), 0, earned) : 0;
+        using (Ledger.As(Ledger.Contracts)) AddMoney(fromContracts);
+        using (Ledger.As(Ledger.Sales)) AddMoney(earned - fromContracts);
         GameEvents.RaiseDelivered(weight, earned);
         return earned;
     }
@@ -161,7 +164,9 @@ public class EconomyManager : MonoBehaviour
     public void AddMoney(int amount)
     {
         if (amount == 0) return;
+        int before = Money;
         Money = Mathf.Max(0, Money + amount);
+        Ledger.Money(Money - before, Ledger.Other);
         Save();
         GameEvents.RaiseMoneyChanged(Money);
     }
@@ -192,7 +197,9 @@ public class EconomyManager : MonoBehaviour
     public bool Spend(int amount)
     {
         if (amount < 0 || Money < amount) return false;
-        Money -= amount; Save(); GameEvents.RaiseMoneyChanged(Money);
+        Money -= amount; Save();
+        Ledger.Money(-amount, Ledger.Purchases);
+        GameEvents.RaiseMoneyChanged(Money);
         return true;
     }
 
@@ -223,6 +230,7 @@ public class EconomyManager : MonoBehaviour
             int p = extra.price != null ? extra.price() : -1;
             if (p < 0 || Money < p || (extra.blockReason != null && !string.IsNullOrEmpty(extra.blockReason()))) return false;
             Money -= p; Save();
+            Ledger.Money(-p, extra.category == "Bank" ? Ledger.Loans : Ledger.Purchases);
             GameEvents.RaiseMoneyChanged(Money);
             extra.onBought?.Invoke();
             GameEvents.RaiseUpgradeBought(id);
@@ -234,6 +242,7 @@ public class EconomyManager : MonoBehaviour
         if (animal != null && Owned(id) >= animal.max) return false;
 
         Money -= cost;
+        Ledger.Money(-cost, Ledger.Purchases);
         if (id == "feed") Feed += Data.feed.units;
         else if (id == "capacity") CapacityLevel++;
         else if (id == "growth") GrowthLevel++;

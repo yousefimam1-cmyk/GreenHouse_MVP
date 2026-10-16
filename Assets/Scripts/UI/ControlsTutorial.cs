@@ -209,7 +209,7 @@ public class ControlsTutorial : MonoBehaviour
         if (first)
         {
             SaveData.SetInt(DoneKey, 1);
-            if (EconomyManager.Instance != null) EconomyManager.Instance.AddMoney(Reward);
+            if (EconomyManager.Instance != null) { using (Ledger.As(Ledger.Rewards)) EconomyManager.Instance.AddMoney(Reward); }
             CollectionBook.Record("feats", "Mazraa Academy");
         }
         SaveData.Save();
