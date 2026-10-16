@@ -195,7 +195,8 @@ public class DesertDressing : MonoBehaviour
         return DistanceToTrack(f) > r + 3f;
     }
 
-    private float DistanceToTrack(Vector3 p)
+    /// <summary>Flat distance to the desert track (vehicles drive on it as a dirt road).</summary>
+    public float DistanceToTrack(Vector3 p)
     {
         float best = float.MaxValue;
         for (int i = 0; i + 1 < Track.Count; i++) best = Mathf.Min(best, DistToSegment(p, Flat(Track[i]), Flat(Track[i + 1])));

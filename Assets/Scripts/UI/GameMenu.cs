@@ -358,6 +358,9 @@ public class GameMenu : MonoBehaviour
             MenuRow.Setting(() => UiText.T("Day length"), () => GameSettings.DayMinutes + " " + UiText.T("min"), d => GameSettings.CycleDayLength(d)),
             MenuRow.Setting(() => UiText.T("Language"), () => Loc.IsArabic ? Loc.Display("العربية") : "English", d => Loc.Toggle()),
             MenuRow.Setting(() => UiText.T("Camera"), () => UiText.T(GameSettings.ThirdPerson ? "Third person" : "First person"), d => ThirdPersonView.SetMode(!GameSettings.ThirdPerson)),
+            MenuRow.Setting(() => UiText.T("Gearbox"), () => UiText.T(GameSettings.GearboxName(GameSettings.Gearbox)), d => GameSettings.Gearbox = (GearboxMode)(((int)GameSettings.Gearbox + d + 3) % 3)),
+            MenuRow.Setting(() => UiText.T("Tyre pressure"), () => UiText.T(GameSettings.LowTyrePressure ? "Low (field)" : "High (road)"), d => GameSettings.LowTyrePressure = !GameSettings.LowTyrePressure),
+            MenuRow.Setting(() => UiText.T("Auto engine start"), () => OnOff(GameSettings.AutoEngineStart), d => GameSettings.AutoEngineStart = !GameSettings.AutoEngineStart),
             MenuRow.Button(() => UiText.T("Controls (rebind keys)"), () => Go(PageId.Controls)),
             MenuRow.Button(() => UiText.T("Back"), Back),
         };
@@ -387,11 +390,8 @@ public class GameMenu : MonoBehaviour
     {
         string pad = GameInput.GamepadPath(a);
         if (string.IsNullOrEmpty(pad)) return "";
-        bool ps = GameInput.IsPlayStation;
-        string label = a == GameAction.Interact ? Glyphs.PadLabel(Glyphs.Pad.South, ps) : a == GameAction.VehicleAction ? Glyphs.PadLabel(Glyphs.Pad.West, ps)
-                     : a == GameAction.Implement ? Glyphs.PadLabel(Glyphs.Pad.North, ps) : a == GameAction.Pause ? Glyphs.PadLabel(Glyphs.Pad.Start, ps)
-                     : a == GameAction.Map ? Glyphs.PadLabel(Glyphs.Pad.Select, ps) : Glyphs.PadLabel(Glyphs.Pad.RStick, ps);
-        return "  /  " + label;
+        string label = Glyphs.PadFor(a, GameInput.IsPlayStation);
+        return string.IsNullOrEmpty(label) ? "" : "  /  " + label;
     }
 
     private string ControlsFooter() => waitingForKey ? UiText.T("Press the new key ([Esc] cancels)") : UiText.T("[Enter] Change key   [Esc] Back");

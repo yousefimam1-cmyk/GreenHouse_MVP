@@ -3,9 +3,13 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Base for drivable vehicles: arcade "hover" physics that follows the ground (robust on any terrain),
-/// its own chase camera, fuel, enter/exit. E in/out, WASD drive, Space brake, R reset.
-/// Gamepad: A / Cross in, B / Circle (or A) out, left stick steer, RT throttle, LT brake / reverse, X / Square reset.
+/// Base for drivable vehicles: "hover" body that follows the ground (robust on any terrain), driven by a Drivetrain
+/// (engine RPM + torque curve, automatic / manual / CVT gearbox, fuel by load, mass, surface grip, wheel slip, 4WD,
+/// diff lock, tyre pressure, wear) and DriveAssist (cruise control / limiter, GPS straight line), its own chase camera,
+/// fuel, enter/exit. E in/out, WASD drive, Space brake, R reset (on the loading bay: repair), F engine, Shift / Ctrl gears,
+/// Y cruise, . / , cruise speed, Z 4WD / diff lock, / GPS line.
+/// Gamepad: A / Cross in, B / Circle (or A) out, left stick steer, RT throttle, LT brake / reverse, X / Square reset,
+/// L3 engine, RB / LB gears, D-pad up cruise, right / left cruise speed, down 4WD / diff lock, R3 GPS line.
 /// Subclasses: FarmTruck (cargo), Tractor (implements).
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
@@ -23,9 +27,14 @@ public abstract class Vehicle : Interactable
     public Vector2 footprint = new Vector2(0.9f, 1.6f);   // half width, half length for ground probes
     public float camDistance = 9f;
 
+    [Header("Drivetrain")]
+    public float emptyMass = 3000f;
+    public int gears = 6;
+    public float repairCostScale = 1f;
+
     [Header("Fuel")]
     public float fuelCapacity = 100f;
-    public float fuelPerSecond = 0.35f;   // while throttling
+    public float fuelPerSecond = 0.35f;   // full load at rated RPM (idle burns ~8%)
 
     [Header("Parts (assigned by the spawner)")]
     public Transform[] wheels;
@@ -36,6 +45,17 @@ public abstract class Vehicle : Interactable
     public float Fuel { get; protected set; }
 
     protected Rigidbody rb;
+    protected readonly Drivetrain drive = new Drivetrain();
+    public Drivetrain Drive => drive;
+    public DriveAssist Assist { get; } = new DriveAssist();
+    /// <summary>Tests / scripted scenes can pin the surface; null = detect it from the world.</summary>
+    public DriveSurface? SurfaceOverride;
+    public DriveSurface SurfaceNow => drive.Surface;
+    public bool SurfaceWet => drive.Wet;
+    public float TotalMass => drive.Mass;
+    /// <summary>0 off, 1 4WD, 2 4WD + diff lock.</summary>
+    public int TractionMode => drive.DiffLock ? 2 : drive.FourWD ? 1 : 0;
+    private float surfaceTimer, steerSmooth;
     protected float yaw;
     private Camera chaseCam, mainCam;
     private AudioListener mainListener;
@@ -60,7 +80,98 @@ public abstract class Vehicle : Interactable
         rb.freezeRotation = true;
         yaw = transform.eulerAngles.y;
         Fuel = SaveData.GetFloat("mazraa.fuel." + SaveId, fuelCapacity);
+        LoadCondition();
+        GameEvents.NewGameStarted += OnNewGame;
     }
+
+    // ---------------------------------------------------------------- condition (wear) + repair
+
+    private void LoadCondition()
+    {
+        drive.EngineWear = SaveData.GetFloat("mazraa.wear.engine." + SaveId, 0f);
+        drive.TyreWear = SaveData.GetFloat("mazraa.wear.tyre." + SaveId, 0f);
+    }
+
+    protected void SaveCondition()
+    {
+        SaveData.SetFloat("mazraa.wear.engine." + SaveId, drive.EngineWear);
+        SaveData.SetFloat("mazraa.wear.tyre." + SaveId, drive.TyreWear);
+    }
+
+    protected virtual void OnNewGame()
+    {
+        drive.EngineWear = drive.TyreWear = 0f;
+        drive.FourWD = drive.DiffLock = false;
+        Assist.Reset();
+        SaveCondition();
+    }
+
+    public float EngineCondition => 1f - drive.EngineWear;
+    public float TyreCondition => 1f - drive.TyreWear;
+    public int RepairCost => drive.RepairCost(repairCostScale);
+    /// <summary>Worn enough that the workshop offers a repair (R / X on the loading bay repairs instead of resetting).</summary>
+    public bool NeedsRepair => drive.EngineWear + drive.TyreWear > 0.01f;
+
+    /// <summary>Parked on the loading bay (the farm workshop).</summary>
+    public bool AtWorkshop
+    {
+        get
+        {
+            var bay = DeliveryZone.LoadingBay;
+            if (bay == null || Mathf.Abs(Speed) > 0.5f) return false;
+            Vector3 d = transform.position - bay.transform.position; d.y = 0f;
+            return d.magnitude < bay.radius;
+        }
+    }
+
+    /// <summary>Repair engine and tyres for RepairCost (paid like fuel). False if nothing to fix, not at the workshop or too poor.</summary>
+    public bool TryRepair()
+    {
+        int cost = RepairCost;
+        var eco = EconomyManager.Instance;
+        if (cost <= 0 || eco == null || !AtWorkshop) return false;
+        if (eco.Money < cost) { Alert(Loc.T("Not enough money")); return false; }
+        eco.AddMoney(-cost);
+        drive.EngineWear = drive.TyreWear = 0f;
+        SaveCondition();
+        GameEvents.RaiseCustom("repairVehicle");
+        Alert(Loc.T("Repaired engine and tyres for {0} SAR", cost.ToString("N0")));
+        return true;
+    }
+
+    protected static void Alert(string msg) { if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(msg); }
+
+    // ---------------------------------------------------------------- load (overridden by the truck / tractor)
+
+    /// <summary>Cargo / implement / ballast mass on top of emptyMass (kg).</summary>
+    protected virtual float LoadMass => 0f;
+    protected virtual float BallastMass => 0f;
+    /// <summary>Implement draft while working (N): plowing pulls much harder than seeding.</summary>
+    protected virtual float DraftForce => 0f;
+    protected virtual float WorkSpeedLimit => 0f;
+    /// <summary>Mass at which `acceleration` is the classic feel (empty truck, tractor with its plow).</summary>
+    protected virtual float ReferenceMass => emptyMass;
+
+    private void SyncDrive(float dt)
+    {
+        drive.emptyMass = emptyMass; drive.refMass = ReferenceMass;
+        drive.maxSpeed = maxSpeed; drive.reverseSpeed = reverseSpeed; drive.acceleration = acceleration; drive.brakeForce = brakeForce;
+        drive.fuelPerSecond = fuelPerSecond; drive.gears = Mathf.Max(1, gears);
+        drive.ExtraMass = LoadMass; drive.BallastMass = BallastMass;
+        drive.DraftForce = DraftForce; drive.WorkSpeedLimit = WorkSpeedLimit;
+        drive.Mode = GameSettings.Gearbox; drive.LowPressure = GameSettings.LowTyrePressure;
+        surfaceTimer -= dt;
+        if (surfaceTimer <= 0f)
+        {
+            surfaceTimer = 0.2f;
+            drive.Surface = SurfaceOverride ?? DriveSurfaces.At(transform.position);
+            drive.Wet = DriveSurfaces.Raining || drive.Surface == DriveSurface.WetField;
+            if (rb != null) rb.mass = drive.Mass;
+        }
+    }
+
+    /// <summary>Force a surface refresh now (tests, teleports).</summary>
+    public void RefreshSurface() { surfaceTimer = 0f; SyncDrive(0f); }
 
     public override void Interact()
     {
@@ -92,6 +203,8 @@ public abstract class Vehicle : Interactable
         Current = this;
         enteredFrame = Time.frameCount;
         GraphicsEnhancer.ConfigureCamera(chaseCam);
+        Assist.Reset();
+        if (GameSettings.AutoEngineStart && Fuel > 0f) drive.StartEngine(true);
         GameEvents.RaiseVehicleChanged(true);
         OnEntered();
     }
@@ -100,6 +213,8 @@ public abstract class Vehicle : Interactable
     {
         IsDriving = false;
         Speed = 0f;
+        drive.StopEngine();
+        Assist.Reset();
         if (Current == this) Current = null;
         if (chaseCam != null) chaseCam.gameObject.SetActive(false);
         if (mainCam != null) mainCam.enabled = true;
@@ -116,6 +231,7 @@ public abstract class Vehicle : Interactable
         }
         if (interaction != null) interaction.enabled = true;
         SaveData.SetFloat("mazraa.fuel." + SaveId, Fuel);
+        SaveCondition();
         SaveData.Save();
         GameEvents.RaiseVehicleChanged(false);
     }
@@ -144,9 +260,52 @@ public abstract class Vehicle : Interactable
         // A menu closing this frame (e.g. Resume with A / Esc) must not also exit or reset the vehicle.
         if ((UIManager.Instance != null && UIManager.Instance.IsUIOpened) || UIManager.PanelClosedFrame == Time.frameCount) return;
         if ((GameInput.Pressed(GameAction.Interact) || MenuNav.Back()) && Mathf.Abs(Speed) < 4f) { Exit(); return; }
-        if (GameInput.Pressed(GameAction.VehicleAction)) Recover();
+        if (GameInput.Pressed(GameAction.VehicleAction)) { if (AtWorkshop && NeedsRepair) TryRepair(); else Recover(); }
+        DriveControls();
         DrivingUpdate(kb);
     }
+
+    /// <summary>Engine key, gears, cruise, 4WD / diff lock, GPS line (keyboard and gamepad via GameInput).</summary>
+    private void DriveControls()
+    {
+        if (GameInput.Pressed(GameAction.EngineToggle))
+        {
+            if (drive.EngineOn) { drive.StopEngine(); Assist.Reset(); Alert(Loc.T("Engine off")); }
+            else if (Fuel > 0f) { drive.StartEngine(false); Alert(Loc.T("Engine starting")); }
+            else Alert(Loc.T("Out of fuel"));
+        }
+        if (GameInput.Pressed(GameAction.GearUp) || GameInput.Pressed(GameAction.GearDown))
+        {
+            if (drive.Mode != GearboxMode.Manual) Alert(Loc.T("Gearbox: {0} - choose Manual in Settings to shift", Loc.Raw(GameSettings.GearboxName(drive.Mode))));
+            else if (GameInput.Pressed(GameAction.GearUp)) drive.ShiftUp();
+            else drive.ShiftDown();
+        }
+        if (GameInput.Pressed(GameAction.Cruise))
+        {
+            var m = Assist.CycleCruise(Speed);
+            Alert(m == CruiseMode.Off ? Loc.T("Cruise control off")
+                : m == CruiseMode.Cruise ? Loc.T("Cruise control {0} km/h", Kmh(Assist.CruiseSpeed)) : Loc.T("Speed limiter {0} km/h", Kmh(Assist.CruiseSpeed)));
+        }
+        int step = (GameInput.Pressed(GameAction.CruiseFaster) ? 1 : 0) - (GameInput.Pressed(GameAction.CruiseSlower) ? 1 : 0);
+        if (step != 0) { Assist.AdjustCruise(step); Alert(Loc.T("Set speed {0} km/h", Kmh(Assist.CruiseSpeed))); }
+        if (GameInput.Pressed(GameAction.Traction))
+        {
+            int t = (TractionMode + 1) % 3;
+            drive.FourWD = t >= 1; drive.DiffLock = t == 2;
+            Alert(t == 0 ? Loc.T("2WD, diff lock off") : t == 1 ? Loc.T("4WD on") : Loc.T("4WD + diff lock on"));
+        }
+        if (GameInput.Pressed(GameAction.LaneAssist))
+        {
+            Assist.LaneWidth = WorkWidth;
+            Assist.ToggleLane(transform.position, yaw);
+            Alert(Assist.LaneAssist ? Loc.T("GPS straight line on (lanes {0} m)", WorkWidth.ToString("F0")) : Loc.T("GPS straight line off"));
+        }
+    }
+
+    /// <summary>Lane spacing for the GPS line (the field implement's working width).</summary>
+    protected virtual float WorkWidth => 6f;
+
+    public static string Kmh(float ms) => Mathf.RoundToInt(Mathf.Abs(ms) * 3.6f).ToString();
 
     /// <summary>Add fuel (returns litres added).</summary>
     public float Refuel(float maxLitres)
@@ -180,20 +339,7 @@ public abstract class Vehicle : Interactable
         throttle = Mathf.Clamp(throttle, -1f, 1f);
         steer = Mathf.Clamp(steer, -1f, 1f);
         float dt = Time.fixedDeltaTime;
-        if (Fuel <= 0f) throttle = 0f;
-        else if (throttle != 0f) Fuel = Mathf.Max(0f, Fuel - fuelPerSecond * dt);
-
-        if (brake) Speed = Mathf.MoveTowards(Speed, 0f, brakeForce * dt);
-        else if (throttle != 0f)
-        {
-            bool opposing = Mathf.Sign(throttle) != Mathf.Sign(Speed) && Mathf.Abs(Speed) > 0.3f;
-            Speed += throttle * (opposing ? brakeForce : acceleration) * dt;
-        }
-        else Speed = Mathf.MoveTowards(Speed, 0f, 2.5f * dt);
-        Speed = Mathf.Clamp(Speed, -reverseSpeed, maxSpeed);
-
-        float steerFactor = Mathf.Clamp01(Mathf.Abs(Speed) / 4f) * Mathf.Sign(Speed);
-        yaw += steer * turnRate * steerFactor * dt;
+        StepDrive(throttle, steer, brake, dt);
 
         Vector3 pos = rb.position;
         Vector3 n = Vector3.zero; float groundY = 0f; int hits = 0;
@@ -206,6 +352,7 @@ public abstract class Vehicle : Interactable
         bool grounded = hits >= 2;
         Vector3 up = grounded ? (n / hits).normalized : Vector3.up;
         Vector3 fwd = Vector3.ProjectOnPlane(f, up).normalized;
+        drive.SlopeSin = grounded ? fwd.y : 0f;
         rb.MoveRotation(Quaternion.Slerp(rb.rotation, Quaternion.LookRotation(fwd, up), 10f * dt));
 
         Vector3 vel = fwd * Speed;
@@ -222,6 +369,27 @@ public abstract class Vehicle : Interactable
         }
         rb.linearVelocity = vel;
     }
+
+    /// <summary>One drive step: assists -> drivetrain -> speed-sensitive steering. Public so tests can drive without input devices.</summary>
+    public void StepDrive(float throttle, float steer, bool brake, float dt)
+    {
+        SyncDrive(dt);
+        if (!IsDriving) { throttle = 0f; steer = 0f; brake = false; }
+        if (IsDriving && throttle > 0.05f && !drive.EngineOn && GameSettings.AutoEngineStart && Fuel > 0f) drive.StartEngine(false);
+        throttle = Assist.ApplyThrottle(throttle, brake, Speed, dt);
+        float fuel = Fuel;
+        Speed = drive.Step(Speed, throttle, brake, IsDriving, dt, ref fuel);
+        Fuel = fuel;
+
+        steer = Assist.Steer(steer, transform.position, yaw, Speed);
+        steerSmooth = Mathf.MoveTowards(steerSmooth, steer, 6f * dt);
+        float lowSpeed = Mathf.Clamp01(Mathf.Abs(Speed) / 4f) * Mathf.Sign(Speed);
+        float highSpeed = Mathf.Lerp(1f, 0.5f, Mathf.Clamp01(Mathf.Abs(Speed) / Mathf.Max(1f, maxSpeed)));   // calmer steering when fast
+        float grip = (drive.DiffLock ? 0.7f : 1f) * (1f - 0.4f * drive.Slip);                                  // diff lock and spinning wheels push wide
+        yaw += steerSmooth * turnRate * lowSpeed * highSpeed * grip * dt;
+    }
+
+    public float Yaw => yaw;
 
     private void LateUpdate()
     {
@@ -241,6 +409,7 @@ public abstract class Vehicle : Interactable
         if (c.contactCount == 0) return;
         if (Mathf.Abs(Speed) > 3f && Vector3.Dot(c.GetContact(0).normal, transform.forward * Mathf.Sign(Speed)) < -0.4f)
         {
+            drive.EngineWear = Mathf.Clamp01(drive.EngineWear + 0.004f * Mathf.Abs(Speed));   // crash damage
             Speed *= -0.25f;
             if (IsDriving && UIManager.Instance != null && Mathf.Abs(Speed) > 2f) UIManager.Instance.ShowAlertMessage(Loc.T("Bump!"));
         }
@@ -259,6 +428,7 @@ public abstract class Vehicle : Interactable
             p = VehicleSpawner.Instance.LoadingBay + transform.right * 3f;
             if (EconomyManager.Instance != null) EconomyManager.Instance.AddMoney(-TowFee);
             Fuel = Mathf.Max(Fuel, 5f);
+            Assist.Reset();
             if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T("Towed to the loading bay for {0} SAR", TowFee));
         }
         rb.position = Build.OnGround(p, rideHeight + 1f);
@@ -293,5 +463,5 @@ public abstract class Vehicle : Interactable
         rb.position = p; rb.rotation = r;
     }
 
-    protected virtual void OnDestroy() { if (Current == this) Current = null; }
+    protected virtual void OnDestroy() { GameEvents.NewGameStarted -= OnNewGame; if (Current == this) Current = null; }
 }

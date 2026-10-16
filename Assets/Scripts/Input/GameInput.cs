@@ -3,10 +3,12 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>Game actions that can be pressed on keyboard or gamepad (keyboard keys can be rebound in Settings).</summary>
-public enum GameAction { Interact, VehicleAction, Implement, Brake, Pause, Map, Inventory, Stats, View }
+public enum GameAction { Interact, VehicleAction, Implement, Brake, Pause, Map, Inventory, Stats, View,
+    EngineToggle, GearUp, GearDown, Cruise, CruiseFaster, CruiseSlower, Traction, LaneAssist }
 
 /// <summary>
-/// One Input System action map built in code for the farm actions (E, R, Q, Space, P, N, I, O, V) with gamepad bindings.
+/// One Input System action map built in code for the farm actions (E, R, Q, Space, P, N, I, O, V) and the driving actions
+/// (F engine, Shift / Ctrl gears, Y cruise, . / , cruise speed, Z 4WD / diff lock, / GPS line) with gamepad bindings.
 /// Keyboard bindings can be rebound (Input System rebinding API); overrides are saved with SaveBindingOverridesAsJson
 /// in PlayerPrefs ("mazraa.settings.bindings"), so they survive a new game.
 /// Also tracks whether the player last used a gamepad (and whether it is a PlayStation pad) for button glyphs.
@@ -33,6 +35,15 @@ public static class GameInput
         new Def("Inventory", "<Keyboard>/i", null),
         new Def("Farm stats", "<Keyboard>/o", null),
         new Def("Camera view", "<Keyboard>/v", "<Gamepad>/rightStickPress"),
+        // driving (only read while in a vehicle, so the pad buttons can be shared with on-foot actions)
+        new Def("Engine start / stop", "<Keyboard>/f", "<Gamepad>/leftStickPress"),
+        new Def("Gear up", "<Keyboard>/leftShift", "<Gamepad>/rightShoulder"),
+        new Def("Gear down", "<Keyboard>/leftCtrl", "<Gamepad>/leftShoulder"),
+        new Def("Cruise control / limiter", "<Keyboard>/y", "<Gamepad>/dpad/up"),
+        new Def("Cruise speed +", "<Keyboard>/period", "<Gamepad>/dpad/right"),
+        new Def("Cruise speed -", "<Keyboard>/comma", "<Gamepad>/dpad/left"),
+        new Def("4WD / diff lock", "<Keyboard>/z", "<Gamepad>/dpad/down"),
+        new Def("GPS straight line", "<Keyboard>/slash", "<Gamepad>/rightStickPress"),
     };
 
     private static InputActionAsset asset;

@@ -443,6 +443,7 @@ namespace UnityEngine
         public static int Clamp(int v, int a, int b) => v < a ? a : v > b ? b : v;
         public static float Clamp01(float v) => Clamp(v, 0, 1);
         public static float Lerp(float a, float b, float t) => a + (b - a) * Clamp01(t);
+        public static float DeltaAngle(float current, float target) { float d = Repeat(target - current, 360f); if (d > 180f) d -= 360f; return d; }
         public static float LerpAngle(float a, float b, float t) { float d = ((b - a) % 360 + 540) % 360 - 180; return a + d * Clamp01(t); }
         public static float MoveTowards(float c, float t, float m) => Math.Abs(t - c) <= m ? t : c + Math.Sign(t - c) * m;
         public static float Sign(float v) => v >= 0 ? 1 : -1;

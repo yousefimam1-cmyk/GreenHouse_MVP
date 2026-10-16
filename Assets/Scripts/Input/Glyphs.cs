@@ -36,21 +36,36 @@ public static class Glyphs
     public static string For(GameAction a)
     {
         if (!GameInput.UsingGamepad) return GameInput.KeyName(a);
+        return PadFor(a, GameInput.IsPlayStation) ?? GameInput.KeyName(a);
+    }
+
+    /// <summary>Gamepad label of an action (null when it has no pad button).</summary>
+    public static string PadFor(GameAction a, bool ps)
+    {
         switch (a)
         {
-            case GameAction.Interact: return PadLabel(Pad.South);
-            case GameAction.VehicleAction: return PadLabel(Pad.West);
-            case GameAction.Implement: return PadLabel(Pad.North);
-            case GameAction.Brake: return PadLabel(Pad.LT);
-            case GameAction.Pause: return PadLabel(Pad.Start);
-            case GameAction.Map: return PadLabel(Pad.Select);
-            case GameAction.View: return PadLabel(Pad.RStick);
-            default: return GameInput.KeyName(a);
+            case GameAction.Interact: return PadLabel(Pad.South, ps);
+            case GameAction.VehicleAction: return PadLabel(Pad.West, ps);
+            case GameAction.Implement: return PadLabel(Pad.North, ps);
+            case GameAction.Brake: return PadLabel(Pad.LT, ps);
+            case GameAction.Pause: return PadLabel(Pad.Start, ps);
+            case GameAction.Map: return PadLabel(Pad.Select, ps);
+            case GameAction.View: return PadLabel(Pad.RStick, ps);
+            case GameAction.EngineToggle: return PadLabel(Pad.LStick, ps);
+            case GameAction.GearUp: return PadLabel(Pad.RB, ps);
+            case GameAction.GearDown: return PadLabel(Pad.LB, ps);
+            case GameAction.Cruise: return PadLabel(Pad.DPad, ps) + "↑";
+            case GameAction.CruiseFaster: return PadLabel(Pad.DPad, ps) + "→";
+            case GameAction.CruiseSlower: return PadLabel(Pad.DPad, ps) + "←";
+            case GameAction.Traction: return PadLabel(Pad.DPad, ps) + "↓";
+            case GameAction.LaneAssist: return PadLabel(Pad.RStick, ps);
+            default: return null;
         }
     }
 
     // Bracketed keyboard tokens used in texts -> action (or a fixed gamepad button for non-rebindable keys).
-    private static readonly string[] Tokens = { "E", "R", "Q", "Space", "P", "N", "I", "O", "V", "Esc", "Enter", "Backspace", "LB", "RB" };
+    private static readonly string[] Tokens = { "E", "R", "Q", "Space", "P", "N", "I", "O", "V", "Esc", "Enter", "Backspace", "LB", "RB",
+        "F", "Shift", "Ctrl", "Y", "Plus", "Minus", "Z", "Slash" };
 
     private static string Replacement(string token)
     {
@@ -66,6 +81,14 @@ public static class Glyphs
             case "I": return For(GameAction.Inventory);
             case "O": return For(GameAction.Stats);
             case "V": return For(GameAction.View);
+            case "F": return For(GameAction.EngineToggle);
+            case "Shift": return For(GameAction.GearUp);
+            case "Ctrl": return For(GameAction.GearDown);
+            case "Y": return For(GameAction.Cruise);
+            case "Plus": return For(GameAction.CruiseFaster);
+            case "Minus": return For(GameAction.CruiseSlower);
+            case "Z": return For(GameAction.Traction);
+            case "Slash": return For(GameAction.LaneAssist);
             case "Esc": return pad ? PadLabel(Pad.East) : null;
             case "Enter": return pad ? PadLabel(Pad.South) : null;
             case "Backspace": return pad ? PadLabel(Pad.DPad) + "↓" : null;
