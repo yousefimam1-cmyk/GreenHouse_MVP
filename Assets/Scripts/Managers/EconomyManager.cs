@@ -177,6 +177,14 @@ public class EconomyManager : MonoBehaviour
         Save();
     }
 
+    /// <summary>Remove one animal (sold or died).</summary>
+    public void RemoveAnimal(string id)
+    {
+        if (Owned(id) <= 0) return;
+        animalsOwned[id] = Owned(id) - 1;
+        Save();
+    }
+
     public bool ConsumeFeed(float units)
     {
         if (Feed < units) return false;

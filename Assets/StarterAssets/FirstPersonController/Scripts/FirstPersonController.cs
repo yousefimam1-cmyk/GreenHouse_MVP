@@ -74,6 +74,11 @@ namespace StarterAssets
 
 		private const float _threshold = 0.01f;
 
+		// Mazraa: crouch (PlayerLife.Crouching) lowers the capsule and the camera smoothly.
+		private float _standHeight, _standCenterY, _standCameraY, _crouchBlend;
+		private bool _crouchInit;
+		public float CrouchDrop = 0.7f;
+
 		private bool IsCurrentDeviceMouse
 		{
 			get
@@ -115,6 +120,30 @@ namespace StarterAssets
 			JumpAndGravity();
 			GroundedCheck();
 			Move();
+			Crouch();
+		}
+
+		// Mazraa: crouch / rest posture driven by PlayerLife.
+		private void Crouch()
+		{
+			if (!_crouchInit)
+			{
+				_crouchInit = true;
+				_standHeight = _controller.height;
+				_standCenterY = _controller.center.y;
+				_standCameraY = CinemachineCameraTarget != null ? CinemachineCameraTarget.transform.localPosition.y : 0f;
+			}
+			float target = PlayerLife.Crouching ? 1f : 0f;
+			if (Mathf.Approximately(target, _crouchBlend)) return;
+			_crouchBlend = Mathf.MoveTowards(_crouchBlend, target, Time.deltaTime * 4f);
+			float drop = CrouchDrop * _crouchBlend;
+			_controller.height = _standHeight - drop;
+			_controller.center = new Vector3(_controller.center.x, _standCenterY - drop * 0.5f, _controller.center.z);
+			if (CinemachineCameraTarget != null)
+			{
+				var lp = CinemachineCameraTarget.transform.localPosition;
+				CinemachineCameraTarget.transform.localPosition = new Vector3(lp.x, _standCameraY - drop, lp.z);
+			}
 		}
 
 		private void LateUpdate()
@@ -154,7 +183,9 @@ namespace StarterAssets
 		private void Move()
 		{
 			// set target speed based on move speed, sprint speed and if sprint is pressed
-			float targetSpeed = _input.sprint ? SprintSpeed : MoveSpeed;
+			// Mazraa: stamina, carried weight and crouching (PlayerLife) limit sprinting and scale the speed.
+			float targetSpeed = (_input.sprint && PlayerLife.SprintAllowed ? SprintSpeed : MoveSpeed) * PlayerLife.SpeedFactor;
+			float changeRate = SpeedChangeRate * PlayerLife.AccelerationFactor;   // smoother start / stop, slower with a load
 
 			// a simplistic acceleration and deceleration designed to be easy to remove, replace, or iterate upon
 
@@ -173,7 +204,7 @@ namespace StarterAssets
 			{
 				// creates curved result rather than a linear one giving a more organic speed change
 				// note T in Lerp is clamped, so we don't need to clamp our speed
-				_speed = Mathf.Lerp(currentHorizontalSpeed, targetSpeed * inputMagnitude, Time.deltaTime * SpeedChangeRate);
+				_speed = Mathf.Lerp(currentHorizontalSpeed, targetSpeed * inputMagnitude, Time.deltaTime * changeRate);
 
 				// round speed to 3 decimal places
 				_speed = Mathf.Round(_speed * 1000f) / 1000f;
@@ -212,7 +243,7 @@ namespace StarterAssets
 				}
 
 				// Jump
-				if (_input.jump && _jumpTimeoutDelta <= 0.0f)
+				if (_input.jump && _jumpTimeoutDelta <= 0.0f && PlayerLife.JumpAllowed)
 				{
 					// the square root of H * -2 * G = how much velocity needed to reach desired height
 					_verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
