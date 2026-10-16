@@ -264,7 +264,7 @@ public class UIManager : MonoBehaviour
         Loc.ApplyFont(alertMsg);
         alertMsg.text = msg;
         alertMsg.alpha = Mathf.Min(alertMsg.alpha, 1f);
-        alertMsg.DOFade(1.0f, 0.2f).OnComplete(() => Invoke(nameof(FadeAlertAway), alertDuration));
+        alertMsg.DOFade(1.0f, 0.2f).OnComplete(() => Invoke(nameof(FadeAlertAway), alertDuration * GameSettings.NotificationScale));   // Settings > Accessibility
     }
 
     private void FadeAlertAway()

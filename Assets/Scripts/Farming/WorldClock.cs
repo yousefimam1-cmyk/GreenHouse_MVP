@@ -37,7 +37,7 @@ public class WorldClock : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        secondsPerDay = GameSettings.DayMinutes * 60f;     // Settings > Day length (default 24 real minutes)
+        secondsPerDay = GameSettings.SecondsPerDay;     // Settings > Game > Time scale / Day length (default 24 real minutes)
         Day = Mathf.Max(1, SaveData.GetInt("mazraa.day", 1));
         DayProgress = SaveData.GetFloat("mazraa.dayProgress", 0.25f);
         Weather = (Weather)SaveData.GetInt("mazraa.weather", 0);

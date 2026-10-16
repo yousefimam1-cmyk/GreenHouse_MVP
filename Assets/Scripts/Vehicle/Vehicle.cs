@@ -178,7 +178,7 @@ public abstract class Vehicle : Interactable
         }
         if (IsDriving) brake = GameInput.Held(GameAction.Brake);
         throttle = Mathf.Clamp(throttle, -1f, 1f);
-        steer = Mathf.Clamp(steer, -1f, 1f);
+        steer = GameSettings.ShapeSteer(Mathf.Clamp(steer, -1f, 1f));   // Settings > Controls: dead zone, steering sensitivity
         float dt = Time.fixedDeltaTime;
         if (Fuel <= 0f) throttle = 0f;
         else if (throttle != 0f) Fuel = Mathf.Max(0f, Fuel - fuelPerSecond * dt);

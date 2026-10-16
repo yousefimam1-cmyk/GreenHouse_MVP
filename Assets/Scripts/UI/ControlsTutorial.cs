@@ -254,7 +254,7 @@ public class ControlsTutorial : MonoBehaviour
         autoCheck -= Time.unscaledDeltaTime;
         if (autoCheck > 0f) return;
         autoCheck = 1f;
-        if (SaveData.GetInt(SeenKey, 0) != 0 || SaveData.InSession) return;
+        if (SaveData.GetInt(SeenKey, 0) != 0 || SaveData.InSession || !GameSettings.Tutorials) return;   // Settings > Game > Tutorials
         if (Time.timeScale == 0f || GameMenu.IsOpen || (UIManager.Instance != null && UIManager.Instance.IsUIOpened)) return;
         if (Player() == null) return;
         Begin();

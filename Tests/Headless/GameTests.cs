@@ -562,6 +562,242 @@ static class Program
     static void PressKey(UnityEngine.InputSystem.KeyControl k) { k.wasPressedThisFrame = true; k.isPressed = true; FakeEngine.Tick(0.02f); k.wasPressedThisFrame = false; k.isPressed = false; }
     static void PressPad(UnityEngine.InputSystem.ButtonControl b) { b.wasPressedThisFrame = true; b.isPressed = true; FakeEngine.Tick(0.02f); b.wasPressedThisFrame = false; b.isPressed = false; }
 
+    // ------------------------------------------------------------------ Settings hub and pages (GameMenuSettings, GameSettingsOptions, SettingsApplier)
+    static void SettingsPages(GameMenu menu, UnityEngine.InputSystem.Keyboard kb, UnityEngine.InputSystem.Gamepad pad)
+    {
+        Console.WriteLine("Settings pages");
+        const string P = "mazraa.settings.";
+        // Every page opens from the hub and B comes back
+        bool allOpen = true; string bad = "";
+        foreach (GameMenu.SettingsTab tab in Enum.GetValues(typeof(GameMenu.SettingsTab)))
+        {
+            menu.Open(GameMenu.Mode.Pause);
+            menu.List.Choose(menu.List.Rows.ToList().FindIndex(r => r.label() == UiText.T("Settings")));
+            menu.List.Choose((int)tab);
+            var rows = menu.List.Rows;
+            bool ok = menu.OnSettingsPage && menu.CurrentSettingsTab == tab && rows[rows.Count - 1].label() == "Back" && rows[rows.Count - 2].label() == "Reset to defaults" && rows.Count >= 7;
+            FakeEngine.Tick(0.02f);
+            PressPad(pad.buttonEast);
+            ok &= menu.OnSettingsHub;
+            PressPad(pad.buttonEast); PressPad(pad.buttonEast);
+            ok &= !GameMenu.IsOpen;
+            if (!ok) { allOpen = false; bad += tab + " "; }
+        }
+        T.Check("Each settings page opens from the menu, B returns to the hub, then closes", allOpen, bad);
+
+        // Labels and option names have Arabic
+        var keys = new List<string>(GameSettings.OptionNames()); keys.AddRange(GameMenu.SettingsTabNames);
+        foreach (GameMenu.SettingsTab tab in Enum.GetValues(typeof(GameMenu.SettingsTab)))
+        {
+            menu.OpenSettings(tab);
+            foreach (var r in menu.List.Rows) keys.Add(r.label());
+        }
+        var missing = keys.Distinct().Where(k => !Loc.HasTranslation(k)).ToList();
+        T.Check("Settings labels and options have Arabic (" + keys.Distinct().Count() + ")", missing.Count == 0, string.Join(" | ", missing.Take(5)));
+        Loc.SetLanguage(Language.Arabic);
+        menu.OpenSettings(GameMenu.SettingsTab.Graphics);
+        T.Check("Settings pages show in Arabic", menu.List.Rows[1].label() == Loc.T("Shadow quality") && menu.List.Rows[1].value() == Loc.T("Auto") && menu.List.Rows[1].label() != "Shadow quality");
+        Loc.SetLanguage(Language.English);
+        menu.Close();
+
+        // Gamepad: LB / RB turn pages, D-pad changes, long page scrolls
+        menu.OpenSettings(GameMenu.SettingsTab.Game);
+        FakeEngine.Tick(0.02f);
+        PressPad(pad.rightShoulder);
+        bool rb = menu.CurrentSettingsTab == GameMenu.SettingsTab.Display;
+        PressPad(pad.leftShoulder); PressPad(pad.leftShoulder);
+        T.Check("RB / LB turn the settings pages (wrapping)", rb && menu.CurrentSettingsTab == GameMenu.SettingsTab.Accessibility && menu.OnSettingsPage, menu.CurrentSettingsTab + "");
+        PressPad(pad.rightShoulder); PressPad(pad.rightShoulder); PressPad(pad.rightShoulder);   // Game -> Display -> Graphics
+        PressPad(pad.dpad.down); PressPad(pad.dpad.right);
+        T.Check("Gamepad: Graphics page, Shadow quality Auto -> Off", menu.CurrentSettingsTab == GameMenu.SettingsTab.Graphics && GameSettings.ShadowQuality == 0, menu.CurrentSettingsTab + " " + GameSettings.ShadowQuality);
+        for (int i = 0; i < 13; i++) PressPad(pad.dpad.down);   // row 1 -> Back (row 14)
+        var sel = menu.List.Rows[menu.List.Selected];
+        T.Check("Long settings page scrolls to Back with the D-pad", sel.label() == "Back" && sel.rt.gameObject.activeSelf && !menu.List.Rows[0].rt.gameObject.activeSelf, sel.label());
+        PressPad(pad.dpad.up);
+        PressPad(pad.buttonSouth);   // Reset to defaults
+        T.Check("Reset to defaults (Graphics) from the page", GameSettings.ShadowQuality == -1 && !PlayerPrefs.HasKey(P + "shadowQ") && GraphicsEnhancer.Preset == 1);
+        PressPad(pad.buttonEast); PressPad(pad.buttonEast); PressPad(pad.buttonEast);
+        T.Check("B three times closes the menu from a settings page", !GameMenu.IsOpen);
+
+        // ---- Game
+        GameSettings.TimeScale = 120;
+        T.Check("Time scale x120: 12 real minutes a day, saved", Math.Abs(WorldClock.Instance.secondsPerDay - 720f) < 0.01f && PlayerPrefs.GetInt(P + "timeScale") == 120 && GameSettings.TimeScale == 120, WorldClock.Instance.secondsPerDay + "");
+        GameSettings.TimeScale = 0;
+        T.Check("Time scale off: day length again", Math.Abs(WorldClock.Instance.secondsPerDay - GameSettings.DayMinutes * 60f) < 0.01f);
+        GameSettings.PlowingRequired = false;
+        bool plowOff = Math.Abs(SoilModel.CompactionFactor(0.9f) - 1f) < 0.001f;
+        GameSettings.PlowingRequired = true;
+        T.Check("Plowing requirement off: compaction costs no yield", plowOff && SoilModel.CompactionFactor(0.9f) < 0.9f);
+        GameSettings.Weeds = false;
+        FakeEngine.Run(1f, 0.1f);
+        T.Check("Weeds off: no weeds on any field", FieldManager.Instance.Plots.All(p => SoilManager.Instance == null || SoilManager.Instance.Soil(p).weeds == 0f));
+        GameSettings.Weeds = true;
+        var plot = FieldManager.Instance.Plots[0];
+        var plotState = plot.State; string plotCrop = plot.CropId; float plotGrowth = plot.Growth, plotWater = plot.Water;
+        plot.ApplyRemote(PlotState.Growing, EconomyManager.Instance.Data.fieldCrops[0].id, 0.3f, 0f);
+        var ap = SettingsApplier.Instance;
+        ap.TickWithering(GameSettings.SecondsPerDay + 1f);
+        bool alive = plot.State == PlotState.Growing;
+        GameSettings.Withering = true;
+        ap.TickWithering(GameSettings.SecondsPerDay * 0.5f);
+        bool halfDay = plot.State == PlotState.Growing;
+        ap.TickWithering(GameSettings.SecondsPerDay * 0.6f);
+        T.Check("Withering: off keeps dry crops, on kills them after a dry day", alive && halfDay && plot.State == PlotState.Untilled && ap.Withered == 1, plot.State + "");
+        GameSettings.Withering = false;
+        plot.ApplyRemote(plotState, plotCrop, plotGrowth, plotWater);
+        var eco = EconomyManager.Instance; var wm = WorkerManager.Instance;
+        var seeds = (Dictionary<string, int>)T.Get(eco, "seeds");
+        var seedsBefore = new Dictionary<string, int>(seeds);
+        foreach (var k in seeds.Keys.ToList()) seeds[k] = 0;
+        int moneyStart = eco.Money;
+        eco.AddMoney(1000);
+        bool wasHired = wm.IsHired(WorkerRole.FieldHand);
+        wm.Hire(WorkerRole.FieldHand);
+        ap.TickHelpers();
+        int boughtOff = ap.HelperSeedsBought;
+        GameSettings.HelperRefill = true;
+        int money0 = eco.Money;
+        ap.TickHelpers();
+        T.Check("Helper refills: field hand buys seeds only when switched on", boughtOff == 0 && ap.HelperSeedsBought == 2 && eco.Money < money0 && seeds.Values.Sum() == 2, ap.HelperSeedsBought + " " + money0 + "->" + eco.Money);
+        GameSettings.HelperRefill = false;
+        if (!wasHired) wm.Dismiss(WorkerRole.FieldHand, false);
+        foreach (var kv in seedsBefore) seeds[kv.Key] = kv.Value;
+        if (eco.Money > moneyStart) eco.Spend(eco.Money - moneyStart);
+        int ambient = UnityEngine.Object.FindObjectsByType<Actor>(FindObjectsSortMode.None).Count(a => a.mode == ActorMode.Wander || a.mode == ActorMode.Fly);
+        GameSettings.AmbientDensity = 0;
+        int ambientOff = UnityEngine.Object.FindObjectsByType<Actor>(FindObjectsSortMode.None).Count(a => a.mode == ActorMode.Wander || a.mode == ActorMode.Fly);
+        GameSettings.AmbientDensity = 3;
+        int ambientBack = UnityEngine.Object.FindObjectsByType<Actor>(FindObjectsSortMode.None).Count(a => a.mode == ActorMode.Wander || a.mode == ActorMode.Fly);
+        T.Check("Ambient life Off hides wandering / flying life, High brings it back", ambient > 0 && ambientOff == 0 && ambientBack == ambient, ambient + " " + ambientOff + " " + ambientBack);
+        GameSettings.ShowHints = false;
+        bool hintsOff = !GameHUD.Instance.HintsVisible;
+        GameSettings.ShowHints = true;
+        T.Check("Help hints switch the HUD hints box", hintsOff && GameHUD.Instance.HintsVisible);
+        GameSettings.AutosaveMinutes = 5;
+        int saves = ap.Autosaves;
+        T.Set(ap, "autosaveTimer", 299.5f);
+        FakeEngine.Run(1f, 0.25f);
+        T.Check("Autosave every 5 real minutes", ap.Autosaves == saves + 1, ap.Autosaves + "");
+        GameSettings.Tutorials = false; GameSettings.CameraShake = false;
+        T.Check("Tutorials / camera shake saved", PlayerPrefs.GetInt(P + "tutorials") == 0 && GameSettings.ShakeScale == 0f);
+        menu.OpenSettings(GameMenu.SettingsTab.Game);
+        menu.List.Choose(menu.List.Rows.Count - 2);
+        T.Check("Reset to defaults (Game)", GameSettings.AutosaveMinutes == -1 && GameSettings.Tutorials && GameSettings.CameraShake && GameSettings.Weeds && GameSettings.TimeScale == 0 && GameSettings.DayMinutes == GameSettings.DefaultDayMinutes);
+        menu.Close();
+
+        // ---- Display
+        int calls = Screen.SetResolutionCalls;
+        GameSettings.WindowMode = 2;
+        GameSettings.CycleResolution(-1);   // native (largest) -> next smaller
+        T.Check("Display: windowed 1920x1080 applied through Screen.SetResolution", Screen.fullScreenMode == FullScreenMode.Windowed && Screen.width == 1920 && Screen.height == 1080 && Screen.SetResolutionCalls > calls && GameSettings.ResolutionWidth == 1920, Screen.width + "x" + Screen.height + " " + Screen.fullScreenMode);
+        calls = Screen.SetResolutionCalls;
+        GameSettings.FpsLimit = 60; GameSettings.VSync = false;
+        T.Check("Display: FPS limit 60 and VSync off (no new resolution call)", Application.targetFrameRate == 60 && QualitySettings.vSyncCount == 0 && Screen.SetResolutionCalls == calls);
+        var urp = new UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset { renderScale = 1f, msaaSampleCount = 4, shadowDistance = 90f };
+        UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline = urp;
+        GameSettings.RenderScale = 150; GameSettings.Brightness = 1.3f;
+        T.Check("Display: render scale 150% on the URP asset, brightness saved", Math.Abs(urp.renderScale - 1.5f) < 0.001f && Math.Abs(GameSettings.Brightness - 1.3f) < 0.001f && Math.Abs(PlayerPrefs.GetFloat(P + "brightness") - 1.3f) < 0.001f, urp.renderScale + "");
+        menu.OpenSettings(GameMenu.SettingsTab.Display);
+        menu.List.Choose(menu.List.Rows.Count - 2);
+        T.Check("Reset to defaults (Display)", Application.targetFrameRate == -1 && QualitySettings.vSyncCount == 1 && Screen.fullScreenMode == FullScreenMode.FullScreenWindow && GameSettings.ResolutionWidth == 0 && Math.Abs(urp.renderScale - GraphicsEnhancer.EffectiveRenderScale) < 0.001f && GameSettings.Brightness == 1f);
+        menu.Close();
+
+        // ---- Graphics
+        var cam = Camera.main;
+        float far0 = cam.farClipPlane;
+        int rebuilds = 0; Action<int> onPreset = p => rebuilds++;
+        GraphicsEnhancer.PresetChanged += onPreset;
+        GameSettings.ShadowQuality = 3; GameSettings.ShadowDistance = 150; GameSettings.ViewDistance = 500; GameSettings.LodBias = 200;
+        GameSettings.TextureQuality = 2; GameSettings.AntiAliasing = 3; GameSettings.FoliageDensity = 25;
+        T.Check("Graphics overrides applied (shadows 150 m, view 500 m, LOD 2x, quarter textures, MSAA 4x, foliage 25%)",
+            Math.Abs(urp.shadowDistance - 150f) < 0.01f && QualitySettings.shadows == ShadowQuality.All && Math.Abs(cam.farClipPlane - 500f) < 0.01f && Math.Abs(QualitySettings.lodBias - 2f) < 0.001f &&
+            QualitySettings.globalTextureMipmapLimit == 2 && urp.msaaSampleCount == 4 && Math.Abs(GraphicsEnhancer.DressingDensity - 0.25f) < 0.001f && rebuilds == 1,
+            urp.shadowDistance + " " + cam.farClipPlane + " " + QualitySettings.lodBias + " " + rebuilds);
+        GameSettings.ShadowQuality = 0; GameSettings.AntiAliasing = 0;
+        T.Check("Shadows off and anti-aliasing off", urp.shadowDistance == 0f && QualitySettings.shadows == ShadowQuality.Disable && urp.msaaSampleCount == 1 && GraphicsEnhancer.EffectiveAntialiasing == 0);
+        GameSettings.MotionBlur = true; GameSettings.DepthOfField = true; GameSettings.Bloom = false;
+        var ge = GraphicsEnhancer.Instance;
+        var mb = (UnityEngine.Rendering.Universal.MotionBlur)T.Get(ge, "motionBlur"); var bl = (UnityEngine.Rendering.Universal.Bloom)T.Get(ge, "bloom");
+        bool mbOn = mb.active && !bl.active;
+        GameSettings.ReduceMotion = true;
+        T.Check("Post effects: bloom off, motion blur on, Reduce motion turns it off again", mbOn && !mb.active && !GraphicsEnhancer.DepthOfFieldOn);
+        GameSettings.ReduceMotion = false;
+        GameSettings.FogHaze = false;
+        FakeEngine.Run(0.5f, 0.1f);
+        bool fogOff = !RenderSettings.fog || DesertWeatherFX.FogOverridden;
+        GameSettings.FogHaze = true;
+        FakeEngine.Run(0.5f, 0.1f);
+        T.Check("Fog and haze off clears the desert haze", fogOff && (RenderSettings.fog || DesertWeatherFX.FogOverridden));
+        menu.OpenSettings(GameMenu.SettingsTab.Graphics);
+        menu.List.Choose(menu.List.Rows.Count - 2);
+        T.Check("Reset to defaults (Graphics): back to the preset", GameSettings.ShadowDistance == -1 && GameSettings.ViewDistance == -1 && Math.Abs(cam.farClipPlane - far0) < 0.01f && urp.msaaSampleCount == GraphicsEnhancer.EffectiveMsaa && !GameSettings.MotionBlur && GameSettings.Bloom && rebuilds == 2 && GraphicsEnhancer.Preset == 1, cam.farClipPlane + " vs " + far0 + " " + rebuilds);
+        GraphicsEnhancer.PresetChanged -= onPreset;
+        UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline = null;
+        T.Set(ge, "urpAsset", null);
+        menu.Close();
+
+        // ---- Sound
+        GameSettings.VehicleVolume = 0.3f; GameSettings.AmbientVolume = 0.4f; GameSettings.AnimalVolume = 0.5f; GameSettings.UiVolume = 0.6f; GameSettings.VoiceVolume = 0.7f;
+        T.Check("Sound: vehicles / environment / animals / menus / voices saved", Math.Abs(PlayerPrefs.GetFloat(P + "volVehicles") - 0.3f) < 0.001f && Math.Abs(GameSettings.AnimalVolume - 0.5f) < 0.001f && Math.Abs(GameSettings.VoiceVolume - 0.7f) < 0.001f);
+        menu.OpenSettings(GameMenu.SettingsTab.Sound);
+        menu.List.Choose(menu.List.Rows.Count - 2);
+        T.Check("Reset to defaults (Sound)", GameSettings.VehicleVolume == 1f && GameSettings.MasterVolume == 1f && Math.Abs(AudioListener.volume - 1f) < 0.001f && Math.Abs(GameSettings.MusicVolume - 0.8f) < 0.001f);
+        menu.Close();
+
+        // ---- Controls
+        GameSettings.StickDeadZone = 0.2f; GameSettings.SteeringSensitivity = 0.5f;
+        T.Check("Dead zone and steering sensitivity shape the sticks", GameSettings.ApplyDeadZone(new Vector2(0.15f, 0f)).x == 0f && GameSettings.ApplyDeadZone(new Vector2(1f, 0f)).x > 0.99f &&
+            GameSettings.ShapeSteer(0.1f) == 0f && Math.Abs(GameSettings.ShapeSteer(1f) - 0.5f) < 0.001f && Math.Abs(GameSettings.ShapeSteer(-1f) + 0.5f) < 0.001f);
+        float fov0 = cam.fieldOfView;
+        GameSettings.CameraFov = 90;
+        bool fov = Math.Abs(cam.fieldOfView - 90f) < 0.01f;
+        GameSettings.CameraFov = 0;
+        T.Check("Field of view 90 applied to the player camera, Auto restores it", fov && Math.Abs(cam.fieldOfView - fov0) < 0.01f, cam.fieldOfView + "");
+        GameInput.ForceDevice(true, false);
+        GameSettings.Rumble(0.5f, 0.5f, 0.1f);
+        bool rumble = pad.lowMotor > 0.4f;
+        FakeEngine.Run(0.3f, 0.05f);
+        bool stopped = pad.lowMotor == 0f;
+        GameSettings.Vibration = false;
+        GameSettings.Rumble(0.5f, 0.5f, 0.1f);
+        T.Check("Vibration: rumble on the pad, stops by itself, off = no rumble", rumble && stopped && pad.lowMotor == 0f, rumble + " " + stopped);
+        GameInput.ForceDevice(false, false);
+        GameSettings.MouseSensitivity = 2f; GameSettings.InvertY = true;
+        menu.OpenSettings(GameMenu.SettingsTab.Controls);
+        T.Check("Controls page links the key rebinding page", menu.List.Rows[0].label() == "Controls (rebind keys)");
+        menu.List.Choose(0);
+        bool rebindPage = menu.List.Rows.Any(r => r.label() == UiText.T(GameInput.Label(GameAction.Interact)));
+        menu.Back();
+        T.Check("Rebinding page opens from Controls and Back returns there", rebindPage && menu.OnSettingsPage && menu.CurrentSettingsTab == GameMenu.SettingsTab.Controls);
+        menu.List.Choose(menu.List.Rows.Count - 2);
+        T.Check("Reset to defaults (Controls)", GameSettings.Vibration && GameSettings.MouseSensitivity == 1f && !GameSettings.InvertY && Math.Abs(GameSettings.StickDeadZone - 0.1f) < 0.001f && GameSettings.SteeringSensitivity == 1f);
+        menu.Close();
+
+        // ---- Accessibility
+        GameSettings.UiScale = 150;
+        var scaler = menu.MenuCanvas.GetComponent<UnityEngine.UI.CanvasScaler>();
+        T.Check("Text and UI size 150% scales the menu and HUD canvases", Math.Abs(scaler.referenceResolution.x - 1280f) < 0.5f && Math.Abs(SettingsApplier.UiReference.y - 720f) < 0.5f, scaler.referenceResolution.x + "");
+        Color vehicle = MinimapIcon.DefaultColor(MinimapIconKind.Vehicle), bay = MinimapIcon.DefaultColor(MinimapIconKind.LoadingBay), gh = MinimapIcon.DefaultColor(MinimapIconKind.Greenhouse);
+        GameSettings.ColorBlindMode = 2;
+        Color v2 = GameSettings.Palette(vehicle), b2 = GameSettings.Palette(bay);
+        T.Check("Deuteranopia palette: vehicle red and loading-bay green become purple and blue", v2.b > 0.5f && b2.b > 0.6f && b2.g < 0.5f && GameSettings.Palette(Color.white).r == 1f);
+        T.Check("Protanopia / tritanopia palettes change the confusable colours", GameSettings.Palette(vehicle, 1).b > 0.5f && GameSettings.Palette(gh, 3).r > 0.7f && GameSettings.Palette(vehicle, 0).r == vehicle.r);
+        GameSettings.NotificationPercent = 200;
+        GameSettings.HighContrast = true;
+        menu.OpenSettings(GameMenu.SettingsTab.Accessibility);
+        var panelColor = menu.List.Panel.GetComponent<UnityEngine.UI.Image>().color;
+        var selColor = menu.List.Rows[menu.List.Selected].bg.color;
+        T.Check("High-contrast menus: opaque black panel, yellow selection", panelColor.a == 1f && panelColor.r == 0f && selColor.r == 1f && selColor.a == 1f && GameSettings.NotificationScale == 2f);
+        menu.List.Choose(menu.List.Rows.Count - 2);
+        T.Check("Reset to defaults (Accessibility)", GameSettings.UiScale == 100 && GameSettings.ColorBlindMode == 0 && !GameSettings.HighContrast && GameSettings.NotificationScale == 1f && Math.Abs(scaler.referenceResolution.x - 1920f) < 0.5f && menu.List.Panel.GetComponent<UnityEngine.UI.Image>().color.a < 1f);
+        menu.Close();
+
+        // Values for the checks that follow (new game keeps settings)
+        GameSettings.MasterVolume = 0.5f;
+        GameSettings.GraphicsPreset = 1;
+        T.Check("Menu closed after the settings tests", !GameMenu.IsOpen && Time.timeScale == 1f);
+    }
+
     static void UiSection(string resources)
     {
         Console.WriteLine("UI, controllers, menus, saves");
@@ -672,6 +908,12 @@ static class Program
         T.Check("Start / Options opens the pause menu and pauses", menu.CurrentMode == GameMenu.Mode.Pause && Time.timeScale == 0f && UIManager.Instance.IsUIOpened);
         int settingsRow = menu.List.Rows.ToList().FindIndex(r => r.label() == UiText.T("Settings"));
         menu.List.Choose(settingsRow);
+        var hubLabels = menu.List.Rows.Select(r => r.label()).ToList();
+        T.Check("Settings is a hub: Game, Display, Graphics, Sound, Controls, Accessibility, Language",
+            menu.OnSettingsHub && GameMenu.SettingsTabNames.All(n => hubLabels.Contains(n)) && hubLabels.Contains("Language") && hubLabels.Last() == "Back", string.Join(",", hubLabels));
+        PressPad(pad.dpad.down); PressPad(pad.dpad.down); PressPad(pad.dpad.down);   // to Sound
+        PressPad(pad.buttonSouth);
+        T.Check("D-pad + A open the Sound page", menu.OnSettingsPage && menu.CurrentSettingsTab == GameMenu.SettingsTab.Sound, menu.CurrentSettingsTab + "");
         PressPad(pad.dpad.down); PressPad(pad.dpad.down);   // to Sound effects
         PressPad(pad.dpad.left);
         T.Check("D-pad changes a setting (SFX volume 90%)", Math.Abs(GameSettings.SfxVolume - 0.9f) < 0.001f, "" + GameSettings.SfxVolume);
@@ -680,9 +922,12 @@ static class Program
         GameSettings.GraphicsPreset = 1;
         T.Check("Graphics preset Medium applied", GraphicsEnhancer.Preset == 1 && !GraphicsEnhancer.High);
         PressPad(pad.buttonEast);
+        T.Check("B goes back to the settings hub (Sound still selected)", menu.OnSettingsHub && menu.List.Selected == (int)GameMenu.SettingsTab.Sound, menu.List.Selected + "");
+        PressPad(pad.buttonEast);
         T.Check("B goes back to the pause page", menu.List.Rows.Any(r => r.label() == UiText.T("Resume")));
         PressPad(pad.buttonEast);
         T.Check("B on the pause page resumes", menu.CurrentMode == GameMenu.Mode.Closed && Time.timeScale == 1f && !UIManager.Instance.IsUIOpened);
+        SettingsPages(menu, kb, pad);
         PressKey(kb.pKey);
         T.Check("P opens the pause menu", GameMenu.IsOpen);
         menu.List.Choose(menu.List.Rows.ToList().FindIndex(r => r.label() == UiText.T("New game")));

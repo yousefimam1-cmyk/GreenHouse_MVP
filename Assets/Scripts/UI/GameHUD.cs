@@ -72,6 +72,10 @@ public class GameHUD : MonoBehaviour
         }
     }
 
+    /// <summary>Settings > Game > Help hints: show or hide the key hints box.</summary>
+    public void SetHintsVisible(bool on) { if (hintPanel != null && hintPanel.gameObject.activeSelf != on) hintPanel.gameObject.SetActive(on); }
+    public bool HintsVisible => hintPanel != null && hintPanel.gameObject.activeSelf;
+
     private void LateUpdate()
     {
         var kb = Keyboard.current;
