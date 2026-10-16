@@ -91,6 +91,13 @@ public class WorldClock : MonoBehaviour
             case Season.Summer: Weather = r < 0.55f ? Weather.Heatwave : r < 0.62f ? Weather.Cloudy : Weather.Sunny; break;
             default: Weather = r < 0.05f ? Weather.Rain : r < 0.25f ? Weather.Heatwave : r < 0.40f ? Weather.Cloudy : Weather.Sunny; break;
         }
+        // Region climate (Regions): fewer heatwaves in milder regions, a little extra rain in wetter ones.
+        var region = Regions.Current;
+        if (region != null)
+        {
+            if (Weather == Weather.Heatwave && region.heat < 1f && Random.value > region.heat) Weather = Weather.Sunny;
+            else if (Weather != Weather.Rain && region.rain > 0f && Random.value < region.rain) Weather = Weather.Rain;
+        }
         ApplyWeatherVisuals();
         WeatherChanged?.Invoke(Weather);
     }

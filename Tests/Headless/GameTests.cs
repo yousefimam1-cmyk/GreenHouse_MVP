@@ -405,6 +405,13 @@ static class Program
         menu.List.Choose(menu.List.Rows.ToList().FindIndex(r => r.label() == UiText.T("New game")));
         EconomyManager.Instance.AddMoney(1234);
         menu.List.Choose(1); // "Yes, clear the current save"
+        T.Check("New game: map choice lists Najd and the Egypt DLC", menu.List.Rows.Count == Regions.All.Length + 1 && menu.List.Rows[0].label().Contains("Najd") && menu.List.Rows[1].label().Contains("Nile"));
+        T.Check("New game: coming-soon maps are locked", !menu.List.Rows[2].IsEnabled && menu.List.Rows[2].value() == UiText.T("Coming soon"));
+        menu.List.Choose(0);   // Najd
+        T.Check("New game: start choice (New farmer / Farm manager / From scratch)", menu.List.Rows.Count == 4 && menu.List.Rows[1].label().Contains("Farm manager"));
+        menu.List.Choose(0);   // New farmer
+        T.Check("New game: economy choice defaults to Normal", menu.List.Rows.Count == 4 && menu.List.Selected == 1);
+        menu.List.Choose(1);   // Normal
         FakeEngine.Run(0.5f);
         T.Check("Pause menu New game resets the farm and resumes", EconomyManager.Instance.Money == 500 && !GameMenu.IsOpen && Time.timeScale == 1f, EconomyManager.Instance.Money + "");
         T.Check("Settings survive a new game", Math.Abs(GameSettings.MasterVolume - 0.5f) < 0.001f && GameSettings.GraphicsPreset == 1);
@@ -781,6 +788,49 @@ static class Program
         float peak = 0f; double sq = 0;
         foreach (var v in theme.data) { peak = Math.Max(peak, Math.Abs(v)); sq += v * v; }
         T.Check("Menu theme: 24 s loop, not silent, no clipping", Math.Abs(theme.length - MenuMusic.Length) < 0.05f && Math.Sqrt(sq / theme.data.Length) > 0.03 && peak <= 0.75f, theme.length + "s peak " + peak);
+        // ---- careers, regions (Arab world maps, Egypt DLC), achievements, credits
+        Console.WriteLine("Careers, regions, achievements");
+        var gmenu = GameMenu.Instance;
+        gmenu.StartCareer("najd", Career.Start.FarmManager, Career.Economy.Hard);
+        FakeEngine.Run(0.2f);
+        T.Check("Farm manager starts with 25,000 and Hard economy", EconomyManager.Instance.Money == 25000 && Career.CurrentEconomy == Career.Economy.Hard && Career.SellMultiplier < 1f);
+        var sale = new Dictionary<string, float> { { "wheat", 100f } };
+        int hardEarn = EconomyManager.Instance.SellAll(new Dictionary<string, float>(sale));
+        gmenu.StartCareer("najd", Career.Start.NewFarmer, Career.Economy.Normal);
+        FakeEngine.Run(0.2f);
+        int normalEarn = EconomyManager.Instance.SellAll(new Dictionary<string, float>(sale));
+        T.Check("Hard economy sells for less than Normal", hardEarn > 0 && hardEarn < normalEarn, hardEarn + " vs " + normalEarn);
+        T.Check("Najd shows SAR", Loc.Raw("SAR") == "SAR" && Regions.Current.id == "najd");
+        Dlc.UnlockAllInDevBuilds = false;
+        T.Check("Egypt DLC locked without ownership", !Dlc.Owns("nile_delta") && !Regions.IsPlayable(Regions.Find("nile_delta")));
+        File.WriteAllText(Dlc.KeyFilePath, "nile_delta\n"); Dlc.Refresh();
+        T.Check("Egypt DLC unlocked by a key", Dlc.Owns("nile_delta") && Regions.IsPlayable(Regions.Find("nile_delta")));
+        gmenu.StartCareer("nile_delta", Career.Start.NewFarmer, Career.Economy.Normal);
+        FakeEngine.Run(0.2f);
+        T.Check("Egypt map: region saved, money shown in EGP", Regions.Current.id == "nile_delta" && Loc.Raw("SAR") == "EGP" && Regions.Current.market < 1f);
+        File.Delete(Dlc.KeyFilePath); Dlc.Refresh(); Dlc.UnlockAllInDevBuilds = true;
+        gmenu.StartCareer("jordan_valley", Career.Start.NewFarmer, Career.Economy.Normal);
+        T.Check("Coming-soon map can't be chosen (stays on the default)", Regions.Current.id == "najd");
+        AchievementManager.ResetAll();
+        var am = AchievementManager.Instance;
+        T.Check("24 achievements, none unlocked after reset", AchievementManager.All.Length == 24 && AchievementManager.UnlockedCount == 0 && am != null);
+        string unlocked = null; am.Unlocked += d => unlocked = d.id;
+        EconomyManager.Instance.AddMoney(15000);
+        T.Check("Money achievement unlocks with a toast", AchievementManager.IsUnlocked("money_10k") && unlocked == "money_10k");
+        GameEvents.RaiseCustom("catchFish"); GameEvents.RaiseCustom("catchFish");
+        T.Check("Progress achievements count up", Math.Abs(AchievementManager.Progress("fish_20") - 2f) < 0.01f && AchievementManager.Line(AchievementManager.Find("fish_20")).Contains("2 / 20"));
+        gmenu.StartCareer("najd", Career.Start.NewFarmer, Career.Economy.Normal);
+        T.Check("Achievements survive a new game", AchievementManager.IsUnlocked("money_10k"));
+        gmenu.Open(GameMenu.Mode.Main);
+        var rootLabels = gmenu.List.Rows.Select(r => r.label()).ToList();
+        T.Check("Main menu has Achievements and Credits", rootLabels.Contains(UiText.T("Achievements")) && rootLabels.Contains(UiText.T("Credits")));
+        gmenu.List.Choose(rootLabels.IndexOf(UiText.T("Achievements")));
+        T.Check("Achievements page lists all 24 (scrolls)", gmenu.List.Rows.Count == 25 && gmenu.List.Rows[0].label().Contains("First harvest"));
+        gmenu.Back();
+        gmenu.List.Choose(gmenu.List.Rows.ToList().FindIndex(r => r.label() == UiText.T("Credits")));
+        T.Check("Credits page", gmenu.List.Rows.Any(r => r.label().Contains("Kenney")) && gmenu.List.Rows.Any(r => r.label().Contains("Tajawal")));
+        gmenu.Close();
+        AchievementManager.ResetAll();
         Console.WriteLine("Loading screen and menu theme");
         BuildWorld();
         FakeEngine.Tick(0.02f);

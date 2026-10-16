@@ -150,7 +150,9 @@ public class EconomyManager : MonoBehaviour
         }
         if (MarketManager.Instance != null) total = MarketManager.Instance.Sell(cargo, messages);
         cargo.Clear();
-        int earned = Mathf.RoundToInt(total);
+        // Career economy difficulty and the region's market (both 1.0 on Normal in Najd).
+        float mul = Career.SellMultiplier * (Regions.Current != null && Regions.Current.market > 0f ? Regions.Current.market : 1f);
+        int earned = Mathf.RoundToInt(total * mul);
         AddMoney(earned);
         GameEvents.RaiseDelivered(weight, earned);
         return earned;

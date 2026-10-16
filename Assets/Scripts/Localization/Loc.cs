@@ -271,6 +271,7 @@ public static class Loc
     public static string Raw(string english)
     {
         if (english == null) return "";
+        if (english == "SAR") return Regions.CurrencyRaw(IsArabic);   // the region's currency (Egypt: EGP / جنيه)
         if (!packsLoaded) LoadPacks();
         if (!IsArabic) return englishLong.TryGetValue(english, out var e) ? e : english;
         if (arabicLong.TryGetValue(english, out var l)) return l;

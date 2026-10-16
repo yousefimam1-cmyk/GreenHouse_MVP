@@ -1,0 +1,328 @@
+{
+ "entries": [
+  {
+   "en": "Choose your map",
+   "ar": "اختر خريطتك"
+  },
+  {
+   "en": "How do you want to start?",
+   "ar": "كيف تريد أن تبدأ؟"
+  },
+  {
+   "en": "Economy difficulty",
+   "ar": "صعوبة الاقتصاد"
+  },
+  {
+   "en": "[Enter] Start farming   [Esc] Back",
+   "ar": "[Enter] ابدأ الزراعة   [Esc] رجوع"
+  },
+  {
+   "en": "Credits",
+   "ar": "شكر وتقدير"
+  },
+  {
+   "en": "Achievements",
+   "ar": "الإنجازات"
+  },
+  {
+   "en": "[Esc] Back",
+   "ar": "[Esc] رجوع"
+  },
+  {
+   "en": "Coming soon",
+   "ar": "قريباً"
+  },
+  {
+   "en": "DLC - not owned",
+   "ar": "إضافة - غير مملوكة"
+  },
+  {
+   "en": "DLC",
+   "ar": "إضافة"
+  },
+  {
+   "en": "New farmer",
+   "ar": "مزارع جديد"
+  },
+  {
+   "en": "Farm manager",
+   "ar": "مدير مزرعة"
+  },
+  {
+   "en": "Start from scratch",
+   "ar": "البداية من الصفر"
+  },
+  {
+   "en": "Your family farm, a tractor, a truck and seeds. The academy and the story guide you.",
+   "ar": "مزرعة عائلتك مع جرار وشاحنة وبذور، والأكاديمية والقصة ترشدانك"
+  },
+  {
+   "en": "The same farm with 25,000 SAR in the bank to grow fast. For players who know farming games.",
+   "ar": "نفس المزرعة مع 25,000 في البنك لتكبر بسرعة، للاعبين الذين يعرفون ألعاب الزراعة"
+  },
+  {
+   "en": "Only 150 SAR and the land. Every riyal counts - the hardest start.",
+   "ar": "150 فقط والأرض، كل قرش له قيمة - أصعب بداية"
+  },
+  {
+   "en": "Easy",
+   "ar": "سهل"
+  },
+  {
+   "en": "Normal",
+   "ar": "عادي"
+  },
+  {
+   "en": "Hard",
+   "ar": "صعب"
+  },
+  {
+   "en": "Crops sell for 25% more",
+   "ar": "المحاصيل تُباع بزيادة 25%"
+  },
+  {
+   "en": "Normal market prices",
+   "ar": "أسعار السوق العادية"
+  },
+  {
+   "en": "Crops sell for 20% less",
+   "ar": "المحاصيل تُباع بنقص 20%"
+  },
+  {
+   "en": "Achievement unlocked",
+   "ar": "إنجاز جديد"
+  },
+  {
+   "en": "First harvest",
+   "ar": "أول حصاد"
+  },
+  {
+   "en": "Harvest your first crop",
+   "ar": "احصد أول محصول لك"
+  },
+  {
+   "en": "Tonne of produce",
+   "ar": "طن من المحصول"
+  },
+  {
+   "en": "Harvest 1,000 kg of crops",
+   "ar": "احصد 1,000 كغ من المحاصيل"
+  },
+  {
+   "en": "Breadbasket",
+   "ar": "سلة الخبز"
+  },
+  {
+   "en": "Harvest 50,000 kg of crops",
+   "ar": "احصد 50,000 كغ من المحاصيل"
+  },
+  {
+   "en": "Open for business",
+   "ar": "افتتاح التجارة"
+  },
+  {
+   "en": "Sell your first load at the market",
+   "ar": "بِع أول حمولة في السوق"
+  },
+  {
+   "en": "Market regular",
+   "ar": "زبون دائم للسوق"
+  },
+  {
+   "en": "Deliver 50 loads to the market",
+   "ar": "وصّل 50 حمولة إلى السوق"
+  },
+  {
+   "en": "Ten thousand",
+   "ar": "عشرة آلاف"
+  },
+  {
+   "en": "Have 10,000 SAR in the bank",
+   "ar": "امتلك 10,000 في البنك"
+  },
+  {
+   "en": "Prosperous farm",
+   "ar": "مزرعة مزدهرة"
+  },
+  {
+   "en": "Have 100,000 SAR in the bank",
+   "ar": "امتلك 100,000 في البنك"
+  },
+  {
+   "en": "Millionaire farmer",
+   "ar": "مزارع مليونير"
+  },
+  {
+   "en": "Have 1,000,000 SAR in the bank",
+   "ar": "امتلك 1,000,000 في البنك"
+  },
+  {
+   "en": "Reliable farmer",
+   "ar": "مزارع يُعتمد عليه"
+  },
+  {
+   "en": "Complete 10 missions",
+   "ar": "أكمل 10 مهام"
+  },
+  {
+   "en": "Story complete",
+   "ar": "اكتملت القصة"
+  },
+  {
+   "en": "Complete the whole campaign",
+   "ar": "أكمل الحملة كاملة"
+  },
+  {
+   "en": "Contractor",
+   "ar": "مقاول"
+  },
+  {
+   "en": "Complete 10 contracts",
+   "ar": "أكمل 10 عقود"
+  },
+  {
+   "en": "Field worker",
+   "ar": "عامل الحقل"
+  },
+  {
+   "en": "Work 100 field passes with the tractor",
+   "ar": "اعمل 100 مرة في الحقل بالجرار"
+  },
+  {
+   "en": "New life",
+   "ar": "حياة جديدة"
+  },
+  {
+   "en": "Raise a newborn animal",
+   "ar": "ربِّ حيواناً مولوداً"
+  },
+  {
+   "en": "Fresh every day",
+   "ar": "طازج كل يوم"
+  },
+  {
+   "en": "Collect animal products 50 times",
+   "ar": "اجمع منتجات الحيوانات 50 مرة"
+  },
+  {
+   "en": "Modern farm",
+   "ar": "مزرعة حديثة"
+  },
+  {
+   "en": "Buy 5 farm upgrades",
+   "ar": "اشترِ 5 تحسينات للمزرعة"
+  },
+  {
+   "en": "Water finder",
+   "ar": "مكتشف الماء"
+  },
+  {
+   "en": "Start a well",
+   "ar": "شغّل بئراً"
+  },
+  {
+   "en": "Palm grove",
+   "ar": "بستان نخيل"
+  },
+  {
+   "en": "Plant 10 palm or fruit trees",
+   "ar": "ازرع 10 نخلات أو أشجار فاكهة"
+  },
+  {
+   "en": "Date harvest",
+   "ar": "حصاد التمر"
+  },
+  {
+   "en": "Harvest dates from your palms",
+   "ar": "احصد التمر من نخيلك"
+  },
+  {
+   "en": "Angler",
+   "ar": "صياد"
+  },
+  {
+   "en": "Catch 20 fish",
+   "ar": "اصطد 20 سمكة"
+  },
+  {
+   "en": "Landowner",
+   "ar": "مالك أرض"
+  },
+  {
+   "en": "Buy a new piece of land",
+   "ar": "اشترِ قطعة أرض جديدة"
+  },
+  {
+   "en": "Employer",
+   "ar": "صاحب عمل"
+  },
+  {
+   "en": "Hire a worker",
+   "ar": "وظّف عاملاً"
+  },
+  {
+   "en": "Debt free",
+   "ar": "بلا ديون"
+  },
+  {
+   "en": "Repay a loan",
+   "ar": "سدّد قرضاً"
+  },
+  {
+   "en": "Storm survivor",
+   "ar": "ناجٍ من العاصفة"
+  },
+  {
+   "en": "Get through a dust storm",
+   "ar": "تجاوز عاصفة رملية"
+  },
+  {
+   "en": "Seasoned farmer",
+   "ar": "مزارع متمرس"
+  },
+  {
+   "en": "Play 100 in-game days",
+   "ar": "العب 100 يوم في اللعبة"
+  },
+  {
+   "en": "<b>MAZRAA</b>  -  Almadarek Games",
+   "ar": "<b>مزرعة</b>  -  المدارك جيمز"
+  },
+  {
+   "en": "Game design, programming and art direction: Almadarek Games",
+   "ar": "تصميم اللعبة والبرمجة والإخراج الفني: المدارك جيمز"
+  },
+  {
+   "en": "Music: original Mazraa theme (made for the game)",
+   "ar": "الموسيقى: لحن مزرعة الأصلي (صُنع للعبة)"
+  },
+  {
+   "en": "Vehicles, crops and characters: Kenney (kenney.nl) - CC0",
+   "ar": "المركبات والمحاصيل والشخصيات: Kenney (kenney.nl) - CC0"
+  },
+  {
+   "en": "Farm animals: Quaternius - CC0",
+   "ar": "حيوانات المزرعة: Quaternius - CC0"
+  },
+  {
+   "en": "Chicken: CDmir (opengameart.org) - CC0",
+   "ar": "الدجاجة: CDmir (opengameart.org) - CC0"
+  },
+  {
+   "en": "Arabic font: Tajawal by Boutros Fonts - SIL Open Font License",
+   "ar": "الخط العربي: تجوال من بطرس للخطوط - رخصة SIL المفتوحة"
+  },
+  {
+   "en": "Crop growth stages, skybox, well and first-person controller: Unity Asset Store packages",
+   "ar": "مراحل نمو المحاصيل والسماء والبئر وتحكم الشخص الأول: حزم متجر Unity"
+  },
+  {
+   "en": "Made with Unity",
+   "ar": "صُنعت باستخدام Unity"
+  },
+  {
+   "en": "Thank you for playing!",
+   "ar": "شكراً لأنك لعبت!"
+  }
+ ]
+}

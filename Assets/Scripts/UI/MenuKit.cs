@@ -117,6 +117,7 @@ public class MenuRow
 /// </summary>
 public class MenuList
 {
+    public const int MaxVisible = 12;
     public RectTransform Panel { get; private set; }
     public int Selected { get; private set; }
     public IReadOnlyList<MenuRow> Rows => rows;
@@ -154,7 +155,7 @@ public class MenuList
         r.button = MenuKit.Button(list, "Row " + index, () => { Selected = rows.IndexOf(r); if (r.IsEnabled && r.confirm != null) r.confirm(); Refresh(); }, out r.bg);
         r.button.onHover = () => { int i = rows.IndexOf(r); if (i >= 0 && i != Selected && r.IsEnabled) { Selected = i; Refresh(); } };
         r.rt = (RectTransform)r.button.transform;
-        r.rt.gameObject.AddComponent<LayoutElement>().minHeight = 50;
+        r.rt.gameObject.AddComponent<LayoutElement>().minHeight = r.label != null && r.label().Contains("\n") ? 84 : 50;   // two-line rows (map / start choice)
         r.text = MenuKit.Text(r.rt, 24, Color.white, "Label");
         if (r.value != null || r.adjust != null) r.valueText = MenuKit.Text(r.rt, 24, new Color(1f, 0.85f, 0.6f), "Value");
         if (r.adjust != null)
@@ -186,9 +187,14 @@ public class MenuList
         title.alignment = rtl ? TextAlignmentOptions.Right : TextAlignmentOptions.Left;
         footer.text = footerText != null ? Glyphs.Apply(footerText()) : "";
         footer.alignment = title.alignment;
+        // Long lists (achievements, controls) show a window of rows around the selection, so they always fit on screen
+        // and scroll with the keyboard / D-pad / stick.
+        int first = rows.Count > MaxVisible ? Mathf.Clamp(Selected - MaxVisible / 2, 0, rows.Count - MaxVisible) : 0;
         for (int i = 0; i < rows.Count; i++)
         {
             var r = rows[i];
+            bool visible = i >= first && i < first + MaxVisible;
+            if (r.rt != null && r.rt.gameObject.activeSelf != visible) r.rt.gameObject.SetActive(visible);
             bool on = r.IsEnabled;
             Loc.ApplyFont(r.text);
             string num = i < 9 ? "<color=#FF9A3C>" + (i + 1) + "</color>" : "";

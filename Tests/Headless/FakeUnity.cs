@@ -471,6 +471,7 @@ namespace UnityEngine
     }
     public static class Debug
     {
+        public static bool isDebugBuild = false;
         public static void Log(object o) => FakeEngine.Logs.Add("" + o);
         public static void LogWarning(object o) => FakeEngine.Logs.Add("WARN " + o);
         public static void LogException(Exception e) => FakeEngine.Errors.Add("EXC " + e);

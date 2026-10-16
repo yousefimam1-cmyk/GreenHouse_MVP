@@ -11,7 +11,7 @@ using UnityEngine;
 public class GameMenu : MonoBehaviour
 {
     public enum Mode { Closed, Main, Pause }
-    private enum PageId { Root, Save, Load, Settings, Controls, ConfirmNew, Campaign }
+    private enum PageId { Root, Save, Load, Settings, Controls, ConfirmNew, Campaign, Map, Start, Economy, Credits, Achievements }
 
     /// <summary>Show the main menu when the game starts (headless tests turn this off).</summary>
     public static bool ShowOnStart = true;
@@ -30,6 +30,8 @@ public class GameMenu : MonoBehaviour
     private int openedFrame, rebindEndFrame = -10;
     private float timeScaleBefore = 1f;
     private bool waitingForKey;
+    private string pendingRegion = Regions.DefaultId;
+    private Career.Start pendingStart = Career.Start.NewFarmer;
     private UnityEngine.UI.Image backdrop;
 
     private void Awake() => Instance = this;
@@ -152,11 +154,16 @@ public class GameMenu : MonoBehaviour
             case PageId.Settings: list.Show(() => MenuKit.Title(UiText.T("Settings")), SettingsRows(), () => UiText.T("[<- ->] Change   [Esc] Back"), sel); break;
             case PageId.Controls: list.Show(() => MenuKit.Title(UiText.T("Controls")), ControlRows(), ControlsFooter, sel); break;
             case PageId.Campaign: list.Show(() => MenuKit.Title(UiText.T("Campaign")), CampaignRows(), () => UiText.T("[Enter] Replay chapter story   [Esc] Back"), sel); break;
+            case PageId.Map: list.Show(() => MenuKit.Title(UiText.T("Choose your map")), MapRows(), () => UiText.T("[Enter] Choose   [Esc] Back"), sel); break;
+            case PageId.Start: list.Show(() => MenuKit.Title(UiText.T("How do you want to start?")), StartRows(), () => UiText.T("[Enter] Choose   [Esc] Back"), sel); break;
+            case PageId.Economy: list.Show(() => MenuKit.Title(UiText.T("Economy difficulty")), EconomyRows(), () => UiText.T("[Enter] Start farming   [Esc] Back"), fresh ? 1 : sel); break;
+            case PageId.Credits: list.Show(() => MenuKit.Title(UiText.T("Credits")), CreditRows(), () => UiText.T("[Esc] Back"), sel); break;
+            case PageId.Achievements: list.Show(() => MenuKit.Title(UiText.T("Achievements") + "  " + AchievementManager.UnlockedCount + "/" + AchievementManager.All.Length), AchievementRows(), () => UiText.T("[Esc] Back"), sel); break;
             case PageId.ConfirmNew:
                 list.Show(() => MenuKit.Title(UiText.T("Start a new game?")), new List<MenuRow>
                 {
                     MenuRow.Button(() => UiText.T("No, go back"), Back),
-                    MenuRow.Button(() => UiText.T("Yes, clear the current save (slots are kept)"), NewGame),
+                    MenuRow.Button(() => UiText.T("Yes, clear the current save (slots are kept)"), () => Go(PageId.Map)),
                 }, () => UiText.T("[Enter] Choose   [Esc] Back"));
                 break;
         }
@@ -192,7 +199,7 @@ public class GameMenu : MonoBehaviour
         if (mode == Mode.Main)
         {
             rows.Add(new MenuRow { label = () => UiText.T("Continue"), confirm = Close, enabled = HasSave });
-            rows.Add(MenuRow.Button(() => UiText.T("New game"), () => { if (HasSave()) Go(PageId.ConfirmNew); else NewGame(); }));
+            rows.Add(MenuRow.Button(() => UiText.T("New game"), () => { if (HasSave()) Go(PageId.ConfirmNew); else Go(PageId.Map); }));
             for (int i = 1; i <= SaveSlots.Count; i++)
             {
                 int slot = i;
@@ -213,12 +220,108 @@ public class GameMenu : MonoBehaviour
         rows.Add(MenuRow.Button(() => UiText.T("Controls tutorial"), StartControls));
         rows.Add(MenuRow.Button(() => UiText.T("Tutorial"), StartTutorial));
         rows.Add(MenuRow.Button(() => UiText.T("Settings"), () => Go(PageId.Settings)));
+        rows.Add(MenuRow.Button(() => UiText.T("Achievements"), () => Go(PageId.Achievements)));
+        if (mode == Mode.Main) rows.Add(MenuRow.Button(() => UiText.T("Credits"), () => Go(PageId.Credits)));
         if (mode == Mode.Pause)
         {
             rows.Add(MenuRow.Button(() => UiText.T("New game"), () => Go(PageId.ConfirmNew)));
             rows.Add(MenuRow.Button(() => UiText.T("Main menu"), () => { mode = Mode.Main; ApplyLayout(); history.Clear(); ShowPage(PageId.Root); }));
         }
         rows.Add(MenuRow.Button(() => UiText.T("Quit"), Quit));
+        return rows;
+    }
+
+    // ------------------------------------------------------------------ new career: map -> start -> economy
+
+    private List<MenuRow> MapRows()
+    {
+        var rows = new List<MenuRow>();
+        foreach (var r in Regions.All)
+        {
+            var region = r;
+            rows.Add(new MenuRow
+            {
+                label = () => Loc.Display(Regions.Name(region) + " - " + Regions.Country(region)) + "\n<size=70%><color=#FFFFFFAA>" + Loc.Display(Regions.Desc(region)) + "</color></size>",
+                value = () => region.comingSoon ? UiText.T("Coming soon") : region.dlc && !Dlc.Owns(region.id) ? UiText.T("DLC - not owned") : region.dlc ? UiText.T("DLC") : "",
+                confirm = () => { if (!Regions.IsPlayable(region)) return; pendingRegion = region.id; Go(PageId.Start); },
+                enabled = () => Regions.IsPlayable(region),
+            });
+        }
+        rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
+        return rows;
+    }
+
+    private List<MenuRow> StartRows()
+    {
+        var rows = new List<MenuRow>();
+        foreach (Career.Start st in Enum.GetValues(typeof(Career.Start)))
+        {
+            var start = st;
+            rows.Add(new MenuRow
+            {
+                label = () => UiText.T(Career.StartName(start)) + "\n<size=70%><color=#FFFFFFAA>" + UiText.T(Career.StartDesc(start)) + "</color></size>",
+                value = () => Career.StartMoney(start).ToString("N0") + " " + UiText.T("SAR"),
+                confirm = () => { pendingStart = start; Go(PageId.Economy); },
+            });
+        }
+        rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
+        return rows;
+    }
+
+    private List<MenuRow> EconomyRows()
+    {
+        var rows = new List<MenuRow>();
+        foreach (Career.Economy ec in Enum.GetValues(typeof(Career.Economy)))
+        {
+            var econ = ec;
+            rows.Add(new MenuRow
+            {
+                label = () => UiText.T(Career.EconomyName(econ)),
+                value = () => UiText.T(Career.EconomyDesc(econ)),
+                confirm = () => StartCareer(pendingRegion, pendingStart, econ),
+            });
+        }
+        rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
+        return rows;
+    }
+
+    /// <summary>Start a new farm with the chosen map, start and economy (also used by tests).</summary>
+    public void StartCareer(string region, Career.Start start, Career.Economy economy)
+    {
+        if (GameHUD.Instance != null) GameHUD.Instance.StartNewGame();
+        Regions.Select(region);
+        Career.Apply(start, economy);
+        Close();
+        LoadingScreen.Show();
+    }
+
+    private static readonly string[] Credits =
+    {
+        "<b>MAZRAA</b>  -  Almadarek Games",
+        "Game design, programming and art direction: Almadarek Games",
+        "Music: original Mazraa theme (made for the game)",
+        "Vehicles, crops and characters: Kenney (kenney.nl) - CC0",
+        "Farm animals: Quaternius - CC0",
+        "Chicken: CDmir (opengameart.org) - CC0",
+        "Arabic font: Tajawal by Boutros Fonts - SIL Open Font License",
+        "Crop growth stages, skybox, well and first-person controller: Unity Asset Store packages",
+        "Made with Unity",
+        "Thank you for playing!",
+    };
+
+    private List<MenuRow> CreditRows()
+    {
+        var rows = new List<MenuRow>();
+        foreach (var c in Credits) { string line = c; rows.Add(MenuRow.Button(() => UiText.T(line), () => { })); }
+        rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
+        return rows;
+    }
+
+    private List<MenuRow> AchievementRows()
+    {
+        var rows = new List<MenuRow>();
+        foreach (var a in AchievementManager.All) { var def = a; rows.Add(MenuRow.Button(() => AchievementManager.Line(def), () => { })); }
+        rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
         return rows;
     }
 
@@ -310,12 +413,6 @@ public class GameMenu : MonoBehaviour
     }
 
     // ------------------------------------------------------------------ actions
-
-    private void NewGame()
-    {
-        if (GameHUD.Instance != null) GameHUD.Instance.StartNewGame();
-        Close();
-    }
 
     private void SaveSlot(int slot)
     {
