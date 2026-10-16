@@ -4,7 +4,8 @@ using UnityEngine;
 /// <summary>
 /// Fenced pen with a barn. Animals need feed (bought in the shop), water (fill the trough, the well must run)
 /// and a clean pen (clean at the barn door). Good care raises productivity and health; neglect for a whole day
-/// makes them sick. Happy pairs breed new animals at the start of a day. Collect products at the crate.
+/// makes them sick. Collect products at the crate. Each animal also has its own needs, health, genetics and breeding
+/// (HerdManager): production is scaled by the herd's productivity, and births come from HerdManager's pregnancies.
 /// </summary>
 public class AnimalPen : MonoBehaviour
 {
@@ -22,6 +23,7 @@ public class AnimalPen : MonoBehaviour
 
     public bool HasFeed => EconomyManager.Instance != null && EconomyManager.Instance.Feed > 0.01f;
     public IReadOnlyDictionary<string, float> Waiting => waiting;
+    public IReadOnlyList<FarmAnimal> Animals => animals;
     public int AnimalCount { get { var e = EconomyManager.Instance; int n = 0; if (e != null) foreach (var a in e.Data.animals) n += e.Owned(a.id); return n; } }
 
     /// <summary>Production multiplier from care (0.1 .. 1.2).</summary>
@@ -64,13 +66,17 @@ public class AnimalPen : MonoBehaviour
         return Build.OnGround(transform.TransformPoint(local));
     }
 
-    private void SyncAnimals(bool newborn = false)
+    /// <summary>Match the animals walking in the pen to the number owned (adds newborns small, removes sold ones).</summary>
+    public void SyncAnimals(bool newborn = false)
     {
         var eco = EconomyManager.Instance;
         if (eco == null) return;
+        animals.RemoveAll(a => a == null);
         foreach (var def in eco.Data.animals)
         {
-            int have = animals.FindAll(a => a.animalId == def.id).Count;
+            var mine = animals.FindAll(a => a.animalId == def.id);
+            for (int i = mine.Count - 1; i >= eco.Owned(def.id) && i >= 0; i--) { animals.Remove(mine[i]); Destroy(mine[i].gameObject); }
+            int have = Mathf.Min(mine.Count, eco.Owned(def.id));
             for (int i = have; i < eco.Owned(def.id); i++)
             {
                 var a = FarmAnimal.Create(def.id, this, RandomPoint());
@@ -78,6 +84,15 @@ public class AnimalPen : MonoBehaviour
                 animals.Add(a);
             }
         }
+    }
+
+    /// <summary>Take one animal's body out of the pen (sold or died) before the owned count drops.</summary>
+    public void RemoveVisual(int uid, string species)
+    {
+        var a = animals.Find(x => x != null && x.uid == uid && uid != 0) ?? animals.FindLast(x => x != null && x.animalId == species);
+        if (a == null) return;
+        animals.Remove(a);
+        Destroy(a.gameObject);
     }
 
     private void Update()
@@ -99,7 +114,8 @@ public class AnimalPen : MonoBehaviour
         {
             int count = eco.Owned(def.id);
             if (count == 0) continue;
-            float t = (timers.TryGetValue(def.id, out var v) ? v : 0f) + Time.deltaTime * Productivity;
+            float herd = HerdManager.Instance != null ? HerdManager.Instance.ProductionFactor(def.id) : 1f;
+            float t = (timers.TryGetValue(def.id, out var v) ? v : 0f) + Time.deltaTime * Productivity * herd;
             if (t >= def.interval)
             {
                 t = 0f;
@@ -110,11 +126,11 @@ public class AnimalPen : MonoBehaviour
         }
     }
 
-    // Breeding: a well-cared-for pair has a chance to have young each morning.
+    // Breeding: a well-cared-for pair has a chance to have young each morning (HerdManager does real pregnancies when present).
     private void OnNewDay(int day)
     {
         var eco = EconomyManager.Instance;
-        if (eco == null || Productivity < 0.8f) return;
+        if (eco == null || Productivity < 0.8f || HerdManager.Instance != null) return;
         foreach (var def in eco.Data.animals)
         {
             int n = eco.Owned(def.id);
@@ -133,6 +149,23 @@ public class AnimalPen : MonoBehaviour
         if (!WellIsRunning()) return Loc.T("Start the well first to get water");
         WaterLevel = 1f; SaveState();
         return Loc.T("Water trough filled");
+    }
+
+    /// <summary>Pour water into the trough (watering can, no well needed); negative = animals drinking.</summary>
+    public void AddWater(float amount) { WaterLevel = Mathf.Clamp01(WaterLevel + amount); }
+
+    /// <summary>Muck out part of the pen with the shovel.</summary>
+    public void CleanPartly(float amount)
+    {
+        Cleanliness = Mathf.Clamp01(Cleanliness + Mathf.Max(0f, amount));
+        if (Cleanliness >= 0.999f) GameEvents.RaisePenCleaned();
+    }
+
+    /// <summary>True when the world point lies inside the fence.</summary>
+    public bool Contains(Vector3 world)
+    {
+        Vector3 l = transform.InverseTransformPoint(world);
+        return Mathf.Abs(l.x) <= size.x * 0.5f && Mathf.Abs(l.z) <= size.y * 0.5f;
     }
 
     public string Clean()

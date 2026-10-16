@@ -3,12 +3,14 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>Game actions that can be pressed on keyboard or gamepad (keyboard keys can be rebound in Settings).</summary>
-public enum GameAction { Interact, VehicleAction, Implement, Brake, Pause, Map, Inventory, Stats, View,
+public enum GameAction { Interact, VehicleAction, Implement, Brake, Pause, Map, Inventory, Stats, View, Crouch, Carry, UseTool, ToolPrev, ToolNext,
     EngineToggle, GearUp, GearDown, Cruise, CruiseFaster, CruiseSlower, Traction, LaneAssist }
 
 /// <summary>
-/// One Input System action map built in code for the farm actions (E, R, Q, Space, P, N, I, O, V) and the driving actions
-/// (F engine, Shift / Ctrl gears, Y cruise, . / , cruise speed, Z 4WD / diff lock, / GPS line) with gamepad bindings.
+/// One Input System action map built in code for the farm actions (E, R, Q, Space, P, N, I, O, V), the on-foot actions
+/// (Ctrl crouch, F pick up, Z hand tool, comma / period tool wheel) and the driving actions (F engine, Shift / Ctrl gears,
+/// Y cruise, . / , cruise speed, Z 4WD / diff lock, / GPS line) with gamepad bindings. On-foot and driving actions share
+/// keys and buttons on purpose: on-foot ones are only read while Vehicle.Current == null, driving ones only in a vehicle.
 /// Keyboard bindings can be rebound (Input System rebinding API); overrides are saved with SaveBindingOverridesAsJson
 /// in PlayerPrefs ("mazraa.settings.bindings"), so they survive a new game.
 /// Also tracks whether the player last used a gamepad (and whether it is a PlayStation pad) for button glyphs.
@@ -35,6 +37,12 @@ public static class GameInput
         new Def("Inventory", "<Keyboard>/i", null),
         new Def("Farm stats", "<Keyboard>/o", null),
         new Def("Camera view", "<Keyboard>/v", "<Gamepad>/rightStickPress"),
+        // On foot (PlayerLife): crouch / rest, pick up and put down, hand tools and the tool wheel.
+        new Def("Crouch / rest", "<Keyboard>/leftCtrl", "<Gamepad>/leftStickPress"),
+        new Def("Pick up / put down", "<Keyboard>/f", "<Gamepad>/dpad/up"),
+        new Def("Use hand tool", "<Keyboard>/z", "<Gamepad>/rightTrigger"),
+        new Def("Previous tool", "<Keyboard>/comma", "<Gamepad>/leftShoulder"),
+        new Def("Next tool", "<Keyboard>/period", "<Gamepad>/rightShoulder"),
         // driving (only read while in a vehicle, so the pad buttons can be shared with on-foot actions)
         new Def("Engine start / stop", "<Keyboard>/f", "<Gamepad>/leftStickPress"),
         new Def("Gear up", "<Keyboard>/leftShift", "<Gamepad>/rightShoulder"),

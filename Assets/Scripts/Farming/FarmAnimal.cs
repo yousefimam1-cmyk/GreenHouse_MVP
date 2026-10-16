@@ -6,6 +6,8 @@ public class FarmAnimal : MonoBehaviour
 {
     public string animalId;
     public AnimalPen pen;
+    /// <summary>HerdManager record of this animal (0 = not linked yet).</summary>
+    public int uid;
     private Vector3 target;
     private float wait;
     private float speed;

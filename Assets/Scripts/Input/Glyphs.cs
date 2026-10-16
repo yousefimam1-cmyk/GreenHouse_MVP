@@ -59,13 +59,19 @@ public static class Glyphs
             case GameAction.CruiseSlower: return PadLabel(Pad.DPad, ps) + "←";
             case GameAction.Traction: return PadLabel(Pad.DPad, ps) + "↓";
             case GameAction.LaneAssist: return PadLabel(Pad.RStick, ps);
+            case GameAction.Crouch: return PadLabel(Pad.LStick, ps);
+            case GameAction.Carry: return PadLabel(Pad.DPad, ps) + "↑";
+            case GameAction.UseTool: return PadLabel(Pad.RT, ps);
+            case GameAction.ToolPrev: return PadLabel(Pad.LB, ps);
+            case GameAction.ToolNext: return PadLabel(Pad.RB, ps);
             default: return null;
         }
     }
 
     // Bracketed keyboard tokens used in texts -> action (or a fixed gamepad button for non-rebindable keys).
+    // F, Ctrl and Z are shared: in a vehicle they mean engine / gear down / 4WD, on foot pick up / crouch / hand tool.
     private static readonly string[] Tokens = { "E", "R", "Q", "Space", "P", "N", "I", "O", "V", "Esc", "Enter", "Backspace", "LB", "RB",
-        "F", "Shift", "Ctrl", "Y", "Plus", "Minus", "Z", "Slash" };
+        "F", "Shift", "Ctrl", "Y", "Plus", "Minus", "Z", "Slash", ",", "." };
 
     private static string Replacement(string token)
     {
@@ -81,19 +87,21 @@ public static class Glyphs
             case "I": return For(GameAction.Inventory);
             case "O": return For(GameAction.Stats);
             case "V": return For(GameAction.View);
-            case "F": return For(GameAction.EngineToggle);
+            case "F": return For(Vehicle.Current != null ? GameAction.EngineToggle : GameAction.Carry);
             case "Shift": return For(GameAction.GearUp);
-            case "Ctrl": return For(GameAction.GearDown);
+            case "Ctrl": return For(Vehicle.Current != null ? GameAction.GearDown : GameAction.Crouch);
             case "Y": return For(GameAction.Cruise);
             case "Plus": return For(GameAction.CruiseFaster);
             case "Minus": return For(GameAction.CruiseSlower);
-            case "Z": return For(GameAction.Traction);
+            case "Z": return For(Vehicle.Current != null ? GameAction.Traction : GameAction.UseTool);
             case "Slash": return For(GameAction.LaneAssist);
             case "Esc": return pad ? PadLabel(Pad.East) : null;
             case "Enter": return pad ? PadLabel(Pad.South) : null;
             case "Backspace": return pad ? PadLabel(Pad.DPad) + "↓" : null;
             case "LB": return pad ? PadLabel(Pad.LB) : null;
             case "RB": return pad ? PadLabel(Pad.RB) : null;
+            case ",": return For(GameAction.ToolPrev);
+            case ".": return For(GameAction.ToolNext);
             default: return null;
         }
     }

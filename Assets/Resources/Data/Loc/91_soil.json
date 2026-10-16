@@ -1,0 +1,340 @@
+{
+ "entries": [
+  {
+   "en": "Advice",
+   "ar": "نصيحة"
+  },
+  {
+   "en": "Compaction",
+   "ar": "انضغاط التربة"
+  },
+  {
+   "en": "Expected yield",
+   "ar": "الإنتاج المتوقع"
+  },
+  {
+   "en": "Fields",
+   "ar": "الحقول"
+  },
+  {
+   "en": "Fields - precision farming",
+   "ar": "الحقول - الزراعة الدقيقة"
+  },
+  {
+   "en": "Groundwater",
+   "ar": "المياه الجوفية"
+  },
+  {
+   "en": "Groundwater pumping",
+   "ar": "ضخ المياه الجوفية"
+  },
+  {
+   "en": "History",
+   "ar": "السجل"
+  },
+  {
+   "en": "Irrigation",
+   "ar": "الري"
+  },
+  {
+   "en": "Last crop",
+   "ar": "المحصول السابق"
+  },
+  {
+   "en": "Limiting",
+   "ar": "العامل المحدِّد"
+  },
+  {
+   "en": "Moisture",
+   "ar": "الرطوبة"
+  },
+  {
+   "en": "OM",
+   "ar": "المادة العضوية"
+  },
+  {
+   "en": "Over-watered: water is standing in the field",
+   "ar": "ري زائد: الماء راكد في الحقل"
+  },
+  {
+   "en": "Salts leached",
+   "ar": "تم غسل الأملاح"
+  },
+  {
+   "en": "Soil sample kit (lab test)",
+   "ar": "عُدّة عينة تربة (تحليل مخبري)"
+  },
+  {
+   "en": "Soil test",
+   "ar": "تحليل التربة"
+  },
+  {
+   "en": "Soil: not tested - buy a soil sample kit (Farm Shop, Soil) and press [E] on the field",
+   "ar": "التربة: غير محللة - اشترِ عُدّة عينة تربة (متجر المزرعة، التربة) واضغط [E] على الحقل"
+  },
+  {
+   "en": "Sowing density",
+   "ar": "كثافة البذر"
+  },
+  {
+   "en": "Today",
+   "ar": "اليوم"
+  },
+  {
+   "en": "Waterlogged",
+   "ar": "تشبّع بالماء"
+  },
+  {
+   "en": "Weeds",
+   "ar": "الأعشاب الضارة"
+  },
+  {
+   "en": "[E] Leach the salts",
+   "ar": "[E] غسل الأملاح"
+  },
+  {
+   "en": "[E] Take a soil sample",
+   "ar": "[E] أخذ عينة تربة"
+  },
+  {
+   "en": "available",
+   "ar": "المتاح"
+  },
+  {
+   "en": "average",
+   "ar": "المتوسط"
+  },
+  {
+   "en": "efficiency",
+   "ar": "الكفاءة"
+  },
+  {
+   "en": "harvests",
+   "ar": "حصادات"
+  },
+  {
+   "en": "manure",
+   "ar": "روث"
+  },
+  {
+   "en": "no harvests yet",
+   "ar": "لا حصاد بعد"
+  },
+  {
+   "en": "none",
+   "ar": "لا يوجد"
+  },
+  {
+   "en": "nothing",
+   "ar": "لا شيء"
+  },
+  {
+   "en": "of potential",
+   "ar": "من الإمكانية"
+  },
+  {
+   "en": "seed",
+   "ar": "البذور"
+  },
+  {
+   "en": "soil not tested",
+   "ar": "التربة غير محللة"
+  },
+  {
+   "en": "test the soil",
+   "ar": "حلّل التربة"
+  },
+  {
+   "en": "Germination",
+   "ar": "الإنبات"
+  },
+  {
+   "en": "Vegetative",
+   "ar": "النمو الخضري"
+  },
+  {
+   "en": "Flowering",
+   "ar": "الإزهار"
+  },
+  {
+   "en": "Ripening",
+   "ar": "النضج"
+  },
+  {
+   "en": "Ripe",
+   "ar": "ناضج"
+  },
+  {
+   "en": "Plowed",
+   "ar": "محروث"
+  },
+  {
+   "en": "Untilled",
+   "ar": "غير محروث"
+  },
+  {
+   "en": "Plow at the right soil moisture",
+   "ar": "احرث عندما تكون رطوبة التربة مناسبة"
+  },
+  {
+   "en": "Plow deep with the tractor when the soil is not wet",
+   "ar": "احرث حرثاً عميقاً بالجرار والتربة غير مبتلة"
+  },
+  {
+   "en": "Sow in the crop's season to avoid heat at flowering",
+   "ar": "ازرع في موسم المحصول لتجنب الحر وقت الإزهار"
+  },
+  {
+   "en": "Spray herbicide or plow deep",
+   "ar": "رش مبيد أعشاب أو احرث حرثاً عميقاً"
+  },
+  {
+   "en": "Spread gypsum and leach the salts; drip builds up less salt than flooding",
+   "ar": "انثر الجبس واغسل الأملاح؛ الري بالتنقيط يراكم أملاحاً أقل من الري بالغمر"
+  },
+  {
+   "en": "Spread potassium sulfate",
+   "ar": "انثر سلفات البوتاسيوم"
+  },
+  {
+   "en": "Spread urea or NPK fertilizer",
+   "ar": "انثر اليوريا أو السماد المركب NPK"
+  },
+  {
+   "en": "Spread superphosphate",
+   "ar": "انثر السوبر فوسفات"
+  },
+  {
+   "en": "Spread superphosphate; sulfur frees phosphorus in alkaline soil",
+   "ar": "انثر السوبر فوسفات؛ الكبريت يحرر الفوسفور في التربة القلوية"
+  },
+  {
+   "en": "Spread agricultural sulfur to lower the pH",
+   "ar": "انثر الكبريت الزراعي لخفض الـ pH"
+  },
+  {
+   "en": "Spread agricultural lime to raise the pH",
+   "ar": "انثر الجير الزراعي لرفع الـ pH"
+  },
+  {
+   "en": "Too dry: cloddy seedbed",
+   "ar": "جافة جداً: مهد بذور متكتل"
+  },
+  {
+   "en": "Too wet: the soil smeared and compacted",
+   "ar": "مبتلة جداً: التربة تلطخت وانضغطت"
+  },
+  {
+   "en": "Deep plowing: good seedbed",
+   "ar": "حرث عميق: مهد بذور جيد"
+  },
+  {
+   "en": "Shallow cultivation",
+   "ar": "عزق سطحي"
+  },
+  {
+   "en": "Treat the pests (Crop care)",
+   "ar": "عالج الآفات (العناية بالمحاصيل)"
+  },
+  {
+   "en": "Use normal sowing density when water or nitrogen is short",
+   "ar": "استخدم كثافة بذر عادية عند نقص الماء أو النيتروجين"
+  },
+  {
+   "en": "Water less and let the field drain",
+   "ar": "قلل الري واترك الحقل يصرف الماء"
+  },
+  {
+   "en": "Water more often or install drip irrigation",
+   "ar": "اسقِ أكثر أو ركّب ري بالتنقيط"
+  },
+  {
+   "en": "Nitrogen",
+   "ar": "النيتروجين"
+  },
+  {
+   "en": "Phosphorus",
+   "ar": "الفوسفور"
+  },
+  {
+   "en": "Potassium",
+   "ar": "البوتاسيوم"
+  },
+  {
+   "en": "Soil pH",
+   "ar": "حموضة التربة pH"
+  },
+  {
+   "en": "Salinity",
+   "ar": "الملوحة"
+  },
+  {
+   "en": "Water stress",
+   "ar": "إجهاد مائي"
+  },
+  {
+   "en": "Waterlogging",
+   "ar": "التشبع بالماء"
+  },
+  {
+   "en": "Heat stress",
+   "ar": "إجهاد حراري"
+  },
+  {
+   "en": "Seedbed",
+   "ar": "مهد البذور"
+  },
+  {
+   "en": "Not enough manure in storage",
+   "ar": "لا يوجد روث كافٍ في المخزن"
+  },
+  {
+   "en": "Fields (precision farming)",
+   "ar": "الحقول (الزراعة الدقيقة)"
+  },
+  {
+   "en": "Left / Right: sowing density   Up / Down: choose field   [Enter] irrigation   [Esc] close",
+   "ar": "يمين / يسار: كثافة البذر   أعلى / أسفل: اختر الحقل   [Enter] الري   [Esc] إغلاق"
+  },
+  {
+   "en": "Farm system",
+   "ar": "نظام المزرعة"
+  },
+  {
+   "en": "Hand watering",
+   "ar": "ري يدوي"
+  },
+  {
+   "en": "Flood (furrows)",
+   "ar": "ري بالغمر (أخاديد)"
+  },
+  {
+   "en": "[Q] Irrigation",
+   "ar": "[Q] الري"
+  },
+  {
+   "en": "automatic",
+   "ar": "تلقائي"
+  },
+  {
+   "en": "[LB] [RB] or 1 2 3: Inventory / Farm stats / Fields",
+   "ar": "[LB] [RB] أو 1 2 3: المخزون / إحصاءات المزرعة / الحقول"
+  },
+  {
+   "en": "Crop rotation",
+   "ar": "دورة زراعية"
+  },
+  {
+   "en": "Rotation",
+   "ar": "الدورة"
+  },
+  {
+   "en": "yield",
+   "ar": "الإنتاج"
+  },
+  {
+   "en": "Same crop family again: soil-borne disease",
+   "ar": "نفس عائلة المحصول مرة أخرى: أمراض التربة"
+  }
+ ]
+}

@@ -1,0 +1,58 @@
+{
+  "notes": "Soil, water and crop agronomy for the open fields (Scripts/Farming/SoilModel.cs, SoilManager.cs). Nutrients are plant-available kg/ha in the root zone. crops: n/p/k = available amount needed for full yield (linear-plateau response), rn/rp/rk = removed by a full harvest, fix = N left by a legume per cut; phMin/phMax = range without pH loss; ecT/ecS = Maas-Hoffman salt tolerance (threshold ECe dS/m, % yield loss per dS/m above it, FAO-29/USDA Salinity Lab); tBase/tOptLo/tOptHi/tMax = cardinal temperatures C; et = crop water use (ETc mm) of one full crop at reference ET0 6 mm/day (FAO-56, scaled per cut for alfalfa); ky = FAO-33 yield response to water stress; residue = straw left after harvest (0..1). regions: temp/et0 per season (spring, summer, autumn, winter); ecWater = salinity of the irrigation water (dS/m: Saq aquifer wells in Al-Qassim ~1.2-2; Nile canal water mixed with drainage re-use in the Delta ~0.8-1.2); waterCost = pumping and abstraction cost per m3; drainage = how fast standing water drains (sandy desert soil fast, Delta clay slow); start = soil of a new farm. irrigation: application efficiency, salt factor (how much of the salt stays near the roots / evaporates at the surface) and leaching fraction. rotation: yield multiplier for crop family 'next' grown after 'prev' (legume N credit, broken disease cycles; repeated nightshades, melons and onions build up soil-borne disease). amendments: shop items for the 'Soil' page; careId = existing Crop care item that also feeds the soil model.",
+  "kitPrice": 25,
+  "leachMm": 150,
+  "sameFamilyMult": 0.9,
+  "otherFamilyMult": 1.1,
+  "crops": [
+    { "id": "wheat",      "n": 100, "p": 25, "k": 60,  "rn": 50, "rp": 12, "rk": 20, "fix": 0,  "phMin": 5.5, "phMax": 8.5, "ecT": 6.0, "ecS": 7.1,  "tBase": 3,  "tOptLo": 15, "tOptHi": 24, "tMax": 32, "et": 450, "ky": 1.05, "residue": 1.0 },
+    { "id": "sorghum",    "n": 90,  "p": 20, "k": 60,  "rn": 45, "rp": 10, "rk": 30, "fix": 0,  "phMin": 5.5, "phMax": 8.5, "ecT": 6.8, "ecS": 16,   "tBase": 10, "tOptLo": 26, "tOptHi": 34, "tMax": 40, "et": 500, "ky": 0.9,  "residue": 1.0 },
+    { "id": "millet",     "n": 60,  "p": 15, "k": 40,  "rn": 30, "rp": 8,  "rk": 20, "fix": 0,  "phMin": 5.0, "phMax": 8.5, "ecT": 6.0, "ecS": 10,   "tBase": 12, "tOptLo": 28, "tOptHi": 36, "tMax": 42, "et": 400, "ky": 0.8,  "residue": 1.0 },
+    { "id": "potato",     "n": 120, "p": 35, "k": 150, "rn": 60, "rp": 15, "rk": 80, "fix": 0,  "phMin": 5.0, "phMax": 8.2, "ecT": 1.7, "ecS": 12,   "tBase": 5,  "tOptLo": 15, "tOptHi": 22, "tMax": 29, "et": 500, "ky": 1.1,  "residue": 0.4 },
+    { "id": "tomato",     "n": 120, "p": 35, "k": 150, "rn": 55, "rp": 15, "rk": 90, "fix": 0,  "phMin": 5.5, "phMax": 8.0, "ecT": 2.5, "ecS": 9.9,  "tBase": 10, "tOptLo": 20, "tOptHi": 28, "tMax": 34, "et": 550, "ky": 1.05, "residue": 0.5 },
+    { "id": "onion",      "n": 90,  "p": 30, "k": 90,  "rn": 40, "rp": 10, "rk": 40, "fix": 0,  "phMin": 6.0, "phMax": 8.0, "ecT": 1.2, "ecS": 16,   "tBase": 6,  "tOptLo": 14, "tOptHi": 25, "tMax": 32, "et": 400, "ky": 1.1,  "residue": 0.2 },
+    { "id": "watermelon", "n": 90,  "p": 30, "k": 120, "rn": 40, "rp": 12, "rk": 60, "fix": 0,  "phMin": 5.5, "phMax": 8.0, "ecT": 2.0, "ecS": 9,    "tBase": 12, "tOptLo": 24, "tOptHi": 32, "tMax": 38, "et": 450, "ky": 1.1,  "residue": 0.5 },
+    { "id": "alfalfa",    "n": 0,   "p": 30, "k": 120, "rn": 0,  "rp": 8,  "rk": 30, "fix": 25, "phMin": 6.2, "phMax": 8.3, "ecT": 2.0, "ecS": 7.3,  "tBase": 5,  "tOptLo": 18, "tOptHi": 30, "tMax": 38, "et": 180, "ky": 1.1,  "residue": 0.2 }
+  ],
+  "regions": [
+    { "id": "najd",       "temp": [25, 36, 28, 15], "et0": [6.5, 9.5, 6.0, 3.5], "ecWater": 1.6, "waterCost": 0.12, "drainage": 1.4,
+      "start": { "n": 220, "p": 60, "k": 250, "ph": 7.9, "om": 0.6, "ec": 1.5, "compaction": 0.15 } },
+    { "id": "nile_delta", "temp": [22, 30, 25, 15], "et0": [5.0, 7.0, 4.5, 2.5], "ecWater": 0.9, "waterCost": 0.03, "drainage": 0.6,
+      "start": { "n": 200, "p": 55, "k": 380, "ph": 7.9, "om": 1.8, "ec": 2.4, "compaction": 0.3 } }
+  ],
+  "irrigation": [
+    { "id": "flood",     "eff": 0.6,  "salt": 1.0,  "leach": 0.25 },
+    { "id": "sprinkler", "eff": 0.75, "salt": 0.85, "leach": 0.12 },
+    { "id": "pivot",     "eff": 0.85, "salt": 0.8,  "leach": 0.1 },
+    { "id": "drip",      "eff": 0.92, "salt": 0.5,  "leach": 0.18 }
+  ],
+  "rotation": [
+    { "prev": "legume",     "next": "grain",      "mult": 1.2 },
+    { "prev": "legume",     "next": "nightshade", "mult": 1.15 },
+    { "prev": "legume",     "next": "cucurbit",   "mult": 1.15 },
+    { "prev": "legume",     "next": "allium",     "mult": 1.15 },
+    { "prev": "legume",     "next": "legume",     "mult": 0.95 },
+    { "prev": "grain",      "next": "legume",     "mult": 1.1 },
+    { "prev": "grain",      "next": "nightshade", "mult": 1.15 },
+    { "prev": "grain",      "next": "allium",     "mult": 1.12 },
+    { "prev": "grain",      "next": "cucurbit",   "mult": 1.12 },
+    { "prev": "grain",      "next": "grain",      "mult": 1.0 },
+    { "prev": "nightshade", "next": "grain",      "mult": 1.15 },
+    { "prev": "nightshade", "next": "nightshade", "mult": 0.85 },
+    { "prev": "cucurbit",   "next": "cucurbit",   "mult": 0.85 },
+    { "prev": "allium",     "next": "allium",     "mult": 0.85 }
+  ],
+  "amendments": [
+    { "id": "urea",           "nameEn": "Urea (46% N)",              "nameAr": "يوريا (46% نيتروجين)",     "price": 60, "n": 80, "ec": 0.05, "growing": true },
+    { "id": "superphosphate", "nameEn": "Superphosphate (P)",        "nameAr": "سوبر فوسفات",              "price": 55, "p": 60 },
+    { "id": "potash",         "nameEn": "Potassium sulfate (K)",     "nameAr": "سلفات البوتاسيوم",          "price": 65, "k": 100, "ec": 0.08 },
+    { "id": "compost",        "nameEn": "Compost (from your animals' manure)", "nameAr": "سماد عضوي (كمبوست من روث حيواناتك)", "price": 15, "manureKg": 250, "n": 20, "p": 12, "k": 30, "om": 0.35 },
+    { "id": "gypsum",         "nameEn": "Gypsum",                    "nameAr": "جبس زراعي",                "price": 45, "ec": -1.2, "ph": -0.1, "compaction": -0.05 },
+    { "id": "sulfur",         "nameEn": "Agricultural sulfur",       "nameAr": "كبريت زراعي",              "price": 50, "ph": -0.4 },
+    { "id": "lime",           "nameEn": "Agricultural lime",         "nameAr": "جير زراعي",                "price": 40, "ph": 0.6 },
+    { "id": "herbicide",      "nameEn": "Herbicide",                 "nameAr": "مبيد أعشاب",               "price": 45, "herbicide": true, "growing": true },
+    { "id": "mulch",          "nameEn": "Straw mulch",               "nameAr": "تغطية بالقش",               "price": 30, "mulch": true, "growing": true },
+    { "id": "fertilizer",     "nameEn": "Fertilizer (NPK)",          "nameAr": "سماد كيماوي",              "price": 80, "shop": false, "careId": "fertilizer", "n": 45, "p": 45, "k": 45, "ec": 0.05 },
+    { "id": "manure",         "nameEn": "Manure",                    "nameAr": "سماد بلدي",                "price": 50, "shop": false, "careId": "manure", "n": 25, "p": 15, "k": 35, "om": 0.2, "ec": 0.1 }
+  ]
+}

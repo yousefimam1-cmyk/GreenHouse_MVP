@@ -129,6 +129,333 @@ static class Program
         new GameObject("GameManager (auto)").AddComponent<GameManager>();
     }
 
+    // ---------------------------------------------------------------- soil, water, precision farming
+    static string savedSoilPack, savedSoilHistory;
+    static int savedSoilItems;
+
+    static void SoilFresh(FieldPlot p)
+    {
+        p.ResetPlot();
+        SoilManager.Instance.ResetSoil(p.index);
+        var c = CropCareManager.Instance.Plot(p.index);
+        c.fertility = 1f; c.lastFamily = ""; c.pest = ""; c.damage = 0f; c.protectDays = 99; c.rotation = 1f; c.rotated = false; c.regrow = -1f; c.cuts = 0;
+    }
+
+    static void SoilPlant(FieldPlot p, string crop)
+    {
+        var eco = EconomyManager.Instance;
+        if (eco.Seeds(crop) <= 0) eco.AddSeeds(crop, 3);
+        FieldPlot.PreferredSeed = crop;
+        if (p.State == PlotState.Untilled) p.TryPlow(false);
+        p.TrySeed(false);
+    }
+
+    static void SoilTests()
+    {
+        Console.WriteLine("Soil, water and precision farming");
+        var soil = SoilManager.Instance; var eco = EconomyManager.Instance; var care = CropCareManager.Instance; var clock = WorldClock.Instance;
+        var fm = FieldManager.Instance;
+        int e0 = FakeEngine.Errors.Count;
+        T.Check("Soil: system created", soil != null);
+        var data = SoilData.Data;
+        T.Check("Soil: agronomy for every field crop (N/P/K, salt tolerance, temperatures, water use)", eco.Data.fieldCrops.All(c => data.crops.Any(d => d.id == c.id && d.et > 0f && d.tMax > d.tOptHi)),
+            string.Join(",", eco.Data.fieldCrops.Where(c => !data.crops.Any(d => d.id == c.id)).Select(c => c.id)));
+        T.Check("Soil: Najd and Nile Delta soils, 4 irrigation methods", SoilData.Region("najd").id == "najd" && SoilData.Region("nile_delta").ecWater < SoilData.Region("najd").ecWater && data.irrigation.Length == 4);
+        T.Check("Soil: shop page Soil (sample kit + 9 amendments)", ShopCatalog.Entries.Count(x => x.category == "Soil") == 10, ShopCatalog.Entries.Count(x => x.category == "Soil") + "");
+        T.Check("Soil: amendments named in Arabic", data.amendments.All(a => !string.IsNullOrEmpty(a.nameAr)));
+        // every text key has Arabic
+        var src = string.Join("\n", new[] { "SoilManager.cs", "SoilModel.cs" }.Select(f => File.ReadAllText("../../Assets/Scripts/Farming/" + f)));
+        var keys = System.Text.RegularExpressions.Regex.Matches(src, "SoilText\\.[RT]\\(\"([^\"]+)\"").Cast<System.Text.RegularExpressions.Match>().Select(m => m.Groups[1].Value).ToList();
+        keys.AddRange(SoilFactors.Names); keys.AddRange(SoilModel.DensityNames); keys.AddRange(SoilManager.FieldWaterNames);
+        keys.AddRange(new[] { "Germination", "Vegetative", "Flowering", "Ripening", "Ripe", "Plowed", "Untilled", "Soil", "Not enough manure in storage", "Fields (precision farming)",
+            "Left / Right: sowing density   Up / Down: choose field   [Enter] irrigation   [Esc] close", "Farm system", "[Q] Irrigation", "automatic", "[LB] [RB] or 1 2 3: Inventory / Farm stats / Fields", "Crop rotation", "Rotation", "yield",
+            "Same crop family again: soil-borne disease", "Deep plowing: good seedbed", "Shallow cultivation", "Too wet: the soil smeared and compacted", "Too dry: cloddy seedbed" });
+        for (int i = 0; i < SoilFactors.Names.Length; i++) { keys.Add(SoilManager.Advice(i, new SoilState { ph = 8f })); keys.Add(SoilManager.Advice(i, new SoilState { ph = 5f })); }
+        keys = keys.Where(k => k != "").Distinct().ToList();
+        var missing = keys.Where(k => !Loc.HasTranslation(k)).ToList();
+        T.Check("Soil: every text key has Arabic (Loc/91_soil.json)", keys.Count > 60 && missing.Count == 0, string.Join(" | ", missing));
+
+        eco.AddMoney(20000);
+        var p = fm.Plots[0]; var q = fm.Plots[1]; var r = fm.Plots[2];
+        var before = new[] { p, q, r }.Select(x => x.State).ToArray();
+        foreach (var x in new[] { p, q, r }) SoilFresh(x);
+        UtilityHooks.FieldsAutoWatered = false;
+        T.SetProp(clock, "Weather", Weather.Sunny); soil.RefreshClimate();
+
+        // ---- soil sample (E) reveals the values
+        T.Check("Soil: untested field hides its values", SoilManager.FieldsText(0, 3).Contains("not tested"), SoilManager.FieldsText(0, 3));
+        T.Check("Soil: buy a soil sample kit", eco.TryBuy("soil_kit") && soil.Items(SoilManager.KitId) == 1);
+        T.Check("Soil: field offers a soil sample", p.InteractionPrompt.Contains("[E] Take a soil sample (1)"), p.InteractionPrompt);
+        p.Interact();
+        var s = soil.Soil(p);
+        T.Check("Soil: E takes the sample (kit used, field not plowed)", soil.Sampled(s) && soil.Items(SoilManager.KitId) == 0 && p.State == PlotState.Untilled);
+        string page = SoilManager.FieldsText(0, 3);
+        T.Check("Soil: Fields page shows N, P, K, pH, organic matter, salinity of the tested field", page.Contains("Soil test: N 220") && page.Contains("pH 7.9") && page.Contains("EC 1.5 dS/m") && page.Contains("OM 0.6%"), page);
+        T.Check("Soil: tested values on the prompt", p.InteractionPrompt.Contains("EC 1.5"), p.InteractionPrompt);
+        p.Interact();
+        T.Check("Soil: next E plows as usual", p.State == PlotState.Plowed);
+
+        // ---- tillage depth and timing, weeds
+        p.ResetPlot(); s.weeds = 0.8f; s.compaction = 0.6f;
+        p.TryPlow(true);   // by hand: shallow hoe
+        T.Check("Soil: hand hoe (shallow) leaves weeds and most compaction", s.tillDepth == 10 && s.weeds >= 0.12f && s.compaction > 0.4f, s.weeds + " " + s.compaction);
+        p.ResetPlot(); s.weeds = 0.8f; s.compaction = 0.6f;
+        p.TryPlow(false);  // tractor: deep plow
+        T.Check("Soil: tractor plow (deep) buries weeds and breaks compaction", s.tillDepth == 25 && s.weeds < 0.05f && s.compaction < 0.2f, s.weeds + " " + s.compaction);
+        var wet = new SoilState { compaction = 0.2f };
+        string msg = SoilModel.Till(wet, true, 0.9f, false);
+        T.Check("Soil: plowing wet soil smears and compacts it", wet.compaction > 0.1f && wet.seedbed < 1f && msg.StartsWith("Too wet"), msg + " " + wet.compaction);
+        var straw = new SoilState { om = 1f, residue = 1f };
+        SoilModel.Till(straw, true, 0.4f, false);
+        T.Check("Soil: plowing works straw into organic matter", straw.om > 1.05f && straw.residue == 0f, straw.om + "");
+        float w0 = s.weeds;
+        soil.Tick(120f);
+        T.Check("Soil: weeds grow back on an untreated field", s.weeds > w0 + 0.05f, w0 + " -> " + s.weeds);
+
+        // ---- nutrients: a harvest takes them, fertiliser brings them back
+        SoilPlant(p, "wheat");
+        T.Check("Soil: wheat planted on the tested field", p.State == PlotState.Growing && p.CropId == "wheat", p.State + " " + p.CropId);
+        float n0 = s.n, p0 = s.p, k0 = s.k;
+        T.SetProp(p, "Growth", 1f); T.SetProp(p, "State", PlotState.Ripe);
+        float wheat = eco.Stored("wheat");
+        p.TryHarvest(true);
+        float kgGood = eco.Stored("wheat") - wheat;
+        T.Check("Soil: harvest removes N, P and K", s.n < n0 - 30f && s.p < p0 - 5f && s.k < k0 - 10f, n0 + "->" + s.n + " " + p0 + "->" + s.p + " " + k0 + "->" + s.k);
+        T.Check("Soil: harvest recorded in the field history", s.history.Contains("|wheat|") && SoilManager.FieldsText(0, 3).Contains("History: Day"), s.history);
+        T.Check("Soil: wheat leaves straw on the field", s.residue > 0.5f);
+        p.TryPlow(false);
+        T.Check("Soil: buy urea", eco.TryBuy("soil_urea") && soil.Items("urea") == 1);
+        s.n = 40f;
+        T.Check("Soil: plowed field offers urea", p.InteractionPrompt.Contains("[E] Spread Urea"), p.InteractionPrompt);
+        p.Interact();
+        T.Check("Soil: urea restores nitrogen", Math.Abs(s.n - 120f) < 0.5f && soil.Items("urea") == 0 && p.State == PlotState.Plowed, s.n + "");
+        eco.TryBuy("care_fertilizer"); care.Plot(p.index).fertility = 0.5f;
+        float pBefore = s.p, kBefore = s.k;
+        p.Interact();
+        T.Check("Soil: Crop care NPK also feeds the soil model", s.p > pBefore + 40f && s.k > kBefore + 40f && s.n > 160f, s.p + " " + s.k + " " + s.n);
+        T.Check("Soil: animal manure becomes compost in the shop", eco.Good("manure") != null && ShopCatalog.Find("soil_compost") != null);
+        eco.AddGood("manure", 300f);
+        float manure = eco.Stored("manure");
+        T.Check("Soil: compost uses 250 kg of the farm's manure", eco.TryBuy("soil_compost") && Math.Abs(eco.Stored("manure") - (manure - 250f)) < 0.01f && soil.Items("compost") == 1);
+
+        // ---- poor soil lowers the yield and names the limiting factor
+        SoilPlant(p, "wheat");
+        care.Plot(p.index).rotation = 1f;
+        float good = soil.YieldFactor(p);
+        s.n = 15f;
+        var poorF = soil.Factors(p);
+        T.Check("Soil: nitrogen-poor soil cuts the yield", soil.YieldFactor(p) < good * 0.7f, good + " -> " + soil.YieldFactor(p));
+        T.Check("Soil: limiting factor = Nitrogen", poorF.LimitingName == "Nitrogen", poorF.LimitingName);
+        page = SoilManager.FieldsText(0, 3);
+        T.Check("Soil: Fields page shows expected yield, limiting factor and advice", page.Contains("Expected yield") && page.Contains("Limiting: Nitrogen") && page.Contains("Spread urea"), page);
+        T.SetProp(p, "Growth", 1f); T.SetProp(p, "State", PlotState.Ripe);
+        wheat = eco.Stored("wheat");
+        p.TryHarvest(true);
+        float kgPoor = eco.Stored("wheat") - wheat;
+        T.Check("Soil: the poor-soil harvest is much smaller", kgPoor < kgGood * 0.75f, kgGood + " vs " + kgPoor);
+        T.Check("Soil: history keeps the limiting factor", SoilManager.HistoryText(s, 1).Contains("Nitrogen"), SoilManager.HistoryText(s, 1));
+        var salty = new SoilState { n = 200, p = 60, k = 250, ph = 7.9f, ec = 7f };
+        var potF = SoilModel.Factors(salty, SoilData.Crop("potato"));
+        var wheF = SoilModel.Factors(salty, SoilData.Crop("wheat"));
+        T.Check("Soil: salty soil limits potatoes (Salinity), wheat tolerates it", potF.LimitingName == "Salinity" && potF.salt < 0.5f && wheF.salt > 0.9f, potF.salt + " " + wheF.salt);
+        var alkaline = new SoilState { n = 200, p = 30, k = 250, ph = 8.6f, ec = 1f };
+        T.Check("Soil: high pH locks up phosphorus", SoilModel.EffectiveP(alkaline) < 30f * 0.75f && SoilModel.Factors(alkaline, SoilData.Crop("potato")).LimitingName == "Phosphorus");
+
+        // ---- salinity: flood irrigation in the heat builds salt, drip less; gypsum and leaching lower it
+        var hot = SoilData.CurrentRegion;
+        var flood = new SoilState { ec = 1.5f }; var drip = new SoilState { ec = 1.5f }; var coolFlood = new SoilState { ec = 1.5f };
+        float floodMm = 0f, dripMm = 0f, coolMm = 0f;
+        float heatEt = SoilModel.SeasonEt(hot, Season.Summer) * SoilModel.WeatherEt(Weather.Heatwave), coolEt = SoilModel.SeasonEt(hot, Season.Winter);
+        var wc = SoilData.Crop("wheat");
+        for (int i = 0; i < 20; i++)
+        {
+            floodMm += SoilModel.Grow(flood, wc, i * 0.05f, 0.05f, 0.8f, 30f, heatEt, false, SoilData.Irrigation(IrrigationKind.None), hot.ecWater);
+            dripMm += SoilModel.Grow(drip, wc, i * 0.05f, 0.05f, 0.8f, 30f, heatEt, false, SoilData.Irrigation(IrrigationKind.Drip), hot.ecWater);
+            coolMm += SoilModel.Grow(coolFlood, wc, i * 0.05f, 0.05f, 0.8f, 15f, coolEt, false, SoilData.Irrigation(IrrigationKind.None), hot.ecWater);
+        }
+        T.Check("Soil: flood irrigation in the heat raises salinity", flood.ec > 1.5f + 0.4f, flood.ec + " dS/m");
+        T.Check("Soil: drip builds up much less salt than flooding", drip.ec < flood.ec - 0.3f, drip.ec + " vs " + flood.ec);
+        T.Check("Soil: flooding in the cool season builds less salt than in the heat", coolFlood.ec < flood.ec - 0.3f, coolFlood.ec + " vs " + flood.ec);
+        T.Check("Soil: drip uses less water than flood (same crop, same heat)", dripMm < floodMm * 0.7f && floodMm > 800f, dripMm.ToString("F0") + " vs " + floodMm.ToString("F0") + " mm");
+        T.Check("Soil: crops use more water in the summer heat", floodMm > coolMm * 2f, floodMm + " vs " + coolMm);
+        float ecHot = flood.ec;
+        SoilModel.Apply(flood, SoilData.Amendment("gypsum"));
+        T.Check("Soil: gypsum lowers salinity", flood.ec < ecHot - 1f, ecHot + " -> " + flood.ec);
+        var leach = new SoilState { ec = 6f, n = 100f };
+        SoilModel.Leach(leach);
+        T.Check("Soil: leaching washes salts (and some nitrate) down", leach.ec < 3.5f && leach.n < 100f, leach.ec + "");
+        // in the game: a flooded crop in a heatwave, ticking
+        SoilPlant(q, "sorghum");
+        var sq = soil.Soil(q);
+        T.SetProp(clock, "Weather", Weather.Heatwave); soil.RefreshClimate();
+        float ec0 = sq.ec, m3 = soil.WaterTodayM3;
+        for (int i = 1; i <= 10; i++) { T.SetProp(q, "Growth", i * 0.1f); q.AddWater(1f); soil.Tick(2f); }
+        T.Check("Soil: hand-flooded field in a heatwave gets saltier and pumps groundwater", sq.ec > ec0 + 0.1f && soil.WaterTodayM3 > m3 + 15f, ec0 + " -> " + sq.ec + ", " + (soil.WaterTodayM3 - m3) + " m3");
+        T.Check("Soil: heat at flowering stresses the crop", sq.stressHeat == 0f || SoilModel.Factors(sq, SoilData.Crop("sorghum")).heat < 1f);
+        sq.sampledDay = clock.Day; sq.ec = 5f;
+        T.SetProp(q, "State", PlotState.Plowed); T.SetProp(q, "CropId", "");
+        T.Check("Soil: tested salty field offers leaching", q.InteractionPrompt.Contains("[E] Leach the salts"), q.InteractionPrompt);
+        q.Interact();
+        T.Check("Soil: E leaches the salts", sq.ec < 3f && q.State == PlotState.Plowed, sq.ec + "");
+        int money = eco.Money; float bill = soil.WaterCostToday;
+        typeof(SoilManager).GetMethod("OnDay", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(soil, new object[] { clock.Day });   // the morning, without other systems' events
+        T.Check("Soil: groundwater pumping is paid each morning", bill >= 1f && eco.Money <= money - Mathf.RoundToInt(bill) + 1 && soil.WaterTodayM3 == 0f, bill + " " + money + " -> " + eco.Money);
+        T.SetProp(clock, "Weather", Weather.Sunny); soil.RefreshClimate();
+
+        // ---- water: drying by stage and mulch, over-watering
+        var young = new SoilState(); var mulched = new SoilState { mulch = true };
+        T.Check("Soil: seedlings use less water than a full canopy", SoilModel.DryFactor(young, 0.05f, 1f) < SoilModel.DryFactor(young, 0.6f, 1f) * 0.6f);
+        T.Check("Soil: mulch slows drying", SoilModel.DryFactor(mulched, 0.6f, 1f) < SoilModel.DryFactor(young, 0.6f, 1f));
+        SoilFresh(r); SoilPlant(r, "wheat");
+        var sr = soil.Soil(r);
+        r.AddWater(1f);
+        r.Interact(); r.Interact();
+        T.Check("Soil: watering a wet field waterlogs it", sr.waterlog > 0.5f && r.InteractionPrompt.Contains("Waterlogged"), sr.waterlog + " " + r.InteractionPrompt);
+        T.Check("Soil: waterlogging slows growth", soil.GrowthFactor(r) < 0.7f * SoilModel.TempGrowth(soil.TempToday, SoilData.Crop("wheat")) + 0.01f);
+        soil.Tick(120f);
+        T.Check("Soil: standing water drains away", sr.waterlog < 0.2f, sr.waterlog + "");
+        var stressed = new SoilState { n = 200, p = 60, k = 250, ph = 7.5f, ec = 1f };
+        SoilModel.Grow(stressed, wc, 0f, 0.6f, 0.05f, 18f, 1f, false, SoilData.Irrigation(IrrigationKind.Drip), 1f);
+        T.Check("Soil: a dry spell during growth = Water stress", SoilModel.Factors(stressed, wc).LimitingName == "Water stress", SoilModel.Factors(stressed, wc).LimitingName);
+
+        // ---- temperature-driven growth
+        T.Check("Soil: wheat grows faster in a Najd winter than in the summer heat", SoilModel.TempGrowth(SoilModel.Temperature(hot, Season.Winter, Weather.Sunny), wc) > SoilModel.TempGrowth(SoilModel.Temperature(hot, Season.Summer, Weather.Heatwave), wc) + 0.3f);
+        T.Check("Soil: millet likes the heat", SoilModel.TempGrowth(36f, SoilData.Crop("millet")) > SoilModel.TempGrowth(15f, SoilData.Crop("millet")));
+        T.Check("Soil: crop stages", SoilModel.Stage(0.05f) == "Germination" && SoilModel.Stage(0.6f) == "Flowering" && r.InteractionPrompt.Contains("Germination"), r.InteractionPrompt);
+
+        // ---- herbicide, mulch
+        sr.weeds = 0.5f; r.AddWater(-0.3f); sr.waterlog = 0f;
+        eco.TryBuy("soil_herbicide");
+        T.Check("Soil: weedy growing field offers herbicide", r.InteractionPrompt.Contains("[E] Spread Herbicide"), r.InteractionPrompt);
+        r.Interact();
+        T.Check("Soil: herbicide clears the weeds and keeps them down", sr.weeds == 0f && sr.weedProtect);
+        eco.TryBuy("soil_mulch"); r.Interact();
+        T.Check("Soil: straw mulch on a growing crop", sr.mulch && soil.Items("mulch") == 0);
+
+        // ---- crop rotation table
+        T.Check("Soil: rotation table (legume before cereal +20%, nightshade twice -15%)", Math.Abs(SoilData.Rotation("legume", "grain") - 1.2f) < 0.001f && Math.Abs(SoilData.Rotation("nightshade", "nightshade") - 0.85f) < 0.001f && SoilData.Rotation("", "grain") == 1f);
+        SoilFresh(q); care.Plot(q.index).lastFamily = "legume";
+        float noRot = SoilData.Rotation("", "grain");
+        SoilPlant(q, "wheat");
+        T.Check("Soil: wheat after alfalfa gets the legume bonus", care.Plot(q.index).rotated && Math.Abs(care.Plot(q.index).rotation - 1.2f) < 0.001f && Math.Abs(care.YieldMultiplier(q) - 1.2f) < 0.01f, care.Plot(q.index).rotation + " " + care.YieldMultiplier(q));
+        T.Check("Soil: rotation shown on the prompt", q.InteractionPrompt.Contains("Rotation +20%"), q.InteractionPrompt);
+        SoilFresh(q); care.Plot(q.index).lastFamily = "nightshade";
+        SoilPlant(q, "tomato");
+        T.Check("Soil: tomato after tomato is penalised", !care.Plot(q.index).rotated && care.Plot(q.index).rotation < 0.9f && q.InteractionPrompt.Contains("Rotation -15%"), q.InteractionPrompt);
+
+        // ---- sowing density and seed rate cost
+        SoilFresh(q);
+        soil.SetDensity(2);
+        int m0 = eco.Money;
+        SoilPlant(q, "wheat");
+        T.Check("Soil: high sowing density buys 30% more seed", soil.Soil(q).density == 2 && eco.Money == m0 - Mathf.RoundToInt(eco.FieldCrop("wheat").seedPrice * 0.3f), (m0 - eco.Money) + "");
+        T.Check("Soil: high density pays off with enough water and nitrogen", SoilModel.Factors(soil.Soil(q), wc).density > 1f);
+        soil.SetDensity(1);
+
+        // ---- Fields page in the farm info screen (gamepad)
+        var prevPad = UnityEngine.InputSystem.Gamepad.current;
+        var pad = new UnityEngine.InputSystem.Gamepad();
+        UnityEngine.InputSystem.Gamepad.current = pad;
+        FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Stats);
+        PressPad(pad.rightShoulder);
+        T.Check("Soil: RB pages from Farm stats to Fields", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Fields);
+        PressPad(pad.dpad.right);
+        T.Check("Soil: D-pad right sets the sowing density", soil.Density == 2);
+        PressPad(pad.dpad.left);
+        PressPad(pad.dpad.down);
+        T.Check("Soil: D-pad down selects the next field", FarmInfoScreen.Instance.SelectedField == 1 && soil.Density == 1, FarmInfoScreen.Instance.SelectedField + " " + soil.Density);
+        var selPlot = fm.Plots[1]; var selBefore = soil.Irrigation(selPlot);
+        PressPad(pad.buttonSouth);
+        T.Check("Irrigation: A on the Fields page cycles the selected field's method", soil.Irrigation(selPlot) == SoilManager.NextMethod(selBefore, 1) && soil.Irrigation(selPlot) != selBefore, selBefore + " -> " + soil.Irrigation(selPlot));
+        PressPad(pad.dpad.down); PressPad(pad.dpad.down); PressPad(pad.dpad.down); PressPad(pad.dpad.down);
+        T.Check("Soil: the list scrolls to keep the selected field in view", FarmInfoScreen.Instance.SelectedField == 5 && FarmInfoScreen.Instance.FieldOffset == 2, FarmInfoScreen.Instance.SelectedField + " " + FarmInfoScreen.Instance.FieldOffset);
+        PressPad(pad.buttonEast);
+        T.Check("Soil: B closes the Fields page", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.None);
+        UnityEngine.InputSystem.Gamepad.current = prevPad;
+        GameMenu.Instance.Open(GameMenu.Mode.Pause);
+        int row = GameMenu.Instance.List.Rows.ToList().FindIndex(x => x.label() == UiText.T("Fields (precision farming)"));
+        T.Check("Soil: pause menu opens the Fields page", row >= 0);
+        if (row >= 0) GameMenu.Instance.List.Choose(row);
+        T.Check("Soil: Fields page open from the menu", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Fields && !GameMenu.IsOpen);
+        FarmInfoScreen.Instance.Close();
+        Loc.SetLanguage(Language.Arabic);
+        string ar = SoilManager.FieldsText(0, 3);
+        T.Check("Soil: Fields page in Arabic", ar.Any(ch => ch >= 'ﹰ') && !ar.Contains("Expected yield"), ar.Substring(0, Math.Min(80, ar.Length)));
+        Loc.SetLanguage(Language.English);
+
+
+        // ---- per-field irrigation (systems bought through Utilities)
+        var ug = UtilityGrid.Instance;
+        var oldKind = ug.Model.Irrigation; int oldOwned = ug.Model.OwnedIrrigation;
+        ug.Model.Irrigation = IrrigationKind.None; ug.Model.OwnedIrrigation = 0;
+        string keepHistory = soil.Soil(p).history;
+        SoilFresh(p); SoilFresh(q);
+        T.Check("Irrigation: a field starts on the farm system", soil.Irrigation(p) == FieldWater.Farm && p.InteractionPrompt.Contains("[Q] Irrigation: Farm system"), p.InteractionPrompt);
+        T.Check("Irrigation: drip not offered until bought", !SoilManager.Available(FieldWater.Drip) && SoilManager.NextMethod(FieldWater.Flood, 1) == FieldWater.Farm && !soil.SetIrrigation(p.index, FieldWater.Drip));
+        T.Check("Irrigation: Q on the field cycles its method (hand)", p.SecondaryInteract() && soil.Irrigation(p) == FieldWater.Hand && p.InteractionPrompt.Contains("[Q] Irrigation: Hand watering"), p.InteractionPrompt);
+        T.Check("Irrigation: Q again = flood furrows", p.SecondaryInteract() && soil.Irrigation(p) == FieldWater.Flood);
+        T.Check("Buy drip lines (Utilities)", eco.TryBuy("util_drip") && ug.Model.Owns(IrrigationKind.Drip));
+        T.Check("Irrigation: bought drip can be chosen per field", SoilManager.Available(FieldWater.Drip) && soil.SetIrrigation(q.index, FieldWater.Drip) && soil.Irrigation(q) == FieldWater.Drip);
+        T.Check("Irrigation: sprinklers still need buying", !SoilManager.Available(FieldWater.Sprinkler) && SoilManager.NextMethod(FieldWater.Flood, 1) == FieldWater.Drip);
+        UtilityHooks.FieldsAutoWatered = true;   // the farm's drip system is running
+        SoilPlant(p, "wheat"); SoilPlant(q, "wheat");
+        soil.SetIrrigation(r.index, FieldWater.Hand);
+        T.Check("Irrigation: flood and drip fields are kept wet, a hand field is not", p.AutoWatered() && q.AutoWatered() && !r.AutoWatered());
+        UtilityHooks.FieldsAutoWatered = false;
+        T.Check("Irrigation: the field's own system waters even when the farm system is off", p.AutoWatered() && !fm.Plots[3].AutoWatered() || soil.Irrigation(fm.Plots[3]) != FieldWater.Farm);
+        var envKinds = ug.GatherEnv().plotKinds;
+        T.Check("Irrigation: Utilities count each growing field's own method", envKinds != null && envKinds[(int)IrrigationKind.Drip] >= 1 && envKinds[(int)IrrigationKind.None] >= 1, envKinds == null ? "null" : string.Join(",", envKinds));
+        T.SetProp(clock, "Weather", Weather.Heatwave); soil.RefreshClimate();
+        var sp = soil.Soil(p); var sqq = soil.Soil(q);
+        float ecp = sp.ec, ecq = sqq.ec;
+        for (int i = 1; i <= 10; i++) { T.SetProp(p, "Growth", i * 0.1f); T.SetProp(q, "Growth", i * 0.1f); p.AddWater(1f); q.AddWater(1f); soil.Tick(2f); }
+        T.Check("Irrigation: the drip field uses less water than the flooded one", sqq.cycWater < sp.cycWater * 0.75f && sqq.cycWater > 0f, sqq.cycWater + " vs " + sp.cycWater + " m3");
+        T.Check("Irrigation: the flooded field gets saltier than the drip field", sp.ec - ecp > (sqq.ec - ecq) + 0.05f, (sp.ec - ecp) + " vs " + (sqq.ec - ecq));
+        T.Check("Irrigation: the flooded field costs more to pump", sp.cycCost > sqq.cycCost);
+        T.SetProp(clock, "Weather", Weather.Sunny); soil.RefreshClimate();
+        string fp = SoilManager.FieldsText(0, 3, 1);
+        T.Check("Irrigation: Fields page shows each field's method and the selection", fp.Contains("Irrigation: Flood (furrows) - efficiency 60%") && fp.Contains("Irrigation: Drip lines - efficiency 92%") && fp.Contains("> Field 2"), fp);
+        ug.Model.Irrigation = oldKind; ug.Model.OwnedIrrigation = oldOwned | (1 << (int)IrrigationKind.Drip);
+        ug.Save();
+
+        // ---- put the plots back the way the other sections left them (only Untilled / Plowed matter there)
+        var plots3 = new[] { p, q, r };
+        for (int i = 0; i < 3; i++) { plots3[i].ResetPlot(); if (before[i] != PlotState.Untilled) plots3[i].TryPlow(false); }
+
+        // ---- remember for the save/load round trip
+        s = soil.Soil(p); s.history = keepHistory;
+        s.sampledDay = clock.Day; s.ec = 3.25f; s.n = 77f;
+        soil.AddItem(SoilManager.KitId, 2);
+        soil.SetDensity(0);
+        soil.SetIrrigation(p.index, FieldWater.Drip);
+        soil.SaveAll();
+        SaveData.Flush(true);
+        savedSoilPack = SoilState.Unpack(soil.Soil(p).Pack(), null).Pack();
+        savedSoilHistory = s.history;
+        savedSoilItems = soil.Items(SoilManager.KitId);
+        T.Check("Soil: no errors", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
+    }
+
+    static void SoilAfterRestart()
+    {
+        var soil = SoilManager.Instance;
+        var s = soil.Soil(0);
+        T.Check("Soil: N, salinity, soil test and history restored after restart", Math.Abs(s.n - 77f) < 0.01f && Math.Abs(s.ec - 3.25f) < 0.01f && soil.Sampled(s) && s.history == savedSoilHistory && s.history.Contains("wheat"),
+            s.Pack() + " vs " + savedSoilPack);
+        T.Check("Soil: kits and sowing density restored", soil.Items(SoilManager.KitId) == savedSoilItems && soil.Density == 0);
+        T.Check("Irrigation: the field's method and the bought systems restored", soil.Irrigation(FieldManager.Instance.Plots[0]) == FieldWater.Drip && UtilityGrid.Instance.Model.Owns(IrrigationKind.Drip));
+    }
+
+    static void SoilAfterNewGame()
+    {
+        var soil = SoilManager.Instance;
+        var s = soil.Soil(0);
+        var start = SoilData.CurrentRegion.start;
+        T.Check("Soil: new game resets soils, history, kits and density", Math.Abs(s.n - start.n) < 0.01f && Math.Abs(s.ec - start.ec) < 0.01f && s.history == "" && !soil.Sampled(s) && soil.Items(SoilManager.KitId) == 0 && soil.Density == 1,
+            s.Pack());
+        T.Check("Irrigation: new game puts every field back on the farm system", FieldManager.Instance.Plots.All(x => soil.Irrigation(x) == FieldWater.Farm) && !SoilManager.Available(FieldWater.Drip));
+    }
+
     // ---------------------------------------------------------------- Saudi crops, soil, pests, orchard
     static void CropsTests()
     {
@@ -730,9 +1057,12 @@ static class Program
 
         CozyTests.Run();
         CropsTests();
+        LifeTests.Run();
         EventsFinTests.Run(args[0]);
         EventDirector.RandomEventsEnabled = false;
+        SoilTests();
 
+        LifeTests.BeforeSave();
         Console.WriteLine("Saving");
         SaveData.Flush(true);
         T.Check("Save file written", File.Exists(SaveData.Path));
@@ -749,6 +1079,7 @@ static class Program
             UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length + " vs " + EconomyManager.Instance.Owned("chicken"));
         T.Check("Field crop state restored", FieldManager.Instance.Plots[1].State == PlotState.Plowed);
         UtilityTests.AfterRestart();
+        SoilAfterRestart();
         T.Check("Crops: orchard trees restored", OrchardManager.Instance.Trees.Count == 6 && OrchardManager.Instance.Trees[0].Kind == "palm_sukkari" && OrchardManager.Instance.Trees[0].Age >= 3f, OrchardManager.Instance.Trees.Count > 0 ? OrchardManager.Instance.Trees[0].Kind : "none");
         T.Check("Crops: soil fertility and alfalfa cuts restored", Math.Abs(CropCareManager.Instance.Plot(4).fertility - savedFertility) < 0.001f && CropCareManager.Instance.Plot(3).cuts == savedCuts,
             CropCareManager.Instance.Plot(4).fertility + " vs " + savedFertility + ", cuts " + CropCareManager.Instance.Plot(3).cuts + " vs " + savedCuts);
@@ -756,6 +1087,7 @@ static class Program
         EventsFinTests.AfterRestart();
 
         CozyTests.AfterRestart();
+        LifeTests.AfterRestart();
 
         Console.WriteLine("New game");
         var hud = UnityEngine.Object.FindAnyObjectByType<GameHUD>();
@@ -767,11 +1099,13 @@ static class Program
         T.Check("New game resets fields", FieldManager.Instance.Plots.All(x => x.State == PlotState.Untilled));
         T.Check("Time scale restored", Time.timeScale == 1f);
         UtilityTests.AfterNewGame();
+        SoilAfterNewGame();
         T.Check("Crops: new game clears orchard, soil and care items", OrchardManager.Instance.Trees.All(x => x.Kind == "") && CropCareManager.Instance.Plot(4).fertility == 1f
             && CropsData.Data.cures.All(c => CropCareManager.Instance.Items(c.id) == 0) && CropsData.Data.trees.All(t => OrchardManager.Instance.Saplings(t.id) == 0));
         EventsFinTests.AfterNewGame();
 
         CozyTests.AfterNewGame();
+        LifeTests.AfterNewGame();
 
         UiSection(args[0]);
 
@@ -843,6 +1177,7 @@ static class Program
         T.Check("Loading screen closes by itself", !LoadingScreen.Visible && LoadingScreen.Progress >= 0.999f);
 
         DrivingTests.Run();
+        SharedKeyTests.Run();
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
@@ -1396,7 +1731,7 @@ static class EventsFinTests
         T.Check("Haboob running: dust fog on", ed.Running && RenderSettings.fog && RenderSettings.fogDensity > 0.01f, RenderSettings.fogDensity + "");
         float g2growth = g2.Cropbeds.Where(b => b.IsActive).Max(b => b.Growth);
         SetProgress(0.52f); FakeEngine.Run(0.5f);
-        T.Check("Haboob ends: fog restored", ed.Active == null && (!RenderSettings.fog || RenderSettings.fogDensity < 0.01f) && !DesertWeatherFX.FogOverridden, RenderSettings.fogDensity + "");
+        T.Check("Haboob ends: fog restored", ed.Active == null && (!RenderSettings.fog || RenderSettings.fogDensity < 0.02f) /* windy days keep up to 0.0185 sandy haze; the storm is 0.045 */ && !DesertWeatherFX.FogOverridden, RenderSettings.fogDensity + "");
         T.Check("Open greenhouse beds damaged, closed one safe", g2growth > 0f && g2.Cropbeds.Where(b => b.IsActive).All(b => b.Growth < 0.05f) && g1.Cropbeds.Any(b => b.Growth > 0.05f), g2growth + "");
         T.Check("Storm mission not done with a greenhouse open", mm.Current != null && mm.Current.id == "fin_storm");
         vents.First(v => v.greenhouse == g2).Interact();
@@ -1571,6 +1906,36 @@ static class MpTests
         T.Check("Client: host plot state applied", plot0.State == PlotState.Ripe && plot0.CropId == "wheat");
         FakeEngine.Run(WorldClock.Instance.secondsPerDay * 1.5f, 1f);
         T.Check("Client: the day does not roll over on its own", WorldClock.Instance.Day == homeDay + 3);
+        // ---- soil on a client: the host's values, nothing simulated here
+        var soilC = SoilManager.Instance;
+        var plotSoil = new List<string>();
+        for (int i = 0; i < FieldManager.Instance.Plots.Count; i++)
+            plotSoil.Add(string.Join(NetProtocol.Pair.ToString(), i == 0 ? new[] { "33", "44", "55", "8.2", "1.25", "6.5", "40", "30", "60", "1", "2", "3", "1", "72", "4", "wheat" }
+                                                                            : new[] { "150", "50", "200", "7.9", "0.6", "1.5", "15", "0", "0", "0", "1", "-1", "0", "0", "-1", "" }));
+        string soilMsg = NetProtocol.Make(NetProtocol.SoilSync, "2", "12.5", "1.5", "31", "1.2", "kit" + NetProtocol.Pair + "3", string.Join(NetProtocol.Item.ToString(), plotSoil));
+        net.Receive(0, soilMsg);
+        var cs = soilC.Soil(0);
+        T.Check("Client soil: host's N, P, K, pH, OM, salinity, compaction, weeds, waterlogging applied",
+            Math.Abs(cs.n - 33f) < 0.01f && Math.Abs(cs.p - 44f) < 0.01f && Math.Abs(cs.k - 55f) < 0.01f && Math.Abs(cs.ph - 8.2f) < 0.01f && Math.Abs(cs.om - 1.25f) < 0.01f
+            && Math.Abs(cs.ec - 6.5f) < 0.01f && Math.Abs(cs.compaction - 0.4f) < 0.01f && Math.Abs(cs.weeds - 0.3f) < 0.01f && Math.Abs(cs.waterlog - 0.6f) < 0.01f, cs.Pack());
+        T.Check("Client soil: sampled flag, irrigation, density, kits and groundwater applied", soilC.Sampled(cs) && soilC.Irrigation(plot0) == FieldWater.Drip && cs.density == 2 && soilC.Density == 2
+            && soilC.Items(SoilManager.KitId) == 3 && Math.Abs(soilC.WaterTodayM3 - 12.5f) < 0.01f && !soilC.Sampled(soilC.Soil(1)));
+        string cpage = SoilManager.FieldsText(0, 2);
+        T.Check("Client soil: Fields page shows the host's test, expected yield and limiting factor", cpage.Contains("N 33") && cpage.Contains("EC 6.5") && cpage.Contains("(72%)") && cpage.Contains("Limiting: Salinity")
+            && cpage.Contains("Irrigation: Drip lines"), cpage);
+        T.Check("Client soil: prompt shows the host's irrigation", plot0.InteractionPrompt.Contains("Drip lines") || plot0.State == PlotState.Ripe, plot0.InteractionPrompt);
+        float cw = cs.weeds; int cm = eco.Money;
+        soilC.Tick(300f);
+        typeof(SoilManager).GetMethod("OnDay", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(soilC, new object[] { WorldClock.Instance.Day });
+        T.Check("Client soil: no soil simulation or water bill on the client", Math.Abs(cs.weeds - cw) < 0.0001f && Math.Abs(cs.n - 33f) < 0.01f && eco.Money == cm);
+        net.Sent.Clear();
+        soilC.CycleIrrigation(FieldManager.Instance.Plots[1], 1);
+        T.Check("Client soil: irrigation change sent to the host", net.Sent.Any(x => x.msg == NetProtocol.Make(NetProtocol.SoilSet, "i", "1", "0")), string.Join(" ", net.Sent.Select(x => x.msg.Replace('\u001f', '|'))));
+        soilC.CycleDensity(1);
+        T.Check("Client soil: sowing density change sent to the host", net.Sent.Any(x => x.msg == NetProtocol.Make(NetProtocol.SoilSet, "d", "0")));
+        var sampleOn = FieldManager.Instance.Plots[1];
+        T.Check("Client soil: E (sample, spread, leach) goes to the host, kit not used here", NetSession.HandleInteract(sampleOn) && soilC.Items(SoilManager.KitId) == 3 && !soilC.Sampled(soilC.Soil(1)));
+
         net.Receive(0, NetProtocol.Make(NetProtocol.Roster, "0" + NetProtocol.Pair + "Omar" + NetProtocol.Item + "7" + NetProtocol.Pair + "Me"));
         net.Receive(0, NetProtocol.Make(NetProtocol.Pose, "0", "5", "0", "-50", "90", "", "0"));
         FakeEngine.Run(1f);
@@ -1591,6 +1956,8 @@ static class MpTests
             eco.Money + " " + WorldClock.Instance.Day + " " + MissionManager.Instance.Index);
         T.Check("Leaving adds the gift to the own storage", Math.Abs(eco.Stored("wheat") - (homeWheat + 5f)) < 0.01f, eco.Stored("wheat") + " vs " + homeWheat);
         T.Check("Leaving restores the own plots", plot0.State == stateBefore);
+        T.Check("Leaving restores the own soil", Math.Abs(SoilManager.Instance.Soil(0).n - 33f) > 0.01f && SoilManager.Instance.Items(SoilManager.KitId) != 3, SoilManager.Instance.Soil(0).Pack());
+
         T.Check("Remote players removed on leave", !mp.Remotes.Any() && FakeEngine.Errors.Count == beforeErr);
 
         Console.WriteLine("Co-op: host (fake client 5)");
@@ -1609,6 +1976,27 @@ static class MpTests
         FakeEngine.Run(0.2f);
         T.Check("Host: client's E on a plot plows it", p3.State == PlotState.Plowed);
         T.Check("Host: farm state sent right after", net.Sent.Any(x => x.msg.StartsWith(NetProtocol.Sync)));
+        // ---- soil: clients' settings applied by the host, soil sent with the sync
+        var soilH = SoilManager.Instance;
+        var hp = FieldManager.Instance.Plots[4];
+        net.Sent.Clear();
+        net.Receive(5, NetProtocol.Make(NetProtocol.SoilSet, "i", "4", ((int)FieldWater.Flood).ToString()));
+        net.Receive(5, NetProtocol.Make(NetProtocol.SoilSet, "d", "2"));
+        FakeEngine.Run(0.2f);
+        T.Check("Host soil: client's irrigation and sowing density applied", soilH.Irrigation(hp) == FieldWater.Flood && soilH.Density == 2);
+        var soilSync = net.Sent.LastOrDefault(x => x.to == 5 && x.msg.StartsWith(NetProtocol.SoilSync + NetProtocol.Sep));
+        T.Check("Host soil: soil sent to the client right after", soilSync.msg != null && NetProtocol.Split(soilSync.msg)[1] == "2");
+        T.Check("Host soil: compact (< 80 chars a field)", soilSync.msg != null && soilSync.msg.Length < 80 * FieldManager.Instance.Plots.Count + 60, soilSync.msg == null ? "" : soilSync.msg.Length + "");
+        net.Receive(5, NetProtocol.Make(NetProtocol.SoilSet, "i", "4", ((int)FieldWater.Pivot).ToString()));
+        T.Check("Host soil: a system the farm hasn't bought is refused", SoilManager.Available(FieldWater.Pivot) || soilH.Irrigation(hp) == FieldWater.Flood);
+        var hs = FieldManager.Instance.Plots.First(x => x.State == PlotState.Untilled);
+        soilH.ResetSoil(hs.index);
+        eco.AddMoney(500); eco.TryBuy("soil_kit");
+        int kits = soilH.Items(SoilManager.KitId);
+        net.Receive(5, NetProtocol.Make(NetProtocol.Interact, NetIds.Of(hs)));
+        T.Check("Host soil: client's E takes the soil sample on the host", soilH.Sampled(soilH.Soil(hs)) && soilH.Items(SoilManager.KitId) == kits - 1 && hs.State == PlotState.Untilled);
+        soilH.SetDensity(1);
+
         eco.AddMoney(1000);
         int hm = eco.Money;
         net.Receive(5, NetProtocol.Make(NetProtocol.Buy, "feed"));
@@ -2460,13 +2848,435 @@ static class DrivingTests
         var drivingActions = new[] { GameAction.EngineToggle, GameAction.GearUp, GameAction.GearDown, GameAction.Cruise, GameAction.CruiseFaster, GameAction.CruiseSlower, GameAction.Traction, GameAction.LaneAssist };
         T.Check("Driving: every driving action has a keyboard key and a gamepad button with a glyph",
             drivingActions.All(a => !string.IsNullOrEmpty(GameInput.DefaultKeyPath(a)) && !string.IsNullOrEmpty(GameInput.GamepadPath(a)) && Glyphs.PadFor(a, false) != null && Glyphs.PadFor(a, true) != null));
+        Tractor.Instance.Interact(); FakeEngine.Tick(Dt);   // F / Ctrl / Z hints mean the vehicle actions only in a vehicle
         GameInput.ForceDevice(true, false);
         string hint = Glyphs.Apply(Loc.T(Hints));
         T.Check("Driving: hints show gamepad glyphs (LS, RB, LB, D-pad, RS)", hint.Contains("[LS]") && hint.Contains("[RB]") && hint.Contains("[LB]") && hint.Contains("D-PAD↑") && hint.Contains("[RS]"), hint);
         GameInput.ForceDevice(false, false);
         T.Check("Driving: keyboard hints show the keys", Glyphs.Apply(Loc.T(Hints)).Contains("[LeftShift]"), Glyphs.Apply(Loc.T(Hints)));
+        T.SetProp(Tractor.Instance, "Speed", 0f); Tractor.Instance.Exit();
         T.Check("Driving: driving texts have Arabic", drivingActions.All(a => Loc.HasTranslation(GameInput.Label(a))) && Loc.HasTranslation("Slip {0}%   {1}") && Loc.HasTranslation("Gearbox"));
         T.Check("Driving: no errors", FakeEngine.Errors.Count == 0, string.Join(" | ", FakeEngine.Errors.Take(3)));
+        UnityEngine.InputSystem.Gamepad.current = null;
+    }
+}
+
+// ---------------------------------------------------------------- On-foot life (stamina, carrying, hand tools) + animal husbandry
+static class LifeTests
+{
+    static float staminaSaved; static int herdSaved, balesSaved; static string traitsSaved;
+
+    static void Hold(UnityEngine.InputSystem.KeyControl k) { k.wasPressedThisFrame = true; FakeEngine.Tick(0.05f); k.wasPressedThisFrame = false; }
+    static void Press(UnityEngine.InputSystem.ButtonControl b) { b.wasPressedThisFrame = true; FakeEngine.Tick(0.05f); b.wasPressedThisFrame = false; }
+
+    public static void Run()
+    {
+        Console.WriteLine("On-foot life + animal husbandry");
+        // The story intro shown at boot is never closed in these tests: give gameplay input back for this section.
+        int ext = (int)T.Get(UIManager.Instance, "externalCount");
+        for (int i = 0; i < ext; i++) UIManager.Instance.SetExternalPanel(false);
+        int e0 = FakeEngine.Errors.Count;
+        var eco = EconomyManager.Instance; var clock = WorldClock.Instance; var pen = AnimalPen.Instance;
+        var life = PlayerLife.Instance; var herd = HerdManager.Instance;
+        var player = GameObject.Find("PlayerCapsule").transform;
+        var inputs = player.GetComponent<StarterAssets.StarterAssetsInputs>();
+        eco.AddMoney(60000);
+        FakeEngine.Run(1.5f);
+        T.Check("Life: PlayerLife and HerdManager running", life != null && herd != null);
+        int bales0 = life.BaleCount;
+        T.Check("Life: hay bales (2 + pressed from stored alfalfa) and crates by the pen, records board at the gate", life.BaleCount >= 2 && life.BaleCount <= PlayerLife.MaxBales && Carriable.All.Count(c => c.kind == "crate") == 2 && UnityEngine.Object.FindAnyObjectByType<PenBoard>() != null, life.BaleCount + "");
+
+        // --- controls: keyboard + gamepad bindings, glyphs
+        T.Check("Life: 5 new on-foot actions with keyboard and gamepad bindings",
+            new[] { GameAction.Crouch, GameAction.Carry, GameAction.UseTool, GameAction.ToolPrev, GameAction.ToolNext }.All(a => !string.IsNullOrEmpty(GameInput.DefaultKeyPath(a)) && !string.IsNullOrEmpty(GameInput.GamepadPath(a))));
+        GameInput.ForceDevice(true, false);
+        string g = Glyphs.Apply("[,] [.] [Z] [F] [Ctrl]");
+        T.Check("Life: prompts show LB / RB / RT / D-pad / LS on a gamepad", g.Contains("[LB]") && g.Contains("[RB]") && g.Contains("[RT]") && g.Contains("D-PAD") && g.Contains("[LS]"), g);
+        GameInput.ForceDevice(true, true);
+        T.Check("Life: PlayStation labels L1 / R1 / R2", Glyphs.Apply("[,] [.] [Z]") == "[L1] [R1] [R2]", Glyphs.Apply("[,] [.] [Z]"));
+        GameInput.ForceDevice(false, false);
+
+        // --- stamina model
+        var mild = new StaminaModel(); var hot = new StaminaModel();
+        for (int i = 0; i < 30; i++) { mild.Tick(0.1f, true, true, false, 0f, 0f, 0.0003f); hot.Tick(0.1f, true, true, false, 1f, 0f, 0.0003f); }
+        T.Check("Life: sprinting drains stamina", mild.stamina < StaminaModel.Max - 25f, "" + mild.stamina);
+        T.Check("Life: a heatwave drains it about twice as fast", StaminaModel.Max - hot.stamina > (StaminaModel.Max - mild.stamina) * 1.8f, mild.stamina + " vs " + hot.stamina);
+        T.Check("Life: heat also dries you out faster", hot.hydration < mild.hydration);
+        var walk = new StaminaModel { stamina = 30f }; var rest = new StaminaModel { stamina = 30f };
+        for (int i = 0; i < 20; i++) { walk.Tick(0.1f, true, false, false, 0f, 0f, 0f); rest.Tick(0.1f, false, false, true, 0f, 0f, 0f); }
+        T.Check("Life: resting (crouched, still) recovers faster than walking", rest.stamina > walk.stamina + 10f && walk.stamina > 30f, walk.stamina + " / " + rest.stamina);
+        var ex = new StaminaModel();
+        for (int i = 0; i < 200 && !ex.exhausted; i++) ex.Tick(0.1f, true, true, false, 0.5f, 0f, 0f);
+        ex.Tick(1f, false, false, false, 0f, 0f, 0f);
+        T.Check("Life: exhausted = no sprint until stamina is back to 25", ex.exhausted && !MoveRules.CanSprint(0f, false, ex.exhausted));
+        var thirsty = new StaminaModel { hydration = 0f }; thirsty.Tick(5f, false, false, false, 0f, 0f, 0f);
+        T.Check("Life: thirst caps stamina", thirsty.stamina <= 40.01f && thirsty.Cap == 40f);
+        thirsty.Drink();
+        T.Check("Life: drinking restores water and stamina", thirsty.hydration == 1f && thirsty.stamina > 60f);
+
+        // --- stamina in game: sprint in mild weather vs a heatwave, then rest
+        T.SetProp(clock, "DayProgress", 0.3f);
+        player.position = new Vector3(0, 0, -57.4f);
+        T.SetProp(clock, "Weather", Weather.Sunny);
+        life.Model.stamina = StaminaModel.Max; life.Model.hydration = 1f;
+        inputs.move = new Vector2(0, 1); inputs.sprint = true;
+        FakeEngine.Run(2f, 0.1f);
+        float drainMild = StaminaModel.Max - life.Model.stamina;
+        T.SetProp(clock, "Weather", Weather.Heatwave);
+        life.Model.stamina = StaminaModel.Max; life.Model.exhausted = false; life.Model.hydration = 1f;
+        inputs.sprint = true;
+        FakeEngine.Run(2f, 0.1f);
+        float drainHot = StaminaModel.Max - life.Model.stamina;
+        T.Check("Life: sprinting player loses stamina, faster in a heatwave", drainMild > 5f && drainHot > drainMild * 1.3f, drainMild + " vs " + drainHot);
+        inputs.sprint = true; FakeEngine.Run(12f, 0.1f);
+        T.Check("Life: an exhausted player can't sprint (input released)", life.Model.exhausted && !PlayerLife.SprintAllowed && !inputs.sprint, life.Model.stamina + "");
+        inputs.move = Vector2.zero; inputs.sprint = false;
+        float low = life.Model.stamina;
+        var kb = new UnityEngine.InputSystem.Keyboard();
+        foreach (var f in typeof(UnityEngine.InputSystem.Keyboard).GetFields()) if (f.FieldType == typeof(UnityEngine.InputSystem.KeyControl)) f.SetValue(kb, new UnityEngine.InputSystem.KeyControl());
+        UnityEngine.InputSystem.Keyboard.current = kb;
+        Hold(kb.leftCtrlKey);
+        T.Check("Life: Ctrl crouches (controller lowers and slows)", life.IsCrouching && PlayerLife.Crouching && PlayerLife.SpeedFactor < 0.6f && !PlayerLife.SprintAllowed);
+        FakeEngine.Run(3f, 0.1f);
+        T.Check("Life: resting recovers stamina", life.Model.stamina > low + 20f, low + " -> " + life.Model.stamina);
+        Hold(kb.leftCtrlKey);
+        T.Check("Life: Ctrl again stands up", !life.IsCrouching);
+        T.SetProp(clock, "Weather", Weather.Sunny);
+
+        // --- drinking at the well with bare hands
+        var well = UnityEngine.Object.FindAnyObjectByType<WellController>();
+        if (!well.IsRunning) well.Interact();
+        player.position = well.transform.position + new Vector3(1.5f, 0, 0);
+        life.Model.hydration = 0.2f; life.SetTool(HandTool.Hands);
+        string drink = life.UseTool();
+        T.Check("Life: bare hands at the running well: drink", life.Model.hydration == 1f, drink);
+
+        // --- carrying: weight slows you, no sprint with a bale
+        var bale = Carriable.All.First(c => c.kind == "hay_bale");
+        player.position = bale.transform.position + new Vector3(0.8f, 0, 0);
+        FakeEngine.Run(0.2f, 0.1f);
+        float free = PlayerLife.SpeedFactor;
+        Hold(kb.fKey);
+        T.Check("Life: F picks up the nearest hay bale (25 kg)", life.Carried == bale && bale.Carried && life.CarryKg == 25f, life.LastMessage);
+        T.Check("Life: carrying a heavy bale slows you and stops sprinting", PlayerLife.SpeedFactor < free * 0.8f && !PlayerLife.SprintAllowed && PlayerLife.AccelerationFactor < 0.6f, free + " -> " + PlayerLife.SpeedFactor);
+        T.Check("Life: a light crate slows you less", MoveRules.CarryFactor(8f) > MoveRules.CarryFactor(25f) && MoveRules.CanSprint(8f, false, false));
+        FakeEngine.Run(0.3f, 0.1f);
+        T.Check("Life: HUD shows the load and the stamina bar", life.Hud.LastText.Contains("25 kg") && life.Hud.LastText.Contains("Stamina"), life.Hud.LastText);
+
+        // --- herd: two sheep (ewe + ram)
+        T.Check("Life: buy 2 sheep", eco.TryBuy("sheep") && eco.TryBuy("sheep"));
+        herd.Reconcile();
+        var sheep = herd.Animals.Where(a => a.species == "sheep").ToList();
+        T.Check("Life: one record per animal; the pair is a ewe and a ram", herd.Animals.Count == pen.AnimalCount && sheep.Count == 2 && sheep.Count(a => a.male) == 1 && sheep.All(a => a.Adult), herd.Animals.Count + " vs " + pen.AnimalCount);
+        FakeEngine.Run(1.5f);
+        T.Check("Life: every animal in the pen is linked to its record", pen.Animals.All(a => a.uid != 0 && herd.Find(a.uid) != null && herd.Find(a.uid).species == a.animalId));
+
+        // drop the bale in the pen: everyone fed
+        foreach (var a in herd.Animals) a.food = 0.2f;
+        player.position = pen.transform.position;
+        Hold(kb.fKey);
+        T.Check("Life: bale put down in the pen feeds every animal", life.Carried == null && herd.Animals.All(a => a.food == 1f) && life.BaleCount == bales0 - 1, life.LastMessage);
+
+        // --- needs drop daily, feeding and watering restore
+        eco.ConsumeFeed(eco.Feed);
+        T.SetProp(pen, "WaterLevel", 0f);
+        herd.SimulateDay(clock.Day);
+        T.Check("Life: without feed and water, needs drop over a day", herd.Animals.All(a => a.food <= 0.5f && a.water < 0.5f), string.Join(",", herd.Animals.Select(a => a.food + "/" + a.water)));
+        eco.AddFeed(20f);
+        int fed = herd.FeedAll();
+        pen.FillWater(); herd.WaterAll();
+        T.Check("Life: feeding and filling the trough restore food and water", fed == herd.Animals.Count && herd.Animals.All(a => a.food == 1f && a.water == 1f));
+
+        // --- tools
+        life.SetTool(HandTool.Hands);
+        life.CycleTool(1);
+        FakeEngine.Run(0.3f, 0.1f);
+        T.Check("Life: tool wheel cycles (Hands -> Hoe) and shows the ring", life.Tool == HandTool.Hoe && life.Hud.LastText.Contains("( Hoe )"), life.Hud.LastText);
+        Hold(kb.periodKey);
+        T.Check("Life: period selects the next tool", life.Tool == HandTool.WateringCan);
+        var pad = new UnityEngine.InputSystem.Gamepad { name = "XInputControllerWindows" };
+        UnityEngine.InputSystem.Gamepad.current = pad;
+        Press(pad.leftShoulder);
+        T.Check("Life: LB cycles back", life.Tool == HandTool.Hoe);
+        var plot = FieldManager.Instance.Plots.FirstOrDefault(p => p.State == PlotState.Untilled);
+        if (plot != null)
+        {
+            player.position = plot.transform.position;
+            life.Model.stamina = StaminaModel.Max;
+            Press(pad.rightTrigger);
+            T.Check("Life: RT with the hoe plows the plot by hand (costs stamina)", plot.State == PlotState.Plowed && life.Model.stamina < StaminaModel.Max, life.LastMessage);
+            life.SetTool(HandTool.WateringCan);
+            plot.AddWater(-1f);
+            string w = life.UseTool();
+            T.Check("Life: watering can waters the plot", plot.Water >= 0.49f, w);
+        }
+        else T.Check("Life: an untilled plot for the hoe", false);
+        UnityEngine.InputSystem.Gamepad.current = null;
+        life.SetTool(HandTool.Shovel);
+        player.position = pen.transform.position;
+        T.SetProp(pen, "Cleanliness", 0.3f);
+        life.Model.stamina = StaminaModel.Max;
+        string sh = life.UseTool();
+        T.Check("Life: shovel mucks out the pen", pen.Cleanliness > 0.55f, sh);
+        life.SetTool(HandTool.Brush);
+        var body = pen.Animals.First(a => a.animalId == "sheep");
+        player.position = body.transform.position + new Vector3(0.5f, 0, 0);
+        var rec = herd.Find(body.uid);
+        rec.happiness = 0.3f; rec.clean = 0.2f;
+        string br = life.UseTool();
+        T.Check("Life: brushing an animal cleans it and makes it happier", rec.clean == 1f && rec.happiness >= 0.5f, br);
+        T.Check("Life: footsteps know the surface (pen straw, field soil, sand)", PlayerLife.SurfaceAt(pen.transform.position) == "straw"
+            && PlayerLife.SurfaceAt(FieldManager.Instance.Plots[0].transform.position) == "soil" && PlayerLife.SurfaceAt(new Vector3(400, 0, 400)) == "sand");
+
+        // --- illness: produces less, medicine cures
+        var ewe = sheep.First(a => !a.male);
+        ewe.food = ewe.water = ewe.clean = ewe.health = ewe.happiness = 1f; ewe.heatStress = 0f; ewe.illness = "";
+        float healthyP = Husbandry.Productivity(ewe), factor0 = herd.ProductionFactor("sheep");
+        herd.MakeSick(ewe, "respiratory");
+        T.Check("Life: a sick animal produces much less", Husbandry.Productivity(ewe) < healthyP * 0.5f && herd.ProductionFactor("sheep") < factor0, healthyP + " -> " + Husbandry.Productivity(ewe));
+        T.Check("Life: no medicine in stock -> can't treat", ewe.Sick && herd.Treat(ewe).Contains("No medicine"));
+        T.Check("Life: buy medicine at the shop", eco.TryBuy(HerdManager.MedicineId) && herd.Medicine == 1);
+        herd.Treat(ewe);
+        T.Check("Life: medicine cures it", !ewe.Sick && herd.Medicine == 0 && Husbandry.Productivity(ewe) > healthyP * 0.9f);
+        herd.MakeSick(ewe, "digestive");
+        int m0 = eco.Money;
+        string vet = herd.CallVet();
+        T.Check("Life: the vet cures every sick animal for a fee", !ewe.Sick && eco.Money == m0 - HerdManager.VetPrice, vet);
+        T.Check("Life: vet not needed when all are healthy", herd.CallVet().Contains("not needed") && eco.Money == m0 - HerdManager.VetPrice);
+
+        // --- heat stress: shade and misting fans
+        float load = Husbandry.HeatLoad(Season.Summer, Weather.Heatwave);
+        float open = Husbandry.HeatStress("chicken", load, false, false), shaded = Husbandry.HeatStress("chicken", load, true, false), both = Husbandry.HeatStress("chicken", load, true, true);
+        T.Check("Life: summer heatwave stresses hens; shade helps, shade + misting fans more", open > 0.9f && shaded < open - 0.3f && both < shaded - 0.3f, open + " / " + shaded + " / " + both);
+        T.Check("Life: camels hardly mind the heat", Husbandry.HeatStress("camel", load, false, false) < 0.2f);
+        var hotHen = new AnimalRecord { species = "chicken", ageDays = 20, heatStress = open };
+        var coolHen = new AnimalRecord { species = "chicken", ageDays = 20, heatStress = both };
+        T.Check("Life: heat stress lowers production", Husbandry.Productivity(hotHen) < Husbandry.Productivity(coolHen) * 0.6f);
+        T.SetProp(clock, "Weather", Weather.Heatwave);
+        float before = herd.StressFor("sheep");
+        T.Check("Life: buy shade canopy and misting fans", eco.TryBuy(HerdManager.ShadeId) && eco.TryBuy(HerdManager.FansId) && herd.Shade && herd.Fans && !eco.TryBuy(HerdManager.ShadeId));
+        pen.FillWater();
+        T.Check("Life: in the pen, shade + fans cut heat stress", herd.StressFor("sheep") < before * 0.5f + 0.001f && GameObject.Find("Pen Shade") != null && GameObject.Find("Misting Fans") != null, before + " -> " + herd.StressFor("sheep"));
+        T.SetProp(pen, "WaterLevel", 0f);
+        T.Check("Life: fans need water in the trough", !herd.FansWorking);
+        pen.FillWater();
+        T.SetProp(clock, "Weather", Weather.Sunny);
+
+        // --- breeding with gestation and inherited trait
+        herd.Seed(7);
+        ewe.gestationLeft = 0;   // earlier SimulateDay calls use the unseeded RNG and may already have made her pregnant (flaky)
+        var ram = sheep.First(a => a.male);
+        ewe.trait = 1.3f; ram.trait = 1.1f;
+        int owned0 = eco.Owned("sheep"), days = 0;
+        for (; days < 30 && !ewe.Pregnant; days++) { pen.FillWater(); pen.Clean(); eco.AddFeed(5f); herd.SimulateDay(clock.Day + days); foreach (var a in herd.Animals) a.illness = ""; }
+        T.Check("Life: a healthy, happy ewe with a ram conceives", ewe.Pregnant && ewe.gestationLeft == SpeciesTraits.Get("sheep").gestation && Math.Abs(ewe.sireTrait - 1.1f) < 0.001f, "days " + days);
+        herd.SimulateDay(clock.Day + days++);
+        T.Check("Life: no lamb before the gestation time", eco.Owned("sheep") == owned0 && ewe.Pregnant);
+        for (int i = 0; i < 6 && ewe.Pregnant; i++) { pen.FillWater(); eco.AddFeed(5f); herd.SimulateDay(clock.Day + days++); foreach (var a in herd.Animals) a.illness = ""; }
+        var lamb = herd.Animals.LastOrDefault(a => a.species == "sheep" && a.ageDays <= 1);
+        T.Check("Life: after the gestation a lamb is born", eco.Owned("sheep") >= owned0 + 1 && lamb != null && !ewe.Pregnant, eco.Owned("sheep") + "");
+        if (lamb != null)
+        {
+            T.Check("Life: lamb inherits the parents' trait (1.2 +- 0.1)", lamb.trait >= 1.1f - 0.0001f && lamb.trait <= 1.3f + 0.0001f, "" + lamb.trait);
+            T.Check("Life: young animals don't produce yet", Husbandry.Productivity(lamb) == 0f && !lamb.Adult);
+        }
+        FakeEngine.Run(1.5f);
+        T.Check("Life: the newborn walks in the pen", pen.Animals.Count(a => a.animalId == "sheep") == eco.Owned("sheep"));
+        var r = Enumerable.Range(0, 200).Select(i => Husbandry.Inherit(0.8f, 1.0f, new System.Random(i))).ToList();
+        T.Check("Life: inheritance varies but stays within the parents' average +- 0.1", r.Min() >= 0.8f && r.Max() <= 1.0f && r.Max() - r.Min() > 0.1f, r.Min() + ".." + r.Max());
+
+        // --- value by age and health
+        var adult = new AnimalRecord { species = "sheep", ageDays = 20, trait = 1f };
+        var young = new AnimalRecord { species = "sheep", ageDays = 1, trait = 1f };
+        var old = new AnimalRecord { species = "sheep", ageDays = 130, trait = 1f };
+        var weak = new AnimalRecord { species = "sheep", ageDays = 20, trait = 1f, health = 0.3f, illness = "respiratory" };
+        int vA = Husbandry.Value(adult, 2500);
+        T.Check("Life: price by age and health (prime adult worth most)", vA == 2500 && Husbandry.Value(young, 2500) < vA && Husbandry.Value(old, 2500) < vA && Husbandry.Value(weak, 2500) < vA / 2,
+            vA + " " + Husbandry.Value(young, 2500) + " " + Husbandry.Value(old, 2500) + " " + Husbandry.Value(weak, 2500));
+
+        // --- records panel (gamepad)
+        var board = UnityEngine.Object.FindAnyObjectByType<PenBoard>();
+        board.Interact();
+        var panel = herd.Panel;
+        T.Check("Life: records board opens the animal panel (game input paused)", panel.IsOpen && UIManager.Instance.IsUIOpened && panel.LastText.Contains("Animal records") && panel.LastText.Contains("Genetics"), panel.LastText);
+        FakeEngine.Tick(0.05f);
+        UnityEngine.InputSystem.Gamepad.current = pad;
+        int sel = panel.Selected;
+        Press(pad.dpad.down);
+        T.Check("Life: D-pad selects the next animal", panel.Selected == (sel + 1) % herd.Animals.Count, sel + " -> " + panel.Selected);
+        if (lamb != null)
+        {
+            panel.Select(herd, herd.Animals.ToList().IndexOf(lamb));
+            int count0 = eco.Owned("sheep"), money0 = eco.Money;
+            Press(pad.buttonWest);
+            T.Check("Life: X asks before selling", eco.Owned("sheep") == count0 && panel.LastText.Contains("again to sell"), panel.LastText);
+            Press(pad.buttonWest);
+            T.Check("Life: X again sells the lamb at its value", eco.Owned("sheep") == count0 - 1 && eco.Money > money0 && herd.Find(lamb.uid) == null, (eco.Money - money0) + "");
+            FakeEngine.Run(0.5f);
+            T.Check("Life: sold animal leaves the pen", pen.Animals.Count(a => a.animalId == "sheep") == eco.Owned("sheep"));
+        }
+        Press(pad.buttonEast);
+        T.Check("Life: B closes the panel and gives input back", !panel.IsOpen && !UIManager.Instance.IsUIOpened);
+        UnityEngine.InputSystem.Gamepad.current = null;
+        UnityEngine.InputSystem.Keyboard.current = null;
+        GameInput.ForceDevice(false, false);
+
+        // --- daily simulation runs on its own
+        int ages = herd.Animals.Sum(a => a.ageDays);
+        clock.NextDay();
+        T.Check("Life: a new day ages the herd", herd.Animals.Sum(a => a.ageDays) == ages + herd.Animals.Count);
+
+        // --- Arabic for every text
+        var keys = new List<string>();
+        foreach (var f in Directory.GetFiles(Path.Combine(FakeEngine.ResourcesRoot, "..", "Scripts", "Life"), "*.cs"))
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f), "Loc\\.(?:T|Raw)\\(\"((?:[^\"\\\\]|\\\\.)*)\""))
+                keys.Add(m.Groups[1].Value);
+        keys.AddRange(HandTools.All.Select(HandTools.Key));
+        keys.AddRange(Husbandry.Illnesses.Select(Husbandry.IllnessKey));
+        keys.AddRange(new[] { "Hay bale", "Produce crate", "male", "female", "yes", "no", "on", "no water", "Crouch / rest", "Pick up / put down", "Use hand tool", "Previous tool", "Next tool" });
+        Loc.Raw("x");
+        var missing = keys.Distinct().Where(k => !Loc.HasTranslation(k)).ToList();
+        T.Check("Life: every text has Arabic (Loc/92_life.json)", keys.Count > 50 && missing.Count == 0, string.Join(" | ", missing.Take(5)));
+        Loc.SetLanguage(Language.Arabic);
+        board.Interact(); herd.Panel.Refresh(herd);
+        T.Check("Life: panel and prompt in Arabic", herd.Panel.LastText.Contains("سجل الحيوانات") && board.InteractionPrompt.Any(c => c >= 'ﹰ'), board.InteractionPrompt);
+        herd.Panel.Close();
+        Loc.SetLanguage(Language.English);
+
+        // the older sections expect only chickens in the pen: sell the sheep again (keeps shade, fans and genetics records)
+        foreach (var a in herd.Animals.Where(x => x.species == "sheep").ToList()) herd.Sell(a);
+        FakeEngine.Run(0.5f);
+        T.Check("Life: selling empties the sheep from the pen", eco.Owned("sheep") == 0 && pen.Animals.Count(a => a.animalId == "sheep") == 0);
+
+        T.Check("Life: no errors", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
+        for (int i = 0; i < ext; i++) UIManager.Instance.SetExternalPanel(true);
+    }
+
+    /// <summary>Snapshot just before the save file is flushed and the world rebuilt.</summary>
+    public static void BeforeSave()
+    {
+        var herd = HerdManager.Instance; var life = PlayerLife.Instance;
+        life.SetTool(HandTool.Brush);
+        life.Save(); herd.Save();
+        staminaSaved = life.Model.stamina; herdSaved = herd.Animals.Count; balesSaved = life.BaleCount;
+        traitsSaved = string.Join(",", herd.Animals.Select(a => a.uid + ":" + a.trait.ToString("F3") + ":" + a.male));
+    }
+
+    public static void AfterRestart()
+    {
+        var herd = HerdManager.Instance; var life = PlayerLife.Instance;
+        string traits = string.Join(",", herd.Animals.Select(a => a.uid + ":" + a.trait.ToString("F3") + ":" + a.male));
+        T.Check("Life: herd restored with uids, sex and genetics", herd.Animals.Count == herdSaved && traits == traitsSaved, traits + " vs " + traitsSaved);
+        T.Check("Life: shade and fans restored", herd.Shade && herd.Fans && GameObject.Find("Pen Shade") != null);
+        T.Check("Life: stamina, tool and bales restored", Math.Abs(life.Model.stamina - staminaSaved) < 5f && life.Tool == HandTool.Brush && life.BaleCount == balesSaved, life.Model.stamina + " " + life.Tool + " " + life.BaleCount);
+        T.Check("Life: pen bodies linked after restart", AnimalPen.Instance.Animals.All(a => a.uid != 0));
+    }
+
+    public static void AfterNewGame()
+    {
+        var herd = HerdManager.Instance; var life = PlayerLife.Instance;
+        T.Check("Life: new game clears the herd, shade and medicine", herd.Animals.Count == 0 && !herd.Shade && !herd.Fans && herd.Medicine == 0 && GameObject.Find("Pen Shade") == null);
+        T.Check("Life: new game resets stamina, tool and bales", life.Model.stamina >= StaminaModel.Max - 1f && life.Tool == HandTool.Hands && life.BaleCount == 2 && life.Carried == null, life.BaleCount + "");
+    }
+}
+
+// ---------------------------------------------------------------- shared keys: driving vs on-foot actions read by context
+static class SharedKeyTests
+{
+    static void Key(UnityEngine.InputSystem.KeyControl k) { k.wasPressedThisFrame = true; k.isPressed = true; FakeEngine.Tick(0.02f); k.wasPressedThisFrame = false; k.isPressed = false; FakeEngine.Tick(0.02f); }
+    static void Pad(UnityEngine.InputSystem.ButtonControl b) { b.wasPressedThisFrame = true; b.isPressed = true; FakeEngine.Tick(0.02f); b.wasPressedThisFrame = false; b.isPressed = false; FakeEngine.Tick(0.02f); }
+
+    public static void Run()
+    {
+        Console.WriteLine("Shared keys: vehicle actions only in a vehicle, on-foot actions only on foot");
+        Program.BuildWorld();
+        FakeEngine.Run(2f);
+        for (int i = 0; i < 400 && LoadingScreen.Visible; i++) FakeEngine.Tick(0.1f);
+        var intro = UnityEngine.Object.FindAnyObjectByType<StoryIntro>();
+        if (intro != null) typeof(StoryIntro).GetMethod("Close", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(intro, null);
+        FakeEngine.Run(0.5f);
+        var kb = new UnityEngine.InputSystem.Keyboard();
+        foreach (var f in typeof(UnityEngine.InputSystem.Keyboard).GetFields())
+            if (f.FieldType == typeof(UnityEngine.InputSystem.KeyControl)) f.SetValue(kb, new UnityEngine.InputSystem.KeyControl());
+        UnityEngine.InputSystem.Keyboard.current = kb;
+        var pad = new UnityEngine.InputSystem.Gamepad { name = "XInputControllerWindows", displayName = "Xbox Controller" };
+        UnityEngine.InputSystem.Gamepad.current = pad;
+        GameSettings.Gearbox = GearboxMode.Manual;
+        var life = PlayerLife.Instance; var truck = FarmTruck.Instance;
+        var player = GameObject.Find("PlayerCapsule").transform;
+        var bale = Carriable.All.FirstOrDefault(c => c != null && c.kind == "hay_bale");
+        T.Check("Shared keys: world ready (player life, bale, no panel open)", life != null && bale != null && !UIManager.Instance.IsUIOpened && Vehicle.Current == null);
+        if (life == null || bale == null) return;
+
+        // ---- on foot: F / Ctrl / Z / , . / LB RB / D-pad up drive the on-foot actions and never the vehicle
+        truck.transform.position = bale.transform.position + new Vector3(4f, 0f, 0f);
+        player.position = bale.transform.position + new Vector3(0.8f, 0f, 0f);
+        FakeEngine.Run(0.2f, 0.1f);
+        bool engine0 = truck.Drive.EngineOn; int gear0 = truck.Drive.Gear; int trac0 = truck.TractionMode; var cruise0 = truck.Assist.Cruise; float set0 = truck.Assist.CruiseSpeed;
+        Key(kb.fKey);
+        T.Check("Shared keys: on foot F picks up, engine untouched", life.Carried == bale && truck.Drive.EngineOn == engine0, life.LastMessage);
+        Key(kb.fKey);
+        T.Check("Shared keys: on foot F puts down", life.Carried == null);
+        Key(kb.leftCtrlKey);
+        T.Check("Shared keys: on foot Ctrl crouches, no gear change", life.IsCrouching && truck.Drive.Gear == gear0);
+        Key(kb.leftCtrlKey);
+        string msg = life.LastMessage;
+        Key(kb.zKey);
+        T.Check("Shared keys: on foot Z uses the hand tool, 4WD untouched", truck.TractionMode == trac0);
+        var tool0 = life.Tool;
+        Key(kb.periodKey);
+        T.Check("Shared keys: on foot . picks the next tool, cruise speed untouched", life.Tool != tool0 && Math.Abs(truck.Assist.CruiseSpeed - set0) < 0.001f, life.Tool + "");
+        Key(kb.commaKey);
+        Pad(pad.rightShoulder);
+        T.Check("Shared keys: on foot RB cycles tools, no gear change", life.Tool != tool0 && truck.Drive.Gear == gear0);
+        Pad(pad.leftShoulder);
+        T.Check("Shared keys: on foot LB cycles back", life.Tool == tool0);
+        Pad(pad.dpad.up);
+        T.Check("Shared keys: on foot D-pad up picks up, cruise untouched", life.Carried != null && truck.Assist.Cruise == cruise0, life.LastMessage + " carried=" + (life.Carried != null) + " d=" + Vector3.Distance(player.position, bale.transform.position));
+        Pad(pad.dpad.up);
+        Pad(pad.leftStickButton);
+        T.Check("Shared keys: on foot L3 crouches, engine untouched", life.IsCrouching && truck.Drive.EngineOn == engine0);
+        Pad(pad.leftStickButton);
+
+        // ---- in the vehicle: the same keys drive the vehicle and never the on-foot actions
+        truck.transform.position = bale.transform.position + new Vector3(1f, 0f, 0f);   // a bale within reach if pick-up leaked through
+        truck.Interact(); FakeEngine.Tick(0.02f);
+        T.Check("Shared keys: in the truck, engine running", Vehicle.Current == truck && truck.Drive.EngineOn);
+        var toolIn = life.Tool; string msgIn = life.LastMessage;
+        Key(kb.fKey);
+        T.Check("Shared keys: in a vehicle F stops the engine, picks nothing up", !truck.Drive.EngineOn && life.Carried == null && !bale.Carried);
+        Key(kb.fKey);
+        T.Check("Shared keys: in a vehicle F starts it again", truck.Drive.EngineOn && life.Carried == null);
+        Key(kb.leftShiftKey); Key(kb.leftShiftKey);
+        int g = truck.Drive.Gear;
+        Key(kb.leftCtrlKey);
+        T.Check("Shared keys: in a vehicle Ctrl shifts down, no crouch", truck.Drive.Gear == g - 1 && !life.IsCrouching && !PlayerLife.Crouching, g + " -> " + truck.Drive.Gear);
+        Key(kb.zKey);
+        T.Check("Shared keys: in a vehicle Z toggles 4WD, no hand tool", truck.TractionMode == 1 && life.LastMessage == msgIn);
+        Key(kb.periodKey); Key(kb.commaKey); Key(kb.commaKey);
+        T.Check("Shared keys: in a vehicle , . set the cruise speed, tool unchanged", Math.Abs(truck.Assist.CruiseSpeed * 3.6f - (set0 * 3.6f - 1f)) < 0.01f && life.Tool == toolIn);
+        g = truck.Drive.Gear;
+        Pad(pad.rightShoulder);
+        T.Check("Shared keys: in a vehicle RB shifts up, tool unchanged", truck.Drive.Gear == g + 1 && life.Tool == toolIn);
+        Pad(pad.leftShoulder);
+        T.Check("Shared keys: in a vehicle LB shifts down, tool unchanged", truck.Drive.Gear == g && life.Tool == toolIn);
+        Pad(pad.dpad.up);
+        T.Check("Shared keys: in a vehicle D-pad up sets cruise, picks nothing up", truck.Assist.Cruise == CruiseMode.Cruise && life.Carried == null);
+        Pad(pad.leftStickButton);
+        T.Check("Shared keys: in a vehicle L3 is the engine, no crouch", !truck.Drive.EngineOn && !life.IsCrouching);
+        GameInput.ForceDevice(false, false);
+        string inHint = Glyphs.Apply("[F] [Ctrl] [Z]");
+        T.SetProp(truck, "Speed", 0f); truck.Exit(); FakeEngine.Tick(0.02f);
+        string footHint = Glyphs.Apply("[F] [Ctrl] [Z]");
+        GameInput.ForceDevice(true, false);
+        string padIn = "", padFoot = Glyphs.Apply("[F] [Ctrl] [Z]");
+        truck.Interact(); FakeEngine.Tick(0.02f); padIn = Glyphs.Apply("[F] [Ctrl] [Z]");
+        T.SetProp(truck, "Speed", 0f); truck.Exit(); FakeEngine.Tick(0.02f);
+        GameInput.ForceDevice(false, false);
+        T.Check("Shared keys: hint glyphs follow the context (engine / gear / 4WD in a vehicle, pick up / crouch / tool on foot)",
+            inHint == footHint && padIn.Contains("[LS]") && padIn.Contains("[LB]") && padIn.Contains("D-PAD↓") && padFoot.Contains("D-PAD↑") && padFoot.Contains("[RT]"), padIn + " | " + padFoot);
+        T.Check("Shared keys: no errors", FakeEngine.Errors.Count == 0, string.Join(" | ", FakeEngine.Errors.Take(3)));
+        GameSettings.Gearbox = GearboxMode.Automatic;
         UnityEngine.InputSystem.Gamepad.current = null;
     }
 }

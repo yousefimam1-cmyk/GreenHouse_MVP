@@ -27,6 +27,8 @@ public class AmbientAudio : MonoBehaviour
     /// <summary>For tests/debug: what played last and how often.</summary>
     public string LastCall { get; private set; } = "";
     public int Footsteps { get; private set; }
+    /// <summary>Ground of the last footstep: sand, soil (field) or straw (pen).</summary>
+    public string LastStepSurface { get; private set; } = "sand";
     public float EnginePitch => engine != null ? engine.pitch : 0f;
     public bool EnginePlaying => engine != null && engine.isPlaying;
     public float WindVolume => wind != null ? wind.volume : 0f;
@@ -111,8 +113,13 @@ public class AmbientAudio : MonoBehaviour
         stepTimer = sprint ? 0.3f : Mathf.Lerp(0.6f, 0.42f, Mathf.InverseLerp(1f, 3.5f, speed));
         var clip = ProceduralAudio.Get("step" + (stepIndex++ % 4));
         if (clip == null) return;
-        steps.pitch = 0.9f + (float)rnd.NextDouble() * 0.2f;
-        steps.PlayOneShot(clip, (sprint ? 0.5f : 0.35f) * fx);
+        // Surface: soft field soil is lower and duller, pen straw lighter, sand in between; crouching is quiet.
+        LastStepSurface = PlayerLife.SurfaceAt(p);
+        float pitch = LastStepSurface == "soil" ? 0.78f : LastStepSurface == "straw" ? 1.12f : 0.95f;
+        float vol = LastStepSurface == "soil" ? 0.8f : LastStepSurface == "straw" ? 0.65f : 1f;
+        if (PlayerLife.Crouching) vol *= 0.45f;
+        steps.pitch = pitch + (float)rnd.NextDouble() * 0.15f;
+        steps.PlayOneShot(clip, (sprint ? 0.5f : 0.35f) * fx * vol);
         Footsteps++;
     }
 

@@ -5,14 +5,17 @@ using UnityEngine.UI;
 
 /// <summary>
 /// I = inventory (goods in storage, truck cargo, seeds, feed, animals), O = farm stats (money earned, kg harvested,
-/// days played, missions done). Esc / B or the same key closes. Also tracks "money earned" (every increase of the
+/// days played, missions done), Fields = precision farming (SoilManager: every field's soil, expected yield, limiting factor,
+/// yield history). LB / RB or 1-3 switch pages; on the Fields page Left / Right sets the sowing density and Up / Down scrolls
+/// the fields. Esc / B or the same key closes. Also tracks "money earned" (every increase of the
 /// balance), saved as "mazraa.ui.moneyEarned" in the save file, so a New Game resets it.
 /// </summary>
 [MazraaSystem(55)]
 public class FarmInfoScreen : MonoBehaviour
 {
     public const string EarnedKey = "mazraa.ui.moneyEarned";
-    public enum Page { None, Inventory, Stats }
+    public enum Page { None, Inventory, Stats, Fields }
+    public const int FieldsPerPage = 4;
 
     public static FarmInfoScreen Instance { get; private set; }
     public Page Open { get; private set; }
@@ -22,6 +25,8 @@ public class FarmInfoScreen : MonoBehaviour
     private TextMeshProUGUI text;
     private int lastMoney = -1;
     private int openedFrame;
+    private int fieldOffset, fieldSel;
+    private float refreshTimer;
 
     private void Awake()
     {
@@ -78,8 +83,13 @@ public class FarmInfoScreen : MonoBehaviour
         {
             if (Time.frameCount == openedFrame) return;
             Page key = GameInput.Pressed(GameAction.Inventory) ? Page.Inventory : GameInput.Pressed(GameAction.Stats) ? Page.Stats : Page.None;
-            if (MenuNav.Back() || key == Open) Close();
-            else if (key != Page.None) Show(key);
+            int digit = MenuNav.Digit();
+            if (digit >= 0 && digit <= 2) key = (Page)(digit + 1);
+            else if (MenuNav.PageNext()) key = (Page)((int)Open % 3 + 1);
+            else if (MenuNav.PagePrev()) key = (Page)(((int)Open + 1) % 3 + 1);
+            if (MenuNav.Back() || (key == Open && digit < 0 && (key == Page.Inventory || key == Page.Stats))) Close();
+            else if (key != Page.None && key != Open) Show(key);
+            else if (Open == Page.Fields) FieldsInput();
             return;
         }
         bool blocked = Time.timeScale == 0f || (UIManager.Instance != null && UIManager.Instance.IsUIOpened) || UIManager.PanelClosedFrame == Time.frameCount;
@@ -87,6 +97,39 @@ public class FarmInfoScreen : MonoBehaviour
         if (GameInput.Pressed(GameAction.Inventory)) Show(Page.Inventory);
         else if (GameInput.Pressed(GameAction.Stats)) Show(Page.Stats);
     }
+
+    private void FieldsInput()
+    {
+        int h = MenuNav.Horizontal(), v = MenuNav.Vertical();
+        if (h != 0 && SoilManager.Instance != null) { SoilManager.Instance.CycleDensity(h); Refresh(); }
+        if (v != 0) ScrollFields(v);
+        if (MenuNav.Confirm()) CycleSelectedIrrigation();
+        refreshTimer -= Time.unscaledDeltaTime;
+        if (refreshTimer <= 0f) { refreshTimer = 1f; Refresh(); }
+    }
+
+    /// <summary>Select the next / previous field on the Fields page (Up / Down); the list scrolls to keep it in view.</summary>
+    public void ScrollFields(int dir)
+    {
+        int n = FieldManager.Instance != null ? FieldManager.Instance.Plots.Count : 0;
+        fieldSel = Mathf.Clamp(fieldSel + dir, 0, Mathf.Max(0, n - 1));
+        if (fieldSel < fieldOffset) fieldOffset = fieldSel;
+        if (fieldSel >= fieldOffset + FieldsPerPage) fieldOffset = fieldSel - FieldsPerPage + 1;
+        fieldOffset = Mathf.Clamp(fieldOffset, 0, Mathf.Max(0, n - FieldsPerPage));
+        Refresh();
+    }
+
+    /// <summary>Enter / A on the Fields page: next irrigation method for the selected field.</summary>
+    public void CycleSelectedIrrigation()
+    {
+        var fm = FieldManager.Instance;
+        if (SoilManager.Instance == null || fm == null || fieldSel < 0 || fieldSel >= fm.Plots.Count) return;
+        SoilManager.Instance.CycleIrrigation(fm.Plots[fieldSel], 1);
+        Refresh();
+    }
+
+    public int FieldOffset => fieldOffset;
+    public int SelectedField => fieldSel;
 
     public void Show(Page page)
     {
@@ -114,8 +157,9 @@ public class FarmInfoScreen : MonoBehaviour
         if (text == null || Open == Page.None) return;
         Loc.ApplyFont(text);
         text.alignment = Loc.IsArabic ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
-        text.text = (Open == Page.Inventory ? InventoryText() : StatsText()) + "\n\n<size=80%><color=#BBBBBB>" +
-                    Glyphs.Apply(UiText.T(Open == Page.Inventory ? "[I] or [Esc] close   [O] Farm stats" : "[O] or [Esc] close   [I] Inventory")) + "</color></size>";
+        string body = Open == Page.Inventory ? InventoryText() : Open == Page.Stats ? StatsText() : "<size=72%>" + SoilManager.FieldsText(fieldOffset, FieldsPerPage, fieldSel) + "</size>";
+        string hint = Open == Page.Inventory ? "[I] or [Esc] close   [O] Farm stats" : Open == Page.Stats ? "[O] or [Esc] close   [I] Inventory" : "Left / Right: sowing density   Up / Down: choose field   [Enter] irrigation   [Esc] close";
+        text.text = body + "\n\n<size=80%><color=#BBBBBB>" + Glyphs.Apply(UiText.T(hint)) + "\n" + Glyphs.Apply(UiText.T("[LB] [RB] or 1 2 3: Inventory / Farm stats / Fields")) + "</color></size>";
     }
 
     private static string Line(string s) => "\n" + Loc.Display(s);

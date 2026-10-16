@@ -28,6 +28,10 @@ public class FieldPlot : Interactable
 
     public static event System.Action<FieldPlot, string, float> FieldHarvested;
     public static event System.Action<FieldPlot> FieldPlanted;
+    /// <summary>A plot was plowed: true = by hand (player hoe, shallow), false = by machine or a worker (deep plow).</summary>
+    public static event System.Action<FieldPlot, bool> FieldPlowed;
+    /// <summary>The player watered a growing plot with E (the water level before watering).</summary>
+    public static event System.Action<FieldPlot, float> FieldWatered;
 
     // ---- Extension hooks (registered by feature systems) ----
     /// <summary>Growth speed multipliers (e.g. pests, poor soil). All are multiplied together.</summary>
@@ -43,14 +47,22 @@ public class FieldPlot : Interactable
     /// <summary>Called on harvest (before the plot is cleared): return a growth value 0..1 to keep the crop
     /// growing for another cut (e.g. alfalfa), or a negative value to clear the plot as usual.</summary>
     public static readonly List<System.Func<FieldPlot, float>> RegrowHooks = new List<System.Func<FieldPlot, float>>();
+    /// <summary>Drying speed multipliers per plot (e.g. crop stage, season heat, mulch, organic matter).</summary>
+    public static readonly List<System.Func<FieldPlot, float>> DryModifiers = new List<System.Func<FieldPlot, float>>();
+    /// <summary>Per-plot automatic watering: 1 = kept wet, 0 = not, -1 = no opinion (then the farm system, UtilityHooks, decides).</summary>
+    public static readonly List<System.Func<FieldPlot, int>> AutoWaterHooks = new List<System.Func<FieldPlot, int>>();
+    /// <summary>Second action on a plot (Q / gamepad Y on foot), e.g. change the field's irrigation. Return true when handled.</summary>
+    public static readonly List<System.Func<FieldPlot, bool>> SecondaryHandlers = new List<System.Func<FieldPlot, bool>>();
+    /// <summary>Prompt text for the second action (translated, not shaped), e.g. "[Q] Irrigation: Drip lines".</summary>
+    public static readonly List<System.Func<FieldPlot, string>> SecondaryPrompts = new List<System.Func<FieldPlot, string>>();
     /// <summary>Seed planted next when the player owns it (set when seeds are bought in the shop).</summary>
     public static string PreferredSeed = "";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics()
     {
-        FieldHarvested = null; FieldPlanted = null; PreferredSeed = "";
-        GrowthModifiers.Clear(); YieldModifiers.Clear(); PromptExtras.Clear(); PromptOverrides.Clear(); InteractHandlers.Clear(); RegrowHooks.Clear();
+        FieldHarvested = null; FieldPlanted = null; FieldPlowed = null; FieldWatered = null; PreferredSeed = "";
+        GrowthModifiers.Clear(); YieldModifiers.Clear(); PromptExtras.Clear(); PromptOverrides.Clear(); InteractHandlers.Clear(); RegrowHooks.Clear(); DryModifiers.Clear(); AutoWaterHooks.Clear(); SecondaryHandlers.Clear(); SecondaryPrompts.Clear();
     }
 
     private static float Product(List<System.Func<FieldPlot, float>> list, FieldPlot p)
@@ -59,6 +71,9 @@ public class FieldPlot : Interactable
         foreach (var f in list) { try { m *= Mathf.Max(0f, f(p)); } catch (System.Exception e) { Debug.LogException(e); } }
         return m;
     }
+
+    /// <summary>Harvest multiplier of all registered features (soil, rotation, pests...), for expected-yield displays.</summary>
+    public static float YieldMultiplier(FieldPlot p) => Product(YieldModifiers, p);
 
     public override string InteractionPrompt => Loc.Display(PromptRaw());
 
@@ -73,6 +88,12 @@ public class FieldPlot : Interactable
             string x = null;
             try { x = f(this); } catch (System.Exception e) { Debug.LogException(e); }
             if (!string.IsNullOrEmpty(x)) text += " | " + x;
+        }
+        foreach (var f in SecondaryPrompts)
+        {
+            string x = null;
+            try { x = f(this); } catch (System.Exception e) { Debug.LogException(e); }
+            if (!string.IsNullOrEmpty(x)) text += "   " + x;
         }
         return text;
     }
@@ -160,12 +181,38 @@ public class FieldPlot : Interactable
             case PlotState.Growing:
                 if (FarmModifiers.IrrigationBanned) { Say(FarmModifiers.BanText()); return; }
                 if (!WellRunning()) { Say(Loc.T("Start the well first to get water")); return; }
+                float before = Water;
                 Water = 1f;
+                FieldWatered?.Invoke(this, before);
                 Say(Loc.T("Field watered"));
                 Refresh(); Save();
                 break;
             case PlotState.Ripe: TryHarvest(true); break;
         }
+    }
+
+    /// <summary>The second action on this plot (Q / Y on foot). True when a feature handled it.</summary>
+    public bool SecondaryInteract()
+    {
+        foreach (var h in SecondaryHandlers)
+        {
+            bool handled = false;
+            try { handled = h(this); } catch (System.Exception e) { Debug.LogException(e); }
+            if (handled) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Is this plot kept wet automatically now (its own irrigation, else the farm's system)?</summary>
+    public bool AutoWatered()
+    {
+        foreach (var f in AutoWaterHooks)
+        {
+            int v = -1;
+            try { v = f(this); } catch (System.Exception e) { Debug.LogException(e); }
+            if (v >= 0) return v == 1;
+        }
+        return UtilityHooks.FieldsAutoWatered;
     }
 
     // --- Actions shared by the player (E) and tractor implements ---
@@ -175,6 +222,7 @@ public class FieldPlot : Interactable
         if (State != PlotState.Untilled) return false;
         if (NetSession.ForwardPlotJob(this, Implement.Plow)) return true;   // co-op client: the host does it
         State = PlotState.Plowed;
+        FieldPlowed?.Invoke(this, announce);
         if (announce) Say(Loc.T("Field plowed"));
         Refresh(); Save();
         return true;
@@ -244,8 +292,8 @@ public class FieldPlot : Interactable
         if (State != PlotState.Growing) return;
         var clock = WorldClock.Instance;
         bool raining = clock != null && clock.Weather == Weather.Rain;
-        if (raining || (UtilityHooks.FieldsAutoWatered && !FarmModifiers.IrrigationBanned)) Water = 1f; // rain or drip/pivot/sprinklers (Utilities); water bans stop irrigation (Events)
-        float dry = (clock != null && clock.Weather == Weather.Heatwave ? 2f : 1f) / 150f * UtilityHooks.FieldDryFactor * FarmModifiers.FieldDry;
+        if (raining || (AutoWatered() && !FarmModifiers.IrrigationBanned)) Water = 1f; // rain or drip/pivot/sprinklers (Utilities); water bans stop irrigation (Events)
+        float dry = (clock != null && clock.Weather == Weather.Heatwave ? 2f : 1f) / 150f * UtilityHooks.FieldDryFactor * FarmModifiers.FieldDry * Product(DryModifiers, this);
         Water = Mathf.Max(0f, Water - dry * Time.deltaTime);
         if (Water > 0.05f)
         {
