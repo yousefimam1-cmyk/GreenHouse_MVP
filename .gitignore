@@ -25,3 +25,6 @@
 
 Tests/Headless/*.exe
 Tests/Headless/*.dll
+
+# Packaged releases (zip / installer)
+[Rr]elease/

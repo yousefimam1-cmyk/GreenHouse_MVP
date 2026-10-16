@@ -29,7 +29,8 @@ public static class MazraaBuild
         Directory.CreateDirectory(outDir);
         var scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
         var report = BuildPipeline.BuildPlayer(scenes, outDir + "/Mazraa.exe", BuildTarget.StandaloneWindows64, BuildOptions.None);
-        Debug.Log("Mazraa Windows build: " + report.summary.result + " -> " + outDir);
+        Debug.Log("Mazraa Windows build: " + report.summary.result + " -> " + outDir + " in " + report.summary.totalTime.ToString(@"hh\:mm\:ss"));
+        MazraaShaderStripper.LogAndReset();
         if (Application.isBatchMode) EditorApplication.Exit(report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded ? 0 : 1);
     }
 
