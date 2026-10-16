@@ -6,7 +6,7 @@ using UnityEngine;
 /// loading a slot keep them): volumes, graphics preset, mouse / stick sensitivity, invert Y, camera view.
 /// Language is stored by Loc itself (also kept on New Game).
 /// </summary>
-public static class GameSettings
+public static partial class GameSettings   // more settings (pages Game / Display / Graphics / Sound / Controls / Accessibility): GameSettingsOptions.cs
 {
     private const string P = "mazraa.settings.";
     public static event Action Changed;
@@ -59,7 +59,8 @@ public static class GameSettings
         AudioListener.volume = MasterVolume;
         if (AudioManager.Instance != null) AudioManager.Instance.SetVolumes(MusicVolume, SfxVolume);
         GraphicsEnhancer.SetPreset(GraphicsPreset);
-        if (WorldClock.Instance != null) WorldClock.Instance.secondsPerDay = DayMinutes * 60f;
+        if (WorldClock.Instance != null) WorldClock.Instance.secondsPerDay = SecondsPerDay;
+        ApplyOptions();
     }
 
     public static string PresetName(int p) => p <= 0 ? "Low" : p == 1 ? "Medium" : "High";

@@ -287,7 +287,7 @@ public static class SoilModel
     public static float EffectiveP(SoilState s) => s.p * PAvailability(s.ph);
     public static float PhFactor(float ph, SoilCropDef c) => ph < c.phMin ? Mathf.Max(0.3f, 1f - 0.15f * (c.phMin - ph)) : ph > c.phMax ? Mathf.Max(0.3f, 1f - 0.15f * (ph - c.phMax)) : 1f;
     public static float SaltFactor(float ec, SoilCropDef c) => Mathf.Clamp01(1f - c.ecS / 100f * Mathf.Max(0f, ec - c.ecT));
-    public static float CompactionFactor(float comp) => 1f - 0.4f * Mathf.Max(0f, comp - 0.25f) / 0.75f;
+    public static float CompactionFactor(float comp) => !GameSettings.PlowingRequired ? 1f : 1f - 0.4f * Mathf.Max(0f, comp - 0.25f) / 0.75f;
     public static float WeedFactor(float w) => 1f - 0.5f * Mathf.Max(0f, w - 0.15f) / 0.85f;
 
     private static float Blend(float acc, float accG, float now) => accG > 0.001f ? Mathf.Clamp01(acc + Mathf.Max(0f, 1f - accG) * now) : now;

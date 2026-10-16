@@ -69,10 +69,11 @@ public class AmbientAudio : MonoBehaviour
             if (inputs != null) player = inputs.transform;
         }
         float amb = MazraaAudio.Ambience, fx = MazraaAudio.Effects;
-        UpdateEngine(fx);
-        UpdateSteps(dt, fx);
-        UpdateAmbience(dt, amb);
-        UpdateAnimals(dt, amb);
+        // Settings > Sound: vehicles, effects (footsteps), environment, animals
+        UpdateEngine(fx * GameSettings.VehicleVolume);
+        UpdateSteps(dt, fx * GameSettings.SfxVolume);
+        UpdateAmbience(dt, amb * GameSettings.AmbientVolume);
+        UpdateAnimals(dt, amb * GameSettings.AnimalVolume);
     }
 
     // ------------------------------------------------------------------ engine
