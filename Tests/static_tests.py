@@ -241,6 +241,15 @@ def _():
     risky = [t for t in table if len(t.split(':')[1].split(',')) > 1 and not t.startswith(('eKey', 'escapeKey', 'tabKey', 'spaceKey', 'rKey'))]
     return not risky, table
 
+
+# ---------------------------------------------------------------- rendering
+@test('Shader stripper and URP renderers agree (Forward+ keywords not stripped while a renderer uses Forward+)')
+def _():
+    strip = open(os.path.join(A, 'Editor', 'MazraaShaderStripper.cs')).read()
+    fplus = [f for f in walk(os.path.join(A, 'Settings'), ('.asset',)) if 'Renderer' in f and re.search(r'm_RenderingMode: [23]\b', open(f).read())]
+    aware = 'ForwardPlusUsed()' in strip and 'keep.Count == 0' in strip
+    return aware or not fplus, fplus
+
 # ---------------------------------------------------------------- report
 ok = sum(1 for r in results if r[1])
 for name, passed, details in results:

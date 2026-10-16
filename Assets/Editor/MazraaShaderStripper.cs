@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor.Build;
 using UnityEditor.Rendering;
 using UnityEngine;
@@ -9,6 +10,8 @@ using UnityEngine.Rendering;
 /// Terrain variants the game never uses (XR, debug views, Forward+, light cookies/layers, additional-light shadows,
 /// reflection-probe blending, LOD cross-fade, rendering layers, DOTS instancing). Variants that need any of these keywords
 /// are removed before compilation. The matching features are off in PC_RPAsset (commit a8b668d), so nothing visible changes.
+/// PC_Renderer uses the Forward path (Forward+ keywords are kept
+/// automatically if a renderer is switched back to Forward+), and a pass is never stripped to zero variants.
 /// Lightmap, fog, shadow and SSAO keywords are kept. To disable: delete this file or set Enabled = false.
 /// Note: the first build after changing graphics settings still compiles every remaining variant once; later builds reuse
 /// Library/ShaderCache and take a few minutes.
@@ -32,22 +35,54 @@ public class MazraaShaderStripper : IPreprocessShaders
         "PROBE_VOLUMES_L1", "PROBE_VOLUMES_L2",
     };
 
-    private static int removed, kept;
+    private static readonly HashSet<string> ForwardPlusKeywords = new HashSet<string> { "_FORWARD_PLUS", "_CLUSTER_LIGHT_LOOP" };
+    private static int removed, kept, buildsChecked = -1;
+    private static bool forwardPlusUsed;
+
+    /// <summary>True when any URP renderer asset in the project uses Forward+ / Deferred+ (m_RenderingMode 2 or 3).
+    /// Then the Forward+ keywords must be kept: stripping them leaves the lit shaders with no variants and the game
+    /// renders black (the Oct 16 store build). Read from the asset text so it works for every URP version.</summary>
+    public static bool ForwardPlusUsed()
+    {
+        try
+        {
+            foreach (var f in Directory.GetFiles("Assets", "*.asset", SearchOption.AllDirectories))
+            {
+                if (!f.Replace('\\', '/').Contains("Renderer")) continue;
+                string t = File.ReadAllText(f);
+                if (t.Contains("m_RenderingMode: 2") || t.Contains("m_RenderingMode: 3")) return true;
+            }
+        }
+        catch (IOException) { return true; }
+        return false;
+    }
 
     public void OnProcessShader(Shader shader, ShaderSnippetData snippet, IList<ShaderCompilerData> data)
     {
-        if (!Enabled || data == null) return;
-        for (int i = data.Count - 1; i >= 0; i--)
+        if (!Enabled || data == null || data.Count == 0) return;
+        if (buildsChecked != UnityEngine.Time.frameCount) { forwardPlusUsed = ForwardPlusUsed(); buildsChecked = UnityEngine.Time.frameCount; }
+        var keep = new List<ShaderCompilerData>(data.Count);
+        int dropped = 0;
+        foreach (var d in data)
         {
-            foreach (var k in data[i].shaderKeywordSet.GetShaderKeywords())
+            bool strip = false;
+            foreach (var k in d.shaderKeywordSet.GetShaderKeywords())
             {
-                if (!Strip.Contains(k.name)) continue;
-                data.RemoveAt(i);
-                removed++;
+                string n = k.name;
+                if (!Strip.Contains(n)) continue;
+                if (forwardPlusUsed && ForwardPlusKeywords.Contains(n)) continue;
+                strip = true;
                 break;
             }
+            if (strip) dropped++; else keep.Add(d);
         }
-        kept += data.Count;
+        // Safety net: never strip every variant of a pass (that renders black or invisible); keep it untouched instead.
+        if (keep.Count == 0) { kept += data.Count; return; }
+        if (dropped == 0) { kept += data.Count; return; }
+        data.Clear();
+        foreach (var d in keep) data.Add(d);
+        removed += dropped;
+        kept += keep.Count;
     }
 
     /// <summary>Called by MazraaBuild after a build to log how much was skipped.</summary>
