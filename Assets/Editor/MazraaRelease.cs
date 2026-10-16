@@ -25,6 +25,53 @@ public static class MazraaRelease
         if (File.Exists(Path.Combine(BuildDir, "Mazraa.exe"))) Package();
     }
 
+    [MenuItem("Mazraa/Release/Build Windows + all store packages (zip + installer + MSIX)")]
+    public static void BuildAll()
+    {
+        MazraaBuild.Windows();
+        if (!File.Exists(Path.Combine(BuildDir, "Mazraa.exe"))) return;
+        Package();
+        Msix();
+    }
+
+    /// <summary>
+    /// Microsoft Store package: release/Mazraa_&lt;ver&gt;_x64.msix (unsigned; the Store signs it). Identity values come from
+    /// installer/msix/identity.json (copy them from Partner Center > Product identity before submitting).
+    /// </summary>
+    [MenuItem("Mazraa/Release/Microsoft Store package (.msix)")]
+    public static void Msix()
+    {
+        string version = PlayerSettings.bundleVersion;
+        string folder = Path.Combine(ReleaseDir, "Mazraa_" + version + "_Windows");
+        if (!Directory.Exists(folder)) Package();
+        if (!Directory.Exists(folder)) return;
+        string stage = Path.Combine(ReleaseDir, "msix_stage");
+        if (Directory.Exists(stage)) Directory.Delete(stage, true);
+        CopyClean(folder, stage);
+        CopyClean("installer/msix/Assets", Path.Combine(stage, "Assets"));
+        var id = UnityEngine.JsonUtility.FromJson<MsixIdentity>(File.ReadAllText("installer/msix/identity.json"));
+        string v = version; int parts = v.Split('.').Length; while (parts++ < 4) v += ".0";
+        string manifest = File.ReadAllText("installer/msix/AppxManifest.template.xml")
+            .Replace("{IdentityName}", Esc(id.identityName)).Replace("{Publisher}", Esc(id.publisher))
+            .Replace("{PublisherDisplayName}", Esc(id.publisherDisplayName)).Replace("{DisplayName}", Esc(id.displayName))
+            .Replace("{Description}", Esc(id.description)).Replace("{Version}", v);
+        File.WriteAllText(Path.Combine(stage, "AppxManifest.xml"), manifest);
+        string outFile = Path.Combine(ReleaseDir, "Mazraa_" + version + "_x64.msix");
+        try
+        {
+            EditorUtility.DisplayProgressBar("Mazraa", "Packing Microsoft Store package (.msix)...", 0.5f);
+            MsixPacker.Pack(stage, outFile);
+        }
+        finally { EditorUtility.ClearProgressBar(); }
+        Directory.Delete(stage, true);
+        bool placeholder = id.publisher.Contains("00000000");
+        Debug.Log("[Mazraa] MSIX: " + Path.GetFullPath(outFile) + (placeholder ? "  (placeholder identity: set installer/msix/identity.json from Partner Center before submitting)" : ""));
+        EditorUtility.RevealInFinder(outFile);
+    }
+
+    [System.Serializable] private class MsixIdentity { public string identityName, publisher, publisherDisplayName, displayName, description; }
+    private static string Esc(string s) => (s ?? "").Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+
     [MenuItem("Mazraa/Release/Package last Windows build (zip + installer)")]
     public static void Package()
     {

@@ -1,0 +1,8 @@
+{
+ "notes": "Copy these 3 values from Partner Center > your app > Product identity before submitting. Placeholders work for testing the package only.",
+ "identityName": "AlmadarekGames.Mazraa",
+ "publisher": "CN=00000000-0000-0000-0000-000000000000",
+ "publisherDisplayName": "Almadarek Games",
+ "displayName": "Mazraa - Farming Simulator",
+ "description": "Grow, trade and build your farm."
+}

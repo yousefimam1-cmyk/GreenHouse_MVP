@@ -1,4 +1,4 @@
-MAZRAA (مزرعة) - Saudi farming simulator
+MAZRAA (مزرعة) - Farming Simulator
 by Almadarek Games
 
 Play: double-click Mazraa.exe (Windows 10/11, 64-bit, DirectX 12).

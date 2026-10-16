@@ -22,9 +22,19 @@ public static class MazraaBuild
         if (Application.isBatchMode) EditorApplication.Exit(report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded ? 0 : 1);
     }
 
+    /// <summary>Game icon (Assets/Branding/MazraaIcon.png) for every platform.</summary>
+    public static void ApplyBranding()
+    {
+        var icon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Branding/MazraaIcon.png");
+        if (icon != null) PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
+        PlayerSettings.companyName = "Almadarek Games";
+        PlayerSettings.productName = "Mazraa";
+    }
+
     [MenuItem("Mazraa/Build Windows (.exe)")]
     public static void Windows()
     {
+        ApplyBranding();
         string outDir = "build/Windows/Mazraa";
         Directory.CreateDirectory(outDir);
         var scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();

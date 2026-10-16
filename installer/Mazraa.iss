@@ -26,6 +26,7 @@ DisableProgramGroupPage=yes
 LicenseFile={#SourceDir}\EULA.txt
 OutputDir={#OutputDir}
 OutputBaseFilename=Mazraa_Setup_{#MyAppVersion}
+SetupIconFile=mazraa.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64
 SolidCompression=yes

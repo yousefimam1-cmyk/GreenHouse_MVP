@@ -17,6 +17,7 @@ public class MainMenuScene : MonoBehaviour
     public bool Showing { get; private set; }
     public bool PauseView { get; private set; }
     private TextMeshProUGUI overview;
+    private RawImage logo;
     private Image overviewBg;
     private float overviewTimer;
 
@@ -59,6 +60,12 @@ public class MainMenuScene : MonoBehaviour
         Img(stripe, ControlsTutorial.Gold);
 
         brand = Label(canvas.transform, "Brand", 76, ControlsTutorial.Sand, new Vector2(0f, 1f), new Vector2(64f, -48f), new Vector2(700f, 100f));
+        // Logo image (English / Arabic lockup, 512 px each); the text wordmark stays as a fallback.
+        var lr = MenuKit.Rect("Logo", canvas.transform, typeof(RawImage));
+        lr.anchorMin = lr.anchorMax = lr.pivot = new Vector2(0f, 1f);
+        lr.anchoredPosition = new Vector2(48f, -24f);
+        logo = lr.GetComponent<RawImage>();
+        logo.raycastTarget = false;
         tagline = Label(canvas.transform, "Tagline", 24, new Color(1f, 1f, 1f, 0.8f), new Vector2(0f, 1f), new Vector2(68f, -140f), new Vector2(700f, 36f));
         version = Label(canvas.transform, "Version", 16, new Color(1f, 1f, 1f, 0.6f), new Vector2(0f, 0f), new Vector2(24f, 18f), new Vector2(700f, 24f));
 
@@ -231,9 +238,17 @@ public class MainMenuScene : MonoBehaviour
     {
         if (brand == null) return;
         bool ar = Loc.IsArabic;
+        var logoTex = Resources.Load<Texture2D>(ar ? "Branding/mazraa_logo_ar_512" : "Branding/mazraa_logo_en_512");
+        if (logo != null)
+        {
+            logo.texture = logoTex;
+            logo.enabled = logoTex != null;
+            if (logoTex != null) logo.rectTransform.sizeDelta = new Vector2(560f, 560f * logoTex.height / Mathf.Max(1, logoTex.width));
+        }
+        brand.enabled = logoTex == null;
         string arName = ArabicShaper.Shape("مزرعة");   // always shaped, also in English
         brand.text = ar ? arName + "  <size=55%><color=#FAC240>MAZRAA</color></size>" : "MAZRAA  <size=55%><color=#FAC240>" + arName + "</color></size>";
-        tagline.text = Loc.T("Grow, trade and build your farm in Saudi Arabia");
+        tagline.text = Loc.T("Grow, trade and build your farm");
         version.text = "Almadarek Games  -  " + Loc.T("Early access");
         cardsTitle.text = Loc.T("Your farms");
         for (int i = 0; i < SaveSlots.Count; i++) cardText[i].text = CardText(i + 1);
