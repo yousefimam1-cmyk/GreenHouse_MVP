@@ -673,7 +673,7 @@ static class Program
         GameSettings.PlowingRequired = true;
         T.Check("Plowing requirement off: compaction costs no yield", plowOff && SoilModel.CompactionFactor(0.9f) < 0.9f);
         GameSettings.Weeds = false;
-        FakeEngine.Run(1f, 0.1f);
+        FakeEngine.Run(3f, 0.1f);   // soil ticks every 2 s
         T.Check("Weeds off: no weeds on any field", FieldManager.Instance.Plots.All(p => SoilManager.Instance == null || SoilManager.Instance.Soil(p).weeds == 0f));
         GameSettings.Weeds = true;
         var plot = FieldManager.Instance.Plots[0];
@@ -1125,6 +1125,7 @@ static class Program
         FakeEngine.ResourcesRoot = args[0];
         EventDirector.RandomEventsEnabled = false; // random farm events would make the core checks flaky; EventsFinTests turn them on
         GameMenu.ShowOnStart = false;   // the main menu pauses the game; the UI section tests it on its own
+        FarmLife.PassiveBonuses = false; // beauty / mastery bonuses would shift exact price and amount checks; FarmLifeTests turns them on
         FakeEngine.PersistentPath = Path.Combine(Path.GetTempPath(), "mazraa_test_" + System.Diagnostics.Process.GetCurrentProcess().Id); // parallel runs don't share saves
         if (Directory.Exists(FakeEngine.PersistentPath)) Directory.Delete(FakeEngine.PersistentPath, true);
         Directory.CreateDirectory(FakeEngine.PersistentPath);
@@ -1334,6 +1335,13 @@ static class Program
         CozyTests.AfterRestart();
         LifeTests.AfterRestart();
 
+        // Farm life runs after the restart checks above (it advances the calendar and places decor), then restarts again.
+        FarmLifeTests.Run();
+        SaveData.Flush(true);
+        BuildWorld();
+        FakeEngine.Run(2f);
+        FarmLifeTests.AfterRestart();
+
         Console.WriteLine("New game");
         var hud = UnityEngine.Object.FindAnyObjectByType<GameHUD>();
         typeof(GameHUD).GetMethod("NewGame", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(hud, null);
@@ -1351,6 +1359,7 @@ static class Program
 
         CozyTests.AfterNewGame();
         LifeTests.AfterNewGame();
+        FarmLifeTests.AfterNewGame();
 
         UiSection(args[0]);
 

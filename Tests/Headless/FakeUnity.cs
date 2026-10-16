@@ -685,6 +685,7 @@ namespace UnityEngine
     public enum ShadowResolution { Low, Medium, High, VeryHigh }
     public static class QualitySettings { public static int vSyncCount = 1, globalTextureMipmapLimit, antiAliasing; public static float lodBias = 1f, shadowDistance = 150f; public static ShadowQuality shadows = ShadowQuality.All; public static ShadowResolution shadowResolution = ShadowResolution.High; }
     public struct Vector2Int { public int x, y; public Vector2Int(int x, int y) { this.x = x; this.y = y; } }
+    public static class ScreenCapture { public static string LastPath; public static int Count; public static void CaptureScreenshot(string path, int superSize = 1) { LastPath = path; Count++; } }
     public enum TextAnchor { UpperLeft, MiddleLeft, MiddleCenter, MiddleRight }
     public class GUIStyleState { public Color textColor; }
     public class GUIStyle

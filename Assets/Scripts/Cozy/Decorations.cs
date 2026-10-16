@@ -25,6 +25,12 @@ public class Decorations : MonoBehaviour
     private string placing;
     private int placeFrame;
 
+    /// <summary>
+    /// Extra decor kinds added by other features (farm life decor, festival prizes): id -> builder that adds the model's
+    /// parts under the given root and returns the pick-up box size. Bought / won pieces go in with AddToStock.
+    /// </summary>
+    public static readonly Dictionary<string, Func<Transform, Vector3>> ExtraModels = new Dictionary<string, Func<Transform, Vector3>>();
+
     public string Placing => placing;
     public List<PlacedDecor> Placed => data.placed;
     public int Stock(string id) { int n = 0; foreach (var s in data.stock) if (s == id) n++; return n; }
@@ -64,6 +70,9 @@ public class Decorations : MonoBehaviour
             onBought = () => { if (Instance != null) { Instance.data.stock.Add(id); Instance.Save(); Instance.BeginPlacing(id); } },
         });
     }
+
+    /// <summary>Put a piece in storage (a purchase or prize from another feature) without starting the preview.</summary>
+    public void AddToStock(string id) { if (string.IsNullOrEmpty(id)) return; data.stock.Add(id); Save(); }
 
     private static string HudLine()
     {
@@ -147,6 +156,7 @@ public class Decorations : MonoBehaviour
         if (CozyKeys.Free && CozyKeys.Down("x"))
         {
             foreach (var k in Kinds) if (Stock(k) > 0) { BeginPlacing(k); return; }
+            if (data.stock.Count > 0) { BeginPlacing(data.stock[0]); return; }
             CozyFx.Alert(Loc.T("No decorations in storage - buy some in the shop (Decor)"));
         }
     }
@@ -191,7 +201,7 @@ public class Decorations : MonoBehaviour
     {
         var go = BuildModel(p.id, null);
         go.transform.SetPositionAndRotation(new Vector3(p.x, p.y, p.z), Quaternion.Euler(0, p.rot, 0));
-        var size = p.id == "decor_majlis" ? new Vector3(4.2f, 2.6f, 3.2f) : p.id == "decor_fence" ? new Vector3(3.2f, 1.6f, 0.4f) : new Vector3(0.8f, 1.6f, 0.8f);
+        var size = ExtraModels.ContainsKey(p.id) ? ExtraSize(p.id) : p.id == "decor_majlis" ? new Vector3(4.2f, 2.6f, 3.2f) : p.id == "decor_fence" ? new Vector3(3.2f, 1.6f, 0.4f) : new Vector3(0.8f, 1.6f, 0.8f);
         var prop = CozyFx.MakeInteractable(go, new Vector3(0, size.y * 0.5f, 0), size, () => Loc.T("[E] Pick up decoration"), null);
         prop.use = () => { if (Instance != null) Instance.PickUp(go); };
         prop.available = () => Instance == null || Instance.placing == null;
@@ -200,11 +210,15 @@ public class Decorations : MonoBehaviour
 
     // ---------------- models (built from primitives) ----------------
 
+    private static readonly Dictionary<string, Vector3> extraSizes = new Dictionary<string, Vector3>();
+    private static Vector3 ExtraSize(string id) => extraSizes.TryGetValue(id, out var v) ? v : new Vector3(1f, 1.6f, 1f);
+
     private static GameObject BuildModel(string id, Transform parent)
     {
         var root = new GameObject("Decor " + id);
         if (parent != null) root.transform.SetParent(parent, false);
         var t = root.transform;
+        if (ExtraModels.TryGetValue(id, out var build) && build != null) { extraSizes[id] = build(t); return root; }
         switch (id)
         {
             case "decor_majlis":
