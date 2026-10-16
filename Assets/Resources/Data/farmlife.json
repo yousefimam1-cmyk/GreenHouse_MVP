@@ -1,0 +1,184 @@
+{
+  "notes": "Farm life features (FarmLife/*.cs). xp: XP per unit for each action id (GameEvents.Custom types use their own id). levels: XP needed to reach each level, its reward (claimed from the level-up card / journal) and unlocks (decor ids or feature ids). After the table each level needs extraLevelGrowth x the previous step. decor: farm decor (shop page 'Farm decor', sold from minLevel; minLevel 0 = prize only, never sold). mastery: harvest totals per crop for 1-3 stars; yieldBonus per star (extra harvest), orderBonus per star (roadside stand pay). villagers: friends (old = the three cozy villagers, hearts kept by Villagers.cs); points per heart = pointsPerHeart. orders: roadside stand visitors. festivals: linked = SeasonalEvents id, or season + day range (negative = from the end). login: daily gift streak (7-day cycle, account-wide). beauty: rating weights and star thresholds.",
+  "xp": [
+    { "id": "harvestKg", "xp": 0.1 }, { "id": "fieldKg", "xp": 0.15 }, { "id": "fieldHarvest", "xp": 10 }, { "id": "deliverMoney", "xp": 0.02 },
+    { "id": "products", "xp": 3 }, { "id": "animalBorn", "xp": 25 }, { "id": "mission", "xp": 40 }, { "id": "contract", "xp": 50 },
+    { "id": "upgrade", "xp": 10 }, { "id": "tractor", "xp": 1 }, { "id": "plant", "xp": 3 }, { "id": "well", "xp": 15 },
+    { "id": "catchFish", "xp": 5 }, { "id": "catchCoastFish", "xp": 6 }, { "id": "dailyQuestDone", "xp": 20 }, { "id": "talkVillager", "xp": 3 },
+    { "id": "petSaluki", "xp": 2 }, { "id": "flyFalcon", "xp": 5 }, { "id": "placeDecor", "xp": 5 }, { "id": "quizPassed", "xp": 30 },
+    { "id": "cropsTreeHarvest", "xp": 0.1 }, { "id": "cropsPlantTree", "xp": 8 }, { "id": "cropsDateHarvest", "xp": 5 }, { "id": "processBatch", "xp": 6 },
+    { "id": "collectHoney", "xp": 0.5 }, { "id": "collectPigeons", "xp": 0.5 }, { "id": "buyLand", "xp": 60 }, { "id": "hireWorker", "xp": 20 },
+    { "id": "surviveDustStorm", "xp": 40 }, { "id": "soilSample", "xp": 4 }, { "id": "soilAmend", "xp": 3 }, { "id": "cropsCurePest", "xp": 4 },
+    { "id": "cropsFertilize", "xp": 3 }, { "id": "cropsRotate", "xp": 8 }, { "id": "harvestTankKg", "xp": 0.1 }, { "id": "buySponsorItem", "xp": 4 },
+    { "id": "villageOrder", "xp": 1 }, { "id": "gift", "xp": 5 }, { "id": "heartUp", "xp": 20 }, { "id": "festivalEntry", "xp": 20 }, { "id": "masteryStar", "xp": 1 }
+  ],
+  "extraLevelGrowth": 1.18,
+  "levels": [
+    { "level": 2, "need": 100, "money": 100, "seeds": "potato", "seedCount": 2, "unlocks": ["fl_zir"] },
+    { "level": 3, "need": 250, "money": 150, "feed": 5, "unlocks": ["fl_bench", "orders_slot2"] },
+    { "level": 4, "need": 450, "money": 200, "seeds": "onion", "seedCount": 3, "unlocks": ["fl_shade", "orders_cafe"] },
+    { "level": 5, "need": 700, "money": 250, "feed": 8, "unlocks": ["fl_roses", "orders_slot3"] },
+    { "level": 6, "need": 1000, "money": 300, "seeds": "watermelon", "seedCount": 3, "unlocks": ["fl_fountain"] },
+    { "level": 7, "need": 1400, "money": 350, "feed": 10, "unlocks": ["orders_bulk"] },
+    { "level": 8, "need": 1900, "money": 400, "seeds": "wheat", "seedCount": 4, "unlocks": ["fl_dovecote"] },
+    { "level": 9, "need": 2500, "money": 450, "feed": 12, "unlocks": [] },
+    { "level": 10, "need": 3200, "money": 600, "seeds": "watermelon", "seedCount": 4, "unlocks": ["fl_door"] },
+    { "level": 11, "need": 4000, "money": 650, "feed": 12, "unlocks": [] },
+    { "level": 12, "need": 5000, "money": 700, "seeds": "onion", "seedCount": 5, "unlocks": [] },
+    { "level": 13, "need": 6200, "money": 750, "feed": 15, "unlocks": [] },
+    { "level": 14, "need": 7600, "money": 800, "seeds": "potato", "seedCount": 5, "unlocks": [] },
+    { "level": 15, "need": 9200, "money": 1000, "feed": 20, "unlocks": [] }
+  ],
+  "features": [
+    { "id": "orders_slot2", "en": "Second visitor at the roadside stand", "ar": "زائر ثانٍ عند بسطة الطريق" },
+    { "id": "orders_slot3", "en": "Third visitor at the roadside stand", "ar": "زائر ثالث عند بسطة الطريق" },
+    { "id": "orders_cafe", "en": "Cafe owners order milk, dates and honey", "ar": "أصحاب المقاهي يطلبون الحليب والتمر والعسل" },
+    { "id": "orders_bulk", "en": "Bigger baskets that pay more", "ar": "سلال أكبر بأجر أعلى" }
+  ],
+  "decor": [
+    { "id": "fl_zir", "en": "Clay water jar (zir)", "ar": "زير ماء فخاري", "price": 150, "minLevel": 2, "beauty": 3, "model": "zir" },
+    { "id": "fl_bench", "en": "Palm-wood bench", "ar": "مقعد من خشب النخل", "price": 250, "minLevel": 3, "beauty": 4, "model": "bench" },
+    { "id": "fl_shade", "en": "Palm-frond shade (areesh)", "ar": "عريش من سعف النخل", "price": 400, "minLevel": 4, "beauty": 5, "model": "shade" },
+    { "id": "fl_roses", "en": "Taif rose bed", "ar": "حوض ورد طائفي", "price": 350, "minLevel": 5, "beauty": 6, "model": "roses" },
+    { "id": "fl_fountain", "en": "Courtyard fountain", "ar": "نافورة الفناء", "price": 900, "minLevel": 6, "beauty": 8, "model": "fountain" },
+    { "id": "fl_dovecote", "en": "Pigeon tower", "ar": "برج حمام", "price": 1200, "minLevel": 8, "beauty": 8, "model": "dovecote" },
+    { "id": "fl_door", "en": "Painted Najdi door arch", "ar": "قوس باب نجدي ملوّن", "price": 1500, "minLevel": 10, "beauty": 10, "model": "door" },
+    { "id": "fl_trophy_palm", "en": "Golden palm trophy", "ar": "كأس النخلة الذهبية", "price": 0, "minLevel": 0, "beauty": 10, "model": "trophy" },
+    { "id": "fl_rosette", "en": "Animal show rosette stand", "ar": "منصة وسام عرض الحيوانات", "price": 0, "minLevel": 0, "beauty": 8, "model": "rosette" },
+    { "id": "fl_melon_statue", "en": "Giant watermelon statue", "ar": "مجسم البطيخة العملاقة", "price": 0, "minLevel": 0, "beauty": 8, "model": "melon" },
+    { "id": "fl_flower_arch", "en": "Flower fair arch", "ar": "قوس مهرجان الزهور", "price": 0, "minLevel": 0, "beauty": 10, "model": "arch" },
+    { "id": "fl_crescent", "en": "Ramadan crescent lantern", "ar": "فانوس هلال رمضان", "price": 0, "minLevel": 0, "beauty": 8, "model": "crescent" },
+    { "id": "fl_gold_lantern", "en": "Golden welcome lantern", "ar": "فانوس الترحيب الذهبي", "price": 0, "minLevel": 0, "beauty": 6, "model": "goldlantern" }
+  ],
+  "mastery": {
+    "stars": [200, 800, 2000],
+    "yieldBonus": 0.05,
+    "orderBonus": 0.1,
+    "starXp": [50, 120, 250],
+    "crops": [
+      { "id": "wheat", "en": "Wheat", "ar": "القمح" },
+      { "id": "potato", "en": "Potato", "ar": "البطاطس" },
+      { "id": "onion", "en": "Onion", "ar": "البصل" },
+      { "id": "watermelon", "en": "Watermelon", "ar": "البطيخ", "stars": [150, 600, 1500] },
+      { "id": "alfalfa", "en": "Alfalfa", "ar": "البرسيم" },
+      { "id": "sorghum", "en": "Sorghum", "ar": "الذرة الرفيعة" },
+      { "id": "millet", "en": "Millet", "ar": "الدخن" },
+      { "id": "tomato", "en": "Tomato", "ar": "الطماطم" },
+      { "id": "cucumber", "en": "Cucumber", "ar": "الخيار" },
+      { "id": "pepper", "en": "Sweet Pepper", "ar": "الفلفل الحلو" },
+      { "id": "strawberry", "en": "Strawberry", "ar": "الفراولة", "stars": [100, 400, 1000] },
+      { "id": "orchard", "en": "Orchard fruit", "ar": "ثمار البستان", "stars": [150, 600, 1500] }
+    ]
+  },
+  "pointsPerHeart": 100,
+  "villagers": [
+    { "id": "shopkeeper", "old": true, "en": "Abu Saleh (shopkeeper)", "ar": "أبو صالح (صاحب المتجر)", "bdSeason": "autumn", "bdDay": 3,
+      "loves": ["honey"], "likes": ["eggs", "milk", "flour"], "dislikes": ["manure"] },
+    { "id": "buyer", "old": true, "en": "Abu Fahad (market buyer)", "ar": "أبو فهد (تاجر السوق)", "bdSeason": "summer", "bdDay": 3,
+      "loves": ["dates_sukkari", "dates"], "likes": ["watermelon", "crops", "tomato"], "dislikes": ["manure"] },
+    { "id": "neighbour", "old": true, "en": "Abu Nasser (neighbour farmer)", "ar": "أبو ناصر (الجار المزارع)", "bdSeason": "autumn", "bdDay": 5,
+      "loves": ["laban"], "likes": ["wheat", "onion", "alfalfa"], "dislikes": [] },
+    { "id": "vet", "en": "Dr. Huda (vet)", "ar": "الدكتورة هدى (الطبيبة البيطرية)", "short": "Dr. Huda", "shortAr": "د. هدى", "model": "Characters/character-female-b", "female": true, "spot": "pen",
+      "bdSeason": "spring", "bdDay": 2, "loves": ["camel_milk", "honey"], "likes": ["eggs", "milk", "alfalfa", "goat_milk"], "dislikes": ["manure"],
+      "talk": [
+        { "en": "Hello! I check the animals on every farm in the valley. Keep their water fresh.", "ar": "أهلاً! أفحص الحيوانات في كل مزارع الوادي. حافظ على مائها نظيفاً." },
+        { "en": "A clean pen means fewer sick animals. You are doing well.", "ar": "الحظيرة النظيفة تعني أمراضاً أقل. أحسنت." },
+        { "en": "My grandfather treated camels with herbs. I still keep his notebook.", "ar": "كان جدي يعالج الإبل بالأعشاب. ما زلت أحتفظ بدفتره." },
+        { "en": "Call me any time - day or night. That is a vet's life!", "ar": "اتصل بي في أي وقت، ليلاً أو نهاراً. هذه حياة الطبيب البيطري!" },
+        { "en": "Your farm is one of my favourite stops.", "ar": "مزرعتك من أحب المحطات إلى قلبي." },
+        { "en": "You are like family now. Your animals are lucky.", "ar": "أصبحت مثل العائلة. حيواناتك محظوظة." }
+      ],
+      "events": [
+        { "hearts": 2, "en": "Dr. Huda shows you how to check a sheep's eyes for good health. 'Pink is healthy - pale means trouble.' She leaves you some feed.", "ar": "تريك الدكتورة هدى كيف تفحص عيني الخروف. «اللون الوردي صحي، والشاحب يعني مشكلة». وتترك لك بعض العلف.", "feed": 6, "xp": 40 },
+        { "hearts": 4, "en": "At dawn Dr. Huda helps a newborn lamb at your neighbour's farm and asks you to hold the lantern. 'Thank you, partner.'", "ar": "عند الفجر تساعد الدكتورة هدى في ولادة حمل في مزرعة جارك وتطلب منك حمل الفانوس. «شكراً يا شريكي».", "money": 250, "xp": 80 }
+      ],
+      "dailyGift": { "feed": 2 }
+    },
+    { "id": "elder", "en": "Grandma Moudhi (storyteller)", "ar": "الجدة موضي (راوية الحكايات)", "short": "Grandma Moudhi", "shortAr": "الجدة موضي", "model": "Characters/character-female-d", "female": true, "spot": "house",
+      "bdSeason": "winter", "bdDay": 1, "loves": ["dates", "dates_khalas"], "likes": ["honey", "laban", "flour", "camel_milk"], "dislikes": ["fish_catfish"],
+      "talk": [
+        { "en": "Sit, child. Have you heard how this valley found its first well?", "ar": "اجلس يا ولدي. هل سمعت كيف وجد هذا الوادي بئره الأولى؟" },
+        { "en": "In my day we kept dates in clay jars through the whole winter.", "ar": "في زماننا كنا نحفظ التمر في جرار الفخار طوال الشتاء." },
+        { "en": "The stars told us when to plant. Suhail rising meant cooler days.", "ar": "كانت النجوم تخبرنا متى نزرع. طلوع سهيل يعني أياماً أبرد." },
+        { "en": "Your farm reminds me of my father's - full of life.", "ar": "مزرعتك تذكرني بمزرعة أبي، مليئة بالحياة." },
+        { "en": "Come, I will tell you the story of the generous farmer.", "ar": "تعال، سأحكي لك حكاية المزارع الكريم." },
+        { "en": "You listen well. I will pass my stories to you.", "ar": "أنت تحسن الإصغاء. سأورثك حكاياتي." }
+      ],
+      "events": [
+        { "hearts": 2, "en": "Grandma Moudhi tells the story of the old well: three families dug together for forty days and shared the water ever after.", "ar": "تحكي الجدة موضي قصة البئر القديمة: حفرت ثلاث عائلات معاً أربعين يوماً وتقاسمت الماء بعدها إلى الأبد.", "xp": 60 },
+        { "hearts": 4, "en": "She gives you her mother's date-pressing recipe, written on a folded card. 'Make it for Eid,' she smiles.", "ar": "تعطيك وصفة أمها لكبس التمر مكتوبة على بطاقة مطوية. «اصنعها في العيد» تقول مبتسمة.", "money": 200, "xp": 100 }
+      ],
+      "dailyGift": { "xp": 25 }
+    },
+    { "id": "youngfarmer", "en": "Faisal (young farmer)", "ar": "فيصل (المزارع الشاب)", "short": "Faisal", "shortAr": "فيصل", "model": "Characters/character-male-a", "female": false, "spot": "fields",
+      "bdSeason": "summer", "bdDay": 1, "loves": ["watermelon", "juice"], "likes": ["potato", "sorghum", "tomato", "eggs"], "dislikes": ["manure"],
+      "talk": [
+        { "en": "Salam! I just took over my uncle's farm next door. Any tips?", "ar": "السلام عليكم! استلمت للتو مزرعة عمي المجاورة. أي نصيحة؟" },
+        { "en": "I tried drip lines this week - my watermelons love it.", "ar": "جربت الري بالتنقيط هذا الأسبوع، بطيخي يحبه." },
+        { "en": "Race you to the market? Just kidding, my truck is too slow.", "ar": "نتسابق إلى السوق؟ أمزح، شاحنتي بطيئة جداً." },
+        { "en": "Let us share seeds this season - neighbours help neighbours.", "ar": "لنتقاسم البذور هذا الموسم، الجار يساعد جاره." },
+        { "en": "One day our farms will feed the whole region, inshallah.", "ar": "يوماً ما ستطعم مزارعنا المنطقة كلها، إن شاء الله." },
+        { "en": "Best neighbour ever. Take some seeds whenever you pass!", "ar": "أفضل جار على الإطلاق. خذ بذوراً كلما مررت!" }
+      ],
+      "events": [
+        { "hearts": 2, "en": "Faisal's pump breaks and you lend him a hand. Together you fix it before sunset. He insists you take some seeds.", "ar": "تتعطل مضخة فيصل فتساعده. تصلحانها معاً قبل الغروب. ويصر أن تأخذ بعض البذور.", "seeds": "watermelon", "seedCount": 3, "xp": 40 },
+        { "hearts": 4, "en": "Faisal invites you to his first harvest dinner. His mother cooks kabsa and toasts 'the best neighbour in the valley'.", "ar": "يدعوك فيصل إلى عشاء أول حصاد له. تطبخ أمه الكبسة وتحيي «أفضل جار في الوادي».", "money": 200, "xp": 80 }
+      ],
+      "dailyGift": { "seeds": "potato", "seedCount": 1 }
+    }
+  ],
+  "orders": {
+    "refreshHours": 4,
+    "names": [
+      { "en": "Umm Khalid", "ar": "أم خالد" }, { "en": "Abu Turki", "ar": "أبو تركي" }, { "en": "Noura", "ar": "نورة" },
+      { "en": "Saad the baker", "ar": "سعد الخبّاز" }, { "en": "Umm Rashid", "ar": "أم راشد" }, { "en": "Hamad the cafe owner", "ar": "حمد صاحب المقهى" },
+      { "en": "Latifa", "ar": "لطيفة" }, { "en": "Uncle Majid", "ar": "العم ماجد" }
+    ],
+    "templates": [
+      { "id": "basket", "goods": ["crops", "eggs", "milk", "potato", "onion", "wheat", "watermelon", "tomato"], "minLines": 1, "maxLines": 2, "min": 3, "max": 10, "pay": 1.5, "xp": 12, "minLevel": 1,
+        "en": "Basket for the family", "ar": "سلة للعائلة" },
+      { "id": "baker", "goods": ["wheat", "flour", "eggs", "milk"], "minLines": 2, "maxLines": 2, "min": 4, "max": 12, "pay": 1.5, "xp": 15, "minLevel": 2,
+        "en": "Bakery supplies", "ar": "لوازم المخبز" },
+      { "id": "cafe", "goods": ["milk", "dates", "honey", "juice", "camel_milk", "eggs"], "minLines": 1, "maxLines": 2, "min": 2, "max": 6, "pay": 1.7, "xp": 18, "minLevel": 4,
+        "en": "Cafe order", "ar": "طلب المقهى" },
+      { "id": "bulk", "goods": ["wheat", "potato", "onion", "watermelon", "crops"], "minLines": 2, "maxLines": 3, "min": 10, "max": 25, "pay": 1.8, "xp": 30, "minLevel": 7,
+        "en": "Wedding feast order", "ar": "طلب وليمة عرس" },
+      { "id": "iftar", "festival": "ramadan_nights", "goods": ["dates", "laban", "milk", "juice", "flour", "camel_milk"], "minLines": 2, "maxLines": 3, "min": 2, "max": 8, "pay": 2.0, "xp": 25, "minLevel": 1,
+        "en": "Iftar basket", "ar": "سلة الإفطار" },
+      { "id": "eid_sweets", "festival": "eid_show", "goods": ["dates", "flour", "eggs", "milk", "honey"], "minLines": 2, "maxLines": 2, "min": 2, "max": 6, "pay": 1.9, "xp": 22, "minLevel": 1,
+        "en": "Eid sweets (maamoul)", "ar": "حلويات العيد (معمول)" }
+    ]
+  },
+  "festivals": [
+    { "id": "ramadan_nights", "linked": "ramadan", "en": "Ramadan nights market", "ar": "سوق ليالي رمضان",
+      "blurbEn": "Neighbours order iftar baskets at your roadside stand. Fill 3 to earn a crescent lantern.", "blurbAr": "يطلب الجيران سلال الإفطار من بسطتك. أكمل 3 طلبات لتحصل على فانوس الهلال.",
+      "ordersGoal": 3, "goalReward": { "decor": "fl_crescent", "xp": 120 } },
+    { "id": "eid_show", "linked": "eid", "en": "Eid animal show", "ar": "عرض الحيوانات في العيد",
+      "blurbEn": "Show your best animals at the Eid fair. Healthy, clean, well-fed animals win!", "blurbAr": "اعرض أفضل حيواناتك في سوق العيد. الحيوانات الصحية والنظيفة والمغذاة جيداً تفوز!",
+      "competition": { "kind": "animals", "en": "Best animal show", "ar": "أفضل عرض حيوانات" },
+      "prizes": [ { "money": 600, "xp": 150, "decor": "fl_rosette" }, { "money": 300, "xp": 90 }, { "money": 150, "xp": 60 } ] },
+    { "id": "flower_fair", "season": "spring", "from": 3, "to": 3, "en": "Spring flower fair", "ar": "معرض زهور الربيع",
+      "blurbEn": "The valley judges the prettiest farm. Decorate and keep your fields tidy!", "blurbAr": "يختار أهل الوادي أجمل مزرعة. زيّن مزرعتك وحافظ على ترتيب حقولك!",
+      "competition": { "kind": "beauty", "en": "Prettiest farm", "ar": "أجمل مزرعة" },
+      "prizes": [ { "money": 500, "xp": 150, "decor": "fl_flower_arch" }, { "money": 250, "xp": 90 }, { "money": 120, "xp": 60 } ] },
+    { "id": "melon_day", "season": "summer", "from": 2, "to": 2, "en": "Watermelon day", "ar": "يوم البطيخ",
+      "blurbEn": "Who grew the biggest watermelon? Bring one from your store to the fair.", "blurbAr": "من زرع أكبر بطيخة؟ أحضر واحدة من مخزنك إلى المعرض.",
+      "competition": { "kind": "good", "good": "watermelon", "amount": 1, "en": "Biggest watermelon", "ar": "أكبر بطيخة" },
+      "prizes": [ { "money": 500, "xp": 150, "decor": "fl_melon_statue" }, { "money": 250, "xp": 90 }, { "money": 120, "xp": 60 } ] },
+    { "id": "date_festival", "linked": "dates", "en": "Date harvest festival", "ar": "مهرجان حصاد التمور",
+      "blurbEn": "Enter 5 kg of your best dates in the tasting contest.", "blurbAr": "شارك بخمسة كيلوغرامات من أجود تمورك في مسابقة التذوق.",
+      "competition": { "kind": "good", "good": "dates", "amount": 5, "en": "Best dates tasting", "ar": "تذوق أجود التمور" },
+      "prizes": [ { "money": 700, "xp": 160, "decor": "fl_trophy_palm" }, { "money": 350, "xp": 100 }, { "money": 150, "xp": 60 } ] }
+  ],
+  "rivals": [
+    { "en": "Abu Nasser", "ar": "أبو ناصر" }, { "en": "Faisal", "ar": "فيصل" }, { "en": "Umm Rashid", "ar": "أم راشد" }
+  ],
+  "login": [
+    { "money": 50 }, { "money": 80 }, { "seeds": "onion", "seedCount": 2 }, { "feed": 5 }, { "money": 150 }, { "xp": 100 }, { "money": 250, "decor": "fl_gold_lantern" }
+  ],
+  "beauty": {
+    "decorDefault": 2, "decorCap": 60, "oldDecor": [ { "id": "decor_majlis", "beauty": 8 }, { "id": "decor_lantern", "beauty": 3 }, { "id": "decor_fence", "beauty": 3 }, { "id": "decor_pot", "beauty": 2 } ],
+    "fields": 20, "animals": 20, "noAnimals": 8, "treeEach": 1.5, "treeCap": 12, "festival": 5,
+    "stars": [10, 25, 45, 70, 95], "pricePerStar": 0.01, "ordersPerStar": 0.05
+  }
+}

@@ -836,6 +836,7 @@ static class Program
         FakeEngine.ResourcesRoot = args[0];
         EventDirector.RandomEventsEnabled = false; // random farm events would make the core checks flaky; EventsFinTests turn them on
         GameMenu.ShowOnStart = false;   // the main menu pauses the game; the UI section tests it on its own
+        FarmLife.PassiveBonuses = false; // beauty / mastery bonuses would shift exact price and amount checks; FarmLifeTests turns them on
         FakeEngine.PersistentPath = Path.Combine(Path.GetTempPath(), "mazraa_test_" + System.Diagnostics.Process.GetCurrentProcess().Id); // parallel runs don't share saves
         if (Directory.Exists(FakeEngine.PersistentPath)) Directory.Delete(FakeEngine.PersistentPath, true);
         Directory.CreateDirectory(FakeEngine.PersistentPath);
@@ -1042,6 +1043,13 @@ static class Program
 
         CozyTests.AfterRestart();
 
+        // Farm life runs after the restart checks above (it advances the calendar and places decor), then restarts again.
+        FarmLifeTests.Run();
+        SaveData.Flush(true);
+        BuildWorld();
+        FakeEngine.Run(2f);
+        FarmLifeTests.AfterRestart();
+
         Console.WriteLine("New game");
         var hud = UnityEngine.Object.FindAnyObjectByType<GameHUD>();
         typeof(GameHUD).GetMethod("NewGame", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(hud, null);
@@ -1058,6 +1066,7 @@ static class Program
         EventsFinTests.AfterNewGame();
 
         CozyTests.AfterNewGame();
+        FarmLifeTests.AfterNewGame();
 
         UiSection(args[0]);
 

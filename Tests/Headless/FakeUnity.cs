@@ -662,6 +662,7 @@ namespace UnityEngine
 {
     public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } }
     public static class Screen { public static int width = 1920, height = 1080; }
+    public static class ScreenCapture { public static string LastPath; public static int Count; public static void CaptureScreenshot(string path, int superSize = 1) { LastPath = path; Count++; } }
     public enum TextAnchor { UpperLeft, MiddleLeft, MiddleCenter, MiddleRight }
     public class GUIStyleState { public Color textColor; }
     public class GUIStyle
