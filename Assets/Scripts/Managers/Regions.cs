@@ -9,6 +9,37 @@ public class RegionDef
     public string id, nameEn, nameAr, countryEn, countryAr, currency, currencyAr, descEn, descAr, storeId;
     public bool dlc, comingSoon;
     public float heat = 1f, rain, market = 1f;
+    /// <summary>true = the map has its own story: only missions, campaign, events and daily quests tagged with its id.</summary>
+    public bool ownContent;
+    /// <summary>Extra seed bags of a new career on this map (crop ids, one bag each per entry).</summary>
+    public string[] startSeeds;
+    /// <summary>English Loc keys for the market pad and the farm shop stall on this map (empty = "Market" / "Farm Shop").</summary>
+    public string marketName, shopName;
+    /// <summary>Canal water turn (nobat el-mayya): every N days the "canalEvent" event is forecast for the next day (0 = never).</summary>
+    public int canalEvery;
+    public string canalEvent;
+    // Selling points (cotton gin, rice mill, village souq...) and contract clients of a map are region-gated entries in
+    // Resources/Data/market.json (MarketManager), not here.
+    public RegionLook look;
+}
+
+/// <summary>
+/// How the map looks (DesertDressing, DesertWeatherFX, GraphicsEnhancer). Defaults are the Najd desert, so a region
+/// without a "look" block looks exactly like the base game. Colours are [r, g, b].
+/// </summary>
+[Serializable]
+public class RegionLook
+{
+    public float[] ground = { 0.84f, 0.7f, 0.5f }, dune = { 0.87f, 0.74f, 0.53f }, track = { 0.72f, 0.6f, 0.44f };
+    public float[] fog = { 0.86f, 0.78f, 0.64f };
+    public bool dunes = true, canals, pigeonTower;
+    public string trees = "desert";            // desert = acacia + sidr; eucalyptus = rows of eucalyptus (windbreaks) + a few sidr
+    public float treeCount = 34f;
+    public float dust = 1f, wind = 1f;         // blowing dust and wind multipliers (Delta: mild, no big dust storms)
+    public float fogBase = 0.0025f, humidity;  // base fog density; humidity adds a morning river haze (0..1)
+    public float saturation = 12f, temperature = 8f;   // post-processing grade (greener, cooler in the Delta)
+
+    public static Color C(float[] c, Color fallback) => c != null && c.Length >= 3 ? new Color(c[0], c[1], c[2]) : fallback;
 }
 
 [Serializable]
@@ -50,7 +81,26 @@ public static class Regions
         var r = Find(id);
         if (!IsPlayable(r)) return;
         SaveData.SetString(Key, r.id);
+        GameEvents.RaiseRegionChanged(r.id);
     }
+
+    public static string CurrentId => Current != null ? Current.id : DefaultId;
+    public static bool IsEgypt => CurrentId == "nile_delta";
+
+    /// <summary>Region-gated items (crops, goods): allowed when the list is empty or names the current map.</summary>
+    public static bool Allows(string[] regions) => regions == null || regions.Length == 0 || Array.IndexOf(regions, CurrentId) >= 0;
+
+    /// <summary>Story content (missions, campaign, events, daily quests): untagged items belong to maps without their own
+    /// content (Najd); a map with ownContent only gets the items tagged with its id.</summary>
+    public static bool HasContent(string[] regions)
+    {
+        var r = Current;
+        if (regions == null || regions.Length == 0) return r == null || !r.ownContent;
+        return Array.IndexOf(regions, CurrentId) >= 0;
+    }
+
+    private static readonly RegionLook DefaultLook = new RegionLook();
+    public static RegionLook Look => Current != null && Current.look != null ? Current.look : DefaultLook;
 
     public static string Name(RegionDef r) => r == null ? "" : Loc.IsArabic && !string.IsNullOrEmpty(r.nameAr) ? r.nameAr : r.nameEn;
     public static string Country(RegionDef r) => r == null ? "" : Loc.IsArabic && !string.IsNullOrEmpty(r.countryAr) ? r.countryAr : r.countryEn;

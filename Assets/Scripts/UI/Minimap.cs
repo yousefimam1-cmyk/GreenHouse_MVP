@@ -380,7 +380,7 @@ public class Minimap : MonoBehaviour
             rt.anchoredPosition = p;
             float s = round ? icon.size : icon.size * 1.3f;
             rt.sizeDelta = new Vector2(s, s);
-            rt.GetComponent<Image>().color = icon.color;
+            rt.GetComponent<Image>().color = GameSettings.Palette(icon.color);   // Settings > Accessibility > Colour-blind mode
             var letter = rt.GetComponentInChildren<TextMeshProUGUI>();
             if (letter != null && letter.text != icon.letter) letter.text = icon.letter;
         }

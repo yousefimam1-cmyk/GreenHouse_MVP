@@ -12,6 +12,9 @@ public class SellPointDef
     public string[] accepts;                 // good ids, "*" = every good
     public float mul = 1f, haul, saturation = 2000f, recovery = 0.12f, maxGlut = 0.4f;
     public GoodMul[] goodMul;
+    public string[] regions, exceptRegions;  // only on these maps / not on these maps (empty = every map)
+    public bool building;                    // built next to the market pad on its map (DesertDressing), r/g/b = wall colour
+    public float r = 0.8f, g = 0.75f, b = 0.65f;
 }
 
 [Serializable] public class SeasonCurve { public string good; public float[] mul; }   // spring, summer, autumn, winter

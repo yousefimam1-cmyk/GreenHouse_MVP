@@ -250,6 +250,7 @@ public class MultiplayerManager : MonoBehaviour
                 string k = "mazraa.plot." + p.index + ".";
                 p.ApplyRemote((PlotState)Mathf.Clamp(SaveData.GetInt(k + "state", 0), 0, 3), SaveData.GetString(k + "crop", ""), SaveData.GetFloat(k + "growth", 0f), SaveData.GetFloat(k + "water", 0f));
             }
+        if (SoilManager.Instance != null) SoilManager.Instance.ReloadLocal();
         SaveData.Flush(true);
     }
 
@@ -266,7 +267,12 @@ public class MultiplayerManager : MonoBehaviour
         if (NetSession.IsHost)
         {
             syncTimer -= Time.unscaledDeltaTime;
-            if (syncTimer <= 0f || syncDirty) { syncTimer = 1f; syncDirty = false; backend.SendToClients(NetSyncState.Capture().Encode(), true); }
+            if (syncTimer <= 0f || syncDirty)
+            {
+                syncTimer = 1f; syncDirty = false;
+                backend.SendToClients(NetSyncState.Capture().Encode(), true);
+                if (SoilManager.Instance != null) backend.SendToClients(SoilManager.Instance.EncodeSync(), true);
+            }
         }
 
         var kb = Keyboard.current;
@@ -446,6 +452,7 @@ public class MultiplayerManager : MonoBehaviour
         else if (type == NetProtocol.Sell) HostSell(sender, who, NetProtocol.DecodeGoods(NetProtocol.Field(p, 1)));
         else if (type == NetProtocol.PlotJob) HostPlotJob(NetProtocol.PI(NetProtocol.Field(p, 1)), NetProtocol.PI(NetProtocol.Field(p, 2)));
         else if (type == NetProtocol.Gift) HostGift(sender, msg);
+        else if (type == NetProtocol.SoilSet) { if (SoilManager.Instance != null && SoilManager.Instance.HostSetting(p)) syncDirty = true; }
         else if (type == NetProtocol.Emote)
         {
             int i = NetProtocol.PI(NetProtocol.Field(p, 1));
@@ -471,6 +478,7 @@ public class MultiplayerManager : MonoBehaviour
     {
         string type = p[0];
         if (type == NetProtocol.Sync) { var s = NetSyncState.Decode(msg); if (s != null) s.Apply(); }
+        else if (type == NetProtocol.SoilSync) { if (SoilManager.Instance != null) SoilManager.Instance.ApplySync(p); }
         else if (type == NetProtocol.Pose)
         {
             ulong id = NetProtocol.PU(NetProtocol.Field(p, 1));
@@ -580,6 +588,9 @@ public class MultiplayerManager : MonoBehaviour
         Say(Mp.Tr("{0} sold goods for {1} SAR", Mp.Name(who), earned.ToString("N0")));
         syncDirty = true;
     }
+
+    /// <summary>Host: send the farm state to clients on the next frame (something changed).</summary>
+    public void MarkSyncDirty() => syncDirty = true;
 
     private void HostPlotJob(int index, int job)
     {

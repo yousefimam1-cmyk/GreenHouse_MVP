@@ -7,6 +7,8 @@ public class MissionDef
     public string id, type, titleEn, titleAr, descEn, descAr;
     public float target = 1f;
     public int reward;
+    /// <summary>Maps whose story this mission belongs to (empty = the base game's chain, Najd).</summary>
+    public string[] regions;
 }
 
 [Serializable] public class MissionFile { public MissionDef[] missions; }
@@ -27,18 +29,38 @@ public class MissionManager : MonoBehaviour
     public MissionDef Current => Index < Missions.Length ? Missions[Index] : null;
     public bool AllDone => Index >= Missions.Length;
 
+    /// <summary>Every mission of every map, in file order (Missions is the current map's chain).</summary>
+    public MissionDef[] AllMissions { get; private set; } = new MissionDef[0];
+
     private void Awake()
     {
         Instance = this;
         var json = Resources.Load<TextAsset>("Data/missions");
-        try { if (json != null) Missions = JsonUtility.FromJson<MissionFile>(json.text)?.missions ?? Missions; }
+        MissionDef[] baseList = null;
+        try { if (json != null) baseList = JsonUtility.FromJson<MissionFile>(json.text)?.missions; }
         catch (Exception e) { Debug.LogError("[Missions] Invalid missions.json: " + e.Message); }
         // Feature mission packs (Resources/Data/Missions/*.json) are appended in file-name order.
-        var all = new System.Collections.Generic.List<MissionDef>(Missions ?? new MissionDef[0]);
+        var all = new System.Collections.Generic.List<MissionDef>(baseList ?? new MissionDef[0]);
         foreach (var pack in DataPacks.LoadAs<MissionFile>("Missions")) if (pack.missions != null) all.AddRange(pack.missions);
-        Missions = all.ToArray();
+        AllMissions = all.ToArray();
+        BuildChain();
         Index = Mathf.Clamp(SaveData.GetInt(IndexKey, 0), 0, Missions.Length);
         Progress = SaveData.GetFloat(ProgressKey, 0f);
+    }
+
+    // The chain of the current map: Najd plays the base missions; a map with its own story (Egypt DLC) plays its tagged ones.
+    private void BuildChain()
+    {
+        var chain = new System.Collections.Generic.List<MissionDef>();
+        foreach (var m in AllMissions) if (m != null && Regions.HasContent(m.regions)) chain.Add(m);
+        Missions = chain.ToArray();
+    }
+
+    // A career started on a map: switch to its mission chain from the first mission.
+    private void OnRegion(string regionId)
+    {
+        BuildChain();
+        ResetChain();
     }
 
     private void OnEnable()
@@ -56,6 +78,7 @@ public class MissionManager : MonoBehaviour
         GameEvents.TractorWorked += OnTractor;
         GameEvents.ContractCompleted += OnContract;
         GameEvents.Custom += Add;
+        GameEvents.RegionChanged += OnRegion;
         GameEvents.MoneyChanged += OnMoney;
         GameEvents.PenCleaned += OnCleaned;
         FieldPlot.FieldHarvested += OnFieldHarvest;
@@ -76,6 +99,7 @@ public class MissionManager : MonoBehaviour
         GameEvents.TractorWorked -= OnTractor;
         GameEvents.ContractCompleted -= OnContract;
         GameEvents.Custom -= Add;
+        GameEvents.RegionChanged -= OnRegion;
         GameEvents.MoneyChanged -= OnMoney;
         GameEvents.PenCleaned -= OnCleaned;
         FieldPlot.FieldHarvested -= OnFieldHarvest;

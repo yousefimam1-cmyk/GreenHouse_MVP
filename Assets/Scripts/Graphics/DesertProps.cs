@@ -262,4 +262,76 @@ public static class DesertProps
         }
         return root;
     }
+
+    // ------------------------------------------------------------------ Nile Delta props (primitives, shared cached materials)
+    /// <summary>Eucalyptus (kafour): tall pale trunk with a narrow, open blue-green crown; planted as windbreaks along Delta
+    /// canals and roads. A model at Resources/Models/Eucalyptus replaces it.</summary>
+    public static GameObject Eucalyptus(Transform parent, Vector3 pos, System.Random rnd)
+    {
+        var root = new GameObject("Eucalyptus");
+        root.transform.SetParent(parent, true);
+        root.transform.position = pos;
+        root.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
+        float s = 0.85f + (float)rnd.NextDouble() * 0.4f;
+        root.transform.localScale = Vector3.one * s;
+        if (Build.TryModel("Eucalyptus", root.transform, 0f, 0f) == null)
+        {
+            var bark = M(0.72f, 0.68f, 0.6f); var leaf = M(0.33f, 0.45f, 0.36f, 0.2f); var leaf2 = M(0.4f, 0.5f, 0.38f, 0.2f);
+            Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, 3f, 0f), new Vector3(0.3f, 3f, 0.3f), bark, "Trunk");
+            for (int i = 0; i < 4; i++)
+            {
+                float a = i * 90f + (float)rnd.NextDouble() * 40f;
+                Vector3 dir = Quaternion.Euler(0f, a, 0f) * Vector3.forward;
+                float h = 5.2f + i * 0.9f;
+                Build.Part(PrimitiveType.Sphere, root.transform, new Vector3(0f, h, 0f) + dir * 0.55f, new Vector3(1.6f, 2.2f, 1.6f), i % 2 == 0 ? leaf : leaf2, "Crown");
+            }
+            Build.Part(PrimitiveType.Sphere, root.transform, new Vector3(0f, 8.6f, 0f), new Vector3(1.3f, 1.8f, 1.3f), leaf, "Crown");
+        }
+        Blocker(root, new Vector3(0f, 1.5f, 0f), new Vector3(0.5f, 3f, 0.5f));
+        return root;
+    }
+
+    /// <summary>Delta dovecote (burg hamam): a tapering mud-brick tower with rows of clay pots for pigeons, about 7 m high.</summary>
+    public static GameObject PigeonTower(Transform parent, Vector3 pos)
+    {
+        var root = new GameObject("Pigeon Tower");
+        root.transform.SetParent(parent, true);
+        root.transform.position = pos;
+        if (Build.TryModel("PigeonTower", root.transform, 0f, 0f) == null)
+        {
+            var mud = M(0.62f, 0.5f, 0.36f); var lime = M(0.9f, 0.88f, 0.82f); var pot = M(0.24f, 0.17f, 0.12f);
+            Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, 1.5f, 0f), new Vector3(3.2f, 1.5f, 3.2f), mud, "Base");
+            Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, 4.2f, 0f), new Vector3(2.5f, 1.2f, 2.5f), lime, "Tower");
+            Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, 6.1f, 0f), new Vector3(1.7f, 0.7f, 1.7f), lime, "Top");
+            Build.Part(PrimitiveType.Sphere, root.transform, new Vector3(0f, 7f, 0f), new Vector3(1.4f, 0.9f, 1.4f), mud, "Dome");
+            for (int ring = 0; ring < 2; ring++)
+                for (int i = 0; i < 8; i++)
+                {
+                    float a = i * 45f + ring * 22.5f, r = ring == 0 ? 1.27f : 0.87f, y = ring == 0 ? 4f : 6f;
+                    Vector3 d = Quaternion.Euler(0f, a, 0f) * Vector3.forward;
+                    Build.Part(PrimitiveType.Cube, root.transform, d * r + new Vector3(0f, y, 0f), new Vector3(0.22f, 0.22f, 0.06f), pot, "Nest", new Vector3(0f, a, 0f));
+                }
+        }
+        Blocker(root, new Vector3(0f, 1.5f, 0f), new Vector3(3f, 3f, 3f));
+        return root;
+    }
+
+    /// <summary>Small market building with a flat roof and a coloured awning (cotton gin, rice mill, souq stall); door faces +Z of rot
+    /// (toward the farm road). About 7 x 5 m.</summary>
+    public static GameObject SellPoint(Transform parent, Vector3 pos, Quaternion rot, Color color)
+    {
+        var root = new GameObject("Sell Point");
+        root.transform.SetParent(parent, true);
+        root.transform.SetPositionAndRotation(pos, rot);
+        var wall = Build.Mat(color, 0.08f); var roof = M(0.35f, 0.3f, 0.26f); var door = M(0.3f, 0.2f, 0.13f);
+        var awning = Build.Mat(new Color(Mathf.Clamp01(color.r * 0.6f + 0.3f), color.g * 0.45f, color.b * 0.35f), 0.2f);
+        Build.Part(PrimitiveType.Cube, root.transform, new Vector3(0f, 1.7f, 0f), new Vector3(7f, 3.4f, 5f), wall, "Walls");
+        Build.Part(PrimitiveType.Cube, root.transform, new Vector3(0f, 3.5f, 0f), new Vector3(7.4f, 0.2f, 5.4f), roof, "Roof");
+        Build.Part(PrimitiveType.Cube, root.transform, new Vector3(0f, 1.1f, 2.51f), new Vector3(1.8f, 2.2f, 0.05f), door, "Door");
+        Build.Part(PrimitiveType.Cube, root.transform, new Vector3(0f, 2.6f, 3.1f), new Vector3(5.5f, 0.08f, 1.4f), awning, "Awning", new Vector3(-12f, 0f, 0f));
+        for (int i = 0; i < 3; i++)
+            Build.Part(PrimitiveType.Cube, root.transform, new Vector3(-2.2f + i * 2.2f, 0.4f, 3.3f), new Vector3(0.8f, 0.8f, 0.8f), M(0.85f, 0.82f, 0.74f), "Sack");
+        Blocker(root, new Vector3(0f, 1.7f, 0f), new Vector3(7f, 3.4f, 5f));
+        return root;
+    }
 }

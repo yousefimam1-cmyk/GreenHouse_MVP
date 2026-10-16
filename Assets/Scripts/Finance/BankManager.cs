@@ -20,6 +20,8 @@ public class BankManager : MonoBehaviour
     public int Debt { get; private set; }
     public bool AutoRepay { get; private set; }
     public int InterestPaid { get; private set; }
+    /// <summary>Part of the debt that is interest (already booked as loan interest in the ledger when it was added).</summary>
+    public int UnpaidInterest { get; private set; }
 
     private BankSign sign;
     private static readonly Func<string> Line = () => Instance != null ? Instance.HudLine() : null;
@@ -129,7 +131,13 @@ public class BankManager : MonoBehaviour
     private void Paid(int amount)
     {
         if (amount <= 0 || Debt <= 0) return;
+        // Farm accounts: interest was booked daily when it was added, so a repayment books only its principal as Loans.
+        int interestPart = Mathf.Min(amount, UnpaidInterest);
+        UnpaidInterest -= interestPart;
+        int principal = Mathf.Min(amount, Debt) - interestPart;
+        if (principal > 0 && FinanceLedger.Instance != null) FinanceLedger.Instance.Add(Ledger.Loans, -principal);
         Debt = Mathf.Max(0, Debt - amount);
+        if (Debt == 0) UnpaidInterest = 0;
         Save();
         if (Debt == 0)
         {
@@ -145,7 +153,7 @@ public class BankManager : MonoBehaviour
         var eco = EconomyManager.Instance;
         if (eco == null || Debt <= 0) return 0;
         int pay = Mathf.Min(Mathf.Min(Debt, max), eco.Money);
-        bool ok; using (Ledger.As(Ledger.Loans)) ok = pay > 0 && eco.Spend(pay);
+        bool ok; using (Ledger.As(Ledger.Skip)) ok = pay > 0 && eco.Spend(pay);   // booked in Paid (principal only)
         if (!ok) return 0;
         Paid(pay);
         return pay;
@@ -162,7 +170,7 @@ public class BankManager : MonoBehaviour
         if (NetSession.IsClient) return; // co-op: the host runs daily costs and events
         if (Debt <= 0) return;
         int interest = Mathf.CeilToInt(Debt * DailyInterest);
-        Debt += interest; InterestPaid += interest;
+        Debt += interest; InterestPaid += interest; UnpaidInterest += interest;
         Save();
         if (FinanceLedger.Instance != null) FinanceLedger.Instance.Add(Ledger.Interest, -interest);   // accrued on the loan, booked daily
         if (AutoRepay) RepayWhatYouCan(Mathf.Max(500, Mathf.CeilToInt(Debt * AutoRepayShare)));
@@ -174,13 +182,14 @@ public class BankManager : MonoBehaviour
         return Loc.Display(FinText.R("Loan") + ": " + FinText.Sar(Debt) + " (1.5%/" + FinText.R("day") + ")" + (AutoRepay ? " - " + FinText.R("auto-repay") : ""));
     }
 
-    private void OnNewGame() { Debt = 0; AutoRepay = false; InterestPaid = 0; Save(); }
+    private void OnNewGame() { Debt = 0; AutoRepay = false; InterestPaid = 0; UnpaidInterest = 0; Save(); }
 
     private void Load()
     {
         Debt = SaveData.GetInt("mazraa.fin.bank.debt", 0);
         AutoRepay = SaveData.GetInt("mazraa.fin.bank.auto", 0) == 1;
         InterestPaid = SaveData.GetInt("mazraa.fin.bank.interest", 0);
+        UnpaidInterest = Mathf.Clamp(SaveData.GetInt("mazraa.fin.bank.unpaidInterest", 0), 0, Debt);
     }
 
     private void Save()
@@ -188,6 +197,7 @@ public class BankManager : MonoBehaviour
         SaveData.SetInt("mazraa.fin.bank.debt", Debt);
         SaveData.SetInt("mazraa.fin.bank.auto", AutoRepay ? 1 : 0);
         SaveData.SetInt("mazraa.fin.bank.interest", InterestPaid);
+        SaveData.SetInt("mazraa.fin.bank.unpaidInterest", UnpaidInterest);
         SaveData.Save();
     }
 }

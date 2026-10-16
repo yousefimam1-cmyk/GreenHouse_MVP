@@ -5,7 +5,14 @@ using UnityEngine;
 [Serializable] public class GoodDef { public string id, nameEn, nameAr, unitEn, unitAr; public int price; public float weight = 1f; }
 [Serializable] public class AnimalDef { public string id, nameEn, nameAr, product; public int price, max = 6; public float amount = 1f, interval = 60f, feedPerCycle = 1f; }
 [Serializable] public class FeedDef { public string nameEn, nameAr; public int price = 200; public float units = 10f; }
-[Serializable] public class FieldCropDef { public string id, nameEn, nameAr; public int seedPrice = 100; public string[] seasons; public float growSeconds = 200f, yieldKg = 60f, r = 0.5f, g = 0.7f, b = 0.3f; }
+[Serializable] public class FieldCropDef
+{
+    public string id, nameEn, nameAr; public int seedPrice = 100; public string[] seasons; public float growSeconds = 200f, yieldKg = 60f, r = 0.5f, g = 0.7f, b = 0.3f;
+    /// <summary>Maps where the seed is sold (empty = every map), e.g. ["nile_delta"] for the Egypt DLC crops.</summary>
+    public string[] regions;
+    /// <summary>Crop whose stage models are used when this crop has none of its own (placeholder look), e.g. "wheat" for rice.</summary>
+    public string model;
+}
 [Serializable] public class EconomyFile { public GoodDef[] goods; public AnimalDef[] animals; public FeedDef feed; public FieldCropDef[] fieldCrops; }
 
 /// <summary>
@@ -78,8 +85,31 @@ public class EconomyManager : MonoBehaviour
         return list.ToArray();
     }
 
-    private void OnEnable() => GameEvents.Harvested += OnHarvested;
-    private void OnDisable() => GameEvents.Harvested -= OnHarvested;
+    private void OnEnable() { GameEvents.Harvested += OnHarvested; GameEvents.RegionChanged += OnRegion; }
+    private void OnDisable() { GameEvents.Harvested -= OnHarvested; GameEvents.RegionChanged -= OnRegion; }
+
+    // A new career on a map: its starting seed bags (Egypt: berseem for the first chapter).
+    private void OnRegion(string regionId)
+    {
+        var r = Regions.Find(regionId);
+        if (r == null || r.startSeeds == null) return;
+        foreach (var id in r.startSeeds) if (FieldCrop(id) != null) seeds[id] = Seeds(id) + 1;
+        Save();
+    }
+
+    /// <summary>True when the crop's seed is sold on the current map (Egypt DLC crops only in the Nile Delta).</summary>
+    public static bool Available(FieldCropDef c) => c != null && Regions.Allows(c.regions);
+
+    /// <summary>Field crops whose seed is sold on the current map, in data order.</summary>
+    public List<FieldCropDef> AvailableFieldCrops()
+    {
+        var list = new List<FieldCropDef>();
+        foreach (var c in Data.fieldCrops) if (Available(c)) list.Add(c);
+        return list;
+    }
+
+    /// <summary>False for the produce of a crop that can't be grown on this map (contracts and quests skip it).</summary>
+    public bool GoodAvailable(string goodId) { var c = FieldCrop(goodId); return c == null || Available(c); }
     private void OnDestroy() { if (Instance == this) Instance = null; }
 
     // Greenhouse beds give "crops"; field plots add their own crop good themselves (bed == null).
@@ -182,6 +212,14 @@ public class EconomyManager : MonoBehaviour
         Save();
     }
 
+    /// <summary>Remove one animal (sold or died).</summary>
+    public void RemoveAnimal(string id)
+    {
+        if (Owned(id) <= 0) return;
+        animalsOwned[id] = Owned(id) - 1;
+        Save();
+    }
+
     public bool ConsumeFeed(float units)
     {
         if (Feed < units) return false;
@@ -230,7 +268,7 @@ public class EconomyManager : MonoBehaviour
             int p = extra.price != null ? extra.price() : -1;
             if (p < 0 || Money < p || (extra.blockReason != null && !string.IsNullOrEmpty(extra.blockReason()))) return false;
             Money -= p; Save();
-            Ledger.Money(-p, extra.category == "Bank" ? Ledger.Loans : Ledger.Purchases);
+            Ledger.Money(-p, extra.category == "Bank" ? Ledger.Skip : Ledger.Purchases);   // bank repayments are booked by BankManager (principal only)
             GameEvents.RaiseMoneyChanged(Money);
             extra.onBought?.Invoke();
             GameEvents.RaiseUpgradeBought(id);
@@ -262,7 +300,7 @@ public class EconomyManager : MonoBehaviour
         if (id == "feed") return Data.feed.price;
         if (id == "capacity") return NextCapacityCost;
         if (id == "growth") return NextGrowthCost;
-        if (id.StartsWith("seed_")) { var fc = FieldCrop(id.Substring(5)); return fc != null ? fc.seedPrice : -1; }
+        if (id.StartsWith("seed_")) { var fc = FieldCrop(id.Substring(5)); return fc != null && Available(fc) ? fc.seedPrice : -1; }
         var a = Animal(id);
         return a != null ? a.price : -1;
     }

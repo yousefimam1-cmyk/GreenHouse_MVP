@@ -254,7 +254,7 @@ public class WorkerManager : MonoBehaviour
     {
         var eco = EconomyManager.Instance;
         if (eco == null) return false;
-        foreach (var c in eco.Data.fieldCrops) if (eco.Seeds(c.id) > 0) return true;
+        foreach (var c in eco.Data.fieldCrops) if (eco.Seeds(c.id) > 0 && EconomyManager.Available(c)) return true;   // seeds this map can plant
         return false;
     }
 

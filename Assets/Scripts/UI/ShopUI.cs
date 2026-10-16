@@ -50,7 +50,7 @@ public class ShopUI : MonoBehaviour
     {
         var items = new List<(string, string)> { ("Supplies", "feed") };
         var eco = EconomyManager.Instance;
-        if (eco != null) foreach (var c in eco.Data.fieldCrops) items.Add(("Seeds", "seed_" + c.id));
+        if (eco != null) foreach (var c in eco.AvailableFieldCrops()) items.Add(("Seeds", "seed_" + c.id));   // this map's crops only
         if (eco != null) foreach (var a in eco.Data.animals) items.Add(("Animals", a.id));
         items.Add(("Upgrades", "capacity"));
         items.Add(("Upgrades", "growth"));

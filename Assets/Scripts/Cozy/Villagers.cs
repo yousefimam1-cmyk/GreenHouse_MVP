@@ -138,9 +138,10 @@ public class Villagers : MonoBehaviour
             line += "  " + Loc.Raw(PerkText(id, 5));
         }
         if (id == "neighbour" && hearts >= 3) LearnMode.Trigger("villager:neighbour");
-        if (id == "neighbour" && hearts >= 5 && EconomyManager.Instance != null && EconomyManager.Instance.Data.fieldCrops.Length > 0)
+        var gift = EconomyManager.Instance != null ? EconomyManager.Instance.AvailableFieldCrops() : null;   // this map's crops only
+        if (id == "neighbour" && hearts >= 5 && gift != null && gift.Count > 0)
         {
-            var c = EconomyManager.Instance.Data.fieldCrops[CozyFx.Today % EconomyManager.Instance.Data.fieldCrops.Length];
+            var c = gift[CozyFx.Today % gift.Count];
             EconomyManager.Instance.AddSeeds(c.id, 1);
             line += "  " + Loc.Raw("Seeds") + ": " + FieldCropText.Name(c) + " +1";
         }

@@ -6,7 +6,7 @@ using UnityEngine;
 /// loading a slot keep them): volumes, graphics preset, mouse / stick sensitivity, invert Y, camera view.
 /// Language is stored by Loc itself (also kept on New Game).
 /// </summary>
-public static class GameSettings
+public static partial class GameSettings   // more settings (pages Game / Display / Graphics / Sound / Controls / Accessibility): GameSettingsOptions.cs
 {
     private const string P = "mazraa.settings.";
     public static event Action Changed;
@@ -24,6 +24,12 @@ public static class GameSettings
     public static float StickSensitivity { get => Get("stickSens", 1f); set => Set("stickSens", Mathf.Clamp(value, 0.1f, 4f)); }
     public static bool InvertY { get => PlayerPrefs.GetInt(P + "invertY", 0) == 1; set { PlayerPrefs.SetInt(P + "invertY", value ? 1 : 0); Save(); } }
     public static bool ThirdPerson { get => PlayerPrefs.GetInt(P + "thirdPerson", 0) == 1; set { PlayerPrefs.SetInt(P + "thirdPerson", value ? 1 : 0); Save(); } }
+
+    // Driving (see Drivetrain): automatic gearbox, road tyre pressure and auto engine start keep the classic feel.
+    public static GearboxMode Gearbox { get => (GearboxMode)Mathf.Clamp(PlayerPrefs.GetInt(P + "gearbox", 0), 0, 2); set { PlayerPrefs.SetInt(P + "gearbox", (int)value); Save(); } }
+    public static bool LowTyrePressure { get => PlayerPrefs.GetInt(P + "lowTyres", 0) == 1; set { PlayerPrefs.SetInt(P + "lowTyres", value ? 1 : 0); Save(); } }
+    public static bool AutoEngineStart { get => PlayerPrefs.GetInt(P + "autoEngine", 1) == 1; set { PlayerPrefs.SetInt(P + "autoEngine", value ? 1 : 0); Save(); } }
+    public static string GearboxName(GearboxMode m) => m == GearboxMode.Manual ? "Manual" : m == GearboxMode.CVT ? "CVT" : "Automatic";
 
     /// <summary>Real minutes per in-game day (6 = fast, 24 = default, 48 = relaxed).</summary>
     public static readonly int[] DayLengths = { 6, 12, 24, 48 };
@@ -59,7 +65,8 @@ public static class GameSettings
         AudioListener.volume = MasterVolume;
         if (AudioManager.Instance != null) AudioManager.Instance.SetVolumes(MusicVolume, SfxVolume);
         GraphicsEnhancer.SetPreset(GraphicsPreset);
-        if (WorldClock.Instance != null) WorldClock.Instance.secondsPerDay = DayMinutes * 60f;
+        if (WorldClock.Instance != null) WorldClock.Instance.secondsPerDay = SecondsPerDay;
+        ApplyOptions();
     }
 
     public static string PresetName(int p) => p <= 0 ? "Low" : p == 1 ? "Medium" : "High";

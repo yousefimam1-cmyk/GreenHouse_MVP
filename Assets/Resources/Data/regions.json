@@ -1,5 +1,5 @@
 {
- "notes": "Playable regions (maps) of the Arab world. dlc = sold separately (Microsoft Store add-on / Steam DLC); comingSoon = shown locked in the map list. weather: heat = chance multiplier for heatwaves, rain = extra rain chance per day. market = sell price multiplier. currency is shown instead of SAR; prices keep the same numbers so the balance stays the same.",
+ "notes": "Playable regions (maps) of the Arab world. dlc = sold separately (Microsoft Store add-on / Steam DLC); comingSoon = shown locked in the map list. weather: heat = chance multiplier for heatwaves, rain = extra rain chance per day. market = sell price multiplier. ownContent = the map has its own story (missions, campaign, events, quests tagged with its id); startSeeds, marketName/shopName (Loc keys), canalEvery/canalEvent (canal water turn) and look (ground/track/fog colours, dunes, canals, trees, dust, humidity haze, colour grade) make a DLC map its own content pack; a region without them plays like Najd. Selling points (cotton gin, rice mill, village souq) and contract clients of a map are region-gated entries in market.json. currency is shown instead of SAR; prices keep the same numbers so the balance stays the same.",
  "regions": [
   {"id": "najd", "nameEn": "Najd Oasis", "nameAr": "واحة نجد", "countryEn": "Saudi Arabia", "countryAr": "السعودية", "dlc": false, "comingSoon": false,
    "currency": "SAR", "currencyAr": "ريال", "heat": 1.0, "rain": 0.0, "market": 1.0,
@@ -8,7 +8,12 @@
   {"id": "nile_delta", "nameEn": "Nile Delta", "nameAr": "دلتا النيل", "countryEn": "Egypt", "countryAr": "مصر", "dlc": true, "comingSoon": false, "storeId": "",
    "currency": "EGP", "currencyAr": "جنيه", "heat": 0.6, "rain": 0.04, "market": 0.9,
    "descEn": "Green fields along the Nile canals: rich soil, river water, cotton, rice, onions and busy village markets.",
-   "descAr": "حقول خضراء على ترع النيل: أرض خصبة وماء النهر، قطن وأرز وبصل وأسواق قرى مزدحمة"},
+   "descAr": "حقول خضراء على ترع النيل: أرض خصبة وماء النهر، قطن وأرز وبصل وأسواق قرى مزدحمة",
+   "ownContent": true, "startSeeds": ["berseem", "berseem"], "marketName": "Village souq", "shopName": "Agricultural cooperative",
+   "canalEvery": 4, "canalEvent": "canal_turn",
+   "look": {"ground": [0.36, 0.47, 0.24], "dune": [0.45, 0.5, 0.3], "track": [0.45, 0.38, 0.27], "fog": [0.74, 0.8, 0.82],
+    "dunes": false, "canals": true, "pigeonTower": true, "trees": "eucalyptus", "treeCount": 30,
+    "dust": 0.2, "wind": 0.6, "fogBase": 0.0045, "humidity": 0.7, "saturation": 18, "temperature": -2}},
   {"id": "jordan_valley", "nameEn": "Jordan Valley", "nameAr": "غور الأردن", "countryEn": "Jordan", "countryAr": "الأردن", "dlc": true, "comingSoon": true,
    "currency": "JOD", "currencyAr": "دينار", "heat": 0.9, "rain": 0.02, "market": 1.05,
    "descEn": "Below sea level: winter vegetables, bananas and dates.", "descAr": "تحت مستوى البحر: خضار شتوية وموز وتمر"},

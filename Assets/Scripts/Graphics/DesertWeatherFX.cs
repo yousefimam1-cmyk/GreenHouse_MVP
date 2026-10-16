@@ -23,6 +23,8 @@ public class DesertWeatherFX : MonoBehaviour
     /// <summary>0..1 strength of the heat haze.</summary>
     public static float Heat01 { get; private set; }
     public float DustRate { get; private set; }
+    /// <summary>0..1 river haze (Nile Delta mornings), from the map's RegionLook.humidity.</summary>
+    public static float Humidity01 { get; private set; }
 
     public static readonly Color DustColor = new Color(0.86f, 0.74f, 0.55f, 0.55f);
     private static readonly Color fogDay = new Color(0.86f, 0.78f, 0.64f);
@@ -128,7 +130,9 @@ public class DesertWeatherFX : MonoBehaviour
         Weather w = clock != null ? clock.Weather : Weather.Sunny;
         float sun = clock != null ? clock.SunHeight : 0.7f;           // -1..1
         float day = Mathf.Clamp01(sun * 2f + 0.3f);
+        var look = Regions.Look;
         float targetWind = w == Weather.Heatwave ? 0.85f : w == Weather.Cloudy ? 0.45f : w == Weather.Rain ? 0.3f : 0.12f;
+        targetWind *= look.wind;                                       // the Delta is calmer than the open desert
         targetWind *= 0.85f + 0.15f * Mathf.Sin(Time.time * 0.13f);   // slow gusts
         Wind01 = Mathf.MoveTowards(Wind01, targetWind, Time.deltaTime * 0.08f);
 
@@ -136,17 +140,21 @@ public class DesertWeatherFX : MonoBehaviour
         float targetHeat = (w == Weather.Heatwave ? 1f : (w == Weather.Sunny && summer ? 0.55f : w == Weather.Sunny ? 0.25f : 0f)) * Mathf.Clamp01(sun * 1.6f);
         Heat01 = Mathf.MoveTowards(Heat01, targetHeat, Time.deltaTime * 0.1f);
 
-        UpdateDust(w);
-        UpdateFog(day);
+        // Humid river haze: thick at dawn over the canals, thin by noon (0 in the desert).
+        float morning = clock != null ? 1f - Mathf.Clamp01(clock.DayProgress / 0.2f) : 0f;
+        Humidity01 = Mathf.Clamp01(look.humidity * (0.35f + 0.65f * morning) * (w == Weather.Rain || w == Weather.Cloudy ? 1.3f : 1f));
+
+        UpdateDust(w, look);
+        UpdateFog(day, look);
         UpdateHaze();
     }
 
-    private void UpdateDust(Weather w)
+    private void UpdateDust(Weather w, RegionLook look)
     {
         if (dust == null) return;
         float density = GraphicsEnhancer.DressingDensity;
         float dustiness = w == Weather.Rain ? 0f : Mathf.Clamp01((Wind01 - 0.25f) / 0.6f);
-        DustRate = dustiness * 420f * density;
+        DustRate = dustiness * 420f * density * look.dust;            // mild dust on the Delta, no big dust storms
         var em = dust.emission; em.rateOverTime = DustRate;
         if (DustRate > 1f && !dust.isPlaying) dust.Play();
         else if (DustRate <= 1f && dust.isPlaying) dust.Stop();
@@ -160,20 +168,20 @@ public class DesertWeatherFX : MonoBehaviour
         dust.transform.rotation = Quaternion.LookRotation(dir);
     }
 
-    private void UpdateFog(float day)
+    private void UpdateFog(float day, RegionLook look)
     {
         if (FogOverridden) return;
-        float density = 0.0025f + 0.016f * Mathf.Clamp01((Wind01 - 0.3f) / 0.55f);
-        RenderSettings.fog = true;
+        float density = look.fogBase + 0.016f * Mathf.Clamp01((Wind01 - 0.3f) / 0.55f) * Mathf.Min(1f, look.dust * 2f) + 0.008f * Humidity01;
+        RenderSettings.fog = GameSettings.FogHaze;   // Settings > Graphics > Fog and haze (also turns off the Delta's river haze)
         RenderSettings.fogMode = FogMode.Exponential;
         RenderSettings.fogDensity = density;
-        RenderSettings.fogColor = Color.Lerp(fogNight, fogDay, day);
+        RenderSettings.fogColor = Color.Lerp(fogNight, RegionLook.C(look.fog, fogDay), day);
     }
 
     private void UpdateHaze()
     {
         if (haze == null) return;
-        haze.weight = GraphicsEnhancer.PostEnabled ? Heat01 : 0f;
+        haze.weight = GraphicsEnhancer.PostEnabled && GameSettings.FogHaze ? Heat01 : 0f;
         if (wobble != null) wobble.intensity.Override(Heat01 * 0.045f * Mathf.Sin(Time.time * 3.7f) * Mathf.Sin(Time.time * 1.3f + 0.7f));
     }
 }

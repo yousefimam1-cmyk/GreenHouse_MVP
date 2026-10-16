@@ -22,5 +22,6 @@ public class PenTask : Interactable
         var pen = AnimalPen.Instance;
         if (pen == null || UIManager.Instance == null) return;
         UIManager.Instance.ShowAlertMessage(kind == PenTaskKind.Water ? pen.FillWater() : pen.Clean());
+        if (kind == PenTaskKind.Water && HerdManager.Instance != null) HerdManager.Instance.WaterAll();
     }
 }

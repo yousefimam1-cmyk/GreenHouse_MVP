@@ -27,10 +27,24 @@ public class FarmTruck : Vehicle
         }
     }
 
+    /// <summary>Payload mass of a full bed (kg): a loaded truck accelerates, brakes and climbs slower.</summary>
+    public const float FullPayloadMass = 4000f;
+
+    protected override float LoadMass
+    {
+        get
+        {
+            var eco = EconomyManager.Instance;
+            float cap = eco != null ? Mathf.Max(1f, eco.TruckCapacity) : 150f;
+            return Mathf.Clamp01(CargoWeight / cap) * FullPayloadMass;
+        }
+    }
+
     protected override void Awake()
     {
         base.Awake();
         Instance = this;
+        emptyMass = 3000f;
         // Restore cargo saved as "id=amount;id=amount"
         foreach (var part in SaveData.GetString("mazraa.cargo", "").Split(';'))
         {

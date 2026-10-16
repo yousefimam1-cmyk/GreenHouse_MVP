@@ -18,6 +18,12 @@ public class FarmEventDef
     public int plots = 2;
     public string[] crops, goods;
     public string buyerEn, buyerAr;
+    /// <summary>Maps whose events these are (empty = the base game, Najd). Map packs live in Resources/Data/Events.</summary>
+    public string[] regions;
+    /// <summary>buyer: the good wanted (empty = the most valuable good in storage).</summary>
+    public string good;
+    /// <summary>flood: the silt bonus line ({0} = kg), e.g. the Nile flood instead of the wadi.</summary>
+    public string bonusEn, bonusAr;
 }
 
 [Serializable] public class FarmEventFile { public float dailyChance = 0.3f; public FarmEventDef[] events; }
@@ -39,6 +45,8 @@ public class EventDirector : MonoBehaviour
     public static EventDirector Instance;
 
     public FarmEventFile Data { get; private set; }
+    /// <summary>Events of every map; Data.events holds the current map's.</summary>
+    public FarmEventDef[] AllEvents { get; private set; } = new FarmEventDef[0];
     public FarmEventDef Pending { get; private set; }
     public int PendingDay { get; private set; }
     public FarmEventDef Active { get; private set; }
@@ -81,7 +89,22 @@ public class EventDirector : MonoBehaviour
         catch (Exception e) { Debug.LogError("[Events] Invalid events.json: " + e.Message); }
         if (Data == null) Data = new FarmEventFile();
         if (Data.events == null) Data.events = new FarmEventDef[0];
+        // Map packs (Resources/Data/Events/*.json): the Egypt DLC's canal turns, Nile flood season, cotton festival...
+        var all = new List<FarmEventDef>(Data.events);
+        foreach (var pack in DataPacks.LoadAs<FarmEventFile>("Events")) if (pack.events != null) all.AddRange(pack.events);
+        AllEvents = all.ToArray();
+        FilterForRegion();
     }
+
+    /// <summary>Keep the current map's events (Najd: the base events; a map with its own content: its tagged events).</summary>
+    public void FilterForRegion()
+    {
+        var list = new List<FarmEventDef>();
+        foreach (var e in AllEvents) if (e != null && Regions.HasContent(e.regions)) list.Add(e);
+        Data.events = list.ToArray();
+    }
+
+    private void OnRegion(string regionId) { FilterForRegion(); OnNewGame(); }
 
     public FarmEventDef Find(string id) => Array.Find(Data.events, e => e.id == id);
 
@@ -89,6 +112,7 @@ public class EventDirector : MonoBehaviour
     {
         WorldClock.DayStarted += OnNewDay;
         GameEvents.NewGameStarted += OnNewGame;
+        GameEvents.RegionChanged += OnRegion;
         FieldPlot.FieldHarvested += OnFieldHarvested;
     }
 
@@ -96,6 +120,7 @@ public class EventDirector : MonoBehaviour
     {
         WorldClock.DayStarted -= OnNewDay;
         GameEvents.NewGameStarted -= OnNewGame;
+        GameEvents.RegionChanged -= OnRegion;
         FieldPlot.FieldHarvested -= OnFieldHarvested;
         RestoreFog();
         FarmModifiers.Reset();
@@ -114,6 +139,10 @@ public class EventDirector : MonoBehaviour
             var p = Pending; Pending = null;
             if (Active == null) Activate(p, day, false);
         }
+        // Canal water turn (nobat el-mayya): on maps with a canal rotation the turn comes round every few days (not random).
+        var region = Regions.Current;
+        if (region != null && region.canalEvery > 0 && Pending == null && Active == null && (day + 1) % region.canalEvery == 0 && Find(region.canalEvent) != null)
+            Schedule(region.canalEvent, day + 1);
         if (RandomEventsEnabled && Pending == null && (Active == null || lastDay <= day) && UnityEngine.Random.value < Data.dailyChance)
         {
             var next = Roll(day + 1);
@@ -241,11 +270,23 @@ public class EventDirector : MonoBehaviour
                 RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Exponential; RenderSettings.fogColor = new Color(0.78f, 0.62f, 0.42f);
                 break;
             case "flood": extra = Flood(e); break;
+            case "canal": extra = Canal(); break;
             case "locust": extra = Locusts(e); break;
             case "buyer": extra = BigBuyer(e); break;
         }
         FinText.Alert(Loc.Display(Txt(e.startEn, e.startAr)) + (extra != "" ? "\n" + extra : ""));
         GameEvents.RaiseCustom("farmEvent", 1f);
+        GameEvents.RaiseCustom("event_" + e.id, 1f);   // missions / quests about one event (e.g. event_canal_turn)
+    }
+
+    // Canal turn: the field ditches fill from the canal; every growing field gets water (and dries slower all day).
+    private string Canal()
+    {
+        int n = 0;
+        if (FieldManager.Instance != null)
+            foreach (var p in FieldManager.Instance.Plots)
+                if (p != null && (p.State == PlotState.Growing || p.State == PlotState.Plowed)) { p.AddWater(1f); n++; }
+        return FinText.T("Canal water reached {0} fields", n);
     }
 
     /// <summary>End the active event now (also called when its time is up).</summary>
@@ -337,12 +378,17 @@ public class EventDirector : MonoBehaviour
         var eco = EconomyManager.Instance; var mm = MarketManager.Instance;
         if (eco == null || mm == null || eco.Data.goods.Length == 0) return "";
         GoodDef best = null; float bestValue = -1f;
-        foreach (var g in eco.Data.goods)
+        var wanted = string.IsNullOrEmpty(e.good) ? null : eco.Good(e.good);
+        var goods = new List<GoodDef>();
+        foreach (var g in eco.Data.goods) if (eco.GoodAvailable(g.id)) goods.Add(g);   // nothing this map can't grow
+        foreach (var g in goods)
         {
             float v = eco.Stored(g.id) * g.price;
             if (v > bestValue) { best = g; bestValue = v; }
         }
-        if (bestValue <= 0f) best = eco.Data.goods[UnityEngine.Random.Range(0, eco.Data.goods.Length)];
+        if (wanted != null) best = wanted;
+        else if (bestValue <= 0f && goods.Count > 0) best = goods[UnityEngine.Random.Range(0, goods.Count)];
+        if (best == null) return "";
         float amount = best.weight < 0.5f ? e.amount * 4f : e.amount;
         int today = WorldClock.Instance != null ? WorldClock.Instance.Day : 1;
         buyerContract = new Contract { buyerEn = e.buyerEn, buyerAr = e.buyerAr, good = best.id, amount = amount, bonus = e.bonus, dueDay = today };
@@ -359,7 +405,9 @@ public class EventDirector : MonoBehaviour
         float extra = kg * (bonus - 1f);
         if (extra <= 0f || EconomyManager.Instance == null) return;
         EconomyManager.Instance.AddGood(crop, extra);
-        FinText.Alert(FinText.T("Wadi silt bonus: +{0} kg", extra.ToString("F0")));
+        var text = Array.Find(Data.events, x => x.type == "flood" && !string.IsNullOrEmpty(x.bonusEn));
+        if (text != null) FinText.Alert(Loc.Display(string.Format(Txt(text.bonusEn, text.bonusAr), extra.ToString("F0"))));
+        else FinText.Alert(FinText.T("Wadi silt bonus: +{0} kg", extra.ToString("F0")));
     }
 
     public bool IsFertile(int plotIndex) => fertile.ContainsKey(plotIndex);

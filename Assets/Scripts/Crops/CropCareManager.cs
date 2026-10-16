@@ -147,7 +147,8 @@ public class CropCareManager : MonoBehaviour
     public CureDef OwnedCureFor(string pestId)
     {
         if (string.IsNullOrEmpty(pestId)) return null;
-        foreach (var c in CropsData.Data.cures) if (CropsData.Has(c.cures, pestId) && Items(c.id) > 0) return c;
+        var pest = CropsData.Pest(pestId);
+        foreach (var c in CropsData.Data.cures) if ((CropsData.Has(c.cures, pestId) || (pest != null && CropsData.Has(pest.curedBy, c.id))) && Items(c.id) > 0) return c;
         return null;
     }
 

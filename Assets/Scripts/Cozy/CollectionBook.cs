@@ -104,7 +104,7 @@ public class CollectionBook : MonoBehaviour
         var eco = EconomyManager.Instance;
         switch (category)
         {
-            case "crops": return greenhouseCrops.Count + (eco != null ? eco.Data.fieldCrops.Length + (eco.Good("dates") != null ? 1 : 0) : 0);
+            case "crops": return greenhouseCrops.Count + (eco != null ? eco.AvailableFieldCrops().Count + (eco.Good("dates") != null ? 1 : 0) : 0);
             case "animals": return eco != null ? eco.Data.animals.Length : 0;
             case "fish":
                 int fishGoods = 0;
@@ -167,7 +167,7 @@ public class CollectionBook : MonoBehaviour
         lines.Add(Section("crops", "Crops harvested"));
         var crops = new List<string>();
         foreach (var c in greenhouseCrops) crops.Add((Has("crops", c.id) ? "+ " : "- ") + Loc.CropName(c));
-        if (eco != null) foreach (var c in eco.Data.fieldCrops) crops.Add((Has("crops", c.id) ? "+ " : "- ") + FieldCropText.Name(c));
+        if (eco != null) foreach (var c in eco.AvailableFieldCrops()) crops.Add((Has("crops", c.id) ? "+ " : "- ") + FieldCropText.Name(c));
         if (eco != null && eco.Good("dates") != null) crops.Add((Has("crops", "dates") ? "+ " : "- ") + EconomyManager.GoodName(eco.Good("dates")));
         lines.Add("   " + string.Join("   ", crops.ToArray()));
         lines.Add(Section("animals", "Animals raised"));

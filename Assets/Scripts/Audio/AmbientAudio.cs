@@ -27,6 +27,8 @@ public class AmbientAudio : MonoBehaviour
     /// <summary>For tests/debug: what played last and how often.</summary>
     public string LastCall { get; private set; } = "";
     public int Footsteps { get; private set; }
+    /// <summary>Ground of the last footstep: sand, soil (field) or straw (pen).</summary>
+    public string LastStepSurface { get; private set; } = "sand";
     public float EnginePitch => engine != null ? engine.pitch : 0f;
     public bool EnginePlaying => engine != null && engine.isPlaying;
     public float WindVolume => wind != null ? wind.volume : 0f;
@@ -67,10 +69,11 @@ public class AmbientAudio : MonoBehaviour
             if (inputs != null) player = inputs.transform;
         }
         float amb = MazraaAudio.Ambience, fx = MazraaAudio.Effects;
-        UpdateEngine(fx);
-        UpdateSteps(dt, fx);
-        UpdateAmbience(dt, amb);
-        UpdateAnimals(dt, amb);
+        // Settings > Sound: vehicles, effects (footsteps), environment, animals
+        UpdateEngine(fx * GameSettings.VehicleVolume);
+        UpdateSteps(dt, fx * GameSettings.SfxVolume);
+        UpdateAmbience(dt, amb * GameSettings.AmbientVolume);
+        UpdateAnimals(dt, amb * GameSettings.AnimalVolume);
     }
 
     // ------------------------------------------------------------------ engine
@@ -86,10 +89,11 @@ public class AmbientAudio : MonoBehaviour
         engine.transform.position = v.transform.position;
         float speed01 = Mathf.Clamp01(Mathf.Abs(v.Speed) / Mathf.Max(1f, v.maxSpeed));
         float basePitch = v is Tractor ? 0.75f : 0.95f;
-        bool noFuel = v.Fuel <= 0f;
-        float target = noFuel ? 0.5f : basePitch + speed01 * 1.1f;
+        bool off = v.Fuel <= 0f || !v.Drive.EngineOn;
+        float rpm01 = Mathf.Clamp01((v.Drive.Rpm - v.Drive.idleRpm) / (v.Drive.ratedRpm - v.Drive.idleRpm));
+        float target = off ? 0.5f : basePitch + rpm01 * 0.75f + speed01 * 0.35f + v.Drive.Load * 0.08f;   // follows the revs (gear changes are audible)
         engine.pitch = Mathf.Lerp(engine.pitch <= 0f ? target : engine.pitch, target, Time.deltaTime * 4f);
-        engine.volume = (noFuel ? 0.15f : 0.35f + 0.35f * speed01) * fx;
+        engine.volume = (off ? 0.05f : 0.3f + 0.25f * speed01 + 0.2f * v.Drive.Load) * fx;
     }
 
     // ------------------------------------------------------------------ footsteps
@@ -110,8 +114,13 @@ public class AmbientAudio : MonoBehaviour
         stepTimer = sprint ? 0.3f : Mathf.Lerp(0.6f, 0.42f, Mathf.InverseLerp(1f, 3.5f, speed));
         var clip = ProceduralAudio.Get("step" + (stepIndex++ % 4));
         if (clip == null) return;
-        steps.pitch = 0.9f + (float)rnd.NextDouble() * 0.2f;
-        steps.PlayOneShot(clip, (sprint ? 0.5f : 0.35f) * fx);
+        // Surface: soft field soil is lower and duller, pen straw lighter, sand in between; crouching is quiet.
+        LastStepSurface = PlayerLife.SurfaceAt(p);
+        float pitch = LastStepSurface == "soil" ? 0.78f : LastStepSurface == "straw" ? 1.12f : 0.95f;
+        float vol = LastStepSurface == "soil" ? 0.8f : LastStepSurface == "straw" ? 0.65f : 1f;
+        if (PlayerLife.Crouching) vol *= 0.45f;
+        steps.pitch = pitch + (float)rnd.NextDouble() * 0.15f;
+        steps.PlayOneShot(clip, (sprint ? 0.5f : 0.35f) * fx * vol);
         Footsteps++;
     }
 

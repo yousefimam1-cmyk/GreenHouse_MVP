@@ -155,9 +155,10 @@ public static class CozyFx
         var eco = EconomyManager.Instance;
         if (eco == null) return "";
         float r = UnityEngine.Random.value;
-        if (r < 0.34f && eco.Data.fieldCrops.Length > 0)
+        var crops = eco.AvailableFieldCrops();   // this map's crops only
+        if (r < 0.34f && crops.Count > 0)
         {
-            var c = eco.Data.fieldCrops[UnityEngine.Random.Range(0, eco.Data.fieldCrops.Length)];
+            var c = crops[UnityEngine.Random.Range(0, crops.Count)];
             eco.AddSeeds(c.id, 1);
             return Loc.Raw("Seeds") + ": " + FieldCropText.Name(c) + " +1";
         }

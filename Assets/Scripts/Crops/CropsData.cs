@@ -22,6 +22,8 @@ public class PestDef
     public string id, nameEn, nameAr;
     public string[] seasons, families;
     public float chance = 0.05f, heatwave = 1f, rain = 1f, bedChance, growthMult = 0.6f, damagePerDay = 0.03f;
+    /// <summary>Extra cures that treat this pest (cure ids), so a pack can add a pest without redefining the cures.</summary>
+    public string[] curedBy;
 }
 
 [Serializable]
@@ -55,16 +57,26 @@ public static class CropsData
         get
         {
             if (data != null) return data;
-            var json = Resources.Load<TextAsset>("Data/Economy/30_crops");
-            try { if (json != null) data = JsonUtility.FromJson<CropsPackFile>(json.text); }
-            catch (Exception e) { Debug.LogError("[Crops] Invalid Economy/30_crops.json: " + e.Message); }
-            if (data == null) data = new CropsPackFile();
-            if (data.cropMeta == null) data.cropMeta = new CropMetaDef[0];
-            if (data.trees == null) data.trees = new TreeDef[0];
-            if (data.pests == null) data.pests = new PestDef[0];
-            if (data.cures == null) data.cures = new CureDef[0];
+            // Every economy pack can add crop meta, trees, pests and cures (30_crops = Saudi crops, 93_egypt = Nile Delta DLC);
+            // later packs add to or replace earlier entries by id.
+            data = new CropsPackFile { cropMeta = new CropMetaDef[0], trees = new TreeDef[0], pests = new PestDef[0], cures = new CureDef[0] };
+            foreach (var pack in DataPacks.LoadAs<CropsPackFile>("Economy"))
+            {
+                data.cropMeta = Merge(data.cropMeta, pack.cropMeta, m => m.id);
+                data.trees = Merge(data.trees, pack.trees, t => t.id);
+                data.pests = Merge(data.pests, pack.pests, x => x.id);
+                data.cures = Merge(data.cures, pack.cures, c => c.id);
+            }
             return data;
         }
+    }
+
+    private static T[] Merge<T>(T[] baseArr, T[] add, Func<T, string> id)
+    {
+        if (add == null || add.Length == 0) return baseArr;
+        var list = new List<T>(baseArr);
+        foreach (var x in add) { if (x == null) continue; int i = list.FindIndex(y => id(y) == id(x)); if (i >= 0) list[i] = x; else list.Add(x); }
+        return list.ToArray();
     }
 
     public static CropMetaDef Meta(string cropId) => string.IsNullOrEmpty(cropId) ? null : Array.Find(Data.cropMeta, m => m.id == cropId);

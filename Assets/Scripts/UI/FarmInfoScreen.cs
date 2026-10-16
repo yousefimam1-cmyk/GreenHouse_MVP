@@ -28,7 +28,7 @@ public class FarmInfoScreen : MonoBehaviour
     private TextMeshProUGUI text;
     private int lastMoney = -1;
     private int openedFrame;
-    private int fieldOffset;
+    private int fieldOffset, fieldSel;
     private float refreshTimer;
 
     private void Awake()
@@ -107,19 +107,33 @@ public class FarmInfoScreen : MonoBehaviour
         int h = MenuNav.Horizontal(), v = MenuNav.Vertical();
         if (h != 0 && SoilManager.Instance != null) { SoilManager.Instance.CycleDensity(h); Refresh(); }
         if (v != 0) ScrollFields(v);
+        if (MenuNav.Confirm()) CycleSelectedIrrigation();
         refreshTimer -= Time.unscaledDeltaTime;
         if (refreshTimer <= 0f) { refreshTimer = 1f; Refresh(); }
     }
 
-    /// <summary>Move the Fields page by one field (Up / Down).</summary>
+    /// <summary>Select the next / previous field on the Fields page (Up / Down); the list scrolls to keep it in view.</summary>
     public void ScrollFields(int dir)
     {
         int n = FieldManager.Instance != null ? FieldManager.Instance.Plots.Count : 0;
-        fieldOffset = Mathf.Clamp(fieldOffset + dir, 0, Mathf.Max(0, n - FieldsPerPage));
+        fieldSel = Mathf.Clamp(fieldSel + dir, 0, Mathf.Max(0, n - 1));
+        if (fieldSel < fieldOffset) fieldOffset = fieldSel;
+        if (fieldSel >= fieldOffset + FieldsPerPage) fieldOffset = fieldSel - FieldsPerPage + 1;
+        fieldOffset = Mathf.Clamp(fieldOffset, 0, Mathf.Max(0, n - FieldsPerPage));
+        Refresh();
+    }
+
+    /// <summary>Enter / A on the Fields page: next irrigation method for the selected field.</summary>
+    public void CycleSelectedIrrigation()
+    {
+        var fm = FieldManager.Instance;
+        if (SoilManager.Instance == null || fm == null || fieldSel < 0 || fieldSel >= fm.Plots.Count) return;
+        SoilManager.Instance.CycleIrrigation(fm.Plots[fieldSel], 1);
         Refresh();
     }
 
     public int FieldOffset => fieldOffset;
+    public int SelectedField => fieldSel;
 
     // ---------------- economy pages (EconomyPages): Up / Down rows, Left / Right value, A / Enter acts ----------------
     private readonly int[] econRow = new int[PageCount + 1];
@@ -176,14 +190,14 @@ public class FarmInfoScreen : MonoBehaviour
         {
             case Page.Inventory: body = InventoryText(); break;
             case Page.Stats: body = StatsText(); break;
-            case Page.Fields: body = "<size=72%>" + SoilManager.FieldsText(fieldOffset, FieldsPerPage) + "</size>"; break;
+            case Page.Fields: body = "<size=72%>" + SoilManager.FieldsText(fieldOffset, FieldsPerPage, fieldSel) + "</size>"; break;
             case Page.Prices: body = "<size=72%>" + EconomyPages.PricesText(Row) + "</size>"; break;
             case Page.Contracts: body = "<size=72%>" + EconomyPages.ContractsText(Row) + "</size>"; break;
             case Page.Production: body = "<size=72%>" + EconomyPages.ProductionText(Row, EconAction) + "</size>"; break;
             default: body = "<size=80%>" + EconomyPages.FinancesText() + "</size>"; break;
         }
         string hint = Open == Page.Inventory ? "[I] or [Esc] close   [O] Farm stats" : Open == Page.Stats ? "[O] or [Esc] close   [I] Inventory"
-            : Open == Page.Fields ? "Left / Right: sowing density   Up / Down: more fields   [Esc] close"
+            : Open == Page.Fields ? "Left / Right: sowing density   Up / Down: choose field   [Enter] irrigation   [Esc] close"
             : Open == Page.Prices ? "Up / Down: goods   Left / Right: where to sell   [Esc] close"
             : Open == Page.Contracts ? "Up / Down: contracts   [Enter] accept   [Esc] close"
             : Open == Page.Production ? "Up / Down: buildings   Left / Right: action   [Enter] do it   [Esc] close" : "[Esc] close";

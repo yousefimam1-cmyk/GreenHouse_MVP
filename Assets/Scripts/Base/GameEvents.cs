@@ -27,13 +27,15 @@ public static class GameEvents
     public static event Action<string, float> Custom;
     /// <summary>Raised after save data is wiped for a new game; feature systems reset their state here.</summary>
     public static event Action NewGameStarted;
+    /// <summary>A career was started on a map (Regions.Select): region content (crops, story, events, look) switches here.</summary>
+    public static event Action<string> RegionChanged;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void Reset()
     {
         WellStarted = null; ModuleOptimized = null; BedStateChanged = null; Harvested = null;
         CargoLoaded = null; Delivered = null; VehicleChanged = null; UpgradeBought = null;
-        MoneyChanged = null; MissionStarted = null; MissionCompleted = null; ProductsCollected = null; AnimalBorn = null; PenCleaned = null; TractorWorked = null; ContractCompleted = null; Custom = null; NewGameStarted = null;
+        MoneyChanged = null; MissionStarted = null; MissionCompleted = null; ProductsCollected = null; AnimalBorn = null; PenCleaned = null; TractorWorked = null; ContractCompleted = null; Custom = null; NewGameStarted = null; RegionChanged = null;
     }
 
     public static void RaiseWellStarted(WellController w) => WellStarted?.Invoke(w);
@@ -54,4 +56,5 @@ public static class GameEvents
     public static void RaiseContractCompleted() => ContractCompleted?.Invoke();
     public static void RaiseCustom(string type, float amount = 1f) => Custom?.Invoke(type, amount);
     public static void RaiseNewGameStarted() => NewGameStarted?.Invoke();
+    public static void RaiseRegionChanged(string regionId) => RegionChanged?.Invoke(regionId);
 }

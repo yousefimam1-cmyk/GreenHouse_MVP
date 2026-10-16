@@ -12,6 +12,12 @@ using UnityEngine;
     public float n = 90f, p = 25f, k = 80f, rn = 40f, rp = 10f, rk = 30f, fix;
     public float phMin = 5.5f, phMax = 8.3f, ecT = 3f, ecS = 10f;
     public float tBase = 6f, tOptLo = 16f, tOptHi = 28f, tMax = 35f, et = 450f, ky = 1f, residue = 0.5f;
+    /// <summary>Paddy crop (rice): grows in standing water, so waterlogging costs nothing.</summary>
+    public bool flood;
+    /// <summary>Plot water level (0..1) below which the crop is water-stressed (rice needs its field kept flooded).</summary>
+    public float waterMin = 0.3f;
+    /// <summary>How fast the plot dries with this crop on it (percolation and evaporation from a flooded paddy).</summary>
+    public float dry = 1f;
 }
 
 [Serializable] public class SoilStartDef { public float n = 200f, p = 55f, k = 250f, ph = 7.8f, om = 1f, ec = 1.5f, compaction = 0.15f; }
@@ -131,6 +137,8 @@ public class SoilState
     public float n, p, k, ph, om, ec, compaction, weeds, waterlog, residue, seedbed = 1f;
     public bool mulch, weedProtect;
     public int tillDepth, sampledDay = -1000, density = 1;
+    /// <summary>The field's own irrigation (FieldWater as int; -1 = the farm's system).</summary>
+    public int irrigation = -1;
     // this crop (reset at harvest)
     public float lastGrowth = -1f, accG, accN, accP, accK, accPh, accEc, accComp, stressW, stressLog, stressHeat;
     public float cycN, cycP, cycK, cycWater, cycCost;
@@ -153,7 +161,7 @@ public class SoilState
         float[] v = { n, p, k, ph, om, ec, compaction, weeds, waterlog, residue, seedbed, mulch ? 1 : 0, weedProtect ? 1 : 0, tillDepth, sampledDay, density,
                       lastGrowth, accG, accN, accP, accK, accPh, accEc, accComp, stressW, stressLog, stressHeat, cycN, cycP, cycK, cycWater, cycCost };
         for (int i = 0; i < v.Length; i++) { if (i > 0) sb.Append(','); sb.Append(F(v[i])); }
-        sb.Append(',').Append(appliedMask);
+        sb.Append(',').Append(appliedMask).Append(',').Append(irrigation);
         return sb.ToString();
     }
 
@@ -171,6 +179,7 @@ public class SoilState
         st.accPh = v[21]; st.accEc = v[22]; st.accComp = v[23]; st.stressW = v[24]; st.stressLog = v[25]; st.stressHeat = v[26];
         st.cycN = v[27]; st.cycP = v[28]; st.cycK = v[29]; st.cycWater = v[30]; st.cycCost = v[31];
         if (parts.Length > Fields) int.TryParse(parts[Fields], out st.appliedMask);
+        if (parts.Length > Fields + 1 && int.TryParse(parts[Fields + 1], out int irr)) st.irrigation = Mathf.Clamp(irr, -1, 4);
         return st;
     }
 }
@@ -284,7 +293,7 @@ public static class SoilModel
     public static float EffectiveP(SoilState s) => s.p * PAvailability(s.ph);
     public static float PhFactor(float ph, SoilCropDef c) => ph < c.phMin ? Mathf.Max(0.3f, 1f - 0.15f * (c.phMin - ph)) : ph > c.phMax ? Mathf.Max(0.3f, 1f - 0.15f * (ph - c.phMax)) : 1f;
     public static float SaltFactor(float ec, SoilCropDef c) => Mathf.Clamp01(1f - c.ecS / 100f * Mathf.Max(0f, ec - c.ecT));
-    public static float CompactionFactor(float comp) => 1f - 0.4f * Mathf.Max(0f, comp - 0.25f) / 0.75f;
+    public static float CompactionFactor(float comp) => !GameSettings.PlowingRequired ? 1f : 1f - 0.4f * Mathf.Max(0f, comp - 0.25f) / 0.75f;
     public static float WeedFactor(float w) => 1f - 0.5f * Mathf.Max(0f, w - 0.15f) / 0.85f;
 
     private static float Blend(float acc, float accG, float now) => accG > 0.001f ? Mathf.Clamp01(acc + Mathf.Max(0f, 1f - accG) * now) : now;
@@ -301,7 +310,7 @@ public static class SoilModel
         f.compaction = Blend(s.accComp, s.accG, CompactionFactor(s.compaction));
         float ky = c.ky * (s.density == 0 ? 0.7f : 1f);
         f.water = Mathf.Clamp(1f - ky * s.stressW, 0.2f, 1f);
-        f.waterlog = Mathf.Clamp(1f - 0.5f * s.stressLog, 0.4f, 1f);
+        f.waterlog = c.flood ? 1f : Mathf.Clamp(1f - 0.5f * s.stressLog, 0.4f, 1f);
         f.heat = Mathf.Clamp(1f - 1.6f * s.stressHeat, 0.5f, 1f);
         f.weeds = WeedFactor(s.weeds);
         f.seedbed = Mathf.Clamp(s.seedbed, 0.5f, 1f);
@@ -314,7 +323,7 @@ public static class SoilModel
     public static float GrowthFactor(SoilState s, SoilCropDef c)
     {
         float m = 1f;
-        if (s.waterlog > 0.5f) m *= 0.6f;
+        if (s.waterlog > 0.5f && !c.flood) m *= 0.6f;
         m *= 1f - 0.5f * (1f - SaltFactor(s.ec, c));
         m *= 1f - 0.3f * Mathf.Max(0f, s.weeds - 0.15f);
         m *= 1f - 0.3f * Mathf.Max(0f, s.compaction - 0.25f);
@@ -349,8 +358,8 @@ public static class SoilModel
         s.accPh += g * PhFactor(s.ph, c);
         s.accEc += g * SaltFactor(s.ec, c);
         s.accComp += g * CompactionFactor(s.compaction);
-        s.stressW += dg * Mathf.Clamp01((0.3f - water) / 0.25f);
-        if (s.waterlog > 0.5f) s.stressLog += dg;
+        s.stressW += dg * Mathf.Clamp01((c.waterMin - water) / 0.25f);
+        if (s.waterlog > 0.5f && !c.flood) s.stressLog += dg;
         float mid = growthBefore + dg * 0.5f;
         if (mid >= 0.5f && mid < 0.75f && tempC > c.tMax) s.stressHeat += dg;
         float etc = c.et * dg * et;

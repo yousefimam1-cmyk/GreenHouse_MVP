@@ -23,7 +23,13 @@ public class MarketManager : MonoBehaviour
     public const string CentralId = "souq";
     public const int HistoryDays = 30;
 
-    public MarketFile Cfg { get; private set; }
+    public MarketFile Cfg => Config;
+    private static MarketFile config;
+    /// <summary>market.json + packs (also read by DesertDressing for the map's selling-point buildings).</summary>
+    public static MarketFile Config { get { if (config == null) config = LoadData(); return config; } }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics() { config = null; }
     /// <summary>Selling points that buy at least one good of this game.</summary>
     public readonly List<SellPointDef> Points = new List<SellPointDef>();
     public readonly List<Contract> Contracts = new List<Contract>();   // active (accepted) contracts
@@ -46,11 +52,13 @@ public class MarketManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        LoadData();
     }
 
-    private void LoadData()
+    private static string PointKey(SellPointDef p) => p.id + "|" + string.Join(",", p.regions ?? new string[0]) + "|" + string.Join(",", p.exceptRegions ?? new string[0]);
+
+    private static MarketFile LoadData()
     {
+        MarketFile Cfg = null;
         var ta = Resources.Load<TextAsset>("Data/market");
         try { if (ta != null) Cfg = JsonUtility.FromJson<MarketFile>(ta.text); }
         catch (Exception e) { Debug.LogError("[Market] Invalid market.json: " + e.Message); }
@@ -60,7 +68,7 @@ public class MarketManager : MonoBehaviour
         var clients = new List<ClientDef>(Cfg.contracts?.clients ?? new ClientDef[0]);
         foreach (var pack in DataPacks.LoadAs<MarketFile>("Market"))
         {
-            if (pack.points != null) foreach (var p in pack.points) { int i = pts.FindIndex(x => x.id == p.id); if (i >= 0) pts[i] = p; else pts.Add(p); }
+            if (pack.points != null) foreach (var p in pack.points) { int i = pts.FindIndex(x => PointKey(x) == PointKey(p)); if (i >= 0) pts[i] = p; else pts.Add(p); }
             if (pack.seasonCurves != null) curves.AddRange(pack.seasonCurves);
             if (pack.contracts?.clients != null) clients.AddRange(pack.contracts.clients);
         }
@@ -73,7 +81,29 @@ public class MarketManager : MonoBehaviour
         Cfg.contracts.clients = clients.ToArray();
         if (Cfg.contracts.clients.Length == 0) Cfg.contracts.clients = new[] { new ClientDef { en = "Riyadh Central Market", ar = "سوق الرياض المركزي" } };
         if (Cfg.contracts.fieldClients == null || Cfg.contracts.fieldClients.Length == 0) Cfg.contracts.fieldClients = new[] { new ClientDef { en = "Neighbour Abu Saleh", ar = "الجار أبو صالح" } };
+        return Cfg;
     }
+
+    /// <summary>Is a selling point on this map (regions / exceptRegions)?</summary>
+    public static bool OnMap(SellPointDef p, string regionId)
+    {
+        if (p == null) return false;
+        if (p.regions != null && p.regions.Length > 0 && Array.IndexOf(p.regions, regionId) < 0) return false;
+        return p.exceptRegions == null || Array.IndexOf(p.exceptRegions, regionId) < 0;
+    }
+
+    /// <summary>Selling points built as buildings next to the market pad on a map (cotton gin, rice mill, village souq in the Delta).</summary>
+    public static List<SellPointDef> Buildings(string regionId)
+    {
+        var list = new List<SellPointDef>();
+        foreach (var p in Config.points) if (p != null && p.building && OnMap(p, regionId)) list.Add(p);
+        return list;
+    }
+
+    private void OnEnable() => GameEvents.RegionChanged += OnRegion;
+    private void OnDisable() => GameEvents.RegionChanged -= OnRegion;
+    // A career on another map: its own selling points and clients.
+    private void OnRegion(string regionId) { if (started) ResetMarket(); }
 
     private void Start()
     {
@@ -102,11 +132,12 @@ public class MarketManager : MonoBehaviour
     {
         Points.Clear();
         var eco = EconomyManager.Instance;
+        string region = Regions.CurrentId;
         foreach (var p in Cfg.points)
         {
-            if (p == null || string.IsNullOrEmpty(p.id)) continue;
+            if (p == null || string.IsNullOrEmpty(p.id) || !OnMap(p, region) || Points.Exists(x => x.id == p.id)) continue;
             bool any = eco == null;
-            if (eco != null) foreach (var g in eco.Data.goods) if (MarketMath.Accepts(p, g.id)) { any = true; break; }
+            if (eco != null) foreach (var g in eco.Data.goods) if (MarketMath.Accepts(p, g.id) && eco.GoodAvailable(g.id)) { any = true; break; }
             if (any) Points.Add(p);
         }
     }
@@ -219,6 +250,7 @@ public class MarketManager : MonoBehaviour
         {
             float left = kv.Value;
             if (left <= 0f || EconomyManager.Instance?.Good(kv.Key) == null) continue;
+            GameEvents.RaiseCustom("sell_" + kv.Key, kv.Value);   // e.g. sell_cotton for the Egypt story
             foreach (var c in Contracts)
             {
                 if (c.Field() || c.good != kv.Key || left <= 0f) continue;
@@ -364,8 +396,8 @@ public class MarketManager : MonoBehaviour
         var list = new List<string>();
         var eco = EconomyManager.Instance;
         if (eco == null) return list;
-        Action<string> Add = id => { if (!string.IsNullOrEmpty(id) && eco.Good(id) != null && !list.Contains(id)) list.Add(id); };
-        foreach (var c in eco.Data.fieldCrops) Add(c.id);
+        Action<string> Add = id => { if (!string.IsNullOrEmpty(id) && eco.Good(id) != null && eco.GoodAvailable(id) && !list.Contains(id)) list.Add(id); };
+        foreach (var c in eco.Data.fieldCrops) if (EconomyManager.Available(c)) Add(c.id);   // nothing this map can't grow
         foreach (var a in eco.Data.animals) Add(a.product);
         Add("crops");
         foreach (var g in eco.Data.goods) if (eco.Stored(g.id) >= 1f) Add(g.id);
@@ -378,7 +410,8 @@ public class MarketManager : MonoBehaviour
     {
         string region = Regions.Current != null ? Regions.Current.id : "";
         var ok = new List<ClientDef>();
-        foreach (var c in all) if (c != null && (string.IsNullOrEmpty(c.region) || c.region == region)) ok.Add(c);
+        foreach (var c in all) if (c != null && c.region == region) ok.Add(c);              // a map with its own clients (Nile Delta) uses only those
+        if (ok.Count == 0) foreach (var c in all) if (c != null && string.IsNullOrEmpty(c.region)) ok.Add(c);
         if (ok.Count == 0) ok.AddRange(all);
         return ok[UnityEngine.Random.Range(0, ok.Count)];
     }
@@ -561,6 +594,7 @@ public class MarketManager : MonoBehaviour
 
     public void ResetMarket()
     {
+        BuildPoints();
         Contracts.Clear(); Offers.Clear(); Events.Clear(); glut.Clear(); history.Clear();
         foreach (var k in new List<string>(trend.Keys)) trend[k] = 1f;
         Destination = ""; nextId = 1;

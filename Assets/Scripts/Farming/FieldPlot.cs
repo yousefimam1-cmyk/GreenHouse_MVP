@@ -49,6 +49,12 @@ public class FieldPlot : Interactable
     public static readonly List<System.Func<FieldPlot, float>> RegrowHooks = new List<System.Func<FieldPlot, float>>();
     /// <summary>Drying speed multipliers per plot (e.g. crop stage, season heat, mulch, organic matter).</summary>
     public static readonly List<System.Func<FieldPlot, float>> DryModifiers = new List<System.Func<FieldPlot, float>>();
+    /// <summary>Per-plot automatic watering: 1 = kept wet, 0 = not, -1 = no opinion (then the farm system, UtilityHooks, decides).</summary>
+    public static readonly List<System.Func<FieldPlot, int>> AutoWaterHooks = new List<System.Func<FieldPlot, int>>();
+    /// <summary>Second action on a plot (Q / gamepad Y on foot), e.g. change the field's irrigation. Return true when handled.</summary>
+    public static readonly List<System.Func<FieldPlot, bool>> SecondaryHandlers = new List<System.Func<FieldPlot, bool>>();
+    /// <summary>Prompt text for the second action (translated, not shaped), e.g. "[Q] Irrigation: Drip lines".</summary>
+    public static readonly List<System.Func<FieldPlot, string>> SecondaryPrompts = new List<System.Func<FieldPlot, string>>();
     /// <summary>Seed planted next when the player owns it (set when seeds are bought in the shop).</summary>
     public static string PreferredSeed = "";
 
@@ -56,7 +62,7 @@ public class FieldPlot : Interactable
     private static void ResetStatics()
     {
         FieldHarvested = null; FieldPlanted = null; FieldPlowed = null; FieldWatered = null; PreferredSeed = "";
-        GrowthModifiers.Clear(); YieldModifiers.Clear(); PromptExtras.Clear(); PromptOverrides.Clear(); InteractHandlers.Clear(); RegrowHooks.Clear(); DryModifiers.Clear();
+        GrowthModifiers.Clear(); YieldModifiers.Clear(); PromptExtras.Clear(); PromptOverrides.Clear(); InteractHandlers.Clear(); RegrowHooks.Clear(); DryModifiers.Clear(); AutoWaterHooks.Clear(); SecondaryHandlers.Clear(); SecondaryPrompts.Clear();
     }
 
     private static float Product(List<System.Func<FieldPlot, float>> list, FieldPlot p)
@@ -82,6 +88,12 @@ public class FieldPlot : Interactable
             string x = null;
             try { x = f(this); } catch (System.Exception e) { Debug.LogException(e); }
             if (!string.IsNullOrEmpty(x)) text += " | " + x;
+        }
+        foreach (var f in SecondaryPrompts)
+        {
+            string x = null;
+            try { x = f(this); } catch (System.Exception e) { Debug.LogException(e); }
+            if (!string.IsNullOrEmpty(x)) text += "   " + x;
         }
         return text;
     }
@@ -133,11 +145,11 @@ public class FieldPlot : Interactable
     {
         var eco = EconomyManager.Instance;
         if (eco == null) return null;
-        if (!string.IsNullOrEmpty(PreferredSeed) && eco.Seeds(PreferredSeed) > 0 && eco.FieldCrop(PreferredSeed) != null) return eco.FieldCrop(PreferredSeed);
+        if (!string.IsNullOrEmpty(PreferredSeed) && eco.Seeds(PreferredSeed) > 0 && EconomyManager.Available(eco.FieldCrop(PreferredSeed))) return eco.FieldCrop(PreferredSeed);
         FieldCropDef fallback = null;
         foreach (var c in eco.Data.fieldCrops)
         {
-            if (eco.Seeds(c.id) <= 0) continue;
+            if (eco.Seeds(c.id) <= 0 || !EconomyManager.Available(c)) continue;   // region crops (Egypt DLC) only on their map
             if (InSeason(c)) return c;
             if (fallback == null) fallback = c;
         }
@@ -177,6 +189,30 @@ public class FieldPlot : Interactable
                 break;
             case PlotState.Ripe: TryHarvest(true); break;
         }
+    }
+
+    /// <summary>The second action on this plot (Q / Y on foot). True when a feature handled it.</summary>
+    public bool SecondaryInteract()
+    {
+        foreach (var h in SecondaryHandlers)
+        {
+            bool handled = false;
+            try { handled = h(this); } catch (System.Exception e) { Debug.LogException(e); }
+            if (handled) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Is this plot kept wet automatically now (its own irrigation, else the farm's system)?</summary>
+    public bool AutoWatered()
+    {
+        foreach (var f in AutoWaterHooks)
+        {
+            int v = -1;
+            try { v = f(this); } catch (System.Exception e) { Debug.LogException(e); }
+            if (v >= 0) return v == 1;
+        }
+        return UtilityHooks.FieldsAutoWatered;
     }
 
     // --- Actions shared by the player (E) and tractor implements ---
@@ -256,7 +292,7 @@ public class FieldPlot : Interactable
         if (State != PlotState.Growing) return;
         var clock = WorldClock.Instance;
         bool raining = clock != null && clock.Weather == Weather.Rain;
-        if (raining || (UtilityHooks.FieldsAutoWatered && !FarmModifiers.IrrigationBanned)) Water = 1f; // rain or drip/pivot/sprinklers (Utilities); water bans stop irrigation (Events)
+        if (raining || (AutoWatered() && !FarmModifiers.IrrigationBanned)) Water = 1f; // rain or drip/pivot/sprinklers (Utilities); water bans stop irrigation (Events)
         float dry = (clock != null && clock.Weather == Weather.Heatwave ? 2f : 1f) / 150f * UtilityHooks.FieldDryFactor * FarmModifiers.FieldDry * Product(DryModifiers, this);
         Water = Mathf.Max(0f, Water - dry * Time.deltaTime);
         if (Water > 0.05f)

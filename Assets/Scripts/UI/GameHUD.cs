@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -71,6 +72,10 @@ public class GameHUD : MonoBehaviour
             if (glyphVersion != GameInput.Version) RefreshAll();   // keyboard <-> gamepad, rebound keys
         }
     }
+
+    /// <summary>Settings > Game > Help hints: show or hide the key hints box.</summary>
+    public void SetHintsVisible(bool on) { if (hintPanel != null && hintPanel.gameObject.activeSelf != on) hintPanel.gameObject.SetActive(on); }
+    public bool HintsVisible => hintPanel != null && hintPanel.gameObject.activeSelf;
 
     private void LateUpdate()
     {
@@ -161,6 +166,34 @@ public class GameHUD : MonoBehaviour
         return "<color=" + c + ">" + Loc.T("Fuel {0}%", Mathf.RoundToInt(pct * 100f)) + (pct <= 0.001f ? " - " + Loc.T("Out of fuel - press R to tow (150 SAR)") : "") + "</color>";
     }
 
+    private static readonly List<string> hudFlags = new List<string>();
+
+    /// <summary>Drivetrain, traction, assists and condition lines of the vehicle panel (plus the driving key hints).</summary>
+    public static void DriveLines(Vehicle v, StringBuilder sb)
+    {
+        var d = v.Drive;
+        if (!d.EngineOn) sb.Append('\n').Append("<color=#F2B84B>").Append(Glyphs.Apply(Loc.T("Engine off - press [F] to start"))).Append("</color>");
+        else sb.Append('\n').Append(Loc.T("Gear {0}   {1} rpm", d.GearLabel, Mathf.RoundToInt(d.Rpm / 10f) * 10));
+        int slip = Mathf.RoundToInt(d.Slip * 100f);
+        string slipColor = slip >= 25 ? "#FF6B5B" : slip >= 12 ? "#F2B84B" : "#DDDDDD";
+        sb.Append('\n').Append("<color=").Append(slipColor).Append('>')
+          .Append(Loc.T("Slip {0}%   {1}", slip, DriveSurfaces.Name(d.Surface, d.Wet))).Append("</color>");
+        var flags = hudFlags; flags.Clear();
+        if (d.FourWD) flags.Add(Loc.Raw("4WD"));
+        if (d.DiffLock) flags.Add(Loc.Raw("Diff lock"));
+        if (d.LowPressure) flags.Add(Loc.Raw("Low tyre pressure"));
+        if (v.Assist.Cruise == CruiseMode.Cruise) flags.Add(string.Format(Loc.Raw("Cruise {0} km/h"), Vehicle.Kmh(v.Assist.CruiseSpeed)));
+        if (v.Assist.Cruise == CruiseMode.Limiter) flags.Add(string.Format(Loc.Raw("Limiter {0} km/h"), Vehicle.Kmh(v.Assist.CruiseSpeed)));
+        if (v.Assist.LaneAssist) flags.Add(Loc.Raw("GPS line"));
+        if (d.WorkSpeedLimit > 0f) flags.Add(string.Format(Loc.Raw("Working max {0} km/h"), Vehicle.Kmh(d.WorkSpeedLimit)));
+        if (flags.Count > 0) sb.Append('\n').Append("<color=#8CD95A>").Append(Loc.Display(string.Join("  ·  ", flags))).Append("</color>");
+        int eng = Mathf.RoundToInt(v.EngineCondition * 100f), tyre = Mathf.RoundToInt(v.TyreCondition * 100f);
+        string cond = Mathf.Min(eng, tyre) < 50 ? "#FF6B5B" : Mathf.Min(eng, tyre) < 80 ? "#F2B84B" : "#BBBBBB";
+        sb.Append('\n').Append("<color=").Append(cond).Append('>').Append(Loc.T("Engine {0}%   Tyres {1}%   {2} t", eng, tyre, (v.TotalMass / 1000f).ToString("F1"))).Append("</color>");
+        if (v.AtWorkshop && v.NeedsRepair) sb.Append('\n').Append(Glyphs.Apply(Loc.T("[R] Repair for {0} SAR", v.RepairCost.ToString("N0"))));
+        sb.Append("\n<size=75%>").Append(Glyphs.Apply(Loc.T("[F] Engine  [Shift]/[Ctrl] Gear  [Y] Cruise [Minus]/[Plus]  [Z] 4WD / diff lock  [Slash] GPS"))).Append("</size>");
+    }
+
     private void RefreshTruck()
     {
         var v = Vehicle.Current;
@@ -173,6 +206,7 @@ public class GameHUD : MonoBehaviour
             tb.Append(Title(Loc.T("{0} km/h", Mathf.Abs(tractor.Speed * 3.6f).ToString("F0"))));
             tb.Append('\n').Append(Loc.Display(Loc.Raw("Implement") + ": " + Tractor.ImplementName(tractor.ActiveImplement)));
             tb.Append('\n').Append(FuelLine(tractor));
+            DriveLines(tractor, tb);
             tb.Append("\n<size=80%>").Append(Glyphs.Apply(Loc.T("[Q] Change implement   [E] Exit   [R] Reset"))).Append("</size>");
             truckText.text = tb.ToString();
             return;
@@ -187,6 +221,7 @@ public class GameHUD : MonoBehaviour
         sb.Append('\n').Append(Loc.T("Cargo {0}/{1} kg", truck.CargoWeight.ToString("F0"), (eco != null ? eco.TruckCapacity : 0f).ToString("F0")));
         if (target != null) sb.Append('\n').Append(Loc.Display(where + ": " + dist.ToString("F0") + " m"));
         sb.Append('\n').Append(FuelLine(truck));
+        DriveLines(truck, sb);
         sb.Append("\n<size=80%>").Append(Glyphs.Apply(Loc.T("[E] Exit   [Space] Brake   [R] Reset truck"))).Append("</size>");
         truckText.text = sb.ToString();
     }
