@@ -35,6 +35,8 @@ public class GraphicsEnhancer : MonoBehaviour
     public static event System.Action<int> PresetChanged;
 
     private Volume volume;
+    private ColorAdjustments grade;
+    private WhiteBalance balance;
     // Original URP asset values, restored on exit so Play mode doesn't permanently change project settings.
     private UniversalRenderPipelineAsset urpAsset;
     private int origMsaa; private float origScale, origShadow;
@@ -51,6 +53,20 @@ public class GraphicsEnhancer : MonoBehaviour
     }
 
     private void Awake() => Instance = this;
+    private void OnEnable() => GameEvents.RegionChanged += OnRegion;
+    private void OnDisable() => GameEvents.RegionChanged -= OnRegion;
+    private void OnRegion(string regionId) => ApplyRegionGrade();
+
+    /// <summary>Colour grade of the current map: warm desert in Najd, greener and cooler on the Nile Delta (RegionLook).</summary>
+    public void ApplyRegionGrade()
+    {
+        var look = Regions.Look;
+        if (grade != null) grade.saturation.Override(look.saturation);
+        if (balance != null) balance.temperature.Override(look.temperature);
+    }
+
+    /// <summary>Saturation of the post-processing grade now (tests).</summary>
+    public float GradeSaturation => grade != null ? grade.saturation.value : 0f;
 
     private void Start()
     {
@@ -120,6 +136,8 @@ public class GraphicsEnhancer : MonoBehaviour
         color.saturation.Override(12f);
         var wb = profile.Add<WhiteBalance>(true);
         wb.temperature.Override(8f);
+        grade = color; balance = wb;
+        ApplyRegionGrade();
         var vig = profile.Add<Vignette>(true);
         vig.intensity.Override(0.22f);
         vig.smoothness.Override(0.45f);

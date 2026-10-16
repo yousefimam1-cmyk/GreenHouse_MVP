@@ -289,8 +289,9 @@ public class GameMenu : MonoBehaviour
     /// <summary>Start a new farm with the chosen map, start and economy (also used by tests).</summary>
     public void StartCareer(string region, Career.Start start, Career.Economy economy)
     {
+        if (!Regions.IsPlayable(Regions.Find(region))) region = Regions.DefaultId;   // locked / coming-soon map: the base map
         if (GameHUD.Instance != null) GameHUD.Instance.StartNewGame();
-        Regions.Select(region);
+        Regions.Select(region);   // raises RegionChanged: crops, story, events, quests, market and look switch to this map
         Career.Apply(start, economy);
         Close();
         LoadingScreen.Show();

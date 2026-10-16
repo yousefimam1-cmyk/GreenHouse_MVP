@@ -421,7 +421,7 @@ static class Program
         T.Check("Crops: systems created", care != null && orch != null);
         var crops = new[] { "alfalfa", "sorghum", "millet", "tomato", "wheat", "potato", "onion", "watermelon" };
         T.Check("Crops: 8 field crops with sellable goods and a family", crops.All(c => eco.FieldCrop(c) != null && eco.Good(c) != null && CropsData.Meta(c) != null));
-        T.Check("Crops: only heat-tolerant crops grow in summer", eco.Data.fieldCrops.Where(c => c.seasons.Contains("summer")).All(c => c.id == "sorghum" || c.id == "millet"),
+        T.Check("Crops: only heat-tolerant crops grow in summer (Najd map)", eco.AvailableFieldCrops().Where(c => c.seasons.Contains("summer")).All(c => c.id == "sorghum" || c.id == "millet"),
             string.Join(",", eco.Data.fieldCrops.Where(c => c.seasons.Contains("summer")).Select(c => c.id)));
         T.Check("Crops: cool season (Oct-Apr) is the main season", eco.Data.fieldCrops.Count(c => c.seasons.Contains("winter") || c.seasons.Contains("autumn")) >= 5);
         T.Check("Crops: date goods for Sukkari, Khalas, Ajwa (Ajwa dearest)", eco.Good("dates_ajwa").price > eco.Good("dates_sukkari").price && eco.Good("dates_sukkari").price > eco.Good("dates_khalas").price);
@@ -1097,6 +1097,7 @@ static class Program
         File.Delete(Dlc.KeyFilePath); Dlc.Refresh(); Dlc.UnlockAllInDevBuilds = true;
         gmenu.StartCareer("jordan_valley", Career.Start.NewFarmer, Career.Economy.Normal);
         T.Check("Coming-soon map can't be chosen (stays on the default)", Regions.Current.id == "najd");
+        EgyptTests.Run();   // Egypt Nile Delta DLC content pack (crops, story, events, market, look) and switching maps
         AchievementManager.ResetAll();
         var am = AchievementManager.Instance;
         T.Check("24 achievements, none unlocked after reset", AchievementManager.All.Length == 24 && AchievementManager.UnlockedCount == 0 && am != null);
@@ -2423,4 +2424,193 @@ static class ArtTests
         Loc.SetLanguage(Language.English);
         return ar != en;
     }
+}
+
+// ---------------------------------------------------------------- Egypt Nile Delta DLC (region content pack)
+static class EgyptTests
+{
+    static List<string> ShopIds()
+    {
+        var items = typeof(ShopUI).GetMethod("Items", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(ShopUI.Instance, null);
+        return ((System.Collections.IEnumerable)items).Cast<object>().Select(o => (string)o.GetType().GetField("Item2").GetValue(o)).ToList();
+    }
+
+    static List<string> LabelKeys() => UnityEngine.Object.FindObjectsByType<LocalizedLabel>(FindObjectsSortMode.None).Select(l => l.key).ToList();
+
+    static readonly string[] EgyptCrops = { "rice", "cotton", "berseem", "maize" };
+
+    public static void Run()
+    {
+        Console.WriteLine("Egypt Nile Delta DLC");
+        int e0 = FakeEngine.Errors.Count;
+        var gmenu = GameMenu.Instance;
+        gmenu.StartCareer("najd", Career.Start.NewFarmer, Career.Economy.Normal);
+        FakeEngine.Run(0.5f);
+        var eco = EconomyManager.Instance; var mm = MissionManager.Instance; var camp = CampaignManager.Instance; var ed = EventDirector.Instance;
+        var dq = DailyQuests.Instance; var dd = DesertDressing.Instance; var market = MarketManager.Instance;
+
+        // ---- data
+        T.Check("Egypt: 4 DLC field crops tagged for the Nile Delta, with goods, families and soil agronomy",
+            EgyptCrops.All(c => eco.FieldCrop(c) != null && eco.FieldCrop(c).regions.SequenceEqual(new[] { "nile_delta" }) && eco.Good(c) != null && CropsData.Meta(c) != null && SoilData.Data.crops.Any(s => s.id == c)));
+        T.Check("Egypt: crops have Arabic names and placeholder stage models", EgyptCrops.All(c => !string.IsNullOrEmpty(eco.FieldCrop(c).nameAr) && !string.IsNullOrEmpty(eco.Good(c).nameAr) && CropVisuals.HasModels(c)));
+        T.Check("Egypt: Delta seasons (rice + maize summer, cotton spring-summer, berseem winter forage)",
+            eco.FieldCrop("rice").seasons.Contains("summer") && eco.FieldCrop("maize").seasons.Contains("summer") && eco.FieldCrop("cotton").seasons.Contains("spring")
+            && eco.FieldCrop("berseem").seasons.Contains("winter") && !eco.FieldCrop("berseem").seasons.Contains("summer"));
+        var rice = SoilData.Crop("rice"); var cotton = SoilData.Crop("cotton"); var berseem = SoilData.Crop("berseem"); var maize = SoilData.Crop("maize");
+        T.Check("Egypt: FAO salt tolerance (rice 3.0, cotton 7.7, berseem 1.5, maize 1.7 dS/m)", rice.ecT == 3f && cotton.ecT == 7.7f && berseem.ecT == 1.5f && maize.ecT == 1.7f);
+        T.Check("Egypt: rice is a flooded, thirsty crop (highest water use)", rice.flood && rice.waterMin > 0.5f && SoilData.Data.crops.All(c => c.et <= rice.et));
+        T.Check("Egypt: standing water doesn't hurt rice but does hurt wheat",
+            SoilModel.GrowthFactor(new SoilState { waterlog = 1f, ec = 1f }, rice) > SoilModel.GrowthFactor(new SoilState { waterlog = 1f, ec = 1f }, SoilData.Crop("wheat")) + 0.3f);
+        T.Check("Egypt: berseem is a multi-cut legume that feeds animals and fixes nitrogen", CropsData.Family("berseem") == "legume" && CropsData.Meta("berseem").cuts > 1 && CropsData.Meta("berseem").feedPerKg > 0f && berseem.fix > 0f && berseem.rn == 0f);
+        T.Check("Egypt: rotation berseem -> cotton bonus, cotton after cotton penalty", CropsData.Family("cotton") == "fiber" && SoilData.Rotation("legume", "fiber") > 1.1f && SoilData.Rotation("fiber", "fiber") < 1f);
+        T.Check("Egypt: cotton leafworm only attacks cotton and is treated by neem / pesticide",
+            CropsData.Pest("cotton_leafworm") != null && CropsData.Pest("cotton_leafworm").families.SequenceEqual(new[] { "fiber" }) && CropsData.Pest("cotton_leafworm").curedBy.Contains("pesticide"));
+        var arabicMissions = mm.AllMissions.Where(m => m.regions != null && m.regions.Contains("nile_delta")).ToList();
+        T.Check("Egypt: 20 story missions, all bilingual", arabicMissions.Count == 20 && arabicMissions.All(m => !string.IsNullOrEmpty(m.titleAr) && !string.IsNullOrEmpty(m.descAr) && m.target > 0f));
+        var src = File.ReadAllText("../../Assets/Scripts/Managers/MissionManager.cs");
+        var bad = arabicMissions.Where(m => !src.Contains("\"" + m.type + "\"") && !m.type.StartsWith("plant_") && !m.type.StartsWith("harvest_") && !m.type.StartsWith("sell_") && !m.type.StartsWith("event_")).Select(m => m.type).ToList();
+        T.Check("Egypt: every mission type is handled", bad.Count == 0, string.Join(",", bad));
+        T.Check("Egypt: every new UI text has Arabic (Loc/93_egypt.json)",
+            new[] { "Village souq", "Agricultural cooperative", "Cotton gin", "Rice mill", "Canal water reached {0} fields" }.All(Loc.HasTranslation)
+            && Regions.Find("nile_delta").sellPoints.All(s => Loc.HasTranslation(s.nameEn)));
+
+        // ---- Najd stays the base game
+        int najdMissions = mm.Missions.Length;
+        T.Check("Najd: Egypt crops not offered (seed shop, planting, price)", !EgyptCrops.Any(c => ShopIds().Contains("seed_" + c)) && EgyptCrops.All(c => eco.PriceOf("seed_" + c) < 0)
+            && ShopIds().Contains("seed_wheat") && ShopIds().Contains("seed_onion") && ShopIds().Contains("seed_potato"));
+        eco.AddMoney(5000);
+        T.Check("Najd: Egypt seed can't be bought", !eco.TryBuy("seed_rice") && eco.Seeds("rice") == 0);
+        eco.AddSeeds("cotton", 1);
+        var plot = FieldManager.Instance.Plots[0];
+        plot.ResetPlot(); FieldPlot.PreferredSeed = "cotton";
+        plot.TryPlow(false);
+        T.Check("Najd: a gifted Egypt seed is not planted here", plot.BestSeed() == null || plot.BestSeed().id != "cotton");
+        T.Check("Najd: base mission chain, first mission the well, no Egypt missions", mm.Missions.Length == 45 && mm.Current?.id == "well" && mm.Missions.All(m => !m.id.StartsWith("eg_")), mm.Missions.Length + " " + mm.Current?.id);
+        T.Check("Najd: campaign unchanged (7 chapters, Abu Saleh)", camp.Chapters.Length == 7 && camp.Chapters[0].id == "inheritance" && camp.Narrator == "Abu Saleh" && !camp.IsRegionCampaign && StoryIntro.Body() == Loc.T("STORY_BODY"));
+        T.Check("Najd: events unchanged (8, haboob, no canal turns)", ed.Data.events.Length == 8 && ed.Find("haboob") != null && ed.Find("canal_turn") == null);
+        T.Check("Najd: daily quests unchanged", dq.Templates.Length == 9 && dq.Templates.All(t => t.regions == null || t.regions.Length == 0));
+        T.Check("Najd: market and shop names", LabelKeys().Contains("Market") && LabelKeys().Contains("Farm Shop") && !LabelKeys().Contains("Village souq"));
+        T.Check("Najd: desert look (sand, dunes, no canals or sell points)", dd.BuiltRegion == "najd" && dd.Dunes > 0 && dd.Canals == 0 && dd.SellPoints == 0 && dd.Eucalyptus == 0 && dd.GroundColor.Equals(DesertDressing.SandColor),
+            dd.BuiltRegion + " dunes " + dd.Dunes + " canals " + dd.Canals);
+        T.Check("Najd: warm grade, no river haze, no sell bonus", GraphicsEnhancer.Instance.GradeSaturation == 12f && Regions.Look.humidity == 0f && Regions.SellBonus("cotton") == 1f && Regions.Buyers == null);
+        int najdTrees = dd.Palms + dd.Trees;
+
+        // ---- Egypt career
+        gmenu.StartCareer("nile_delta", Career.Start.NewFarmer, Career.Economy.Normal);
+        FakeEngine.Run(0.5f);
+        T.Check("Egypt: career on the Nile Delta in EGP", Regions.Current.id == "nile_delta" && Regions.IsEgypt && Loc.Raw("SAR") == "EGP");
+        T.Check("Egypt: Delta crops offered next to wheat, onion and potato", EgyptCrops.All(c => ShopIds().Contains("seed_" + c)) && new[] { "wheat", "onion", "potato" }.All(c => ShopIds().Contains("seed_" + c)));
+        T.Check("Egypt: starts with berseem seed and the usual wheat", eco.Seeds("berseem") == 2 && eco.Seeds("wheat") == 2 && eco.Seeds("cotton") == 0 && eco.Seeds("rice") == 0, eco.Seeds("berseem") + " " + eco.Seeds("wheat"));
+        T.Check("Egypt: own mission chain from the pump", mm.Missions.Length == 20 && mm.Current?.id == "eg_pump" && mm.Index == 0 && mm.Missions.All(m => m.id.StartsWith("eg_")), mm.Missions.Length + " " + mm.Current?.id);
+        T.Check("Egypt: campaign chapter 1 is the Egypt story told by Am Hassan", camp.IsRegionCampaign && camp.Chapters.Length == 5 && camp.Chapters[0].id == "eg_land"
+            && camp.Narrator == "Am Hassan" && camp.Chapters[0].titleEn == "The Land by the Canal" && StoryIntro.Body().Contains("Am Hassan") && StoryIntro.Body().Contains("Kafr El-Sheikh"));
+        Loc.SetLanguage(Language.Arabic);
+        bool egyptianArabic = camp.Narrator == "عم حسن" && CampaignManager.Intro(camp.Chapters[0]).Contains("فدادين") && MissionManager.Title(mm.Current) == "شغّل ماكينة الري";
+        Loc.SetLanguage(Language.English);
+        T.Check("Egypt: Egyptian Arabic story texts", egyptianArabic);
+        T.Check("Egypt: 5 chapters cover the 20 missions", camp.Chapters.Select(c => c.fromMission).SequenceEqual(new[] { 1, 5, 9, 13, 17 }));
+        T.Check("Egypt: own events (canal turn, Nile flood, cotton festival, rice export), no haboob dust storms",
+            ed.Data.events.All(e => e.regions != null && e.regions.Contains("nile_delta")) && ed.Find("haboob") == null && ed.Find("flood") == null
+            && new[] { "canal_turn", "nile_flood", "cotton_festival", "rice_export" }.All(id => ed.Find(id) != null) && ed.Data.events.All(e => !string.IsNullOrEmpty(e.nameAr) && !string.IsNullOrEmpty(e.warnAr) && !string.IsNullOrEmpty(e.startAr)));
+        T.Check("Egypt: own daily quests", dq.Templates.Length > 0 && dq.Templates.All(t => t.regions != null && t.regions.Contains("nile_delta")) && dq.Quests.Count > 0 && dq.Quests.All(qe => qe.template.StartsWith("eg_")));
+        T.Check("Egypt: market is the village souq, shop the agricultural cooperative", LabelKeys().Contains("Village souq") && LabelKeys().Contains("Agricultural cooperative") && !LabelKeys().Contains("Market"));
+        T.Check("Egypt: contracts from Egyptian buyers", market.Contracts.Count > 0 && market.Contracts.All(c => Regions.Find("nile_delta").buyers.Any(b => b.en == c.buyerEn)), market.Contracts.Count > 0 ? market.Contracts[0].buyerEn : "none");
+        T.Check("Egypt: cotton gin and rice mill pay more", Regions.SellBonus("cotton") > 1.1f && Regions.SellBonus("rice") > 1.05f && Regions.SellBonus("wool") == 1f);
+        T.Check("Egypt: Delta clay soil on every field", Enumerable.Range(0, FieldManager.Instance.Plots.Count).All(i => Math.Abs(SoilManager.Instance.Soil(i).om - 1.8f) < 0.01f && Math.Abs(SoilManager.Instance.Soil(i).k - 380f) < 0.5f));
+
+        // ---- look
+        T.Check("Egypt: green Delta ground, no dunes", dd.BuiltRegion == "nile_delta" && dd.Dunes == 0 && dd.GroundColor.g > dd.GroundColor.r, dd.BuiltRegion + " dunes " + dd.Dunes);
+        T.Check("Egypt: canal and ditches beside the fields", dd.Canals >= 3, "" + dd.Canals);
+        T.Check("Egypt: eucalyptus rows and date palms", dd.Eucalyptus > 4 && dd.Palms > 0, dd.Eucalyptus + " / " + dd.Palms);
+        T.Check("Egypt: sell points by the market (gin, mill, souq) with signs", dd.SellPoints == 3 && GameObject.Find("Sell Point gin") != null && LabelKeys().Contains("Cotton gin") && LabelKeys().Contains("Rice mill"), "" + dd.SellPoints);
+        T.Check("Egypt: pigeon tower by the farmhouse", !dd.HasHouse || dd.HasPigeonTower);
+        var plots = FieldManager.Instance.Plots;
+        var props = UnityEngine.Object.FindObjectsByType<BoxCollider>(FindObjectsSortMode.None).Where(c => c.gameObject.layer == DesertProps.PropLayer && (c.name == "Eucalyptus" || c.name == "Date Palm" || c.name == "Sidr" || c.name.StartsWith("Sell Point") || c.name == "Pigeon Tower")).ToList();
+        var blocked = props.Where(c => plots.Any(pl => Vector3.Distance(Flat(pl.transform.position), Flat(c.transform.position)) < 6f)
+            || Vector3.Distance(Flat(DeliveryZone.Market.transform.position), Flat(c.transform.position)) < 9f || Vector3.Distance(Flat(DeliveryZone.LoadingBay.transform.position), Flat(c.transform.position)) < 9f).Select(c => c.name + c.transform.position).ToList();
+        T.Check("Egypt: Delta props keep off plots and pads (" + props.Count + ")", props.Count > 0 && blocked.Count == 0, string.Join(" ", blocked.Take(3)));
+        T.Check("Egypt: canals have no colliders", UnityEngine.Object.FindObjectsByType<Collider>(FindObjectsSortMode.None).All(c => c.transform.parent == null || c.transform.parent.name != "Canal"));
+        T.Check("Egypt: few draw objects (parts merged)", dd.MergedParts > 100 && (dd.Palms + dd.Trees) <= najdTrees + 30, dd.MergedParts + " parts, " + (dd.Palms + dd.Trees) + " vs " + najdTrees);
+        T.Check("Egypt: greener, cooler colour grade", GraphicsEnhancer.Instance.GradeSaturation > 12f);
+        var clock = WorldClock.Instance;
+        T.SetProp(clock, "Weather", Weather.Heatwave); T.SetProp(clock, "DayProgress", 0.05f);
+        FakeEngine.Run(30f, 0.5f);
+        T.Check("Egypt: milder wind and dust than a Najd heatwave", DesertWeatherFX.Wind01 < 0.6f && DesertWeatherFX.Instance.DustRate < 60f, DesertWeatherFX.Wind01 + " / " + DesertWeatherFX.Instance.DustRate);
+        T.Check("Egypt: humid Nile haze in the morning", DesertWeatherFX.Humidity01 > 0.3f && RenderSettings.fogDensity > 0.006f, DesertWeatherFX.Humidity01 + " / " + RenderSettings.fogDensity);
+        T.SetProp(clock, "Weather", Weather.Sunny); T.SetProp(clock, "DayProgress", 0.5f);
+        FakeEngine.Run(2f, 0.5f);
+
+        // ---- story missions advance with the Delta crops
+        foreach (var w in UnityEngine.Object.FindObjectsByType<WellController>(FindObjectsSortMode.None)) if (!w.IsRunning) w.Interact();
+        FakeEngine.Run(2f, 0.5f);
+        T.Check("Egypt mission 1: the pump", mm.Current?.id == "eg_berseem", mm.Current?.id);
+        var p = plots[0];
+        p.ResetPlot(); CropCareManager.Instance.Plot(p.index).protectDays = 99;
+        FieldPlot.PreferredSeed = "berseem";
+        p.TryPlow(false); p.TrySeed(false);
+        T.Check("Egypt: berseem planted, story moves on", p.CropId == "berseem" && mm.Current?.id == "eg_cut", p.CropId + " " + mm.Current?.id);
+        float feed0 = eco.Feed, n0 = SoilManager.Instance.Soil(p).n;
+        T.SetProp(p, "Growth", 1f); T.SetProp(p, "State", PlotState.Ripe);
+        p.TryHarvest(false);
+        T.Check("Egypt: a berseem cut feeds the animals, grows back and adds nitrogen", eco.Feed > feed0 && eco.Stored("berseem") > 20f && p.State == PlotState.Growing && p.CropId == "berseem" && SoilManager.Instance.Soil(p).n > n0 - 1f,
+            eco.Feed + " " + eco.Stored("berseem") + " " + p.State + " n " + n0 + "->" + SoilManager.Instance.Soil(p).n);
+
+        // ---- rice grows, is harvested and sells
+        var q = plots[1];
+        q.ResetPlot(); SoilManager.Instance.ResetSoil(q.index); CropCareManager.Instance.Plot(q.index).protectDays = 99;
+        eco.AddMoney(1000);
+        T.Check("Egypt: buy rice seed at the cooperative", eco.TryBuy("seed_rice") && eco.Seeds("rice") == 1);
+        FieldPlot.PreferredSeed = "rice";
+        q.TryPlow(false); q.TrySeed(false);
+        T.Check("Egypt: rice planted", q.State == PlotState.Growing && q.CropId == "rice", q.State + " " + q.CropId);
+        float g0 = q.Growth;
+        for (int i = 0; i < 20; i++) { q.AddWater(1f); FakeEngine.Run(1f, 0.25f); }
+        T.Check("Egypt: rice grows in its flooded paddy", q.Growth > g0 && q.State == PlotState.Growing, g0 + " -> " + q.Growth);
+        T.Check("Egypt: flooded paddy is not waterlogging stress for rice", SoilManager.Instance.Factors(q).waterlog == 1f);
+        T.SetProp(q, "Growth", 1f); T.SetProp(q, "State", PlotState.Ripe);
+        float rice0 = eco.Stored("rice"); float custom = 0f;
+        Action<string, float> spy = (t, a) => { if (t == "harvest_rice") custom += a; };
+        GameEvents.Custom += spy;
+        q.TryHarvest(false);
+        float kg = eco.Stored("rice") - rice0;
+        T.Check("Egypt: rice harvest goes to storage (story event too)", kg > 30f && Math.Abs(custom - kg) < 0.01f && q.State == PlotState.Untilled, kg + " kg, event " + custom);
+        float sold = 0f;
+        Action<string, float> spy2 = (t, a) => { if (t == "sell_rice") sold += a; };
+        GameEvents.Custom += spy2;
+        int money0 = eco.Money;
+        int earned = eco.SellAll(new Dictionary<string, float> { { "rice", kg } });
+        T.Check("Egypt: rice sells at the souq (rice mill bonus)", earned > 0 && eco.Money >= money0 + earned && Math.Abs(sold - kg) < 0.01f, earned + " for " + kg + " kg, sold event " + sold + ", money " + money0 + " -> " + eco.Money);
+        GameEvents.Custom -= spy; GameEvents.Custom -= spy2;
+
+        // ---- canal turn (nobat el-mayya)
+        typeof(EventDirector).GetMethod("OnNewDay", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(ed, new object[] { 7 });
+        T.Check("Egypt: the canal turn is forecast every 4 days", ed.Pending != null && ed.Pending.id == "canal_turn" && ed.PendingDay == 8, ed.Pending?.id + " " + ed.PendingDay);
+        p.AddWater(-1f);
+        bool turned = false;
+        Action<string, float> spy3 = (t, a) => { if (t == "event_canal_turn") turned = true; };
+        GameEvents.Custom += spy3;
+        ed.StartNow("canal_turn");
+        FakeEngine.Run(1f, 0.25f);
+        T.Check("Egypt: on the canal turn every planted field gets water", turned && p.Water > 0.9f && FarmModifiers.FieldDry < 1f, turned + " water " + p.Water + " dry " + FarmModifiers.FieldDry);
+        ed.EndActive();
+        GameEvents.Custom -= spy3;
+
+        // ---- back to Najd: everything resets to the base game
+        eco.AddSeeds("rice", 2);
+        gmenu.StartCareer("najd", Career.Start.NewFarmer, Career.Economy.Normal);
+        // (checked at once: the well keeps running in the scene, so Najd's first mission completes within a second)
+        T.Check("Switch to Najd: base mission chain from the well", mm.Missions.Length == najdMissions && mm.Index == 0 && mm.Current?.id == "well", mm.Missions.Length + " " + mm.Index + " " + mm.Current?.id);
+        T.Check("Switch to Najd: Egypt seeds and goods cleared", EgyptCrops.All(c => eco.Seeds(c) == 0 && eco.Stored(c) == 0f) && eco.Seeds("wheat") == 2 && eco.Money == 500,
+            string.Join(",", EgyptCrops.Select(c => c + ":" + eco.Seeds(c) + "/" + eco.Stored(c))) + " wheat " + eco.Seeds("wheat") + " money " + eco.Money);
+        FakeEngine.Run(0.5f);
+        T.Check("Switch to Najd: region, SAR, Najd crops only", Regions.Current.id == "najd" && Loc.Raw("SAR") == "SAR" && !EgyptCrops.Any(c => ShopIds().Contains("seed_" + c)));
+        T.Check("Switch to Najd: base campaign and events", camp.Chapters.Length == 7 && camp.Narrator == "Abu Saleh" && ed.Data.events.Length == 8 && ed.Pending == null && ed.Active == null);
+        T.Check("Switch to Najd: base quests, Saudi buyers", dq.Templates.Length == 9 && dq.Quests.All(qq => !qq.template.StartsWith("eg_")) && market.Contracts.All(c => !Regions.Find("nile_delta").buyers.Any(b => b.en == c.buyerEn)));
+        T.Check("Switch to Najd: market name, desert look and grade back", LabelKeys().Contains("Market") && LabelKeys().Contains("Farm Shop") && !LabelKeys().Contains("Village souq")
+            && dd.BuiltRegion == "najd" && dd.Dunes > 0 && dd.Canals == 0 && dd.SellPoints == 0 && dd.Eucalyptus == 0 && GraphicsEnhancer.Instance.GradeSaturation == 12f && GameObject.Find("Sell Point gin") == null);
+        T.Check("Switch to Najd: Najd sandy soil again", Math.Abs(SoilManager.Instance.Soil(0).om - 0.6f) < 0.01f);
+        T.Check("Egypt: no errors", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
+    }
+
+    static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
 }

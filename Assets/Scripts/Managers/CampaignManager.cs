@@ -14,6 +14,8 @@ public class CampaignChapter
 [Serializable]
 public class CampaignFile
 {
+    /// <summary>Map this story belongs to (Resources/Data/Campaigns/*.json); empty = the base game's campaign (Najd).</summary>
+    public string region;
     public string narratorEn, narratorAr;
     public CampaignChapter[] chapters;
 }
@@ -40,18 +42,38 @@ public class CampaignManager : MonoBehaviour
     private float closeAt, checkTimer = 1f;
     private int shownFrame;
 
+    private CampaignFile baseFile;
+    private readonly System.Collections.Generic.List<CampaignFile> regionFiles = new System.Collections.Generic.List<CampaignFile>();
+
+    /// <summary>True when the current map has its own story (e.g. the Egypt DLC with Am Hassan).</summary>
+    public bool IsRegionCampaign => file != null && !string.IsNullOrEmpty(file.region);
+    public CampaignFile File => file;
+
     private void Awake()
     {
         Instance = this;
         var ta = Resources.Load<TextAsset>("Data/campaign");
-        try { if (ta != null) file = JsonUtility.FromJson<CampaignFile>(ta.text); }
+        try { if (ta != null) baseFile = JsonUtility.FromJson<CampaignFile>(ta.text); }
         catch (Exception e) { Debug.LogError("[Campaign] Invalid campaign.json: " + e.Message); }
-        if (file != null && file.chapters != null) Chapters = file.chapters;
+        // DLC maps bring their own story (Resources/Data/Campaigns/*.json, "region" = map id).
+        foreach (var c in DataPacks.LoadAs<CampaignFile>("Campaigns")) if (c != null && !string.IsNullOrEmpty(c.region) && c.chapters != null) regionFiles.Add(c);
+        SelectForRegion();
+    }
+
+    /// <summary>Pick the campaign of the current map (the base campaign when the map has none).</summary>
+    public void SelectForRegion()
+    {
+        file = baseFile;
+        string id = Regions.CurrentId;
+        foreach (var c in regionFiles) if (c.region == id) { file = c; break; }
+        Chapters = file != null && file.chapters != null ? file.chapters : new CampaignChapter[0];
     }
 
     private void OnDestroy() { if (Instance == this) Instance = null; }
-    private void OnEnable() { GameEvents.MissionCompleted += OnMissionDone; GameEvents.NewGameStarted += OnNewGame; }
-    private void OnDisable() { GameEvents.MissionCompleted -= OnMissionDone; GameEvents.NewGameStarted -= OnNewGame; }
+    private void OnEnable() { GameEvents.MissionCompleted += OnMissionDone; GameEvents.NewGameStarted += OnNewGame; GameEvents.RegionChanged += OnRegion; }
+    private void OnDisable() { GameEvents.MissionCompleted -= OnMissionDone; GameEvents.NewGameStarted -= OnNewGame; GameEvents.RegionChanged -= OnRegion; }
+
+    private void OnRegion(string regionId) { SelectForRegion(); SaveData.SetInt(SeenKey, 0); SaveData.SetInt(PaidKey, 0); Hide(); }
 
     private void OnNewGame() { SaveData.SetInt(SeenKey, 0); SaveData.SetInt(PaidKey, 0); Hide(); }
 
@@ -88,7 +110,7 @@ public class CampaignManager : MonoBehaviour
     public static string Title(CampaignChapter c) => c == null ? "" : (Loc.IsArabic && !string.IsNullOrEmpty(c.titleAr) ? c.titleAr : c.titleEn);
     public static string Intro(CampaignChapter c) => c == null ? "" : (Loc.IsArabic && !string.IsNullOrEmpty(c.introAr) ? c.introAr : c.introEn);
     public static string Outro(CampaignChapter c) => c == null ? "" : (Loc.IsArabic && !string.IsNullOrEmpty(c.outroAr) ? c.outroAr : c.outroEn);
-    private string Narrator => file == null ? "" : (Loc.IsArabic && !string.IsNullOrEmpty(file.narratorAr) ? file.narratorAr : file.narratorEn);
+    public string Narrator => file == null ? "" : (Loc.IsArabic && !string.IsNullOrEmpty(file.narratorAr) ? file.narratorAr : file.narratorEn);
 
     // ------------------------------------------------------------------ events
 

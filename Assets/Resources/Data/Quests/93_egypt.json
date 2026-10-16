@@ -1,0 +1,25 @@
+{
+  "notes": "Egypt Nile Delta DLC daily quests (QuestFile; regions [nile_delta] replace the base templates on that map). custom = progress from GameEvents.Custom events named like the type (harvest_<crop> kg from RegionContent, event_<id> from EventDirector). Titles: {0} amount, {1} unit, {2} good name. Arabic is Egyptian colloquial.",
+  "templates": [
+    { "id": "eg_deliver_field", "type": "deliver", "regions": ["nile_delta"], "goods": ["rice", "cotton", "maize", "onion", "potato", "wheat"], "min": 20, "max": 60, "step": 10, "rewardBase": 40, "rewardPerUnit": 4,
+      "titleEn": "Deliver {0} {1} of {2}", "titleAr": "سلّم {0} {1} {2}" },
+    { "id": "eg_deliver_berseem", "type": "deliver", "regions": ["nile_delta"], "goods": ["berseem"], "min": 30, "max": 90, "step": 15, "rewardBase": 30, "rewardPerUnit": 2,
+      "titleEn": "Bring {0} {1} of {2} for the neighbour's buffalo", "titleAr": "هات {0} {1} {2} لجاموسة الجيران" },
+    { "id": "eg_cut", "type": "harvest_berseem", "custom": true, "regions": ["nile_delta"], "min": 30, "max": 60, "step": 15, "rewardBase": 30, "rewardPerUnit": 1.5,
+      "titleEn": "Cut {0} kg of berseem", "titleAr": "احش {0} كيلو برسيم" },
+    { "id": "eg_rice", "type": "harvest_rice", "custom": true, "regions": ["nile_delta"], "min": 50, "max": 100, "step": 25, "rewardBase": 40, "rewardPerUnit": 1.5,
+      "titleEn": "Harvest {0} kg of rice", "titleAr": "احصد {0} كيلو رز" },
+    { "id": "eg_cotton", "type": "harvest_cotton", "custom": true, "regions": ["nile_delta"], "min": 20, "max": 40, "step": 10, "rewardBase": 50, "rewardPerUnit": 4,
+      "titleEn": "Pick {0} kg of cotton", "titleAr": "اجني {0} كيلو قطن" },
+    { "id": "eg_canal", "type": "event_canal_turn", "custom": true, "regions": ["nile_delta"], "min": 1, "max": 1, "step": 1, "rewardBase": 60, "rewardPerUnit": 0,
+      "titleEn": "Use your canal water turn", "titleAr": "استغل نوبة المية بتاعتك" },
+    { "id": "eg_eggs", "type": "collectEggs", "regions": ["nile_delta"], "min": 6, "max": 24, "step": 6, "rewardBase": 30, "rewardPerUnit": 3, "needsAnimal": "chicken",
+      "titleEn": "Collect {0} eggs", "titleAr": "لمّ {0} بيضة" },
+    { "id": "eg_earn", "type": "earn", "regions": ["nile_delta"], "min": 300, "max": 1200, "step": 100, "rewardBase": 30, "rewardPerUnit": 0.12,
+      "titleEn": "Earn {0} at the souq", "titleAr": "اكسب {0} من السوق" },
+    { "id": "eg_plant", "type": "plantField", "regions": ["nile_delta"], "min": 1, "max": 3, "step": 1, "rewardBase": 20, "rewardPerUnit": 30,
+      "titleEn": "Plant {0} fields", "titleAr": "ازرع {0} غيطان" },
+    { "id": "eg_talk", "type": "talkVillager", "regions": ["nile_delta"], "min": 2, "max": 3, "step": 1, "rewardBase": 20, "rewardPerUnit": 25,
+      "titleEn": "Chat with {0} neighbours", "titleAr": "اتكلم مع {0} من الجيران" }
+  ]
+}

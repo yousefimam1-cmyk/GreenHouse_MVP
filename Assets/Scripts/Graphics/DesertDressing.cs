@@ -31,6 +31,16 @@ public class DesertDressing : MonoBehaviour
     public int CoolingWalls { get; private set; }
     public int SandCells { get; private set; }
     public int MergedParts { get; private set; }
+    /// <summary>Nile Delta look (RegionLook): canal / ditch water strips beside the fields, eucalyptus windbreak trees,
+    /// sell-point buildings at the market (cotton gin, rice mill, souq) and the pigeon tower by the house.</summary>
+    public int Canals { get; private set; }
+    public int Eucalyptus { get; private set; }
+    public int SellPoints { get; private set; }
+    public bool HasPigeonTower { get; private set; }
+    /// <summary>Map whose look was built last.</summary>
+    public string BuiltRegion { get; private set; } = "";
+    /// <summary>Ground colour of the current build (sand in Najd, green-brown alluvium on the Delta).</summary>
+    public Color GroundColor { get; private set; } = SandColor;
 
     private struct KeepOut { public Vector3 p; public float r; public bool major; public KeepOut(Vector3 p, float r, bool major) { this.p = p; this.r = r; this.major = major; } }
     private readonly List<KeepOut> keep = new List<KeepOut>();
@@ -49,16 +59,20 @@ public class DesertDressing : MonoBehaviour
     private void Start()
     {
         GraphicsEnhancer.PresetChanged += OnPreset;
+        GameEvents.RegionChanged += OnRegion;
         Invoke(nameof(BuildAll), 1.6f); // after VehicleSpawner, FieldManager and AmbientLife have placed the farm
     }
 
     private void OnDestroy()
     {
         GraphicsEnhancer.PresetChanged -= OnPreset;
+        GameEvents.RegionChanged -= OnRegion;
         if (Instance == this) Instance = null;
     }
 
     private void OnPreset(int p) { if (built) BuildAll(); }
+    // A career on another map: rebuild with that map's look (only when the map changed; meshes and materials are reused).
+    private void OnRegion(string id) { if (built && id != BuiltRegion) BuildAll(); }
 
     public void BuildAll()
     {
@@ -67,25 +81,33 @@ public class DesertDressing : MonoBehaviour
         root.SetParent(transform, false);
         placed.Clear(); Track.Clear();
         Palms = Trees = Dunes = CoolingWalls = SandCells = 0; HasHouse = false;
+        Canals = Eucalyptus = SellPoints = 0; HasPigeonTower = false;
         var rnd = new System.Random(Seed);
         float density = GraphicsEnhancer.DressingDensity;
+        var look = Regions.Look;
+        BuiltRegion = Regions.CurrentId;
+        GroundColor = RegionLook.C(look.ground, SandColor);
 
         if (!built) FindStart();   // the player may be hidden in a vehicle on later rebuilds
         FindMap();
         CollectKeepOuts();
         try
         {
-            BuildTrack(rnd, density);
+            if (look.canals) BuildCanals();        // first: the windbreak rows and the track keep off the water
+            BuildTrack(rnd, density, RegionLook.C(look.track, TrackColor));
             BuildHouse(rnd, density);
+            if (look.pigeonTower) BuildPigeonTower();
+            BuildSellPoints();
             BuildCooling();
             BuildSand();
-            BuildDunes(rnd);
-            BuildTrees(rnd, density);
+            if (look.dunes) BuildDunes(rnd, RegionLook.C(look.dune, DuneColor));
+            if (look.trees == "eucalyptus") BuildWindbreaks(rnd, density);
+            BuildTrees(rnd, density, look);
         }
         catch (System.Exception e) { Debug.LogWarning("[DesertDressing] " + e.Message); }
         built = true;
         // hundreds of primitive parts -> a few merged meshes per material (fewer objects and draw calls)
-        MergedParts = ProcMesh.MergeChildren(root, r => r.gameObject.name == "Sand" || r.gameObject.name == "Track");
+        MergedParts = ProcMesh.MergeChildren(root, r => r.gameObject.name == "Sand" || r.gameObject.name == "Track" || r.GetComponent<TMPro.TMP_Text>() != null);
     }
 
     // ------------------------------------------------------------------ layout data
@@ -228,7 +250,7 @@ public class DesertDressing : MonoBehaviour
     }
 
     // ------------------------------------------------------------------ track + palms
-    private void BuildTrack(System.Random rnd, float density)
+    private void BuildTrack(System.Random rnd, float density, Color trackColor)
     {
         if (DeliveryZone.LoadingBay == null || DeliveryZone.Market == null) return;
         Vector3 a = Flat(DeliveryZone.LoadingBay.transform.position), b = Flat(DeliveryZone.Market.transform.position);
@@ -255,7 +277,7 @@ public class DesertDressing : MonoBehaviour
         {
             bool blocked = InKeepOut(p, 2.5f);
             if (!blocked) piece.Add(p);
-            if ((blocked || p == best[best.Count - 1]) && piece.Count >= 2) { MeshPiece("Track", ProcMesh.Strip(piece, 4.5f, 0.1f, ground), Vector3.zero, TrackColor, false); piece = new List<Vector3>(); }
+            if ((blocked || p == best[best.Count - 1]) && piece.Count >= 2) { MeshPiece("Track", ProcMesh.Strip(piece, 4.5f, 0.1f, ground), Vector3.zero, trackColor, false); piece = new List<Vector3>(); }
             else if (blocked) piece.Clear();
         }
 
@@ -379,11 +401,11 @@ public class DesertDressing : MonoBehaviour
                 SandCells++;
             }
         if (t.Count == 0) return;
-        MeshPiece("Sand", ProcMesh.Finish("Sand", v, t), Vector3.zero, SandColor, false).GetComponent<MeshRenderer>().receiveShadows = true;
+        MeshPiece("Sand", ProcMesh.Finish("Sand", v, t), Vector3.zero, GroundColor, false).GetComponent<MeshRenderer>().receiveShadows = true;
     }
 
     // ------------------------------------------------------------------ dunes at the map edges
-    private void BuildDunes(System.Random rnd)
+    private void BuildDunes(System.Random rnd, Color duneColor)
     {
         System.Func<Vector3, float> ground = Ground;
         Vector3[] corners = { new Vector3(mapMin.x, 0, mapMin.z), new Vector3(mapMax.x, 0, mapMin.z), new Vector3(mapMax.x, 0, mapMax.z), new Vector3(mapMin.x, 0, mapMax.z) };
@@ -405,16 +427,17 @@ public class DesertDressing : MonoBehaviour
                 // steep lee side faces Cross(dir, up): point it toward the map edge so the gentle slope faces the farm
                 if (Vector3.Dot(Vector3.Cross(dir, Vector3.up), inward) > 0f) dir = -dir;
                 var mesh = ProcMesh.Dune(c, dir, hl, hw, h, ground, rnd.Next());
-                MeshPiece("Dune", mesh, c, DuneColor, true);
+                MeshPiece("Dune", mesh, c, duneColor, true);
                 Dunes++;
             }
         }
     }
 
     // ------------------------------------------------------------------ acacia + sidr
-    private void BuildTrees(System.Random rnd, float density)
+    private void BuildTrees(System.Random rnd, float density, RegionLook look)
     {
-        int want = Mathf.RoundToInt(34f * density);
+        bool delta = look.trees == "eucalyptus";
+        int want = Mathf.RoundToInt(look.treeCount * density);
         int tries = want * 12;
         Vector3 size = mapMax - mapMin;
         while (Trees < want && tries-- > 0)
@@ -422,8 +445,121 @@ public class DesertDressing : MonoBehaviour
             Vector3 p = new Vector3(mapMin.x + 12f + (float)rnd.NextDouble() * (size.x - 24f), 0f, mapMin.z + 12f + (float)rnd.NextDouble() * (size.z - 24f));
             if (DistanceToFarm(p) < 16f) continue;
             if (!Free(p, 3.2f)) continue;
-            if (rnd.NextDouble() < 0.55) DesertProps.Acacia(root, OnGround(p), rnd); else DesertProps.Sidr(root, OnGround(p), rnd);
+            if (delta) { if (rnd.NextDouble() < 0.65) { DesertProps.Eucalyptus(root, OnGround(p), rnd); Eucalyptus++; } else DesertProps.Sidr(root, OnGround(p), rnd); }
+            else if (rnd.NextDouble() < 0.55) DesertProps.Acacia(root, OnGround(p), rnd); else DesertProps.Sidr(root, OnGround(p), rnd);
             Mark(p); Trees++;
+        }
+    }
+
+    // ------------------------------------------------------------------ Nile Delta: canals, windbreaks, pigeon tower, sell points
+    private static bool FieldGrid(out Vector3 center, out Quaternion rot, out float minX, out float maxX, out float minZ, out float maxZ, out List<float> colGaps)
+    {
+        center = Vector3.zero; rot = Quaternion.identity; minX = minZ = float.MaxValue; maxX = maxZ = float.MinValue; colGaps = new List<float>();
+        var fm = FieldManager.Instance;
+        if (fm == null || fm.Plots.Count == 0) return false;
+        center = fm.GridCenter; rot = fm.GridRotation;
+        var inv = Quaternion.Inverse(rot);
+        var xs = new List<float>();
+        foreach (var p in fm.Plots)
+        {
+            if (p == null) continue;
+            Vector3 l = inv * (p.transform.position - center);
+            minX = Mathf.Min(minX, l.x - p.size.x * 0.5f); maxX = Mathf.Max(maxX, l.x + p.size.x * 0.5f);
+            minZ = Mathf.Min(minZ, l.z - p.size.y * 0.5f); maxZ = Mathf.Max(maxZ, l.z + p.size.y * 0.5f);
+            float x = Mathf.Round(l.x * 10f) / 10f;
+            if (!xs.Contains(x)) xs.Add(x);
+        }
+        xs.Sort();
+        for (int i = 0; i + 1 < xs.Count; i++) colGaps.Add((xs[i] + xs[i + 1]) * 0.5f);
+        return minX < maxX;
+    }
+
+    /// <summary>Water strip (canal or ditch) in field-grid space: flat, no collider, merged with the other water (one material).</summary>
+    private void WaterStrip(Vector3 center, Quaternion rot, float x0, float z0, float x1, float z1, float width)
+    {
+        Vector3 a = center + rot * new Vector3(x0, 0f, z0), b = center + rot * new Vector3(x1, 0f, z1);
+        Vector3 mid = (a + b) * 0.5f, dir = Flat(b - a);
+        float len = dir.magnitude;
+        if (len < 0.5f) return;
+        var water = Build.Mat(new Color(0.2f, 0.36f, 0.4f), 0.92f);
+        var bank = Build.Mat(new Color(0.33f, 0.27f, 0.19f), 0.05f);
+        var go = new GameObject("Canal");
+        go.transform.SetParent(root, false);
+        go.transform.SetPositionAndRotation(new Vector3(mid.x, Ground(mid), mid.z), Quaternion.LookRotation(dir / len));
+        Build.Part(PrimitiveType.Cube, go.transform, new Vector3(0f, 0.035f, 0f), new Vector3(width, 0.03f, len), water, "Water");
+        foreach (float side in new[] { -1f, 1f })
+            Build.Part(PrimitiveType.Cube, go.transform, new Vector3(side * (width * 0.5f + 0.18f), 0.06f, 0f), new Vector3(0.36f, 0.12f, len), bank, "Bank");
+        foreach (var c in go.GetComponentsInChildren<Collider>()) Destroy(c);   // flat decoration: nothing to bump into
+        Canals++;
+    }
+
+    // A mesqa (field canal) along the side of the plot grid, a marwa (ditch) between each column of plots and one across the far end.
+    private void BuildCanals()
+    {
+        Vector3 c; Quaternion rot; float minX, maxX, minZ, maxZ; List<float> gaps;
+        if (!FieldGrid(out c, out rot, out minX, out maxX, out minZ, out maxZ, out gaps)) return;
+        WaterStrip(c, rot, minX - 2.2f, minZ - 4f, minX - 2.2f, maxZ + 4f, 1.4f);
+        WaterStrip(c, rot, minX - 2.2f, maxZ + 2.2f, maxX + 1f, maxZ + 2.2f, 0.9f);
+        foreach (float x in gaps) WaterStrip(c, rot, x, minZ, x, maxZ, 0.5f);
+    }
+
+    // Eucalyptus windbreak rows along the outer side of the canal and behind the fields (as along Delta canals).
+    private void BuildWindbreaks(System.Random rnd, float density)
+    {
+        Vector3 c; Quaternion rot; float minX, maxX, minZ, maxZ; List<float> gaps;
+        if (!FieldGrid(out c, out rot, out minX, out maxX, out minZ, out maxZ, out gaps)) return;
+        float step = Mathf.Lerp(9f, 5.5f, density);
+        for (float z = minZ - 4f; z <= maxZ + 4f; z += step) Windbreak(c + rot * new Vector3(minX - 6.5f, 0f, z), rnd);
+        for (float x = minX; x <= maxX + 1f; x += step) Windbreak(c + rot * new Vector3(x, 0f, maxZ + 6.5f), rnd);
+    }
+
+    private void Windbreak(Vector3 p, System.Random rnd)
+    {
+        if (!FreeNearTrack(p, 1.5f)) return;
+        DesertProps.Eucalyptus(root, OnGround(p), rnd); Mark(p); Eucalyptus++; Trees++;
+    }
+
+    // Delta farmhouses keep pigeons in a tall mud-brick dovecote (burg hamam) beside the house.
+    private void BuildPigeonTower()
+    {
+        if (!HasHouse) return;
+        Vector3 h = Flat(HousePosition), look = Flat(start - h).normalized;
+        if (look.sqrMagnitude < 0.01f) look = fwd;
+        Vector3 side = Vector3.Cross(Vector3.up, look);
+        for (int i = 0; i < 16; i++)   // first free spot on two rings around the house
+        {
+            Vector3 p = h + Quaternion.Euler(0f, i * 45f + (i >= 8 ? 22.5f : 0f), 0f) * -side * (i < 8 ? 10f : 15f);
+            if (!Free(p, 2.5f)) continue;
+            DesertProps.PigeonTower(root, OnGround(p));
+            Keep(p, 2.5f); Mark(p); HasPigeonTower = true;
+            return;
+        }
+    }
+
+    // The map's sell points (cotton gin, rice mill, souq) as small buildings with signs behind the market pad.
+    private void BuildSellPoints()
+    {
+        var r = Regions.Current;
+        if (r == null || r.sellPoints == null || r.sellPoints.Length == 0 || DeliveryZone.Market == null) return;
+        Vector3 m = Flat(DeliveryZone.Market.transform.position);
+        Vector3 toFarm = DeliveryZone.LoadingBay != null ? Flat(DeliveryZone.LoadingBay.transform.position) - m : fwd;
+        toFarm = toFarm.sqrMagnitude < 0.01f ? fwd : toFarm.normalized;
+        Vector3 side = Vector3.Cross(Vector3.up, toFarm);
+        foreach (var sp in r.sellPoints)
+        {
+            if (sp == null) continue;
+            foreach (var p in new[] { m - toFarm * 17f, m - toFarm * 17f + side * 13f, m - toFarm * 17f - side * 13f, m - toFarm * 28f, m + side * 20f, m - side * 20f, m - toFarm * 28f + side * 13f, m - toFarm * 28f - side * 13f })
+            {
+                if (!Free(p, 4f)) continue;
+                var go = DesertProps.SellPoint(root, OnGround(p), Quaternion.LookRotation(toFarm), new Color(sp.r, sp.g, sp.b));
+                go.name = "Sell Point " + sp.id;
+                var sign = new GameObject("Sign");
+                sign.transform.SetParent(root, false);
+                sign.transform.position = OnGround(p);
+                Build.Label(sign.transform, new Vector3(0f, 5.6f, 0f), sp.nameEn, 2.6f, Color.white);
+                Keep(p, 4f); Mark(p); SellPoints++;
+                break;
+            }
         }
     }
 }

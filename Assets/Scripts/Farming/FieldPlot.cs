@@ -133,11 +133,11 @@ public class FieldPlot : Interactable
     {
         var eco = EconomyManager.Instance;
         if (eco == null) return null;
-        if (!string.IsNullOrEmpty(PreferredSeed) && eco.Seeds(PreferredSeed) > 0 && eco.FieldCrop(PreferredSeed) != null) return eco.FieldCrop(PreferredSeed);
+        if (!string.IsNullOrEmpty(PreferredSeed) && eco.Seeds(PreferredSeed) > 0 && EconomyManager.Available(eco.FieldCrop(PreferredSeed))) return eco.FieldCrop(PreferredSeed);
         FieldCropDef fallback = null;
         foreach (var c in eco.Data.fieldCrops)
         {
-            if (eco.Seeds(c.id) <= 0) continue;
+            if (eco.Seeds(c.id) <= 0 || !EconomyManager.Available(c)) continue;   // region crops (Egypt DLC) only on their map
             if (InSeason(c)) return c;
             if (fallback == null) fallback = c;
         }

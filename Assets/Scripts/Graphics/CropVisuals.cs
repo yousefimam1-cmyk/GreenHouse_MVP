@@ -47,7 +47,19 @@ public static class CropVisuals
         string id = cropId.ToLowerInvariant();
         if (stages.ContainsKey(id)) return id;
         string a;
-        return aliases.TryGetValue(id, out a) ? a : null;
+        if (aliases.TryGetValue(id, out a)) return a;
+        // Data-driven placeholder: a field crop can name another crop's stages ("model" in its economy pack). The Egypt DLC
+        // uses this until it has its own plants: rice -> wheat stages, berseem -> wheat (like alfalfa), cotton -> cabbage
+        // (a low leafy bush), maize -> corn. Placeholders only; swap in real models (e.g. CC0 packs such as Kenney or
+        // Quaternius) by adding them to the stages table above.
+        var fc = EconomyManager.Instance != null ? EconomyManager.Instance.FieldCrop(cropId) : null;
+        if (fc != null && !string.IsNullOrEmpty(fc.model) && fc.model != cropId && fc.model.ToLowerInvariant() != id)
+        {
+            string m = fc.model.ToLowerInvariant();
+            if (stages.ContainsKey(m)) return m;
+            return aliases.TryGetValue(m, out a) ? a : null;
+        }
+        return null;
     }
 
     /// <summary>True when FarmCrops stage models exist for this crop.</summary>

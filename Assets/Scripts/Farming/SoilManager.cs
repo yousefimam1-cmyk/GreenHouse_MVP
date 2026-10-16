@@ -57,6 +57,7 @@ public class SoilManager : MonoBehaviour
         FieldPlot.FieldWatered += OnWatered;
         CropCareManager.Fertilized += OnFertilized;
         GameEvents.NewGameStarted += OnNewGame;
+        GameEvents.RegionChanged += OnRegion;
         AddOnce(FieldPlot.GrowthModifiers, PlotGrowth);
         AddOnce(FieldPlot.YieldModifiers, PlotYield);
         AddOnce(FieldPlot.DryModifiers, PlotDry);
@@ -75,6 +76,7 @@ public class SoilManager : MonoBehaviour
         FieldPlot.FieldWatered -= OnWatered;
         CropCareManager.Fertilized -= OnFertilized;
         GameEvents.NewGameStarted -= OnNewGame;
+        GameEvents.RegionChanged -= OnRegion;
         SaveDirty();
     }
 
@@ -328,7 +330,7 @@ public class SoilManager : MonoBehaviour
         var s = Soil(p.index);
         SoilModel.OverWater(s, before);
         SavePlot(p.index);
-        if (s.waterlog > 0.5f) Say(SoilText.R("Over-watered: water is standing in the field"));
+        if (s.waterlog > 0.5f && !SoilData.Crop(p.CropId).flood) Say(SoilText.R("Over-watered: water is standing in the field"));   // a rice paddy is meant to stand in water
     }
 
     private void OnFertilized(FieldPlot p, CureDef cure)
@@ -347,6 +349,14 @@ public class SoilManager : MonoBehaviour
         LoadGlobals();
         foreach (var k in new List<string>(items.Keys)) items[k] = 0;
         Density = 1; WaterTodayM3 = 0f; WaterCostToday = 0f;
+        RefreshClimate();
+    }
+
+    // A new career on another map: its own starting soil (Delta clay, Najd sand) and climate.
+    private void OnRegion(string regionId)
+    {
+        states.Clear(); dirty.Clear();
+        if (FieldManager.Instance != null) foreach (var p in FieldManager.Instance.Plots) if (p != null) ResetSoil(p.index);
         RefreshClimate();
     }
 
@@ -381,7 +391,7 @@ public class SoilManager : MonoBehaviour
 
     private static float PlotYield(FieldPlot p) => Instance != null ? Instance.YieldFactor(p) : 1f;
     private static float PlotGrowth(FieldPlot p) => Instance != null ? Instance.GrowthFactor(p) : 1f;
-    private static float PlotDry(FieldPlot p) => Instance != null ? SoilModel.DryFactor(Instance.Soil(p.index), p.Growth, Instance.SeasonEtToday) : 1f;
+    private static float PlotDry(FieldPlot p) => Instance != null ? SoilModel.DryFactor(Instance.Soil(p.index), p.Growth, Instance.SeasonEtToday) * (p.State == PlotState.Growing ? SoilData.Crop(p.CropId).dry : 1f) : 1f;
 
     // ---------------------------------------------------------------- E actions
 

@@ -36,6 +36,11 @@ public class MarketManager : MonoBehaviour
 
     private void Awake() => Instance = this;
 
+    private void OnEnable() => GameEvents.RegionChanged += OnRegion;
+    private void OnDisable() => GameEvents.RegionChanged -= OnRegion;
+    // A career on another map: its own buyers post the contracts.
+    private void OnRegion(string regionId) => ResetMarket();
+
     private void Start()
     {
         var eco = EconomyManager.Instance;
@@ -59,7 +64,7 @@ public class MarketManager : MonoBehaviour
         if (g == null) return 0f;
         float t = trend.TryGetValue(goodId, out var v) ? v : 1f;
         float s = glut.TryGetValue(goodId, out var q) ? q : 0f;
-        float extra = FarmModifiers.Price(goodId);
+        float extra = FarmModifiers.Price(goodId) * Regions.SellBonus(goodId);   // the map's cotton gin / rice mill / souq
         foreach (var m in PriceMultipliers) extra *= m(goodId);
         return g.price * t * SeasonFactor(goodId) * (1f - s) * extra;
     }
@@ -93,6 +98,7 @@ public class MarketManager : MonoBehaviour
                 earned += take * unit * c.bonus;
             }
             earned += left * unit;
+            GameEvents.RaiseCustom("sell_" + kv.Key, kv.Value);   // e.g. sell_cotton for the Egypt story
             // Supply pressure: every 100 units sold lowers the price ~5%, up to 40%.
             glut[kv.Key] = Mathf.Min(0.4f, (glut.TryGetValue(kv.Key, out var q) ? q : 0f) + kv.Value / 2000f);
         }
@@ -137,8 +143,13 @@ public class MarketManager : MonoBehaviour
     {
         var eco = EconomyManager.Instance;
         if (eco == null || eco.Data.goods.Length == 0) return;
-        var g = eco.Data.goods[UnityEngine.Random.Range(0, eco.Data.goods.Length)];
-        var b = Buyers[UnityEngine.Random.Range(0, Buyers.Length)];
+        var goods = new List<GoodDef>();
+        foreach (var x in eco.Data.goods) if (eco.GoodAvailable(x.id)) goods.Add(x);   // nothing this map can't grow
+        if (goods.Count == 0) return;
+        var g = goods[UnityEngine.Random.Range(0, goods.Count)];
+        var regional = Regions.Buyers;
+        var rb = regional != null ? regional[UnityEngine.Random.Range(0, regional.Length)] : null;
+        (string en, string ar) b = rb != null ? (rb.en, rb.ar) : Buyers[UnityEngine.Random.Range(0, Buyers.Length)];
         float amount = g.id == "eggs" ? 60 * UnityEngine.Random.Range(1, 5) : 40 * UnityEngine.Random.Range(1, 6);
         int today = WorldClock.Instance != null ? WorldClock.Instance.Day : 1;
         Contracts.Add(new Contract { buyerEn = b.en, buyerAr = b.ar, good = g.id, amount = amount, bonus = UnityEngine.Random.Range(1.25f, 1.6f), dueDay = today + UnityEngine.Random.Range(2, 5) });

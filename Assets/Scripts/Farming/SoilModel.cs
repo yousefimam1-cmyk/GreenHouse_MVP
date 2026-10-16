@@ -12,6 +12,12 @@ using UnityEngine;
     public float n = 90f, p = 25f, k = 80f, rn = 40f, rp = 10f, rk = 30f, fix;
     public float phMin = 5.5f, phMax = 8.3f, ecT = 3f, ecS = 10f;
     public float tBase = 6f, tOptLo = 16f, tOptHi = 28f, tMax = 35f, et = 450f, ky = 1f, residue = 0.5f;
+    /// <summary>Paddy crop (rice): grows in standing water, so waterlogging costs nothing.</summary>
+    public bool flood;
+    /// <summary>Plot water level (0..1) below which the crop is water-stressed (rice needs its field kept flooded).</summary>
+    public float waterMin = 0.3f;
+    /// <summary>How fast the plot dries with this crop on it (percolation and evaporation from a flooded paddy).</summary>
+    public float dry = 1f;
 }
 
 [Serializable] public class SoilStartDef { public float n = 200f, p = 55f, k = 250f, ph = 7.8f, om = 1f, ec = 1.5f, compaction = 0.15f; }
@@ -301,7 +307,7 @@ public static class SoilModel
         f.compaction = Blend(s.accComp, s.accG, CompactionFactor(s.compaction));
         float ky = c.ky * (s.density == 0 ? 0.7f : 1f);
         f.water = Mathf.Clamp(1f - ky * s.stressW, 0.2f, 1f);
-        f.waterlog = Mathf.Clamp(1f - 0.5f * s.stressLog, 0.4f, 1f);
+        f.waterlog = c.flood ? 1f : Mathf.Clamp(1f - 0.5f * s.stressLog, 0.4f, 1f);
         f.heat = Mathf.Clamp(1f - 1.6f * s.stressHeat, 0.5f, 1f);
         f.weeds = WeedFactor(s.weeds);
         f.seedbed = Mathf.Clamp(s.seedbed, 0.5f, 1f);
@@ -314,7 +320,7 @@ public static class SoilModel
     public static float GrowthFactor(SoilState s, SoilCropDef c)
     {
         float m = 1f;
-        if (s.waterlog > 0.5f) m *= 0.6f;
+        if (s.waterlog > 0.5f && !c.flood) m *= 0.6f;
         m *= 1f - 0.5f * (1f - SaltFactor(s.ec, c));
         m *= 1f - 0.3f * Mathf.Max(0f, s.weeds - 0.15f);
         m *= 1f - 0.3f * Mathf.Max(0f, s.compaction - 0.25f);
@@ -349,8 +355,8 @@ public static class SoilModel
         s.accPh += g * PhFactor(s.ph, c);
         s.accEc += g * SaltFactor(s.ec, c);
         s.accComp += g * CompactionFactor(s.compaction);
-        s.stressW += dg * Mathf.Clamp01((0.3f - water) / 0.25f);
-        if (s.waterlog > 0.5f) s.stressLog += dg;
+        s.stressW += dg * Mathf.Clamp01((c.waterMin - water) / 0.25f);
+        if (s.waterlog > 0.5f && !c.flood) s.stressLog += dg;
         float mid = growthBefore + dg * 0.5f;
         if (mid >= 0.5f && mid < 0.75f && tempC > c.tMax) s.stressHeat += dg;
         float etc = c.et * dg * et;

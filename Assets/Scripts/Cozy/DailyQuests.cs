@@ -12,6 +12,8 @@ public class QuestTemplate
     public float rewardPerUnit;
     public string needsAnimal;        // only offered when this animal is owned
     public string titleEn, titleAr;   // {0} amount, {1} unit, {2} good name
+    public string[] regions;          // maps with these quests (empty = the base game, Najd); packs in Resources/Data/Quests
+    public bool custom;               // progress from GameEvents.Custom events named like the type (e.g. event_canal_turn, harvest_cotton)
 }
 [Serializable] public class QuestFile { public QuestTemplate[] templates; }
 [Serializable] public class ActiveQuest { public string template, type, good; public int target, reward; public float progress; public bool done; }
@@ -30,6 +32,8 @@ public class DailyQuests : MonoBehaviour
     public GameObject Board { get; private set; }
 
     private QuestTemplate[] templates = new QuestTemplate[0];
+    private QuestTemplate[] allTemplates = new QuestTemplate[0];
+    public QuestTemplate[] Templates => templates;
     private QuestState state = new QuestState();
     private float lastEggs;
 
@@ -40,8 +44,12 @@ public class DailyQuests : MonoBehaviour
     {
         Instance = this;
         var json = Resources.Load<TextAsset>("Data/quests");
-        try { var f = json != null ? JsonUtility.FromJson<QuestFile>(json.text) : null; if (f != null && f.templates != null) templates = f.templates; }
+        var all = new List<QuestTemplate>();
+        try { var f = json != null ? JsonUtility.FromJson<QuestFile>(json.text) : null; if (f != null && f.templates != null) all.AddRange(f.templates); }
         catch (Exception e) { Debug.LogError("[Quests] Invalid quests.json: " + e.Message); }
+        foreach (var pack in DataPacks.LoadAs<QuestFile>("Quests")) if (pack.templates != null) all.AddRange(pack.templates);   // map packs (Egypt DLC)
+        allTemplates = all.ToArray();
+        FilterForRegion();
         try { var s = JsonUtility.FromJson<QuestState>(SaveData.GetString("mazraa.cozy.quests", "")); if (s != null && s.quests != null) state = s; }
         catch (Exception) { }
         HudLines.Status.Remove(HudLine);
@@ -58,6 +66,7 @@ public class DailyQuests : MonoBehaviour
         GameEvents.ProductsCollected += OnCollected;
         FieldPlot.FieldPlanted += OnPlanted;
         GameEvents.NewGameStarted += OnNewGame;
+        GameEvents.RegionChanged += OnRegion;
         Loc.OnLanguageChanged += Refresh;
         if (state.day != CozyFx.Today || state.quests.Count == 0) Roll(CozyFx.Today);
         Invoke(nameof(BuildBoard), 1.5f);
@@ -72,6 +81,7 @@ public class DailyQuests : MonoBehaviour
         GameEvents.ProductsCollected -= OnCollected;
         FieldPlot.FieldPlanted -= OnPlanted;
         GameEvents.NewGameStarted -= OnNewGame;
+        GameEvents.RegionChanged -= OnRegion;
         Loc.OnLanguageChanged -= Refresh;
         HudLines.Status.Remove(HudLine);
         if (Instance == this) Instance = null;
@@ -85,6 +95,15 @@ public class DailyQuests : MonoBehaviour
     }
 
     private void OnNewGame() { Roll(CozyFx.Today); }
+    private void OnRegion(string regionId) { FilterForRegion(); Roll(CozyFx.Today); }
+
+    /// <summary>Keep the current map's quest templates (Najd: the base ones; Egypt: its own, in Egyptian Arabic).</summary>
+    public void FilterForRegion()
+    {
+        var list = new List<QuestTemplate>();
+        foreach (var t in allTemplates) if (t != null && Regions.HasContent(t.regions)) list.Add(t);
+        templates = list.ToArray();
+    }
     private void OnDay(int day) { Roll(day); CozyFx.Alert(Loc.T("New daily quests at the market board")); }
 
     // ---------------- rolling ----------------
@@ -106,6 +125,7 @@ public class DailyQuests : MonoBehaviour
             int steps = Mathf.Max(0, (t.max - t.min) / Mathf.Max(1, t.step));
             int target = t.min + UnityEngine.Random.Range(0, steps + 1) * Mathf.Max(1, t.step);
             string good = t.goods != null && t.goods.Length > 0 ? t.goods[UnityEngine.Random.Range(0, t.goods.Length)] : null;
+            if (good != null && eco != null && !eco.GoodAvailable(good)) { i--; continue; }   // never ask for a crop this map can't grow
             int reward = t.rewardBase + Mathf.RoundToInt(target * t.rewardPerUnit);
             state.quests.Add(new ActiveQuest { template = t.id, type = t.type, good = good, target = target, reward = reward });
         }
@@ -151,6 +171,7 @@ public class DailyQuests : MonoBehaviour
     private void OnCustom(string type, float amount)
     {
         if (type == "petSaluki" || type == "flyFalcon" || type == "talkVillager") Add(type, amount);
+        else if (Array.Exists(templates, t => t.custom && t.type == type)) Add(type, amount);
     }
     private void OnHarvest(Cropbed b, float kg) => Add("harvestKg", kg);
     private void OnDelivered(float kg, int money) => Add("earn", money);

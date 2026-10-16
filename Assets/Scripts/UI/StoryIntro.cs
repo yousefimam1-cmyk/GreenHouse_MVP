@@ -53,8 +53,17 @@ public class StoryIntro : MonoBehaviour
         if (text == null) return;
         Loc.ApplyFont(text);
         text.alignment = Loc.IsArabic ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
-        text.text = "<size=150%><color=#FF9A3C><b>" + Loc.T("Mazraa") + "</b></color></size>\n\n" + Loc.T("STORY_BODY") +
+        text.text = "<size=150%><color=#FF9A3C><b>" + Loc.T("Mazraa") + "</b></color></size>\n\n" + Body() +
                     "\n\n<size=80%><color=#BBBBBB>" + Loc.T("[Enter] Start   [L] Arabic / English") + "</color></size>";
+    }
+
+    /// <summary>The opening story: the base game's text, or chapter 1 of a DLC map's own campaign (told by its narrator).</summary>
+    public static string Body()
+    {
+        var cm = CampaignManager.Instance;
+        if (cm == null || !cm.IsRegionCampaign || cm.Chapters.Length == 0) return Loc.T("STORY_BODY");
+        var c = cm.Chapters[0];
+        return "<b>" + Loc.Display(CampaignManager.Title(c)) + "</b>\n\n" + Loc.Display(CampaignManager.Intro(c)) + "\n\n<i>- " + Loc.Display(cm.Narrator) + "</i>";
     }
 
     private void Update()
