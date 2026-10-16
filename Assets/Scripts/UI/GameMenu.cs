@@ -11,7 +11,7 @@ using UnityEngine;
 public class GameMenu : MonoBehaviour
 {
     public enum Mode { Closed, Main, Pause }
-    private enum PageId { Root, Save, Load, Settings, Controls, ConfirmNew }
+    private enum PageId { Root, Save, Load, Settings, Controls, ConfirmNew, Campaign }
 
     /// <summary>Show the main menu when the game starts (headless tests turn this off).</summary>
     public static bool ShowOnStart = true;
@@ -93,16 +93,17 @@ public class GameMenu : MonoBehaviour
         ShowPage(PageId.Root);
     }
 
-    /// <summary>Main menu: list on the left over the moving farm (MainMenuScene). Pause menu: centred over a dark backdrop.</summary>
+    /// <summary>Main and pause menu: list on the left (main: over the moving farm; pause: over the frozen game, lightly dimmed).</summary>
     private void ApplyLayout()
     {
         var p = list.Panel;
         bool main = mode == Mode.Main;
-        if (backdrop != null) backdrop.color = new Color(0.02f, 0.02f, 0.015f, main ? 0.05f : 0.7f);
-        p.anchorMin = p.anchorMax = main ? new Vector2(0f, 0.5f) : new Vector2(0.5f, 0.5f);
-        p.pivot = main ? new Vector2(0f, 0.6f) : new Vector2(0.5f, 0.5f);
-        p.anchoredPosition = main ? new Vector2(64f, 0f) : Vector2.zero;
-        p.sizeDelta = new Vector2(main ? 560f : 860f, p.sizeDelta.y);
+        // Both menus: column on the left (MainMenuScene draws the farm cards / overview on the right).
+        if (backdrop != null) backdrop.color = new Color(0.02f, 0.02f, 0.015f, main ? 0.05f : 0.35f);
+        p.anchorMin = p.anchorMax = new Vector2(0f, 0.5f);
+        p.pivot = new Vector2(0f, 0.6f);
+        p.anchoredPosition = new Vector2(64f, 0f);
+        p.sizeDelta = new Vector2(main ? 560f : 600f, p.sizeDelta.y);
     }
 
     public void Close()
@@ -150,6 +151,7 @@ public class GameMenu : MonoBehaviour
             case PageId.Load: list.Show(() => MenuKit.Title(UiText.T("Load game")), SlotRows(false), () => UiText.T("[Enter] Choose   [Esc] Back")); break;
             case PageId.Settings: list.Show(() => MenuKit.Title(UiText.T("Settings")), SettingsRows(), () => UiText.T("[<- ->] Change   [Esc] Back"), sel); break;
             case PageId.Controls: list.Show(() => MenuKit.Title(UiText.T("Controls")), ControlRows(), ControlsFooter, sel); break;
+            case PageId.Campaign: list.Show(() => MenuKit.Title(UiText.T("Campaign")), CampaignRows(), () => UiText.T("[Enter] Replay chapter story   [Esc] Back"), sel); break;
             case PageId.ConfirmNew:
                 list.Show(() => MenuKit.Title(UiText.T("Start a new game?")), new List<MenuRow>
                 {
@@ -158,6 +160,26 @@ public class GameMenu : MonoBehaviour
                 }, () => UiText.T("[Enter] Choose   [Esc] Back"));
                 break;
         }
+    }
+
+    private List<MenuRow> CampaignRows()
+    {
+        var rows = new List<MenuRow>();
+        var cm = CampaignManager.Instance;
+        if (cm == null) return rows;
+        string[] lines = cm.Overview().TrimEnd('\n').Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            int ch = i;
+            string line = lines[i];
+            rows.Add(new MenuRow
+            {
+                label = () => line,
+                confirm = () => { Close(); cm.Show(cm.ChapterCard(ch, true, 0), 30f); },
+                enabled = () => ch <= cm.CurrentChapter || (MissionManager.Instance != null && MissionManager.Instance.AllDone),
+            });
+        }
+        return rows;
     }
 
     private static bool HasSave() => SaveData.HasKey("mazraa.introSeen") || SaveData.HasKey("mazraa.money") || SaveData.HasKey("mazraa.mission");
@@ -180,6 +202,11 @@ public class GameMenu : MonoBehaviour
         else
         {
             rows.Add(MenuRow.Button(() => UiText.T("Resume"), Close));
+            rows.Add(MenuRow.Button(() => UiText.T("Map"), () => { Close(); if (Minimap.Instance != null) Minimap.Instance.SetFull(true); }));
+            rows.Add(MenuRow.Button(() => UiText.T("Farm overview"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Stats); }));
+            rows.Add(MenuRow.Button(() => UiText.T("Inventory"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Inventory); }));
+            if (CampaignManager.Instance != null && CampaignManager.Instance.Chapters.Length > 0)
+                rows.Add(MenuRow.Button(() => UiText.T("Campaign"), () => Go(PageId.Campaign)));
             rows.Add(MenuRow.Button(() => UiText.T("Save game"), () => Go(PageId.Save)));
             rows.Add(MenuRow.Button(() => UiText.T("Load game"), () => Go(PageId.Load)));
         }

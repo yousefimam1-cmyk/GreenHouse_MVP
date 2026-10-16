@@ -15,6 +15,10 @@ public class MainMenuScene : MonoBehaviour
 {
     public static MainMenuScene Instance { get; private set; }
     public bool Showing { get; private set; }
+    public bool PauseView { get; private set; }
+    private TextMeshProUGUI overview;
+    private Image overviewBg;
+    private float overviewTimer;
 
     private Canvas canvas;
     private TextMeshProUGUI brand, tagline, version, cardsTitle;
@@ -78,6 +82,17 @@ public class MainMenuScene : MonoBehaviour
             rt.offsetMin = new Vector2(26f, 12f); rt.offsetMax = new Vector2(-18f, -12f);
             Brand(cardText[i]);
         }
+        // Pause menu: live farm overview on the right.
+        var ov = MenuKit.Rect("Farm Overview", canvas.transform, typeof(Image));
+        ov.anchorMin = ov.anchorMax = ov.pivot = new Vector2(1f, 1f);
+        ov.sizeDelta = new Vector2(520f, 560f);
+        ov.anchoredPosition = new Vector2(-64f, -170f);
+        overviewBg = Img(ov, ControlsTutorial.GreenDark);
+        overview = MenuKit.Text(ov, 22, Color.white, "Text");
+        var ort = overview.rectTransform;
+        ort.anchorMin = Vector2.zero; ort.anchorMax = Vector2.one;
+        ort.offsetMin = new Vector2(28f, 20f); ort.offsetMax = new Vector2(-24f, -20f);
+        Brand(overview);
         foreach (var t in new[] { brand, tagline, version, cardsTitle }) Brand(t);
         canvas.gameObject.SetActive(false);
     }
@@ -111,9 +126,12 @@ public class MainMenuScene : MonoBehaviour
 
     private void LateUpdate()
     {
-        bool want = GameMenu.Instance != null && GameMenu.Instance.CurrentMode == GameMenu.Mode.Main;
-        if (want != Showing) SetShowing(want);
-        if (!Showing || menuCam == null) return;
+        var mode = GameMenu.Instance != null ? GameMenu.Instance.CurrentMode : GameMenu.Mode.Closed;
+        bool want = mode != GameMenu.Mode.Closed;
+        bool pause = mode == GameMenu.Mode.Pause;
+        if (want != Showing || pause != PauseView) { if (Showing) SetShowing(false); PauseView = pause; if (want) SetShowing(true); }
+        if (Showing && PauseView) { overviewTimer -= Time.unscaledDeltaTime; if (overviewTimer <= 0f) { overviewTimer = 0.5f; overview.text = OverviewText(); } }
+        if (!Showing || PauseView || menuCam == null) return;
         // Slow orbit around the farm (unscaled: the game is paused under the menu).
         angle += Time.unscaledDeltaTime * 3.5f;
         Quaternion rot = Quaternion.Euler(0f, angle, 0f);
@@ -129,7 +147,9 @@ public class MainMenuScene : MonoBehaviour
         HideGameUi(on);
         if (on)
         {
+            SetPauseLayout(PauseView);
             focus = CozyFx.FarmStart;
+            if (PauseView) { Refresh(); return; }       // pause: the frozen game stays behind, no orbit camera
             if (menuCam == null)
             {
                 var go = new GameObject("Main Menu Camera");
@@ -144,6 +164,42 @@ public class MainMenuScene : MonoBehaviour
             Refresh();
         }
         else if (menuCam != null) menuCam.gameObject.SetActive(false);
+    }
+
+    private void SetPauseLayout(bool pause)
+    {
+        if (overviewBg == null) return;
+        overviewBg.gameObject.SetActive(pause);
+        cardsTitle.gameObject.SetActive(!pause);
+        for (int i = 0; i < SaveSlots.Count; i++) if (cardBg[i] != null) cardBg[i].gameObject.SetActive(!pause);
+        if (pause) overview.text = OverviewText();
+    }
+
+    /// <summary>Pause-menu overview: date/time/weather, money, campaign chapter and current mission.</summary>
+    public static string OverviewText()
+    {
+        var sb = new StringBuilder(512);
+        sb.Append("<size=120%><b><color=#E9D8B4>").Append(Loc.T("Farm overview")).Append("</color></b></size>\n\n");
+        var clock = WorldClock.Instance;
+        if (clock != null)
+            sb.Append(Loc.T("Day")).Append(' ').Append(clock.Day).Append("  -  ").Append(Loc.Display(clock.SeasonName())).Append("  -  ")
+              .Append(clock.TimeText()).Append("  -  ").Append(Loc.Display(clock.WeatherName())).Append('\n');
+        if (EconomyManager.Instance != null)
+            sb.Append(Loc.T("Money")).Append(": <color=#9BE07A>").Append(EconomyManager.Instance.Money.ToString("N0")).Append(' ').Append(Loc.T("SAR")).Append("</color>\n");
+        var cm = CampaignManager.Instance;
+        if (cm != null && cm.Chapters.Length > 0)
+        {
+            int ch = cm.CurrentChapter;
+            sb.Append("\n<color=#FAC240><b>").Append(Loc.T("CHAPTER")).Append(' ').Append(ch + 1).Append(": ")
+              .Append(Loc.Display(CampaignManager.Title(cm.Chapters[ch]))).Append("</b></color>  ")
+              .Append(Mathf.RoundToInt(cm.ChapterProgress(ch) * 100f)).Append("%\n");
+        }
+        var mm = MissionManager.Instance;
+        if (mm != null && mm.Current != null)
+            sb.Append("<b>").Append(Loc.Display(MissionManager.Title(mm.Current))).Append("</b>\n<size=90%>")
+              .Append(Loc.Display(MissionManager.Desc(mm.Current))).Append("</size>\n");
+        else if (mm != null && mm.AllDone) sb.Append(Loc.T("Campaign complete!")).Append('\n');
+        return sb.ToString();
     }
 
     // The farm HUD, minimap and hints stay hidden behind the main menu (restored when it closes).

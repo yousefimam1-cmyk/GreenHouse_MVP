@@ -385,3 +385,10 @@ MAZRAA ACADEMY - CONTROLS TUTORIAL + AUDIT FIXES (Oct 16 2026)
     same colour/texture. Tractor.fbx had a missing material (showed bright pink); it now falls back to tractor red
     (Build.MissingMaterialColor). The main menu hides the HUD/minimap canvases while it is open and always shapes the
     Arabic wordmark.
+--- Managers/CampaignManager.cs [MazraaSystem(36)] + Resources/Data/campaign.json: 7-chapter story campaign over the
+    mission chain (The Inheritance, Iron and Wheels, Life on the Farm, Growing Ambitions, Desert Wisdom, The Big Farm,
+    Heart of the Village), narrated by Abu Saleh, EN/AR. A new chapter shows a chapter card (does not pause, Enter/A or
+    auto-close); finishing a chapter shows its closing line and pays the chapter reward once (save keys mazraa.campaign.*).
+--- Pause menu (P): same left-column look as the main menu over the lightly dimmed game, HUD hidden, live Farm overview
+    on the right (day, season, time, weather, money, chapter %, current mission). New rows: Map, Farm overview, Inventory,
+    Campaign (chapter list with progress; Enter replays an unlocked chapter's story).

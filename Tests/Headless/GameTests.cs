@@ -452,6 +452,14 @@ static class Program
         PressKey(kb.vKey);
         T.Check("V switches back to the StarterAssets first person camera", !tp.IsThirdPerson && Camera.main == fpCam && fpCam.enabled && !GameSettings.ThirdPerson);
 
+        // ---- campaign chapters
+        var camp = CampaignManager.Instance;
+        T.Check("Campaign loads 7 chapters", camp != null && camp.Chapters.Length == 7, camp == null ? "null" : "" + camp.Chapters.Length);
+        T.Check("Missions map to chapters", camp.ChapterOfMission(0) == 0 && camp.ChapterOfMission(6) == 1 && camp.ChapterOfMission(44) == 6);
+        T.Check("Chapter card has title and narrator", camp.ChapterCard(1, true, 0).Contains("Iron and Wheels") && camp.ChapterCard(1, true, 0).Contains("Abu Saleh"));
+        T.Check("Campaign overview lists chapters", camp.Overview().Contains("The Inheritance") && camp.Overview().Contains("Heart of the Village"));
+        T.Check("Pause overview text builds", MainMenuScene.OverviewText().Contains("Farm overview"));
+
         // ---- controls tutorial (Mazraa Academy)
         var aca = ControlsTutorial.Instance;
         T.Check("Mazraa Academy system exists", aca != null);

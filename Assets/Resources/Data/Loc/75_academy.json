@@ -187,6 +187,54 @@
   {
    "en": "Early access",
    "ar": "وصول مبكر"
+  },
+  {
+   "en": "Campaign",
+   "ar": "الحملة"
+  },
+  {
+   "en": "Farm overview",
+   "ar": "نظرة على المزرعة"
+  },
+  {
+   "en": "[Enter] Replay chapter story   [Esc] Back",
+   "ar": "[Enter] أعد قصة الفصل   [Esc] رجوع"
+  },
+  {
+   "en": "CHAPTER",
+   "ar": "الفصل"
+  },
+  {
+   "en": "COMPLETE",
+   "ar": "مكتمل"
+  },
+  {
+   "en": "Chapter reward: +{0} SAR",
+   "ar": "مكافأة الفصل: +{0} ريال"
+  },
+  {
+   "en": "[D-pad right] Continue",
+   "ar": "[D-pad يمين] متابعة"
+  },
+  {
+   "en": "[Enter] Continue",
+   "ar": "[Enter] متابعة"
+  },
+  {
+   "en": "Campaign complete!",
+   "ar": "اكتملت الحملة!"
+  },
+  {
+   "en": "Done",
+   "ar": "تم"
+  },
+  {
+   "en": "Locked",
+   "ar": "مقفل"
+  },
+  {
+   "en": "Money",
+   "ar": "الفلوس"
   }
  ]
 }
