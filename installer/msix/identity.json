@@ -1,8 +1,8 @@
 {
- "notes": "Copy these 3 values from Partner Center > your app > Product identity before submitting. Placeholders work for testing the package only.",
- "identityName": "AlmadarekGames.Mazraa",
- "publisher": "CN=00000000-0000-0000-0000-000000000000",
- "publisherDisplayName": "Almadarek Games",
- "displayName": "Mazraa - Farming Simulator",
+ "notes": "Values from Partner Center > Mazraa (Store ID 9P0J538PSTV9) > Product identity. displayName must match the reserved app name.",
+ "identityName": "Sladewilsontv.Mazraa",
+ "publisher": "CN=F21FAFD6-3018-41CE-A2A4-B8308090E59C",
+ "publisherDisplayName": "Sladewilsontv",
+ "displayName": "Mazraa",
  "description": "Grow, trade and build your farm."
 }
