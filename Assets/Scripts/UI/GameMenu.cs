@@ -20,6 +20,7 @@ public class GameMenu : MonoBehaviour
 
     public Mode CurrentMode => mode;
     public MenuList List => list;
+    public Canvas MenuCanvas => canvas;
 
     private Mode mode = Mode.Closed;
     private PageId page = PageId.Root;

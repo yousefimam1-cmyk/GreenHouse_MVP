@@ -153,7 +153,7 @@ public class MainMenuScene : MonoBehaviour
         if (hide)
         {
             hidden.Clear();
-            Canvas menu = GameMenu.Instance != null ? GameMenu.Instance.GetComponentInChildren<Canvas>() : null;
+            Canvas menu = GameMenu.Instance != null ? GameMenu.Instance.MenuCanvas : null;
             foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
             {
                 if (c == null || c == canvas || c == menu || !c.enabled || !c.isRootCanvas) continue;
