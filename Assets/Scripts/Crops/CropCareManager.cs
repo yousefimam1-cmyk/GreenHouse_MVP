@@ -6,7 +6,9 @@ using UnityEngine;
 /// Soil, crop rotation, pests and diseases for the open fields (and whitefly in the greenhouses).
 /// - Soil fertility per field plot (100% at start): every harvest uses some up, more when the same crop family is
 ///   grown twice in a row; alfalfa (a legume) puts nitrogen back. Fertilizer and manure (shop, "Crop care") restore it.
-///   Yield x (0.55 + 0.45 x fertility). Planting a different family than the last harvest gives +15% yield.
+///   Yield x (0.55 + 0.45 x fertility). Crop rotation multiplies the yield by the family table in Data/soil.json
+///   (legume before a cereal +20%, cereal before a nightshade +15%, nightshade / melons / onions twice in a row -15%).
+///   The detailed soil (N, P, K, pH, salinity, water...) is SoilManager; fertilizer and manure spread here feed it too.
 /// - Pests roll every morning by season, weather and crop family (aphids, whitefly, blight; desert locust swarms
 ///   are a rare event after rain in winter/spring). Pests slow growth and add yield damage every day until treated:
 ///   E on the plot uses a matching cure you own (ladybugs, neem spray, pesticide), which also protects for a few days.
@@ -21,9 +23,15 @@ public class CropCareManager : MonoBehaviour
     public const float RotationBonus = 1.15f;
     private const string P = "mazraa.crops.";
 
+    /// <summary>Fertilizer or manure from the Crop care page was spread on a plot (SoilManager adds its nutrients).</summary>
+    public static event Action<FieldPlot, CureDef> Fertilized;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics() { Fertilized = null; }
+
     public class PlotCare
     {
-        public float fertility = 1f, damage, regrow = -1f;
+        public float fertility = 1f, damage, regrow = -1f, rotation = 1f;
         public string lastFamily = "", pest = "";
         public bool rotated;
         public int protectDays, cuts;
@@ -90,9 +98,11 @@ public class CropCareManager : MonoBehaviour
             lastFamily = SaveData.GetString(k + "last", ""),
             pest = SaveData.GetString(k + "pest", ""),
             rotated = SaveData.GetInt(k + "rot", 0) == 1,
+            rotation = SaveData.GetFloat(k + "rotm", -1f),
             protectDays = SaveData.GetInt(k + "prot", 0),
             cuts = SaveData.GetInt(k + "cuts", 0),
         };
+        if (c.rotation < 0f) c.rotation = c.rotated ? RotationBonus : 1f;   // saves from before the rotation table
         plots[index] = c;
         return c;
     }
@@ -103,6 +113,7 @@ public class CropCareManager : MonoBehaviour
         SaveData.SetFloat(k + "fert", c.fertility); SaveData.SetFloat(k + "dmg", c.damage);
         SaveData.SetString(k + "last", c.lastFamily); SaveData.SetString(k + "pest", c.pest);
         SaveData.SetInt(k + "rot", c.rotated ? 1 : 0); SaveData.SetInt(k + "prot", c.protectDays); SaveData.SetInt(k + "cuts", c.cuts);
+        SaveData.SetFloat(k + "rotm", c.rotation);
         SaveData.Save();
     }
 
@@ -161,7 +172,7 @@ public class CropCareManager : MonoBehaviour
     public float YieldMultiplier(FieldPlot p)
     {
         var c = Plot(p.index);
-        return (0.55f + 0.45f * Mathf.Clamp01(c.fertility)) * (c.rotated ? RotationBonus : 1f) * (1f - Mathf.Clamp01(c.damage));
+        return (0.55f + 0.45f * Mathf.Clamp01(c.fertility)) * c.rotation * (1f - Mathf.Clamp01(c.damage));
     }
 
     private static float PlotGrowth(FieldPlot p) => Instance != null ? Instance.GrowthMultiplier(p) : 1f;
@@ -174,14 +185,17 @@ public class CropCareManager : MonoBehaviour
     {
         var c = Plot(p.index);
         string family = CropsData.Family(p.CropId);
-        c.rotated = !string.IsNullOrEmpty(c.lastFamily) && c.lastFamily != family;
+        c.rotation = SoilData.Rotation(c.lastFamily, family);
+        c.rotated = !string.IsNullOrEmpty(c.lastFamily) && c.lastFamily != family && c.rotation > 1.001f;
         c.cuts = 0; c.damage = 0f; c.pest = ""; c.regrow = -1f;
         SavePlot(p.index);
         if (c.rotated)
         {
             GameEvents.RaiseCustom("cropsRotate", 1f);
-            CropsText.Say(CropsText.R("Crop rotation: +15% yield"));
+            CropsText.Say(CropsText.R("Crop rotation") + ": " + RotationText(c.rotation) + " " + CropsText.R("yield"));
         }
+        else if (c.rotation < 0.999f)
+            CropsText.Say(CropsText.R("Same crop family again: soil-borne disease") + " " + RotationText(c.rotation) + " " + CropsText.R("yield"));
         if (p.CropId == "alfalfa") GameEvents.RaiseCustom("cropsPlantAlfalfa", 1f);
     }
 
@@ -204,7 +218,7 @@ public class CropCareManager : MonoBehaviour
         if (more) { c.regrow = meta.regrowFrom; c.damage *= 0.5f; }
         else
         {
-            c.regrow = -1f; c.lastFamily = family; c.cuts = 0; c.damage = 0f; c.pest = ""; c.rotated = false;
+            c.regrow = -1f; c.lastFamily = family; c.cuts = 0; c.damage = 0f; c.pest = ""; c.rotated = false; c.rotation = 1f;
         }
         SavePlot(p.index);
     }
@@ -338,7 +352,7 @@ public class CropCareManager : MonoBehaviour
         {
             var pest = CropsData.Pest(c.pest);
             if (pest != null) s += " | " + CropsData.Name(pest) + "! " + (me.OwnedCureFor(c.pest) == null ? CropsText.R("Buy a cure (Crop care)") : "");
-            if (c.rotated) s += " | " + CropsText.R("Rotation +15%");
+            if (Mathf.Abs(c.rotation - 1f) > 0.001f) s += " | " + CropsText.R("Rotation") + " " + RotationText(c.rotation);
             var meta = CropsData.Meta(p.CropId);
             if (meta != null && meta.cuts > 1) s += " | " + CropsText.R("Cut") + " " + (c.cuts + 1) + "/" + meta.cuts;
         }
@@ -368,11 +382,19 @@ public class CropCareManager : MonoBehaviour
             if (f == null || !me.UseItem(f.id)) return false;
             c.fertility = Mathf.Min(1f, c.fertility + f.fertility);
             me.SavePlot(p.index);
+            Fertilized?.Invoke(p, f);
             GameEvents.RaiseCustom("cropsFertilize", 1f);
             CropsText.Say(CropsData.Name(f) + " - " + CropsText.R("Soil") + " " + CropsText.Pct(c.fertility));
             return true;
         }
         return false;
+    }
+
+    /// <summary>"+15%" / "-15%" for a rotation multiplier.</summary>
+    public static string RotationText(float mult)
+    {
+        int pct = Mathf.RoundToInt((mult - 1f) * 100f);
+        return (pct >= 0 ? "+" : "") + pct + "%";
     }
 
     public static string FamilyName(string family)
