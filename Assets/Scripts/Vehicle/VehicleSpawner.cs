@@ -36,8 +36,13 @@ public class VehicleSpawner : MonoBehaviour
         BuildPen(PenPos, Quaternion.LookRotation(fwd));
         BuildZone(MarketPos, ZoneKind.Market, new Color(1f, 0.75f, 0.2f), "Market");
         BuildStall(MarketPos + right * 8f, Quaternion.LookRotation(-right));
-        IgnoreFences();
+        // Fences block vehicles; gates open where the pads, parked vehicles and the pen are (again once plots and the track exist).
+        VehicleObstacles.EnsureFenceColliders();
+        VehicleObstacles.OpenGates();
+        Invoke(nameof(OpenGatesLater), 2.2f);
     }
+
+    private void OpenGatesLater() => VehicleObstacles.OpenGates();
 
     private static Vector3 Spot(string name, Vector3 fallback)
     {
@@ -72,50 +77,71 @@ public class VehicleSpawner : MonoBehaviour
         col.material = new PhysicsMaterial("Truck") { dynamicFriction = 0f, staticFriction = 0f, frictionCombine = PhysicsMaterialCombine.Minimum };
 
         Transform t = root.transform;
-        var body = Build.Mat(Orange, 0.55f, 0.1f);
+        // Everything but the primitive wheels sits on a "Body" pivot that pitches and rolls a little (VehicleVisuals).
+        Transform bodyRoot = new GameObject("Body").transform; bodyRoot.SetParent(t, false);
+        // Mazraa livery: green lower body and bed, sand cab, gold pinstripe, chrome grille and bumper, matte tyres.
+        var green = VehicleVisuals.Paint(VehicleVisuals.MazraaGreen);
+        var sand = VehicleVisuals.Paint(VehicleVisuals.MazraaSand);
+        var gold = Build.Mat(VehicleVisuals.MazraaGold, 0.75f, 0.8f);
         var dark = Build.Mat(new Color(0.08f, 0.08f, 0.09f), 0.3f);
-        var glass = Build.Mat(new Color(0.12f, 0.18f, 0.22f), 0.9f);
-        var steel = Build.Mat(new Color(0.55f, 0.56f, 0.58f), 0.6f, 0.6f);
-        var light = Build.Mat(new Color(1f, 0.95f, 0.8f), 0.8f, 0f, new Color(2.2f, 2.0f, 1.6f));
-        var tail = Build.Mat(new Color(0.8f, 0.05f, 0.05f), 0.6f, 0f, new Color(1.5f, 0.05f, 0.05f));
+        var glass = VehicleVisuals.Glass;
+        var chrome = VehicleVisuals.Chrome;
+        var rubber = VehicleVisuals.Rubber;
 
-        var model = Build.TryModel("Truck", t, 4.6f, -0.55f);
+        var model = Build.TryModel("Truck", bodyRoot, 4.6f, -0.55f);
         Transform cargo;
         var wheels = new Transform[4];
-        if (model != null) wheels = Build.FaceForwardAndFindWheels(model, t);
-        if (model == null)
+        VehicleVisuals.Layout layout;
+        if (model != null)
         {
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.25f, 0), new Vector3(1.7f, 0.35f, 4.5f), dark, "Chassis");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.75f, 1.55f), new Vector3(1.9f, 0.7f, 1.4f), body, "Hood");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 1.35f, 0.75f), new Vector3(1.85f, 0.95f, 1.3f), body, "Cab");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 1.45f, 1.41f), new Vector3(1.65f, 0.6f, 0.04f), glass, "Windshield", new Vector3(-12, 0, 0));
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0.93f, 1.5f, 0.75f), new Vector3(0.04f, 0.5f, 1.0f), glass);
-            Build.Part(PrimitiveType.Cube, t, new Vector3(-0.93f, 1.5f, 0.75f), new Vector3(0.04f, 0.5f, 1.0f), glass);
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.62f, 2.27f), new Vector3(1.6f, 0.3f, 0.06f), steel, "Grille");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0.65f, 0.85f, 2.26f), new Vector3(0.32f, 0.16f, 0.05f), light, "Headlight");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(-0.65f, 0.85f, 2.26f), new Vector3(0.32f, 0.16f, 0.05f), light, "Headlight");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.5f, 2.32f), new Vector3(1.95f, 0.18f, 0.12f), dark, "Bumper");
+            wheels = Build.FaceForwardAndFindWheels(model, t);
+            VehicleVisuals.Restyle(model, wheels, Resources.Load<Texture2D>("Models/Textures/colormap_truck"));
+            layout = VehicleVisuals.ModelLayout(model, wheels, t, bodyRoot, false);
+            cargo = new GameObject("Cargo").transform; cargo.SetParent(bodyRoot, false); cargo.localPosition = new Vector3(0, 0.55f, -1.2f);
+        }
+        else
+        {
+            Transform b = bodyRoot;
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.25f, 0), new Vector3(1.7f, 0.35f, 4.5f), dark, "Chassis");
+            // bonnet sloping down to the grille, cab with a rounded roof line
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.72f, 1.6f), new Vector3(1.86f, 0.62f, 1.3f), green, "Bonnet");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 1.02f, 1.62f), new Vector3(1.7f, 0.12f, 1.2f), green, "Bonnet top", new Vector3(4f, 0, 0));
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.8f, 0.75f), new Vector3(1.9f, 0.7f, 1.3f), green, "Cab base");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 1.45f, 0.72f), new Vector3(1.84f, 0.65f, 1.24f), sand, "Cab");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 1.8f, 0.68f), new Vector3(1.7f, 0.08f, 1.1f), sand, "Roof");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 1.48f, 1.36f), new Vector3(1.66f, 0.56f, 0.04f), glass, "Windshield", new Vector3(-14, 0, 0));
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0.93f, 1.5f, 0.75f), new Vector3(0.04f, 0.46f, 1.0f), glass, "Side window");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(-0.93f, 1.5f, 0.75f), new Vector3(0.04f, 0.46f, 1.0f), glass, "Side window");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 1.5f, 0.09f), new Vector3(1.5f, 0.42f, 0.04f), glass, "Rear window");
+            foreach (float x in new[] { -1f, 1f })
+            {
+                Build.Part(PrimitiveType.Cube, b, new Vector3(x * 0.96f, 1.02f, 0.2f), new Vector3(0.02f, 0.05f, 3.9f), gold, "Pinstripe");
+                Build.Part(PrimitiveType.Cube, b, new Vector3(x * 1.06f, 1.45f, 1.28f), new Vector3(0.12f, 0.18f, 0.04f), chrome, "Mirror");
+            }
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.66f, 2.27f), new Vector3(1.5f, 0.34f, 0.06f), chrome, "Grille");
+            for (int i = 0; i < 4; i++) Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.55f + i * 0.08f, 2.3f), new Vector3(1.4f, 0.025f, 0.02f), dark, "Grille slat");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.45f, 2.33f), new Vector3(1.98f, 0.18f, 0.14f), chrome, "Bumper");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.42f, -2.33f), new Vector3(1.9f, 0.14f, 0.1f), chrome, "Rear bumper");
             // Cargo bed
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.55f, -1.2f), new Vector3(1.9f, 0.12f, 2.2f), steel, "Bed");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0.92f, 0.85f, -1.2f), new Vector3(0.08f, 0.5f, 2.2f), body);
-            Build.Part(PrimitiveType.Cube, t, new Vector3(-0.92f, 0.85f, -1.2f), new Vector3(0.08f, 0.5f, 2.2f), body);
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.85f, -2.28f), new Vector3(1.9f, 0.5f, 0.08f), body, "Tailgate");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0.7f, 0.8f, -2.33f), new Vector3(0.25f, 0.14f, 0.04f), tail);
-            Build.Part(PrimitiveType.Cube, t, new Vector3(-0.7f, 0.8f, -2.33f), new Vector3(0.25f, 0.14f, 0.04f), tail);
-            cargo = new GameObject("Cargo").transform; cargo.SetParent(t, false); cargo.localPosition = new Vector3(0, 0.6f, -1.2f);
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.55f, -1.2f), new Vector3(1.9f, 0.12f, 2.2f), dark, "Bed");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0.92f, 0.85f, -1.2f), new Vector3(0.08f, 0.5f, 2.2f), green, "Bed side");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(-0.92f, 0.85f, -1.2f), new Vector3(0.08f, 0.5f, 2.2f), green, "Bed side");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.85f, -2.28f), new Vector3(1.9f, 0.5f, 0.08f), green, "Tailgate");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 1.12f, -1.2f), new Vector3(1.94f, 0.05f, 2.24f), sand, "Bed rail");
+            // exhaust stack behind the cab
+            Build.Part(PrimitiveType.Cylinder, b, new Vector3(0.82f, 1.45f, 0.0f), new Vector3(0.1f, 0.6f, 0.1f), chrome, "Exhaust stack");
+            cargo = new GameObject("Cargo").transform; cargo.SetParent(b, false); cargo.localPosition = new Vector3(0, 0.6f, -1.2f);
             Vector3[] wp = { new Vector3(0.88f, -0.1f, 1.45f), new Vector3(-0.88f, -0.1f, 1.45f), new Vector3(0.88f, -0.1f, -1.4f), new Vector3(-0.88f, -0.1f, -1.4f) };
             for (int i = 0; i < 4; i++)
             {
                 var w = new GameObject("Wheel").transform; w.SetParent(t, false); w.localPosition = wp[i];
-                Build.Part(PrimitiveType.Cylinder, w, Vector3.zero, new Vector3(0.9f, 0.16f, 0.9f), dark, "Tyre", new Vector3(0, 0, 90));
-                Build.Part(PrimitiveType.Cylinder, w, new Vector3(Mathf.Sign(wp[i].x) * 0.12f, 0, 0), new Vector3(0.5f, 0.05f, 0.5f), steel, "Rim", new Vector3(0, 0, 90));
+                Build.Part(PrimitiveType.Cylinder, w, Vector3.zero, new Vector3(0.9f, 0.16f, 0.9f), rubber, "Tyre", new Vector3(0, 0, 90));
+                Build.Part(PrimitiveType.Cylinder, w, new Vector3(Mathf.Sign(wp[i].x) * 0.12f, 0, 0), new Vector3(0.5f, 0.05f, 0.5f), chrome, "Rim", new Vector3(0, 0, 90));
                 Build.Part(PrimitiveType.Cube, w, new Vector3(Mathf.Sign(wp[i].x) * 0.17f, 0, 0), new Vector3(0.02f, 0.38f, 0.08f), dark, "Spoke");
                 wheels[i] = w;
+                Mudguard(b, wp[i], 0.45f, 0.3f, green);
             }
-        }
-        else
-        {
-            cargo = new GameObject("Cargo").transform; cargo.SetParent(t, false); cargo.localPosition = new Vector3(0, 0.55f, -1.2f);
+            layout = VehicleVisuals.TruckPrimitiveLayout();
         }
 
         foreach (var r in root.GetComponentsInChildren<Renderer>(true)) r.gameObject.layer = 7;
@@ -125,6 +151,7 @@ public class VehicleSpawner : MonoBehaviour
         truck.wheels = wheels;
         truck.cargoRoot = cargo;
         truck.exitPoint = exit;
+        VehicleVisuals.Setup(truck, bodyRoot, layout);
     }
 
     private void BuildZone(Vector3 pos, ZoneKind kind, Color color, string label)
@@ -205,6 +232,27 @@ public class VehicleSpawner : MonoBehaviour
                 }
             }
         }
+        // Solid fence: one box per side (two on the front, either side of the gate) on the Ignore Raycast layer, so vehicles
+        // and the player can't pass the rails but ground probes never land on them.
+        for (int side = 0; side < 4; side++)
+        {
+            bool alongX = side % 2 == 0;
+            float len = alongX ? s.x : s.y;
+            float edge = alongX ? (side == 0 ? 1 : -1) * s.y / 2f : (side == 1 ? 1 : -1) * s.x / 2f;
+            var runs = side == 0 ? new[] { new Vector2(-len / 2f, -1.6f), new Vector2(1.6f, len / 2f) } : new[] { new Vector2(-len / 2f, len / 2f) };
+            foreach (var run in runs)
+            {
+                float mid = (run.x + run.y) * 0.5f, l = run.y - run.x;
+                Vector3 local = alongX ? new Vector3(mid, 0f, edge) : new Vector3(edge, 0f, mid);
+                var wall = new GameObject("Pen Fence");
+                wall.layer = 2;
+                wall.transform.SetPositionAndRotation(Build.OnGround(t.TransformPoint(local), 0.6f), t.rotation);
+                wall.transform.SetParent(t, true);
+                var bc = wall.AddComponent<BoxCollider>();
+                bc.size = alongX ? new Vector3(l, 1.2f, 0.2f) : new Vector3(0.2f, 1.2f, l);
+            }
+        }
+
         // Trough, hay and collection crate
         var trough = Build.Part(PrimitiveType.Cube, null, Vector3.zero, new Vector3(3f, 0.45f, 0.7f), wood, "Trough");
         trough.transform.position = Build.OnGround(t.TransformPoint(new Vector3(0, 0, -s.y / 2f + 1.2f)), 0.22f); trough.transform.rotation = t.rotation; trough.transform.SetParent(t, true);
@@ -273,42 +321,57 @@ public class VehicleSpawner : MonoBehaviour
         col.center = new Vector3(0, 0.75f, 0.2f); col.size = new Vector3(2.0f, 1.6f, 3.4f);
         col.material = new PhysicsMaterial("Tractor") { dynamicFriction = 0f, staticFriction = 0f, frictionCombine = PhysicsMaterialCombine.Minimum };
         Transform t = root.transform;
-        var red = Build.Mat(new Color(0.72f, 0.1f, 0.08f), 0.55f, 0.1f);
+        Transform bodyRoot = new GameObject("Body").transform; bodyRoot.SetParent(t, false);
+        var red = VehicleVisuals.Paint(VehicleVisuals.TractorRed);
         var dark = Build.Mat(new Color(0.08f, 0.08f, 0.09f), 0.3f);
         var steel = Build.Mat(new Color(0.55f, 0.56f, 0.58f), 0.6f, 0.6f);
-        var glass = Build.Mat(new Color(0.12f, 0.18f, 0.22f), 0.9f);
-        var yellow = Build.Mat(new Color(0.95f, 0.75f, 0.1f), 0.4f);
-        var light = Build.Mat(new Color(1f, 0.95f, 0.8f), 0.8f, 0f, new Color(2.2f, 2.0f, 1.6f));
+        var chrome = VehicleVisuals.Chrome;
+        var glass = VehicleVisuals.Glass;
+        var rubber = VehicleVisuals.Rubber;
+        var yellow = Build.Mat(new Color(0.95f, 0.75f, 0.1f), 0.5f, 0.2f);
         var wheels = new Transform[4];
+        VehicleVisuals.Layout layout;
         Build.MissingMaterialColor = new Color(0.72f, 0.12f, 0.08f);     // tractor red if the model's material is missing
-        var tractorModel = Build.TryModel("Tractor", t, 3.6f, -0.75f);
+        var tractorModel = Build.TryModel("Tractor", bodyRoot, 3.6f, -0.75f);
         Build.MissingMaterialColor = new Color(0.6f, 0.6f, 0.6f);
-        if (tractorModel != null) wheels = Build.FaceForwardAndFindWheels(tractorModel, t);
-        if (tractorModel == null)
+        if (tractorModel != null)
         {
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.55f, 0.9f), new Vector3(1.0f, 0.75f, 2.2f), red, "Engine");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.6f, 2.02f), new Vector3(0.95f, 0.6f, 0.06f), steel, "Grille");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0.3f, 0.75f, 2.04f), new Vector3(0.2f, 0.12f, 0.04f), light);
-            Build.Part(PrimitiveType.Cube, t, new Vector3(-0.3f, 0.75f, 2.04f), new Vector3(0.2f, 0.12f, 0.04f), light);
-            Build.Part(PrimitiveType.Cylinder, t, new Vector3(0.3f, 1.4f, 1.4f), new Vector3(0.1f, 0.5f, 0.1f), dark, "Exhaust");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 0.75f, -0.45f), new Vector3(1.6f, 0.35f, 1.3f), red, "Fenders");
+            wheels = Build.FaceForwardAndFindWheels(tractorModel, t);
+            VehicleVisuals.Restyle(tractorModel, wheels, Resources.Load<Texture2D>("Models/Textures/colormap_tractor"));
+            layout = VehicleVisuals.ModelLayout(tractorModel, wheels, t, bodyRoot, true);
+        }
+        else
+        {
+            Transform b = bodyRoot;
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.55f, 0.9f), new Vector3(1.0f, 0.75f, 2.2f), red, "Engine");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.95f, 1.0f), new Vector3(0.9f, 0.1f, 1.9f), red, "Bonnet top", new Vector3(3f, 0, 0));
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.6f, 2.02f), new Vector3(0.95f, 0.6f, 0.06f), steel, "Grille");
+            for (int i = 0; i < 4; i++) Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.42f + i * 0.12f, 2.05f), new Vector3(0.85f, 0.03f, 0.02f), dark, "Grille slat");
+            Build.Part(PrimitiveType.Cylinder, b, new Vector3(0.3f, 1.4f, 1.4f), new Vector3(0.1f, 0.28f, 0.1f), chrome, "Exhaust stack");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.75f, -0.45f), new Vector3(1.6f, 0.35f, 1.3f), red, "Fenders");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 0.25f, 2.15f), new Vector3(1.0f, 0.3f, 0.25f), dark, "Front weights");
             // Cab: roof + four posts + glass
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 2.25f, -0.45f), new Vector3(1.5f, 0.1f, 1.4f), red, "Roof");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 2.25f, -0.45f), new Vector3(1.55f, 0.1f, 1.5f), red, "Roof");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 2.18f, -0.45f), new Vector3(1.45f, 0.06f, 1.4f), Build.Mat(new Color(0.92f, 0.92f, 0.9f), 0.4f), "Roof liner");
             foreach (var px in new[] { -0.7f, 0.7f }) foreach (var pz in new[] { -1.1f, 0.2f })
-                Build.Part(PrimitiveType.Cube, t, new Vector3(px, 1.6f, pz), new Vector3(0.07f, 1.3f, 0.07f), dark, "Post");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 1.6f, 0.22f), new Vector3(1.35f, 1.1f, 0.03f), glass, "Glass");
-            Build.Part(PrimitiveType.Cube, t, new Vector3(0, 1.15f, -0.6f), new Vector3(0.5f, 0.12f, 0.5f), dark, "Seat");
+                Build.Part(PrimitiveType.Cube, b, new Vector3(px, 1.6f, pz), new Vector3(0.07f, 1.3f, 0.07f), dark, "Post");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 1.6f, 0.22f), new Vector3(1.35f, 1.1f, 0.03f), glass, "Glass");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 1.6f, -1.12f), new Vector3(1.35f, 1.0f, 0.03f), glass, "Rear glass");
+            Build.Part(PrimitiveType.Cube, b, new Vector3(0, 1.15f, -0.6f), new Vector3(0.5f, 0.12f, 0.5f), dark, "Seat");
+            Build.Part(PrimitiveType.Cylinder, b, new Vector3(0, 1.45f, -0.05f), new Vector3(0.36f, 0.02f, 0.36f), dark, "Steering wheel", new Vector3(-55f, 0, 0));
             Vector3[] wp = { new Vector3(0.65f, -0.15f, 1.55f), new Vector3(-0.65f, -0.15f, 1.55f), new Vector3(0.95f, 0.15f, -0.45f), new Vector3(-0.95f, 0.15f, -0.45f) };
             float[] ws = { 0.75f, 0.75f, 1.45f, 1.45f };
             for (int i = 0; i < 4; i++)
             {
                 var w = new GameObject("Wheel").transform; w.SetParent(t, false); w.localPosition = wp[i];
-                Build.Part(PrimitiveType.Cylinder, w, Vector3.zero, new Vector3(ws[i], i < 2 ? 0.14f : 0.24f, ws[i]), dark, "Tyre", new Vector3(0, 0, 90));
+                Build.Part(PrimitiveType.Cylinder, w, Vector3.zero, new Vector3(ws[i], i < 2 ? 0.14f : 0.24f, ws[i]), rubber, "Tyre", new Vector3(0, 0, 90));
                 Build.Part(PrimitiveType.Cylinder, w, new Vector3(Mathf.Sign(wp[i].x) * 0.14f, 0, 0), new Vector3(ws[i] * 0.55f, 0.04f, ws[i] * 0.55f), yellow, "Rim", new Vector3(0, 0, 90));
                 for (int k = 0; k < 3; k++)
                     Build.Part(PrimitiveType.Cube, w, new Vector3(Mathf.Sign(wp[i].x) * 0.18f, 0, 0), new Vector3(0.03f, ws[i] * 0.9f, 0.08f), dark, "Lug", new Vector3(k * 60f, 0, 0));
                 wheels[i] = w;
+                if (i < 2) Mudguard(b, wp[i], ws[i] * 0.5f, 0.2f, red);   // front mudguards (the rear wheels sit under the fenders)
             }
+            layout = VehicleVisuals.TractorPrimitiveLayout();
         }
         var hitch = new GameObject("Hitch").transform; hitch.SetParent(t, false); hitch.localPosition = new Vector3(0, 0, -2.6f);
         var exit = new GameObject("Exit").transform; exit.SetParent(t, false); exit.localPosition = new Vector3(-2.4f, 0.5f, 0f);
@@ -317,6 +380,7 @@ public class VehicleSpawner : MonoBehaviour
         var tractor = root.AddComponent<Tractor>();
         tractor.wheels = wheels; tractor.exitPoint = exit; tractor.hitch = hitch;
         tractor.rideHeight = 0.75f; tractor.footprint = new Vector2(0.95f, 1.5f); tractor.camDistance = 8f;
+        VehicleVisuals.Setup(tractor, bodyRoot, layout);
 
         // Implements (shown one at a time behind the tractor)
         var plow = new GameObject("Plow"); plow.transform.SetParent(hitch, false);
@@ -336,23 +400,12 @@ public class VehicleSpawner : MonoBehaviour
         tractor.RegisterVisual(Implement.Harvester, harvester);
     }
 
-    // Lets the vehicles pass the existing farm fences so they can leave the farm.
-    private static void IgnoreFences()
+    /// <summary>Mudguard over a wheel: a curved arch of three thin plates (primitive vehicles).</summary>
+    private static void Mudguard(Transform parent, Vector3 wheelPos, float radius, float width, Material mat)
     {
-        var vehicleCols = new System.Collections.Generic.List<Collider>();
-        foreach (var v in FindObjectsByType<Vehicle>(FindObjectsSortMode.None)) vehicleCols.AddRange(v.GetComponentsInChildren<Collider>());
-        if (vehicleCols.Count == 0) return;
-        var truckCols = vehicleCols;
-        foreach (var c in FindObjectsByType<Collider>(FindObjectsSortMode.None))
-        {
-            if (c == null || !InFence(c.transform)) continue;
-            foreach (var tc in truckCols) Physics.IgnoreCollision(tc, c, true);
-        }
-    }
-
-    private static bool InFence(Transform t)
-    {
-        for (; t != null; t = t.parent) if (t.name.IndexOf("Fence", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
-        return false;
+        float r = radius + 0.08f;
+        Build.Part(PrimitiveType.Cube, parent, wheelPos + new Vector3(0f, r, 0f), new Vector3(width, 0.05f, r * 0.9f), mat, "Mudguard");
+        foreach (float s in new[] { -1f, 1f })
+            Build.Part(PrimitiveType.Cube, parent, wheelPos + new Vector3(0f, r * 0.72f, s * r * 0.62f), new Vector3(width, 0.05f, r * 0.62f), mat, "Mudguard", new Vector3(s * 42f, 0f, 0f));
     }
 }
