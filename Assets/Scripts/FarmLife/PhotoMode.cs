@@ -49,8 +49,16 @@ public class PhotoMode : MonoBehaviour
     private static bool K(KeyControl k) => k != null && k.wasPressedThisFrame;
     private static bool B(ButtonControl b) => b != null && b.wasPressedThisFrame;
 
+    private bool restoreHelp;
+    private int restoreHelpFrame = -1;
+
     private void Update()
     {
+        if (restoreHelpFrame >= 0 && Time.frameCount >= restoreHelpFrame)
+        {
+            restoreHelpFrame = -1;
+            if (hintCanvas != null) hintCanvas.enabled = restoreHelp && Active;
+        }
         var kb = Keyboard.current;
         if (!Active)
         {
@@ -185,8 +193,9 @@ public class PhotoMode : MonoBehaviour
         string path = Path.Combine(dir, "mazraa_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + ".png");
         bool help = HelpVisible;
         if (hintCanvas != null) hintCanvas.enabled = false;   // the help is not in the picture
-        ScreenCapture.CaptureScreenshot(path);
-        if (hintCanvas != null) hintCanvas.enabled = help;
+        ScreenCapture.CaptureScreenshot(path);   // captured at the end of the frame: show the help again 2 frames later
+        restoreHelp = help;
+        restoreHelpFrame = Time.frameCount + 2;
         LastPhoto = path;
         GameEvents.RaiseCustom("photoTaken", 1f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX();

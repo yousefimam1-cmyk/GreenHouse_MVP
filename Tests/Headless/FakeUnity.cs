@@ -256,6 +256,7 @@ namespace UnityEngine
         public Transform parent { get => _parent; set => SetParent(value); }
         public int childCount => children.Count;
         public Transform GetChild(int i) => children[i];
+        public int GetSiblingIndex() => _parent != null ? _parent.children.IndexOf(this) : 0;
         public IEnumerator GetEnumerator() => children.GetEnumerator();
         internal IEnumerable<Transform> AllChildren() { foreach (var c in children.ToList()) { yield return c; foreach (var d in c.AllChildren()) yield return d; } }
         public void SetParent(Transform p) => SetParent(p, true);

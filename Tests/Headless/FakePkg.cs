@@ -76,7 +76,7 @@ namespace UnityEngine.Rendering.Universal
     public class ColorAdjustments : VolumeComponent { public VolumeParameter<float> postExposure, contrast, saturation; public VolumeParameter<UnityEngine.Color> colorFilter; }
     public class WhiteBalance : VolumeComponent { public VolumeParameter<float> temperature; }
     public class Vignette : VolumeComponent { public VolumeParameter<float> intensity, smoothness; }
-    public class UniversalRenderPipelineAsset : RenderPipelineAsset { public int msaaSampleCount; public float renderScale, shadowDistance;
+    public class UniversalRenderPipelineAsset : RenderPipelineAsset { public int msaaSampleCount, mainLightShadowmapResolution = 2048; public float renderScale, shadowDistance;
         public override RenderPipeline CreatePipeline() => null; }
     public enum AntialiasingMode { None, FastApproximateAntialiasing, SubpixelMorphologicalAntiAliasing }
     public enum AntialiasingQuality { Low, Medium, High }

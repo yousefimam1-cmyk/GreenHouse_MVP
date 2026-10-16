@@ -43,6 +43,7 @@ public class GraphicsEnhancer : MonoBehaviour
     private WhiteBalance balance;
     // Original URP asset values, restored on exit so Play mode doesn't permanently change project settings.
     private UniversalRenderPipelineAsset urpAsset;
+    private int origShadowRes = -1;
     private int origMsaa; private float origScale, origShadow;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -93,6 +94,8 @@ public class GraphicsEnhancer : MonoBehaviour
         urpAsset.msaaSampleCount = origMsaa;
         urpAsset.renderScale = origScale;
         urpAsset.shadowDistance = origShadow;
+        if (origShadowRes > 0) urpAsset.mainLightShadowmapResolution = origShadowRes;
+        RestoreAmbientOcclusion();
     }
 
     private void Update()
@@ -231,6 +234,13 @@ public class GraphicsEnhancer : MonoBehaviour
         QualitySettings.shadows = q == 0 ? UnityEngine.ShadowQuality.Disable : q == 1 ? UnityEngine.ShadowQuality.HardOnly : UnityEngine.ShadowQuality.All;
         QualitySettings.shadowResolution = q <= 1 ? UnityEngine.ShadowResolution.Low : q == 2 ? UnityEngine.ShadowResolution.Medium : UnityEngine.ShadowResolution.High;
         QualitySettings.shadowDistance = EffectiveShadowDistance;
+        // URP ignores QualitySettings shadow resolution: set the main light shadow map on the pipeline asset.
+        var urp = Instance != null ? Instance.urpAsset : null;
+        if (urp != null)
+        {
+            if (Instance.origShadowRes < 0) Instance.origShadowRes = urp.mainLightShadowmapResolution;
+            urp.mainLightShadowmapResolution = q <= 1 ? 1024 : q == 2 ? 2048 : 4096;
+        }
         if (origLodBias < 0f) origLodBias = QualitySettings.lodBias;
         QualitySettings.lodBias = GameSettings.LodBias > 0 ? GameSettings.LodBias / 100f : origLodBias;
     }
@@ -279,6 +289,19 @@ public class GraphicsEnhancer : MonoBehaviour
         cam.farClipPlane = GameSettings.ViewDistance > 0 ? GameSettings.ViewDistance : orig.y;
     }
 
+    private static readonly System.Collections.Generic.Dictionary<object, bool> aoOriginal = new System.Collections.Generic.Dictionary<object, bool>();
+
+    /// <summary>Put SSAO back as it was (in the editor SetActive changes the renderer asset itself).</summary>
+    private static void RestoreAmbientOcclusion()
+    {
+        foreach (var kv in aoOriginal)
+        {
+            try { var set = kv.Key.GetType().GetMethod("SetActive"); if (set != null) set.Invoke(kv.Key, new object[] { kv.Value }); }
+            catch (System.Exception) { }
+        }
+        aoOriginal.Clear();
+    }
+
     /// <summary>URP's SSAO is a renderer feature: switch it through reflection (the renderer list isn't public), ignore failures.</summary>
     private static void SetAmbientOcclusion(UniversalRenderPipelineAsset asset, bool on)
     {
@@ -298,7 +321,13 @@ public class GraphicsEnhancer : MonoBehaviour
                     if (feat != null && feat.GetType().Name.Contains("AmbientOcclusion"))
                     {
                         var set = feat.GetType().GetMethod("SetActive");
-                        if (set != null) set.Invoke(feat, new object[] { on });
+                        if (set == null) continue;
+                        if (!aoOriginal.ContainsKey(feat))
+                        {
+                            var act = feat.GetType().GetProperty("isActive");
+                            aoOriginal[feat] = act == null || (bool)act.GetValue(feat, null);
+                        }
+                        set.Invoke(feat, new object[] { on });
                     }
             }
         }
