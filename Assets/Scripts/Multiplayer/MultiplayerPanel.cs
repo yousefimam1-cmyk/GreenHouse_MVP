@@ -174,11 +174,11 @@ public class MultiplayerPanel : MonoBehaviour
         cy += 46f;
         cy += line;                                    // name
         if (!backend.Available) cy += line * 2f;
-        else if (!NetSession.IsOnline && !backend.Connecting) cy += line * 3.4f;
+        else if (!NetSession.IsOnline && !backend.Connecting) cy += line * 3.4f + line * 1.2f;
         else if (backend.Connecting) cy += line * 1.4f;
         else
         {
-            cy += line * (1.3f + mp.Players.Count) + line * 0.4f;
+            cy += line * (1.3f + mp.Players.Count) + line * 0.4f + line * 1.2f;
             var target = mp.NearestGiftTarget();
             cy += target == null ? line : line * (1f + ((GiftGoods().Count + 1) / 2));
             if (mp.PendingGifts.Count > 0) cy += line;
@@ -206,6 +206,7 @@ public class MultiplayerPanel : MonoBehaviour
             if (GUI.Button(R(x + w * 0.5f + 6f, cy, w * 0.5f - 6f, 40f), Mp.Tr("Join"), button)) { mp.SetPlayerName(nameField); mp.Join(ipField); }
             cy += line * 1.2f;
             GUI.Label(R(x, cy, w, 34f), Mp.Tr("Port 7777 (UDP) - allow the game in your firewall"), small); cy += line;
+            cy = DrawSafety(x, cy, w, line);
         }
         else if (backend.Connecting)
         {
@@ -218,11 +219,27 @@ public class MultiplayerPanel : MonoBehaviour
             string role = NetSession.IsHost ? Mp.Tr("You are hosting - friends join with your IP address") + (string.IsNullOrEmpty(lanAddress) ? "" : "  " + lanAddress)
                                             : Mp.Tr("You are visiting a friend's farm");
             GUI.Label(R(x, cy, w, 48f), role, label); cy += line * 1.3f;
-            foreach (var kv in mp.Players)
+            foreach (var kv in new List<KeyValuePair<ulong, string>>(mp.Players))
             {
-                string who = "- " + Mp.UserText(kv.Value) + (kv.Key == 0UL ? "  (" + Mp.Tr("host") + ")" : "") + (kv.Key == backend.LocalId ? "  (" + Mp.Tr("you") + ")" : "");
-                GUI.Label(R(x + 16f, cy, w - 16f, 34f), who, label); cy += line;
+                bool me = kv.Key == backend.LocalId;
+                string who = "- " + Mp.UserText(kv.Value) + (kv.Key == 0UL ? "  (" + Mp.Tr("host") + ")" : "") + (me ? "  (" + Mp.Tr("you") + ")" : "")
+                           + (ChatSafety.IsFriend(kv.Value) ? "  *" : "");
+                float bw = 96f;
+                GUI.Label(R(x + 16f, cy, me ? w - 16f : w - 16f - bw * 3f - 12f, 34f), who, label);
+                if (!me)
+                {
+                    float bx = x + w - bw * 3f - 8f;
+                    bool friend = ChatSafety.IsFriend(kv.Value);
+                    if (GUI.Button(R(bx, cy, bw - 4f, 32f), Mp.Tr(friend ? "Unfriend" : "Friend"), small)) ChatSafety.SetFriend(kv.Value, !friend);
+                    bool blocked = ChatSafety.IsBlocked(kv.Value);
+                    if (GUI.Button(R(bx + bw, cy, bw - 4f, 32f), Mp.Tr(blocked ? "Unblock" : "Block"), small))
+                    { if (blocked) ChatSafety.SetBlocked(kv.Value, false); else mp.Block(kv.Key, kv.Value); }
+                    if (GUI.Button(R(bx + bw * 2f, cy, bw - 4f, 32f), Mp.Tr("Report"), small))
+                        Application.OpenURL(mp.Report(kv.Key, kv.Value, "Reported from the co-op menu"));
+                }
+                cy += line;
             }
+            cy = DrawSafety(x, cy, w, line);
             cy += line * 0.4f;
             var target = mp.NearestGiftTarget();
             if (target == null) { GUI.Label(R(x, cy, w, 34f), Mp.Tr("Stand next to a visiting player to give a gift"), small); cy += line; }
@@ -254,6 +271,14 @@ public class MultiplayerPanel : MonoBehaviour
         if (!string.IsNullOrEmpty(mp.Status)) GUI.Label(R(x, cy, w, 34f), Mp.Tr(mp.Status), small);
         cy += line * 0.8f;
         GUI.Label(R(x, cy, w, 34f), Mp.Tr("[1-4] emotes   [Enter] chat   [F8] close"), small);
+    }
+
+    /// <summary>Chat and join settings row: Chat (Everyone / Friends only / Off), Who can join (Anyone / Friends only).</summary>
+    private float DrawSafety(float x, float cy, float w, float line)
+    {
+        if (GUI.Button(R(x, cy, w * 0.5f - 6f, 36f), Mp.Tr("Chat") + ": " + Mp.Tr(ChatSafety.ChatModeLabel(ChatSafety.Chat)), button)) ChatSafety.NextChatMode();
+        if (GUI.Button(R(x + w * 0.5f + 6f, cy, w * 0.5f - 6f, 36f), Mp.Tr("Who can join") + ": " + Mp.Tr(ChatSafety.JoinModeLabel(ChatSafety.Join)), button)) ChatSafety.NextJoinMode();
+        return cy + line * 1.2f;
     }
 
     /// <summary>Goods with enough in the farm storage for a gift.</summary>

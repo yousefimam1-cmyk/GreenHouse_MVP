@@ -179,6 +179,66 @@
   {
    "en": "Thank you!",
    "ar": "تسلم يدك!"
+  },
+  {
+   "en": "Chat is off (Co-op menu > Chat)",
+   "ar": "الدردشة متوقفة (قائمة اللعب الجماعي > الدردشة)"
+  },
+  {
+   "en": "{0} is blocked",
+   "ar": "تم حظر {0}"
+  },
+  {
+   "en": "Report saved - thank you. {0} is blocked",
+   "ar": "تم حفظ البلاغ - شكراً لك. تم حظر {0}"
+  },
+  {
+   "en": "{0} is blocked and can't join your farm",
+   "ar": "{0} محظور ولا يمكنه دخول مزرعتك"
+  },
+  {
+   "en": "{0} can't join: only friends can join your farm",
+   "ar": "لا يمكن لـ {0} الدخول: الأصدقاء فقط يمكنهم دخول مزرعتك"
+  },
+  {
+   "en": "Friend",
+   "ar": "صديق"
+  },
+  {
+   "en": "Unfriend",
+   "ar": "إزالة صديق"
+  },
+  {
+   "en": "Block",
+   "ar": "حظر"
+  },
+  {
+   "en": "Unblock",
+   "ar": "إلغاء الحظر"
+  },
+  {
+   "en": "Report",
+   "ar": "إبلاغ"
+  },
+  {
+   "en": "Who can join",
+   "ar": "من يمكنه الدخول"
+  },
+  {
+   "en": "Everyone",
+   "ar": "الجميع"
+  },
+  {
+   "en": "Friends only",
+   "ar": "الأصدقاء فقط"
+  },
+  {
+   "en": "Off",
+   "ar": "إيقاف"
+  },
+  {
+   "en": "Anyone",
+   "ar": "أي أحد"
   }
  ]
 }

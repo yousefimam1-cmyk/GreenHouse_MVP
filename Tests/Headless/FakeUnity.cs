@@ -483,6 +483,8 @@ namespace UnityEngine
         public static RuntimePlatform platform => RuntimePlatform.LinuxEditor;
         public static bool isEditor => true;
         public static void Quit() { }
+        public static string LastUrl;
+        public static void OpenURL(string url) { LastUrl = url; }
         public static bool isMobilePlatform => false;
     }
     public static class PlayerPrefs

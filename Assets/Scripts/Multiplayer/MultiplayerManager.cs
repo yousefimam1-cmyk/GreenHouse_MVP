@@ -26,7 +26,7 @@ public class MultiplayerManager : MonoBehaviour
     private static readonly string[] Emotes = { "Hello!", "Dance time!", "Yalla, well done!", "Thank you!" };
     public static string EmoteText(int i) => Emotes[Mathf.Clamp(i, 0, Emotes.Length - 1)];
 
-    public class ChatLine { public string text; public float time; }
+    public class ChatLine { public string text, from, message; public float time; }
 
     public string PlayerName { get; private set; }
     public string LastAddress { get; private set; }
@@ -328,17 +328,50 @@ public class MultiplayerManager : MonoBehaviour
 
     public void SendChat(string text)
     {
-        text = NetProtocol.Clean(text, 80);
+        text = ChatSafety.Filter(NetProtocol.Clean(text, 80));
         if (!NetSession.IsOnline || text.Length == 0) return;
-        AddChat(PlayerName, text);
+        if (ChatSafety.Chat == ChatSafety.ChatMode.Off) { Say(Mp.Tr("Chat is off (Co-op menu > Chat)")); return; }
+        ChatLog.Add(new ChatLine { text = PlayerName + ": " + text, from = PlayerName, message = text, time = Time.unscaledTime });
+        if (ChatLog.Count > 30) ChatLog.RemoveAt(0);
         if (NetSession.IsHost) backend.SendToClients(NetProtocol.Make(NetProtocol.Chat, NetProtocol.I((long)backend.LocalId), text), true);
         else backend.SendToHost(NetProtocol.Make(NetProtocol.Chat, text), true);
     }
 
-    private void AddChat(string from, string text)
+    /// <summary>Incoming chat: filtered, and hidden when the sender is blocked or chat is limited (ChatSafety).
+    /// Returns the text to show in a bubble, or null.</summary>
+    private string AddChat(string from, string text)
     {
-        ChatLog.Add(new ChatLine { text = from + ": " + text, time = Time.unscaledTime });
+        text = ChatSafety.Filter(text);
+        if (!recent.ContainsKey(from)) recent[from] = new List<string>();
+        recent[from].Add(text);
+        if (recent[from].Count > 5) recent[from].RemoveAt(0);
+        if (!ChatSafety.ShouldShow(from)) return null;
+        ChatLog.Add(new ChatLine { text = from + ": " + text, from = from, message = text, time = Time.unscaledTime });
         if (ChatLog.Count > 30) ChatLog.RemoveAt(0);
+        return text;
+    }
+
+    private readonly Dictionary<string, List<string>> recent = new Dictionary<string, List<string>>();
+
+    /// <summary>Last few messages a player sent (kept even when hidden, for reports).</summary>
+    public List<string> RecentMessages(string name) => recent.ContainsKey(name) ? new List<string>(recent[name]) : new List<string>();
+
+    /// <summary>Block a player: hide their chat; the host also removes them from the farm.</summary>
+    public void Block(ulong id, string name)
+    {
+        ChatSafety.SetBlocked(name, true);
+        ChatLog.RemoveAll(c => c.from == name);
+        if (NetSession.IsHost && id != backend.LocalId && Players.ContainsKey(id)) backend.Kick(id);
+        Say(Mp.Tr("{0} is blocked", Mp.Name(name)));
+    }
+
+    /// <summary>Report a player: saves the report, blocks them and returns the e-mail link to send it to the Mazraa team.</summary>
+    public string Report(ulong id, string name, string reason)
+    {
+        string url = ChatSafety.Report(name, RecentMessages(name), reason);
+        Block(id, name);
+        Say(Mp.Tr("Report saved - thank you. {0} is blocked", Mp.Name(name)));
+        return url;
     }
 
     /// <summary>The nearest other player within gift range who is a visitor (gifts go home with them), or null.</summary>
@@ -388,6 +421,12 @@ public class MultiplayerManager : MonoBehaviour
         {
             string n = NetProtocol.Clean(NetProtocol.Field(p, 1), 20);
             if (n.Length == 0) n = "Player " + sender;
+            if (!ChatSafety.AllowJoin(n))
+            {
+                backend.Kick(sender);
+                Say(Mp.Tr(ChatSafety.IsBlocked(n) ? "{0} is blocked and can't join your farm" : "{0} can't join: only friends can join your farm", Mp.Name(n)));
+                return;
+            }
             bool first = !Players.ContainsKey(sender) || Players[sender] == "Player " + sender;
             Players[sender] = n;
             if (remotes.ContainsKey(sender)) remotes[sender].SetName(n);
@@ -410,15 +449,16 @@ public class MultiplayerManager : MonoBehaviour
         else if (type == NetProtocol.Emote)
         {
             int i = NetProtocol.PI(NetProtocol.Field(p, 1));
-            GetRemote(sender).PlayEmote(i);
+            if (!ChatSafety.IsBlocked(who)) GetRemote(sender).PlayEmote(i);
             SendToOthers(sender, NetProtocol.Make(NetProtocol.Emote, NetProtocol.I((long)sender), NetProtocol.I(i)), true);
         }
         else if (type == NetProtocol.Chat)
         {
             string text = NetProtocol.Clean(NetProtocol.Field(p, 1), 80);
             if (text.Length == 0) return;
-            AddChat(who, text);
-            GetRemote(sender).Say(text);
+            string shown = AddChat(who, text);
+            if (shown != null) GetRemote(sender).Say(shown);
+            text = ChatSafety.Filter(text);
             SendToOthers(sender, NetProtocol.Make(NetProtocol.Chat, NetProtocol.I((long)sender), text), true);
         }
         else if (type == NetProtocol.Optimize)
@@ -452,15 +492,15 @@ public class MultiplayerManager : MonoBehaviour
         else if (type == NetProtocol.Emote)
         {
             ulong id = NetProtocol.PU(NetProtocol.Field(p, 1));
-            if (id != backend.LocalId) GetRemote(id).PlayEmote(NetProtocol.PI(NetProtocol.Field(p, 2)));
+            if (id != backend.LocalId && !(Players.ContainsKey(id) && ChatSafety.IsBlocked(Players[id]))) GetRemote(id).PlayEmote(NetProtocol.PI(NetProtocol.Field(p, 2)));
         }
         else if (type == NetProtocol.Chat)
         {
             ulong id = NetProtocol.PU(NetProtocol.Field(p, 1));
             string text = NetProtocol.Clean(NetProtocol.Field(p, 2), 80);
             if (id == backend.LocalId || text.Length == 0) return;
-            AddChat(Players.ContainsKey(id) ? Players[id] : "?", text);
-            GetRemote(id).Say(text);
+            string shown = AddChat(Players.ContainsKey(id) ? Players[id] : "?", text);
+            if (shown != null) GetRemote(id).Say(shown);
         }
         else if (type == NetProtocol.Echo) ApplyEcho(NetProtocol.Field(p, 1));
         else if (type == NetProtocol.Optimize) ApplyOptimize(NetProtocol.Field(p, 1), NetProtocol.Field(p, 2));

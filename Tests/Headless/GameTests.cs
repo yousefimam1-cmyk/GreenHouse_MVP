@@ -1579,6 +1579,40 @@ static class MpTests
         T.Check("Host: vehicle released when the client gets out", !truck.RemoteDriven && truck.CanInteract);
         net.Receive(5, NetProtocol.Make(NetProtocol.Chat, "Salam <b>all</b>"));
         T.Check("Host: client chat in the log (tags stripped)", mp.ChatLog.Last().text == "Sara: Salam ball/b", mp.ChatLog.Last().text);
+        // ---- chat safety: filter, friends-only chat, block, report, friends-only joining
+        T.Check("Chat filter: English and Arabic bad words hidden, normal words kept",
+            ChatSafety.Filter("you FUUUCK idiot") == "you ****** idiot" && ChatSafety.Filter("يا شرموط") == "يا *****" && ChatSafety.Filter("الشرموطة") == "********"
+            && ChatSafety.Filter("glass class grass") == "glass class grass" && ChatSafety.Filter("كسب المال") == "كسب المال", ChatSafety.Filter("you FUUUCK idiot") + " | " + ChatSafety.Filter("يا شرموط"));
+        net.Receive(5, NetProtocol.Make(NetProtocol.Chat, "what the shit"));
+        T.Check("Host: incoming chat filtered and relayed filtered", mp.ChatLog.Last().text == "Sara: what the ****" && !net.Sent.Any(x => x.msg.Contains("shit")), mp.ChatLog.Last().text);
+        ChatSafety.Chat = ChatSafety.ChatMode.FriendsOnly;
+        int logN = mp.ChatLog.Count;
+        net.Receive(5, NetProtocol.Make(NetProtocol.Chat, "hello friend?"));
+        T.Check("Chat: friends only hides strangers", mp.ChatLog.Count == logN);
+        ChatSafety.SetFriend("Sara", true);
+        net.Receive(5, NetProtocol.Make(NetProtocol.Chat, "now friends"));
+        T.Check("Chat: friends only shows friends", mp.ChatLog.Count == logN + 1);
+        ChatSafety.Chat = ChatSafety.ChatMode.Off;
+        mp.SendChat("anyone there");
+        T.Check("Chat off: nothing sent", !net.Sent.Any(x => x.msg.Contains("anyone there")));
+        ChatSafety.Chat = ChatSafety.ChatMode.Everyone;
+        string url = mp.Report(5, "Sara", "test");
+        T.Check("Report: saved to file, mail link ready, player blocked and removed", File.Exists(ChatSafety.ReportPath) && File.ReadAllText(ChatSafety.ReportPath).Contains("what the ****")
+            && url.StartsWith("mailto:" + ChatSafety.ReportEmail) && ChatSafety.IsBlocked("Sara") && !ChatSafety.IsFriend("Sara") && !net.Clients.Contains(5));
+        logN = mp.ChatLog.Count;
+        net.Receive(5, NetProtocol.Make(NetProtocol.Chat, "still here"));
+        T.Check("Block: blocked player's chat hidden", mp.ChatLog.Count == logN && !mp.ChatLog.Any(c => c.from == "Sara"));
+        net.Clients.Add(5);
+        net.Receive(5, NetProtocol.Make(NetProtocol.Hello, "Sara"));
+        T.Check("Block: blocked player can't join", !net.Clients.Contains(5));
+        ChatSafety.SetBlocked("Sara", false);
+        ChatSafety.Join = ChatSafety.JoinMode.FriendsOnly;
+        net.Clients.Add(7);
+        net.Receive(7, NetProtocol.Make(NetProtocol.Hello, "Stranger"));
+        T.Check("Join: friends only keeps strangers out", !net.Clients.Contains(7));
+        ChatSafety.Join = ChatSafety.JoinMode.Anyone;
+        net.Clients.Add(5);
+        net.Receive(5, NetProtocol.Make(NetProtocol.Hello, "Sara"));
         mp.SendGift(5, "wheat");
         eco.AddGood("wheat", 10f);
         w0 = eco.Stored("wheat");
