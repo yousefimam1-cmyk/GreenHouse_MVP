@@ -2976,6 +2976,7 @@ static class LifeTests
         herd.Seed(7);
         var ram = sheep.First(a => a.male);
         ewe.trait = 1.3f; ram.trait = 1.1f;
+        ewe.gestationLeft = 0;   // other systems may have run days earlier in the suite (time scale settings)
         int owned0 = eco.Owned("sheep"), days = 0;
         for (; days < 30 && !ewe.Pregnant; days++) { pen.FillWater(); pen.Clean(); eco.AddFeed(5f); herd.SimulateDay(clock.Day + days); foreach (var a in herd.Animals) a.illness = ""; }
         T.Check("Life: a healthy, happy ewe with a ram conceives", ewe.Pregnant && ewe.gestationLeft == SpeciesTraits.Get("sheep").gestation && Math.Abs(ewe.sireTrait - 1.1f) < 0.001f, "days " + days);
