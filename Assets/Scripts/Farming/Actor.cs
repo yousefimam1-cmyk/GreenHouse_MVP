@@ -14,6 +14,8 @@ public class Actor : MonoBehaviour
     public Vector3 home;
     public float radius = 8f, speed = 1.2f, flyHeight = 25f;
     public Vehicle vehicle;            // Driver mode
+    /// <summary>Dog, cat, horse, eagle... (not a person): flees when bumped or startled (NpcBump).</summary>
+    public bool IsAnimal;
 
     private Animation anim;
     private readonly Dictionary<string, string> clips = new Dictionary<string, string>();
@@ -33,6 +35,7 @@ public class Actor : MonoBehaviour
         a.model = m;
         a.mode = mode;
         a.home = pos;
+        a.IsAnimal = !modelName.StartsWith("Characters/");
         a.SetupClips();
         return a;
     }

@@ -105,6 +105,37 @@ public class Friendship : MonoBehaviour
         return v.old ? Mathf.Clamp01(p / PerHeart) : Mathf.Clamp01((p - Hearts(id) * PerHeart) / PerHeart);
     }
 
+    /// <summary>Total friendship points (hearts x points per heart + progress).</summary>
+    public float Points(string id)
+    {
+        var v = Def(id);
+        if (v == null) return 0f;
+        return v.old ? Villagers.Hearts(id) * PerHeart + Entry(id).pts : Entry(id).pts;
+    }
+
+    /// <summary>
+    /// The player bumped into this villager (vehicle or running into them): friendship drops a little, a heart can be lost
+    /// but never below zero. Returns the points actually lost.
+    /// </summary>
+    public float Bumped(string id, float pts)
+    {
+        var v = Def(id);
+        if (v == null || pts <= 0f) return 0f;
+        float before = Points(id);
+        var e = Entry(id);
+        if (v.old)
+        {
+            int h = Villagers.Hearts(id);
+            e.pts -= pts;
+            while (e.pts < 0f && h > 0) { h--; e.pts += PerHeart; }
+            if (e.pts < 0f) e.pts = 0f;
+            SaveData.SetInt("mazraa.cozy.v." + id + ".hearts", h);
+        }
+        else e.pts = Mathf.Max(0f, e.pts - pts);
+        Save();
+        return before - Points(id);
+    }
+
     public bool TalkedToday(string id) { var v = Def(id); return v != null && v.old ? Villagers.TalkedToday(id) : Entry(id).talkDay == CozyFx.Today; }
     public bool GiftedToday(string id) => Entry(id).giftDay == CozyFx.Today;
 

@@ -1437,6 +1437,7 @@ static class Program
 
         DrivingTests.Run();
         SharedKeyTests.Run();
+        BumpTests.Run();
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }

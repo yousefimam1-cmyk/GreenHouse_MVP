@@ -96,6 +96,24 @@ public class AmbientAudio : MonoBehaviour
         engine.volume = (off ? 0.05f : 0.3f + 0.25f * speed01 + 0.2f * v.Drive.Load) * fx;
     }
 
+    // ------------------------------------------------------------------ impacts
+    private AudioSource impact;
+    /// <summary>Thumps played (vehicle hits a fence, wall or someone).</summary>
+    public int Thumps { get; private set; }
+
+    /// <summary>A dull thump at a point (strength 0..1 sets loudness and pitch). Vehicles volume.</summary>
+    public void PlayThump(Vector3 at, float strength)
+    {
+        Thumps++;
+        var clip = ProceduralAudio.Get("thump");
+        if (clip == null) return;
+        if (impact == null) { impact = Source("Impact", null, false, 0.85f); impact.minDistance = 4f; impact.maxDistance = 50f; }
+        strength = Mathf.Clamp01(strength);
+        impact.transform.position = at;
+        impact.pitch = 1.1f - 0.3f * strength + (float)rnd.NextDouble() * 0.1f;
+        impact.PlayOneShot(clip, (0.35f + 0.65f * strength) * MazraaAudio.Effects * GameSettings.VehicleVolume);
+    }
+
     // ------------------------------------------------------------------ footsteps
     private void UpdateSteps(float dt, float fx)
     {
