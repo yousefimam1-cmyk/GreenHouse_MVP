@@ -4,6 +4,10 @@ using System.Globalization;
 using System.Text;
 using UnityEngine;
 
+/// <summary>Irrigation of one field. Farm = the farm's installed system (Utilities); Hand = only E; Flood = furrows from the well
+/// (automatic, low efficiency, no purchase); Sprinkler / Drip / Pivot need that system bought in the shop (Water page).</summary>
+public enum FieldWater { Farm = -1, Hand = 0, Flood = 1, Sprinkler = 2, Drip = 3, Pivot = 4 }
+
 /// <summary>
 /// Precision farming for the open fields: a soil model per plot (N, P, K, pH, organic matter, salinity, compaction, weeds,
 /// standing water), crop water use from the season, weather and region heat, irrigation method efficiency and salt build-up,
@@ -13,6 +17,9 @@ using UnityEngine;
 /// Soil processes tick every 2 s (cheap) and once per in-game day; nothing runs per frame except the cached drying factor.
 /// E on a field: take a soil sample (kit), spread an amendment you own, or leach salts; the Fields page of the farm info
 /// screen (pause menu > Fields, LB/RB in the info screen) lists every field. Saved under "mazraa.soil.*"; reset on a new game.
+/// Each field has its own irrigation (FieldWater): Q / Y on the field or Enter / A on the Fields page cycles the methods you own.
+/// Co-op: the host runs the soil and sends it with every farm sync (EncodeSync / ApplySync); a client's sample, spreading and
+/// leaching go to the host as E presses, density and irrigation changes as SoilSet messages (HostSetting).
 /// </summary>
 [MazraaSystem(32)]
 public class SoilManager : MonoBehaviour
@@ -63,6 +70,9 @@ public class SoilManager : MonoBehaviour
         AddOnce(FieldPlot.PromptExtras, PlotExtras);
         AddOnce(FieldPlot.PromptOverrides, PlotOverride);
         AddOnce(FieldPlot.InteractHandlers, PlotInteract);
+        AddOnce(FieldPlot.AutoWaterHooks, PlotAutoWater);
+        AddOnce(FieldPlot.SecondaryHandlers, PlotSecondary);
+        AddOnce(FieldPlot.SecondaryPrompts, PlotSecondaryPrompt);
     }
 
     private void OnDisable()
@@ -157,8 +167,223 @@ public class SoilManager : MonoBehaviour
         return true;
     }
 
-    public void SetDensity(int d) { Density = Mathf.Clamp(d, 0, 2); SaveGlobals(); }
-    public void CycleDensity(int dir) => SetDensity((Density + dir + 3) % 3);
+    public void SetDensity(int d) { Density = Mathf.Clamp(d, 0, 2); SaveGlobals(); NotifyNet(); }
+
+    /// <summary>Change the sowing density (on a co-op client: asks the host).</summary>
+    public void CycleDensity(int dir)
+    {
+        int d = (Density + dir + 3) % 3;
+        if (NetSession.IsClient) { NetSession.Backend.SendToHost(NetProtocol.Make(NetProtocol.SoilSet, "d", NetProtocol.I(d)), true); Density = d; return; }
+        SetDensity(d);
+    }
+
+    private static void NotifyNet() { if (NetSession.IsHost && MultiplayerManager.Instance != null) MultiplayerManager.Instance.MarkSyncDirty(); }
+
+    // ---------------------------------------------------------------- per-field irrigation
+
+    public static readonly string[] FieldWaterNames = { "Hand watering", "Flood (furrows)", "Sprinklers", "Drip lines", "Center pivot" };
+    public static string FieldWaterName(FieldWater w) => w == FieldWater.Farm ? "Farm system" : FieldWaterNames[Mathf.Clamp((int)w, 0, 4)];
+
+    public static IrrigationKind Kind(FieldWater w)
+    {
+        switch (w) { case FieldWater.Sprinkler: return IrrigationKind.Sprinklers; case FieldWater.Drip: return IrrigationKind.Drip; case FieldWater.Pivot: return IrrigationKind.CenterPivot; default: return IrrigationKind.None; }
+    }
+
+    public FieldWater Irrigation(FieldPlot p) => (FieldWater)Mathf.Clamp(Soil(p.index).irrigation, -1, 4);
+
+    /// <summary>Can a field use this method? Sprinklers, drip and the pivot must be bought in the shop (Utilities, Water page).</summary>
+    public static bool Available(FieldWater w)
+    {
+        if (w == FieldWater.Farm || w == FieldWater.Hand || w == FieldWater.Flood) return true;
+        var g = UtilityGrid.Instance;
+        return g != null && g.Model.Owns(Kind(w));
+    }
+
+    /// <summary>The irrigation kind a field's water demand counts as in the Utilities model (hand and flood = by hand).</summary>
+    public IrrigationKind EffectiveKind(FieldPlot p)
+    {
+        var w = Irrigation(p);
+        if (w == FieldWater.Farm) return UtilityGrid.Instance != null ? UtilityGrid.Instance.Model.Irrigation : IrrigationKind.None;
+        return Kind(w);
+    }
+
+    /// <summary>Efficiency, salt and leaching of the water this field gets now.</summary>
+    public SoilIrrigationDef IrrigationDef(FieldPlot p)
+    {
+        var w = Irrigation(p);
+        if (w == FieldWater.Farm) return SoilData.Irrigation(Method());
+        return SoilData.Irrigation(Kind(w));   // hand and flood: flood efficiency and salt
+    }
+
+    /// <summary>Set a field's irrigation (host / single player). False when that system isn't owned.</summary>
+    public bool SetIrrigation(int index, FieldWater w)
+    {
+        if (!Available(w) || FieldManager.Instance == null || index < 0 || index >= FieldManager.Instance.Plots.Count) return false;
+        Soil(index).irrigation = (int)w;
+        SavePlot(index);
+        NotifyNet();
+        return true;
+    }
+
+    /// <summary>Next method a field can use (skipping systems not bought).</summary>
+    public static FieldWater NextMethod(FieldWater w, int dir)
+    {
+        int cur = (int)w;
+        int step = dir < 0 ? -1 : 1;
+        for (int i = 0; i < 6; i++)
+        {
+            cur = (cur + 1 + step + 6) % 6 - 1;   // -1 .. 4
+            if (Available((FieldWater)cur)) return (FieldWater)cur;
+        }
+        return w;
+    }
+
+    /// <summary>Cycle a field's irrigation (Q on the field, Enter / A on the Fields page). On a co-op client: asks the host.</summary>
+    public void CycleIrrigation(FieldPlot p, int dir = 1)
+    {
+        if (p == null) return;
+        var next = NextMethod(Irrigation(p), dir);
+        if (NetSession.IsClient)
+        {
+            NetSession.Backend.SendToHost(NetProtocol.Make(NetProtocol.SoilSet, "i", NetProtocol.I(p.index), NetProtocol.I((int)next)), true);
+            Soil(p.index).irrigation = (int)next;   // shown at once; the host's sync confirms it
+        }
+        else SetIrrigation(p.index, next);
+        Say(FieldName(p) + " - " + SoilText.R("Irrigation") + ": " + SoilText.R(FieldWaterName(next)));
+    }
+
+    /// <summary>Is the field's own system running (water and power from the Utilities model)? -1 = follows the farm system.</summary>
+    private static int PlotAutoWater(FieldPlot p)
+    {
+        var me = Instance; if (me == null) return -1;
+        var w = me.Irrigation(p);
+        if (w == FieldWater.Farm) return -1;
+        if (w == FieldWater.Hand || !Available(w)) return 0;
+        var g = UtilityGrid.Instance;
+        if (g == null) return 1;
+        var m = g.Model;
+        if (m.WaterRatio <= 0.6f) return 0;
+        if (w == FieldWater.Drip) return m.PowerRatio > 0.2f ? 1 : 0;
+        if (w == FieldWater.Sprinkler || w == FieldWater.Pivot) return m.PowerRatio > 0.5f ? 1 : 0;
+        return 1;   // flood: gravity from the well / reservoir
+    }
+
+    private static bool PlotSecondary(FieldPlot p)
+    {
+        var me = Instance; if (me == null || p.State == PlotState.Ripe) return false;
+        me.CycleIrrigation(p, 1);
+        return true;
+    }
+
+    private static string PlotSecondaryPrompt(FieldPlot p)
+    {
+        var me = Instance; if (me == null || p.State == PlotState.Ripe) return null;
+        return SoilText.R("[Q] Irrigation") + ": " + SoilText.R(FieldWaterName(me.Irrigation(p)));
+    }
+
+    // ---------------------------------------------------------------- co-op
+
+    private readonly Dictionary<int, int> remoteYield = new Dictionary<int, int>();
+    private readonly Dictionary<int, int> remoteLimit = new Dictionary<int, int>();
+
+    /// <summary>Host: soil of every field and the farm's soil settings, compact (sent with each farm sync).</summary>
+    public string EncodeSync()
+    {
+        var sb = new StringBuilder();
+        var fm = FieldManager.Instance;
+        if (fm != null)
+            foreach (var p in fm.Plots)
+            {
+                if (p == null) continue;
+                var s = Soil(p.index);
+                bool growing = p.State == PlotState.Growing || p.State == PlotState.Ripe;
+                int pct = growing ? Mathf.RoundToInt(FieldPlot.YieldMultiplier(p) * 100f) : 0;
+                int lim = growing ? Factors(p).Limiting : -1;
+                char d = NetProtocol.Pair;
+                if (sb.Length > 0) sb.Append(NetProtocol.Item);
+                sb.Append(Mathf.RoundToInt(s.n)).Append(d).Append(Mathf.RoundToInt(s.p)).Append(d).Append(Mathf.RoundToInt(s.k)).Append(d)
+                  .Append(s.ph.ToString("0.0", CultureInfo.InvariantCulture)).Append(d).Append(s.om.ToString("0.00", CultureInfo.InvariantCulture)).Append(d)
+                  .Append(s.ec.ToString("0.00", CultureInfo.InvariantCulture)).Append(d).Append(Mathf.RoundToInt(s.compaction * 100f)).Append(d)
+                  .Append(Mathf.RoundToInt(s.weeds * 100f)).Append(d).Append(Mathf.RoundToInt(s.waterlog * 100f)).Append(d)
+                  .Append(Sampled(s) ? 1 : 0).Append(d).Append(s.density).Append(d).Append(s.irrigation).Append(d)
+                  .Append(s.mulch ? 1 : 0).Append(d).Append(pct).Append(d).Append(lim).Append(d).Append(NetProtocol.Clean(s.lastCrop, 20));
+            }
+        var it = new StringBuilder();
+        foreach (var kv in items)
+        {
+            if (kv.Value <= 0) continue;
+            if (it.Length > 0) it.Append(NetProtocol.Item);
+            it.Append(kv.Key).Append(NetProtocol.Pair).Append(kv.Value);
+        }
+        return NetProtocol.Make(NetProtocol.SoilSync, NetProtocol.I(Density), NetProtocol.F(WaterTodayM3), NetProtocol.F(WaterCostToday), NetProtocol.F(TempToday),
+            NetProtocol.F(SeasonEtToday), it.ToString(), sb.ToString());
+    }
+
+    /// <summary>Client: take the host's soil (shown in prompts and on the Fields page; never saved here).</summary>
+    public void ApplySync(string[] f)
+    {
+        if (!NetSession.IsClient || f == null || NetProtocol.Field(f, 0) != NetProtocol.SoilSync) return;
+        Density = Mathf.Clamp(NetProtocol.PI(NetProtocol.Field(f, 1)), 0, 2);
+        WaterTodayM3 = NetProtocol.PF(NetProtocol.Field(f, 2));
+        WaterCostToday = NetProtocol.PF(NetProtocol.Field(f, 3));
+        TempToday = NetProtocol.PF(NetProtocol.Field(f, 4));
+        SeasonEtToday = Mathf.Max(0.1f, NetProtocol.PF(NetProtocol.Field(f, 5)));
+        foreach (var k in new List<string>(items.Keys)) items[k] = 0;
+        string itemField = NetProtocol.Field(f, 6);
+        if (itemField.Length > 0)
+            foreach (var item in itemField.Split(NetProtocol.Item))
+            {
+                var kv = item.Split(NetProtocol.Pair);
+                if (kv.Length == 2 && items.ContainsKey(kv[0])) items[kv[0]] = Mathf.Max(0, NetProtocol.PI(kv[1]));
+            }
+        string plots = NetProtocol.Field(f, 7);
+        if (plots.Length == 0) return;
+        var list = plots.Split(NetProtocol.Item);
+        int day = WorldClock.Instance != null ? WorldClock.Instance.Day : 0;
+        for (int i = 0; i < list.Length; i++)
+        {
+            var v = list[i].Split(NetProtocol.Pair);
+            if (v.Length < 16) continue;
+            if (!states.TryGetValue(i, out var s)) { s = SoilState.New(SoilData.CurrentRegion.start); states[i] = s; }
+            s.n = NetProtocol.PF(v[0]); s.p = NetProtocol.PF(v[1]); s.k = NetProtocol.PF(v[2]); s.ph = NetProtocol.PF(v[3]); s.om = NetProtocol.PF(v[4]); s.ec = NetProtocol.PF(v[5]);
+            s.compaction = NetProtocol.PI(v[6]) / 100f; s.weeds = NetProtocol.PI(v[7]) / 100f; s.waterlog = NetProtocol.PI(v[8]) / 100f;
+            s.sampledDay = v[9] == "1" ? day : -1000;
+            s.density = Mathf.Clamp(NetProtocol.PI(v[10]), 0, 2);
+            s.irrigation = Mathf.Clamp(NetProtocol.PI(v[11]), -1, 4);
+            s.mulch = v[12] == "1";
+            remoteYield[i] = NetProtocol.PI(v[13]);
+            remoteLimit[i] = NetProtocol.PI(v[14]);
+            s.lastCrop = NetProtocol.Clean(v[15], 20);
+        }
+    }
+
+    /// <summary>Host: a client changed the sowing density or a field's irrigation. True when applied.</summary>
+    public bool HostSetting(string[] f)
+    {
+        if (!NetSession.IsHost) return false;
+        string what = NetProtocol.Field(f, 1);
+        if (what == "d") { SetDensity(NetProtocol.PI(NetProtocol.Field(f, 2))); return true; }
+        if (what == "i") return SetIrrigation(NetProtocol.PI(NetProtocol.Field(f, 2)), (FieldWater)Mathf.Clamp(NetProtocol.PI(NetProtocol.Field(f, 3)), -1, 4));
+        return false;
+    }
+
+    /// <summary>Client left the host's farm: back to the own farm's soil from the own save.</summary>
+    public void ReloadLocal()
+    {
+        states.Clear(); dirty.Clear(); remoteYield.Clear(); remoteLimit.Clear();
+        LoadGlobals();
+        RefreshClimate();
+    }
+
+    /// <summary>Expected yield (% of base) and limiting factor of a field: the host's values on a co-op client.</summary>
+    public bool Remote(int index, out int pct, out int lim)
+    {
+        pct = 0; lim = -1;
+        if (!NetSession.IsClient || !remoteYield.TryGetValue(index, out pct)) return false;
+        remoteLimit.TryGetValue(index, out lim);
+        return true;
+    }
+
 
     public bool Sampled(SoilState s)
     {
@@ -211,7 +436,6 @@ public class SoilManager : MonoBehaviour
         var fm = FieldManager.Instance;
         if (fm == null) return;
         var r = SoilData.CurrentRegion;
-        var irr = SoilData.Irrigation(Method());
         var clock = WorldClock.Instance;
         bool rain = clock != null && clock.Weather == Weather.Rain;
         float et = SeasonEtToday * WeatherEtToday;
@@ -226,7 +450,7 @@ public class SoilManager : MonoBehaviour
                 float dg = p.Growth - s.lastGrowth;
                 if (dg > 0f)
                 {
-                    float mm = SoilModel.Grow(s, SoilData.Crop(p.CropId), s.lastGrowth, dg, p.Water, TempToday, et, rain, irr, r.ecWater);
+                    float mm = SoilModel.Grow(s, SoilData.Crop(p.CropId), s.lastGrowth, dg, p.Water, TempToday, et, rain, IrrigationDef(p), r.ecWater);
                     BookWater(s, p, mm, r);
                     s.lastGrowth = p.Growth;
                 }
@@ -592,8 +816,8 @@ public class SoilManager : MonoBehaviour
     private static string Line(string s) => "\n" + Loc.Display(s);
 
     /// <summary>Fields page (precision farming): every field's soil, crop, expected yield, limiting factor, advice and yield history.
-    /// Shows `count` fields from `first`. Translated and shaped (also used by tests).</summary>
-    public static string FieldsText(int first = 0, int count = 4)
+    /// Shows `count` fields from `first`; `selected` (field index) is marked for Enter / A (its irrigation). Translated and shaped (also used by tests).</summary>
+    public static string FieldsText(int first = 0, int count = 4, int selected = -1)
     {
         var sb = new StringBuilder();
         sb.Append(MenuKit.Title(SoilText.T("Fields - precision farming")));
@@ -601,7 +825,7 @@ public class SoilManager : MonoBehaviour
         if (me == null || fm == null) return sb.ToString();
         var irr = SoilData.Irrigation(Method());
         sb.Append(Line(SoilText.R("Sowing density") + ": < " + DensityText(me.Density) + " >"));
-        sb.Append(Line(SoilText.R("Irrigation") + ": " + Loc.Raw(UtilitiesUI.IrrigationName(Method())) + " - " + SoilText.R("efficiency") + " " + Mathf.RoundToInt(irr.eff * 100f) + "%"));
+        sb.Append(Line(SoilText.R("Farm system") + ": " + Loc.Raw(UtilitiesUI.IrrigationName(Method())) + " - " + SoilText.R("efficiency") + " " + Mathf.RoundToInt(irr.eff * 100f) + "%"));
         sb.Append(Line(SoilText.R("Today") + ": " + me.TempToday.ToString("F0") + " C · " + SoilText.R("Groundwater") + " " + me.WaterTodayM3.ToString("F1") + " m3 (" + me.WaterCostToday.ToString("F1") + " " + Loc.Raw("SAR") + ")"));
         int n = fm.Plots.Count;
         first = Mathf.Clamp(first, 0, Mathf.Max(0, n - 1));
@@ -614,20 +838,25 @@ public class SoilManager : MonoBehaviour
             bool sampled = me.Sampled(s);
             bool growing = p.State == PlotState.Growing || p.State == PlotState.Ripe;
             sb.Append("\n");
-            string head = FieldName(p) + ": ";
+            string head = (i == selected ? "> " : "") + FieldName(p) + ": ";
             if (growing) head += CropName(p.CropId) + " " + Mathf.FloorToInt(p.Growth * 100f) + "% (" + SoilText.R(p.State == PlotState.Ripe ? "Ripe" : SoilModel.Stage(p.Growth)) + ")";
             else head += SoilText.R(p.State == PlotState.Plowed ? "Plowed" : "Untilled");
             head += " · " + SoilText.R("Moisture") + " " + CropsText.Pct(p.State == PlotState.Untilled ? 0f : p.Water) + " · " + SoilText.R("Weeds") + " " + CropsText.Pct(s.weeds);
             if (s.waterlog > 0.5f) head += " · " + SoilText.R("Waterlogged");
             sb.Append("\n").Append(MenuKit.Title(Loc.Display(head)));
+            var fw = me.Irrigation(p); var fdef = me.IrrigationDef(p);
+            sb.Append(Line(SoilText.R("Irrigation") + ": " + SoilText.R(FieldWaterName(fw)) + " - " + SoilText.R("efficiency") + " " + Mathf.RoundToInt(fdef.eff * 100f) + "%" +
+                           (p.AutoWatered() ? " - " + SoilText.R("automatic") : "")));
             sb.Append(Line(sampled ? SoilText.R("Soil test") + ": " + TestLine(s) : SoilText.R("Soil: not tested - buy a soil sample kit (Farm Shop, Soil) and press [E] on the field")));
             string l3 = SoilText.R("Last crop") + ": " + CropName(s.lastCrop);
             int limiting = -1;
             if (growing)
             {
-                var f = me.Factors(p);
-                limiting = f.Limiting;
-                l3 += " · " + SoilText.R("Expected yield") + ": " + ExpectedKg(p).ToString("F0") + " kg (" + Mathf.RoundToInt(FieldPlot.YieldMultiplier(p) * 100f) + "%)";
+                int pct;
+                if (!me.Remote(p.index, out pct, out limiting)) { limiting = me.Factors(p).Limiting; pct = Mathf.RoundToInt(FieldPlot.YieldMultiplier(p) * 100f); }
+                var def = EconomyManager.Instance != null ? EconomyManager.Instance.FieldCrop(p.CropId) : null;
+                float kg = (def != null ? def.yieldKg : 50f) * pct / 100f;
+                l3 += " · " + SoilText.R("Expected yield") + ": " + kg.ToString("F0") + " kg (" + pct + "%)";
                 l3 += " · " + SoilText.R("Limiting") + ": " + (limiting < 0 ? SoilText.R("nothing") : SoilFactors.NeedsTest(limiting) && !sampled ? SoilText.R("test the soil") : SoilText.R(SoilFactors.Names[limiting]));
             }
             else if (sampled)

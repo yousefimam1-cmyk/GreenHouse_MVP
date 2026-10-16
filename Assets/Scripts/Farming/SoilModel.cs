@@ -131,6 +131,8 @@ public class SoilState
     public float n, p, k, ph, om, ec, compaction, weeds, waterlog, residue, seedbed = 1f;
     public bool mulch, weedProtect;
     public int tillDepth, sampledDay = -1000, density = 1;
+    /// <summary>The field's own irrigation (FieldWater as int; -1 = the farm's system).</summary>
+    public int irrigation = -1;
     // this crop (reset at harvest)
     public float lastGrowth = -1f, accG, accN, accP, accK, accPh, accEc, accComp, stressW, stressLog, stressHeat;
     public float cycN, cycP, cycK, cycWater, cycCost;
@@ -153,7 +155,7 @@ public class SoilState
         float[] v = { n, p, k, ph, om, ec, compaction, weeds, waterlog, residue, seedbed, mulch ? 1 : 0, weedProtect ? 1 : 0, tillDepth, sampledDay, density,
                       lastGrowth, accG, accN, accP, accK, accPh, accEc, accComp, stressW, stressLog, stressHeat, cycN, cycP, cycK, cycWater, cycCost };
         for (int i = 0; i < v.Length; i++) { if (i > 0) sb.Append(','); sb.Append(F(v[i])); }
-        sb.Append(',').Append(appliedMask);
+        sb.Append(',').Append(appliedMask).Append(',').Append(irrigation);
         return sb.ToString();
     }
 
@@ -171,6 +173,7 @@ public class SoilState
         st.accPh = v[21]; st.accEc = v[22]; st.accComp = v[23]; st.stressW = v[24]; st.stressLog = v[25]; st.stressHeat = v[26];
         st.cycN = v[27]; st.cycP = v[28]; st.cycK = v[29]; st.cycWater = v[30]; st.cycCost = v[31];
         if (parts.Length > Fields) int.TryParse(parts[Fields], out st.appliedMask);
+        if (parts.Length > Fields + 1 && int.TryParse(parts[Fields + 1], out int irr)) st.irrigation = Mathf.Clamp(irr, -1, 4);
         return st;
     }
 }

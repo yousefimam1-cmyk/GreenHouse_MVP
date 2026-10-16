@@ -293,8 +293,28 @@
    "ar": "الحقول (الزراعة الدقيقة)"
   },
   {
-   "en": "Left / Right: sowing density   Up / Down: more fields   [Esc] close",
-   "ar": "يمين / يسار: كثافة البذر   أعلى / أسفل: حقول أخرى   [Esc] إغلاق"
+   "en": "Left / Right: sowing density   Up / Down: choose field   [Enter] irrigation   [Esc] close",
+   "ar": "يمين / يسار: كثافة البذر   أعلى / أسفل: اختر الحقل   [Enter] الري   [Esc] إغلاق"
+  },
+  {
+   "en": "Farm system",
+   "ar": "نظام المزرعة"
+  },
+  {
+   "en": "Hand watering",
+   "ar": "ري يدوي"
+  },
+  {
+   "en": "Flood (furrows)",
+   "ar": "ري بالغمر (أخاديد)"
+  },
+  {
+   "en": "[Q] Irrigation",
+   "ar": "[Q] الري"
+  },
+  {
+   "en": "automatic",
+   "ar": "تلقائي"
   },
   {
    "en": "[LB] [RB] or 1 2 3: Inventory / Farm stats / Fields",
