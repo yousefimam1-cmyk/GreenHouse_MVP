@@ -27,7 +27,8 @@ public class MissionManager : MonoBehaviour
     public int Index { get; private set; }
     public float Progress { get; private set; }
     public MissionDef Current => Index < Missions.Length ? Missions[Index] : null;
-    public bool AllDone => Index >= Missions.Length;
+    /// <summary>The whole chain is done (never true for an empty chain: free play and challenges have no missions).</summary>
+    public bool AllDone => Missions.Length > 0 && Index >= Missions.Length;
 
     /// <summary>Every mission of every map, in file order (Missions is the current map's chain).</summary>
     public MissionDef[] AllMissions { get; private set; } = new MissionDef[0];
@@ -48,10 +49,11 @@ public class MissionManager : MonoBehaviour
         Progress = SaveData.GetFloat(ProgressKey, 0f);
     }
 
-    // The chain of the current map: Najd plays the base missions; a map with its own story (Egypt DLC) plays its tagged ones.
+    // The chain of the current map (only in a campaign, see GameModes): Najd plays the base missions; a map with its own story (Egypt DLC) plays its tagged ones.
     private void BuildChain()
     {
         var chain = new System.Collections.Generic.List<MissionDef>();
+        if (!GameModes.HasStory) { Missions = chain.ToArray(); return; }   // free play / challenge: no mission chain
         foreach (var m in AllMissions) if (m != null && Regions.HasContent(m.regions)) chain.Add(m);
         Missions = chain.ToArray();
     }
@@ -216,6 +218,7 @@ public class MissionManager : MonoBehaviour
 
     public void ResetChain()
     {
+        BuildChain();   // the play mode may have changed (GameModes): campaign chain or none
         Index = 0; Progress = 0f;
         SaveData.SetInt(IndexKey, 0);
         SaveData.SetFloat(ProgressKey, 0f);

@@ -159,6 +159,7 @@ public class FarmLevel : MonoBehaviour
         return list;
     }
 
+    // Free play (GameModes.EverythingUnlocked): every decor and stand feature is open from level 1.
     /// <summary>Level that unlocks a decor / feature id (1 = from the start).</summary>
     public static int UnlockLevel(string id)
     {
@@ -168,7 +169,7 @@ public class FarmLevel : MonoBehaviour
         return 1;
     }
 
-    public static bool IsUnlocked(string id) => (Instance != null ? Instance.Level : 1) >= UnlockLevel(id);
+    public static bool IsUnlocked(string id) => GameModes.EverythingUnlocked || (Instance != null ? Instance.Level : 1) >= UnlockLevel(id);
 
     public static string UnlockName(string id)
     {

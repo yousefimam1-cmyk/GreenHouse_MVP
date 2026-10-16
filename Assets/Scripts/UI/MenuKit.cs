@@ -103,6 +103,8 @@ public class MenuRow
     public Action confirm;              // Enter / A / click
     public Action<int> adjust;          // Left / Right (-1 / +1); also the < > buttons
     public Func<bool> enabled;          // greyed out and skipped when false
+    public Func<Color> accent;          // optional colour bar on the reading side (Career slot cards: the map's flag colour)
+    public float height;                // optional row height (0 = automatic: 50, or 84 for two-line rows)
 
     public static MenuRow Button(Func<string> label, Action confirm) => new MenuRow { label = label, confirm = confirm };
     public static MenuRow Setting(Func<string> label, Func<string> value, Action<int> adjust) => new MenuRow { label = label, value = value, adjust = adjust, confirm = () => adjust(1) };
@@ -112,6 +114,7 @@ public class MenuRow
     internal TextMeshProUGUI text, valueText;
     internal MenuClick button;
     internal RectTransform minus, plus;
+    internal Image accentBar;
     public bool IsEnabled => enabled == null || enabled();
 }
 
@@ -159,7 +162,13 @@ public class MenuList
         r.button = MenuKit.Button(list, "Row " + index, () => { Selected = rows.IndexOf(r); if (r.IsEnabled && r.confirm != null) r.confirm(); Refresh(); }, out r.bg);
         r.button.onHover = () => { int i = rows.IndexOf(r); if (i >= 0 && i != Selected && r.IsEnabled) { Selected = i; Refresh(); } };
         r.rt = (RectTransform)r.button.transform;
-        r.rt.gameObject.AddComponent<LayoutElement>().minHeight = r.label != null && r.label().Contains("\n") ? 84 : 50;   // two-line rows (map / start choice)
+        r.rt.gameObject.AddComponent<LayoutElement>().minHeight = r.height > 0f ? r.height : r.label != null && r.label().Contains("\n") ? 84 : 50;   // two-line rows (map / start choice)
+        if (r.accent != null)
+        {
+            var bar = MenuKit.Rect("Accent", r.rt, typeof(Image));
+            r.accentBar = bar.GetComponent<Image>();
+            r.accentBar.raycastTarget = false;
+        }
         r.text = MenuKit.Text(r.rt, 24, Color.white, "Label");
         if (r.value != null || r.adjust != null) r.valueText = MenuKit.Text(r.rt, 24, new Color(1f, 0.85f, 0.6f), "Value");
         if (r.adjust != null)
@@ -213,7 +222,17 @@ public class MenuList
             if (r.valueText != null) r.valueText.color = hc ? (sel ? Color.black : Color.white) : new Color(1f, 0.85f, 0.6f);
             var lrt = r.text.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
-            if (r.valueText == null) { lrt.offsetMin = new Vector2(16, 4); lrt.offsetMax = new Vector2(-16, -4); }
+            if (r.accentBar != null)
+            {
+                // flag-colour bar on the reading side (left in English, right in Arabic)
+                var art = r.accentBar.rectTransform;
+                float aside = rtl ? 1f : 0f;
+                art.anchorMin = new Vector2(aside, 0f); art.anchorMax = new Vector2(aside, 1f); art.pivot = new Vector2(aside, 0.5f);
+                art.sizeDelta = new Vector2(10f, 0f); art.anchoredPosition = Vector2.zero;
+                var ac = r.accent(); if (!on) ac.a *= 0.4f;
+                r.accentBar.color = ac;
+            }
+            if (r.valueText == null) { lrt.offsetMin = new Vector2(r.accentBar != null && !rtl ? 30 : 16, 4); lrt.offsetMax = new Vector2(r.accentBar != null && rtl ? -30 : -16, -4); }
             else
             {
                 // label on the reading side, [<  value  >] on the other side

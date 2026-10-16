@@ -90,6 +90,13 @@ public class LandOffice : MonoBehaviour
         FinText.Alert(FinText.T("New farmland: {0} plots added beyond the fields", p.plots));
     }
 
+    /// <summary>Free play (GameModes): own every parcel from the start, without paying.</summary>
+    public void GrantAll()
+    {
+        Owned = Parcels.Length;
+        SaveData.SetInt("mazraa.fin.land", Owned);
+    }
+
     private void OnNewGame()
     {
         Owned = 0;

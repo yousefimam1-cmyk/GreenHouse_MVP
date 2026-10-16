@@ -12,13 +12,14 @@ public class StoryIntro : MonoBehaviour
 
     private void Start()
     {
-        if (SaveData.GetInt("mazraa.introSeen", 0) == 1) return;
+        if (SaveData.GetInt("mazraa.introSeen", 0) == 1 || !GameModes.HasStory) return;
         Invoke(nameof(Show), 1.2f);
     }
 
     private void Show()
     {
         if (GameMenu.IsOpen) { Invoke(nameof(Show), 0.5f); return; }   // after the main menu closes
+        if (!GameModes.HasStory || SaveData.GetInt("mazraa.introSeen", 0) == 1) return;   // free play / challenge (or loaded a farm): no story
         canvasGo = new GameObject("Story Intro", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         canvasGo.transform.SetParent(transform, false);
         var canvas = canvasGo.GetComponent<Canvas>();

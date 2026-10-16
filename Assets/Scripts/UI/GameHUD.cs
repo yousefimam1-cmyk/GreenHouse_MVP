@@ -446,7 +446,9 @@ public class GameHUD : MonoBehaviour
             }
         }
         var mm = MissionManager.Instance;
-        if (mm != null)
+        if (mm != null && mm.Missions.Length == 0)
+            sb.Append("\n\n").Append(Title(Loc.T(GameModes.Current == GameModes.Mode.Challenge ? "Challenge" : "Free play")));   // no mission chain outside the campaign
+        else if (mm != null)
         {
             sb.Append("\n\n");
             if (mm.AllDone) sb.Append(Title(Loc.T("All missions complete - free play")));

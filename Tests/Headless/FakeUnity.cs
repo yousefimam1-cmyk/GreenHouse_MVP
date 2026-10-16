@@ -492,6 +492,7 @@ namespace UnityEngine
         public static string persistentDataPath => FakeEngine.PersistentPath;
         public static RuntimePlatform platform => RuntimePlatform.LinuxEditor;
         public static bool isEditor => true;
+        public static string version => "0.9.0";
         public static void Quit() { }
         public static string LastUrl;
         public static void OpenURL(string url) { LastUrl = url; }

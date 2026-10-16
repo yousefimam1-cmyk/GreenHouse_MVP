@@ -1107,10 +1107,12 @@ static class Program
         BuildWorld();
         FakeEngine.Run(1f);
         T.Check("Main menu at start pauses the game", GameMenu.Instance.CurrentMode == GameMenu.Mode.Main && Time.timeScale == 0f);
+        // The front end opens on the title screen; any key goes on to the main menu (FrontEndTests covers the rest).
+        T.Check("Main menu at start shows the title screen", GameMenu.Instance.Front == GameMenu.FrontScreen.Title, GameMenu.Instance.PageName);
+        PressKey(kb.anyKey);
         var labels = GameMenu.Instance.List.Rows.Select(r => r.label()).ToList();
-        T.Check("Main menu: Continue, New game, Load slot 1-3, Tutorial, Settings, Quit",
-            labels[0] == "Continue" && labels[1] == "New game" && labels.Count(l => l.StartsWith("Load slot")) == 3 && labels.Contains("Settings") && labels.Contains("Quit") && labels.Contains("Tutorial"), string.Join(",", labels));
-        T.Check("Empty slots can't be loaded", !GameMenu.Instance.List.Rows[2].IsEnabled && GameMenu.Instance.List.Rows[3].IsEnabled);
+        T.Check("Main menu: Continue (farm, day), Career, Multiplayer, Achievements, Settings, Credits, Quit",
+            labels[0].StartsWith("Continue") && labels.Skip(1).SequenceEqual(new[] { "Career", "Multiplayer", "Achievements", "Settings", "Credits", "Quit" }), string.Join(",", labels));
         GameMenu.Instance.List.Choose(0);
         T.Check("Continue closes the menu", !GameMenu.IsOpen && Time.timeScale == 1f && !UIManager.Instance.IsUIOpened);
         GameMenu.ShowOnStart = false;
@@ -1437,6 +1439,7 @@ static class Program
 
         DrivingTests.Run();
         SharedKeyTests.Run();
+        FrontEndTests.Run();   // title screen, main menu, Career slots + new-farm wizard, play modes, multiplayer screen
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
