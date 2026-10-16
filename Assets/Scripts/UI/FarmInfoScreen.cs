@@ -25,7 +25,7 @@ public class FarmInfoScreen : MonoBehaviour
     private TextMeshProUGUI text;
     private int lastMoney = -1;
     private int openedFrame;
-    private int fieldOffset;
+    private int fieldOffset, fieldSel;
     private float refreshTimer;
 
     private void Awake()
@@ -103,19 +103,33 @@ public class FarmInfoScreen : MonoBehaviour
         int h = MenuNav.Horizontal(), v = MenuNav.Vertical();
         if (h != 0 && SoilManager.Instance != null) { SoilManager.Instance.CycleDensity(h); Refresh(); }
         if (v != 0) ScrollFields(v);
+        if (MenuNav.Confirm()) CycleSelectedIrrigation();
         refreshTimer -= Time.unscaledDeltaTime;
         if (refreshTimer <= 0f) { refreshTimer = 1f; Refresh(); }
     }
 
-    /// <summary>Move the Fields page by one field (Up / Down).</summary>
+    /// <summary>Select the next / previous field on the Fields page (Up / Down); the list scrolls to keep it in view.</summary>
     public void ScrollFields(int dir)
     {
         int n = FieldManager.Instance != null ? FieldManager.Instance.Plots.Count : 0;
-        fieldOffset = Mathf.Clamp(fieldOffset + dir, 0, Mathf.Max(0, n - FieldsPerPage));
+        fieldSel = Mathf.Clamp(fieldSel + dir, 0, Mathf.Max(0, n - 1));
+        if (fieldSel < fieldOffset) fieldOffset = fieldSel;
+        if (fieldSel >= fieldOffset + FieldsPerPage) fieldOffset = fieldSel - FieldsPerPage + 1;
+        fieldOffset = Mathf.Clamp(fieldOffset, 0, Mathf.Max(0, n - FieldsPerPage));
+        Refresh();
+    }
+
+    /// <summary>Enter / A on the Fields page: next irrigation method for the selected field.</summary>
+    public void CycleSelectedIrrigation()
+    {
+        var fm = FieldManager.Instance;
+        if (SoilManager.Instance == null || fm == null || fieldSel < 0 || fieldSel >= fm.Plots.Count) return;
+        SoilManager.Instance.CycleIrrigation(fm.Plots[fieldSel], 1);
         Refresh();
     }
 
     public int FieldOffset => fieldOffset;
+    public int SelectedField => fieldSel;
 
     public void Show(Page page)
     {
@@ -143,8 +157,8 @@ public class FarmInfoScreen : MonoBehaviour
         if (text == null || Open == Page.None) return;
         Loc.ApplyFont(text);
         text.alignment = Loc.IsArabic ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
-        string body = Open == Page.Inventory ? InventoryText() : Open == Page.Stats ? StatsText() : "<size=72%>" + SoilManager.FieldsText(fieldOffset, FieldsPerPage) + "</size>";
-        string hint = Open == Page.Inventory ? "[I] or [Esc] close   [O] Farm stats" : Open == Page.Stats ? "[O] or [Esc] close   [I] Inventory" : "Left / Right: sowing density   Up / Down: more fields   [Esc] close";
+        string body = Open == Page.Inventory ? InventoryText() : Open == Page.Stats ? StatsText() : "<size=72%>" + SoilManager.FieldsText(fieldOffset, FieldsPerPage, fieldSel) + "</size>";
+        string hint = Open == Page.Inventory ? "[I] or [Esc] close   [O] Farm stats" : Open == Page.Stats ? "[O] or [Esc] close   [I] Inventory" : "Left / Right: sowing density   Up / Down: choose field   [Enter] irrigation   [Esc] close";
         text.text = body + "\n\n<size=80%><color=#BBBBBB>" + Glyphs.Apply(UiText.T(hint)) + "\n" + Glyphs.Apply(UiText.T("[LB] [RB] or 1 2 3: Inventory / Farm stats / Fields")) + "</color></size>";
     }
 

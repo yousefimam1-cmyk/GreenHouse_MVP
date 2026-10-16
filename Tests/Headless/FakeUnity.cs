@@ -108,6 +108,7 @@ namespace UnityEngine
         public static bool operator !=(Object a, Object b) => !(a == b);
         public override bool Equals(object o) => o is Object ob ? this == ob : (o == null && destroyed);
         public override int GetHashCode() => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this);
+        public int GetInstanceID() => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this);
         public static implicit operator bool(Object o) => !(ReferenceEquals(o, null)) && !o.destroyed;
 
         public static void Destroy(Object o)
@@ -410,6 +411,12 @@ namespace UnityEngine
         public static Color white => new Color(1, 1, 1); public static Color black => new Color(0, 0, 0);
         public static Color green => new Color(0, 1, 0); public static Color red => new Color(1, 0, 0); public static Color yellow => new Color(1, 0.92f, 0.016f);
         public static Color operator *(Color c, float k) => new Color(c.r * k, c.g * k, c.b * k, c.a * k);
+        public static void RGBToHSV(Color c, out float h, out float s, out float v)
+        {
+            float max = Math.Max(c.r, Math.Max(c.g, c.b)), min = Math.Min(c.r, Math.Min(c.g, c.b)), d = max - min;
+            v = max; s = max > 0f ? d / max : 0f; h = 0f;
+            if (d > 0f) { if (max == c.r) h = ((c.g - c.b) / d) % 6f; else if (max == c.g) h = (c.b - c.r) / d + 2f; else h = (c.r - c.g) / d + 4f; h /= 6f; if (h < 0f) h += 1f; }
+        }
         public static Color Lerp(Color a, Color b, float t) { t = Mathf.Clamp01(t); return new Color(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t); }
     }
     public static class ColorUtility
@@ -487,6 +494,7 @@ namespace UnityEngine
         public static string LastUrl;
         public static void OpenURL(string url) { LastUrl = url; }
         public static bool isMobilePlatform => false;
+        public static int targetFrameRate = -1;
     }
     public static class PlayerPrefs
     {
@@ -661,7 +669,23 @@ namespace UnityEngine.Events { public class UnityEvent { readonly System.Collect
 namespace UnityEngine
 {
     public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } }
-    public static class Screen { public static int width = 1920, height = 1080; }
+    public static class Screen
+    {
+        public static int width = 1920, height = 1080;
+        // Settings > Display (fake: remembers the last call)
+        public static Resolution[] resolutions = { new Resolution { width = 1280, height = 720 }, new Resolution { width = 1920, height = 1080 }, new Resolution { width = 2560, height = 1440 } };
+        public static Resolution currentResolution => new Resolution { width = 2560, height = 1440 };
+        public static FullScreenMode fullScreenMode = FullScreenMode.FullScreenWindow;
+        public static int SetResolutionCalls;
+        public static void SetResolution(int w, int h, FullScreenMode m) { width = w; height = h; fullScreenMode = m; SetResolutionCalls++; }
+    }
+    public struct Resolution { public int width, height; }
+    public enum FullScreenMode { ExclusiveFullScreen, FullScreenWindow, MaximizedWindow, Windowed }
+    public enum ShadowQuality { Disable, HardOnly, All }
+    public enum ShadowResolution { Low, Medium, High, VeryHigh }
+    public static class QualitySettings { public static int vSyncCount = 1, globalTextureMipmapLimit, antiAliasing; public static float lodBias = 1f, shadowDistance = 150f; public static ShadowQuality shadows = ShadowQuality.All; public static ShadowResolution shadowResolution = ShadowResolution.High; }
+    public struct Vector2Int { public int x, y; public Vector2Int(int x, int y) { this.x = x; this.y = y; } }
+    public static class ScreenCapture { public static string LastPath; public static int Count; public static void CaptureScreenshot(string path, int superSize = 1) { LastPath = path; Count++; } }
     public enum TextAnchor { UpperLeft, MiddleLeft, MiddleCenter, MiddleRight }
     public class GUIStyleState { public Color textColor; }
     public class GUIStyle

@@ -101,7 +101,7 @@ public class DesertDressing : MonoBehaviour
             BuildCooling();
             BuildSand();
             if (look.dunes) BuildDunes(rnd, RegionLook.C(look.dune, DuneColor));
-            if (look.trees == "eucalyptus") BuildWindbreaks(rnd, density);
+            if (look.trees == "eucalyptus" && density > 0.01f) BuildWindbreaks(rnd, density);   // Settings > Foliage 0 = no trees
             BuildTrees(rnd, density, look);
         }
         catch (System.Exception e) { Debug.LogWarning("[DesertDressing] " + e.Message); }

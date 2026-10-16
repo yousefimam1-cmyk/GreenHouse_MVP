@@ -89,6 +89,11 @@ public class InteractionController : MonoBehaviour
             if (!target.CanInteract) ClearCurrent();
             else shownPrompt = null; // force prompt refresh
         }
+        // Q on keyboard (rebindable) or Y / Triangle: second action on a field (e.g. its irrigation). The tractor uses it while driving.
+        else if (Vehicle.Current == null && GameInput.Pressed(GameAction.Implement) && currentInteractable is FieldPlot plot)
+        {
+            if (plot.SecondaryInteract()) shownPrompt = null;
+        }
     }
 
     private void OnDisable() => HasTarget = false;

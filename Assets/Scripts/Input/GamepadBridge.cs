@@ -56,9 +56,12 @@ public class GamepadBridge : MonoBehaviour
     {
         if (lookAction == null || uiBlocked || !inputs.cursorInputForLook) return;
         float ms = GameSettings.MouseSensitivity, ss = GameSettings.StickSensitivity; bool inv = GameSettings.InvertY;
-        if (Mathf.Abs(ms - 1f) < 0.001f && Mathf.Abs(ss - 1f) < 0.001f && !inv) return; // defaults: leave StarterAssets untouched
+        bool dz = Mathf.Abs(GameSettings.StickDeadZone - 0.1f) > 0.001f;   // Settings > Controls > Stick dead zone (0.1 = Input System default feel)
+        if (Mathf.Abs(ms - 1f) < 0.001f && Mathf.Abs(ss - 1f) < 0.001f && !inv && !dz) return; // defaults: leave StarterAssets untouched
         bool pad = playerInput != null && playerInput.currentControlScheme != "KeyboardMouse";
-        inputs.LookInput(ScaleLook(lookAction.ReadValue<Vector2>(), pad, ms, ss, inv));
+        Vector2 raw = lookAction.ReadValue<Vector2>();
+        if (pad) raw = GameSettings.ApplyDeadZone(raw);
+        inputs.LookInput(ScaleLook(raw, pad, ms, ss, inv));
     }
 
     // A / Cross is both StarterAssets' Jump and our Interact / Confirm: don't hop when it opens or confirms something.

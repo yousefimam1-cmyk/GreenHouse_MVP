@@ -3,10 +3,10 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>Game actions that can be pressed on keyboard or gamepad (keyboard keys can be rebound in Settings).</summary>
-public enum GameAction { Interact, VehicleAction, Implement, Brake, Pause, Map, Inventory, Stats, View }
+public enum GameAction { Interact, VehicleAction, Implement, Brake, Pause, Map, Inventory, Stats, View, Crouch, Carry, UseTool, ToolPrev, ToolNext }
 
 /// <summary>
-/// One Input System action map built in code for the farm actions (E, R, Q, Space, P, N, I, O, V) with gamepad bindings.
+/// One Input System action map built in code for the farm actions (E, R, Q, Space, P, N, I, O, V, Ctrl, F, Z, comma, period) with gamepad bindings.
 /// Keyboard bindings can be rebound (Input System rebinding API); overrides are saved with SaveBindingOverridesAsJson
 /// in PlayerPrefs ("mazraa.settings.bindings"), so they survive a new game.
 /// Also tracks whether the player last used a gamepad (and whether it is a PlayStation pad) for button glyphs.
@@ -33,6 +33,12 @@ public static class GameInput
         new Def("Inventory", "<Keyboard>/i", null),
         new Def("Farm stats", "<Keyboard>/o", null),
         new Def("Camera view", "<Keyboard>/v", "<Gamepad>/rightStickPress"),
+        // On foot (PlayerLife): crouch / rest, pick up and put down, hand tools and the tool wheel.
+        new Def("Crouch / rest", "<Keyboard>/leftCtrl", "<Gamepad>/leftStickPress"),
+        new Def("Pick up / put down", "<Keyboard>/f", "<Gamepad>/dpad/up"),
+        new Def("Use hand tool", "<Keyboard>/z", "<Gamepad>/rightTrigger"),
+        new Def("Previous tool", "<Keyboard>/comma", "<Gamepad>/leftShoulder"),
+        new Def("Next tool", "<Keyboard>/period", "<Gamepad>/rightShoulder"),
     };
 
     private static InputActionAsset asset;

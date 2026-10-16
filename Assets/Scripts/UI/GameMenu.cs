@@ -8,10 +8,10 @@ using UnityEngine;
 /// The game is paused (timeScale 0) while the menu is open. Autosaves every in-game day (SaveSlots).
 /// </summary>
 [MazraaSystem(60)]
-public class GameMenu : MonoBehaviour
+public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameMenuSettings.cs
 {
     public enum Mode { Closed, Main, Pause }
-    private enum PageId { Root, Save, Load, Settings, Controls, ConfirmNew, Campaign, Map, Start, Economy, Credits, Achievements }
+    private enum PageId { Root, Save, Load, Settings, Controls, ConfirmNew, Campaign, Map, Start, Economy, Credits, Achievements, SettingsPage }
 
     /// <summary>Show the main menu when the game starts (headless tests turn this off).</summary>
     public static bool ShowOnStart = true;
@@ -68,7 +68,7 @@ public class GameMenu : MonoBehaviour
     private void OnNewGame() { SaveSlots.ActiveSlot = 0; }
 
     // Autosave a moment after midnight, once the other systems have rolled the day over.
-    private void OnDay(int day) { CancelInvoke(nameof(Autosave)); Invoke(nameof(Autosave), 0.5f); }
+    private void OnDay(int day) { if (GameSettings.AutosaveMinutes != -1) return; CancelInvoke(nameof(Autosave)); Invoke(nameof(Autosave), 0.5f); }   // Settings > Game > Autosave
 
     private void Autosave()
     {
@@ -130,6 +130,7 @@ public class GameMenu : MonoBehaviour
         if (Time.frameCount == openedFrame || GameInput.Rebinding || Time.frameCount - rebindEndFrame < 3) return;
         if (mode == Mode.Pause && page == PageId.Root && GameInput.Pressed(GameAction.Pause)) { Close(); return; }
         if (MenuNav.Back()) { Back(); return; }
+        if (SettingsTabInput()) return;
         list.HandleInput();
     }
 
@@ -151,7 +152,8 @@ public class GameMenu : MonoBehaviour
             case PageId.Root: list.Show(() => MenuKit.Title(Loc.T(mode == Mode.Main ? "Mazraa" : "Paused")), RootRows(), () => UiText.T("[Enter] Choose   [Esc] Back"), sel); break;
             case PageId.Save: list.Show(() => MenuKit.Title(UiText.T("Save game")), SlotRows(true), () => UiText.T("[Enter] Choose   [Esc] Back")); break;
             case PageId.Load: list.Show(() => MenuKit.Title(UiText.T("Load game")), SlotRows(false), () => UiText.T("[Enter] Choose   [Esc] Back")); break;
-            case PageId.Settings: list.Show(() => MenuKit.Title(UiText.T("Settings")), SettingsRows(), () => UiText.T("[<- ->] Change   [Esc] Back"), sel); break;
+            case PageId.Settings: ShowSettingsHub(fresh ? 0 : (int)settingsTab); break;
+            case PageId.SettingsPage: ShowSettingsPage(sel); break;
             case PageId.Controls: list.Show(() => MenuKit.Title(UiText.T("Controls")), ControlRows(), ControlsFooter, sel); break;
             case PageId.Campaign: list.Show(() => MenuKit.Title(UiText.T("Campaign")), CampaignRows(), () => UiText.T("[Enter] Replay chapter story   [Esc] Back"), sel); break;
             case PageId.Map: list.Show(() => MenuKit.Title(UiText.T("Choose your map")), MapRows(), () => UiText.T("[Enter] Choose   [Esc] Back"), sel); break;
@@ -213,6 +215,9 @@ public class GameMenu : MonoBehaviour
             rows.Add(MenuRow.Button(() => UiText.T("Farm overview"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Stats); }));
             rows.Add(MenuRow.Button(() => UiText.T("Inventory"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Inventory); }));
             rows.Add(MenuRow.Button(() => UiText.T("Fields (precision farming)"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Fields); }));
+            // farm life (FarmLife/*.cs): journal (level, stand orders, friends, festivals) and photo mode
+            rows.Add(MenuRow.Button(() => UiText.T("Farm life journal"), () => { Close(); if (FarmLifeScreen.Instance != null) FarmLifeScreen.Instance.Show(FarmLifeScreen.Tab.Overview); }));
+            rows.Add(MenuRow.Button(() => UiText.T("Photo mode"), () => { Close(); if (PhotoMode.Instance != null) PhotoMode.Instance.Enter(); }));
             if (CampaignManager.Instance != null && CampaignManager.Instance.Chapters.Length > 0)
                 rows.Add(MenuRow.Button(() => UiText.T("Campaign"), () => Go(PageId.Campaign)));
             rows.Add(MenuRow.Button(() => UiText.T("Save game"), () => Go(PageId.Save)));
@@ -346,25 +351,6 @@ public class GameMenu : MonoBehaviour
     private static string Mult(float v) => v.ToString("0.0") + "x";
     private static string OnOff(bool v) => UiText.T(v ? "On" : "Off");
 
-    private List<MenuRow> SettingsRows()
-    {
-        return new List<MenuRow>
-        {
-            MenuRow.Setting(() => UiText.T("Master volume"), () => Pct(GameSettings.MasterVolume), d => GameSettings.MasterVolume = Step(GameSettings.MasterVolume, d * 0.1f, 0f, 1f)),
-            MenuRow.Setting(() => UiText.T("Music volume"), () => Pct(GameSettings.MusicVolume), d => GameSettings.MusicVolume = Step(GameSettings.MusicVolume, d * 0.1f, 0f, 1f)),
-            MenuRow.Setting(() => UiText.T("Sound effects volume"), () => Pct(GameSettings.SfxVolume), d => GameSettings.SfxVolume = Step(GameSettings.SfxVolume, d * 0.1f, 0f, 1f)),
-            MenuRow.Setting(() => UiText.T("Graphics"), () => UiText.T(GameSettings.PresetName(GameSettings.GraphicsPreset)), d => GameSettings.GraphicsPreset = (GameSettings.GraphicsPreset + d + 3) % 3),
-            MenuRow.Setting(() => UiText.T("Mouse sensitivity"), () => Mult(GameSettings.MouseSensitivity), d => GameSettings.MouseSensitivity = Step(GameSettings.MouseSensitivity, d * 0.1f, 0.1f, 3f)),
-            MenuRow.Setting(() => UiText.T("Stick sensitivity"), () => Mult(GameSettings.StickSensitivity), d => GameSettings.StickSensitivity = Step(GameSettings.StickSensitivity, d * 0.1f, 0.1f, 3f)),
-            MenuRow.Setting(() => UiText.T("Invert Y axis"), () => OnOff(GameSettings.InvertY), d => GameSettings.InvertY = !GameSettings.InvertY),
-            MenuRow.Setting(() => UiText.T("Day length"), () => GameSettings.DayMinutes + " " + UiText.T("min"), d => GameSettings.CycleDayLength(d)),
-            MenuRow.Setting(() => UiText.T("Language"), () => Loc.IsArabic ? Loc.Display("العربية") : "English", d => Loc.Toggle()),
-            MenuRow.Setting(() => UiText.T("Camera"), () => UiText.T(GameSettings.ThirdPerson ? "Third person" : "First person"), d => ThirdPersonView.SetMode(!GameSettings.ThirdPerson)),
-            MenuRow.Button(() => UiText.T("Controls (rebind keys)"), () => Go(PageId.Controls)),
-            MenuRow.Button(() => UiText.T("Back"), Back),
-        };
-    }
-
     private static float Step(float v, float d, float min, float max) => Mathf.Clamp(Mathf.Round((v + d) * 10f) / 10f, min, max);
 
     private List<MenuRow> ControlRows()
@@ -389,10 +375,7 @@ public class GameMenu : MonoBehaviour
     {
         string pad = GameInput.GamepadPath(a);
         if (string.IsNullOrEmpty(pad)) return "";
-        bool ps = GameInput.IsPlayStation;
-        string label = a == GameAction.Interact ? Glyphs.PadLabel(Glyphs.Pad.South, ps) : a == GameAction.VehicleAction ? Glyphs.PadLabel(Glyphs.Pad.West, ps)
-                     : a == GameAction.Implement ? Glyphs.PadLabel(Glyphs.Pad.North, ps) : a == GameAction.Pause ? Glyphs.PadLabel(Glyphs.Pad.Start, ps)
-                     : a == GameAction.Map ? Glyphs.PadLabel(Glyphs.Pad.Select, ps) : Glyphs.PadLabel(Glyphs.Pad.RStick, ps);
+        string label = Glyphs.PadFor(a, GameInput.IsPlayStation);
         return "  /  " + label;
     }
 

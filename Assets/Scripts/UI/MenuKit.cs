@@ -11,6 +11,10 @@ public static class MenuKit
     public static readonly Color RowColor = new Color(1f, 1f, 1f, 0.06f);
     public static readonly Color RowSelected = new Color(1f, 0.55f, 0.15f, 0.35f);
     public static readonly Color Orange = new Color(1f, 0.55f, 0.15f);
+    // Settings > Accessibility > High-contrast menus
+    public static readonly Color PanelHighContrast = new Color(0f, 0f, 0f, 1f);
+    public static readonly Color RowHighContrast = new Color(1f, 1f, 1f, 0.16f);
+    public static readonly Color RowSelectedHighContrast = new Color(1f, 0.85f, 0f, 1f);
 
     public static Canvas Canvas(string name, Transform parent, int order)
     {
@@ -21,7 +25,7 @@ public static class MenuKit
         canvas.sortingOrder = order;
         var scaler = go.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.referenceResolution = SettingsApplier.UiReference;   // Settings > Accessibility > Text and UI size
         scaler.matchWidthOrHeight = 0.5f;
         return canvas;
     }
@@ -182,6 +186,9 @@ public class MenuList
     public void Refresh()
     {
         bool rtl = Loc.IsArabic;
+        bool hc = GameSettings.HighContrast;   // Settings > Accessibility > High-contrast menus
+        var panelImg = Panel.GetComponent<Image>();
+        if (panelImg != null) panelImg.color = hc ? MenuKit.PanelHighContrast : MenuKit.PanelColor;
         Loc.ApplyFont(title); Loc.ApplyFont(footer);
         title.text = titleText != null ? titleText() : "";
         title.alignment = rtl ? TextAlignmentOptions.Right : TextAlignmentOptions.Left;
@@ -200,8 +207,10 @@ public class MenuList
             string num = i < 9 ? "<color=#FF9A3C>" + (i + 1) + "</color>" : "";
             string lbl = r.label != null ? r.label() : "";
             r.text.text = num == "" ? lbl : rtl ? lbl + "   " + num : num + "   " + lbl;
-            r.text.color = on ? Color.white : new Color(1f, 1f, 1f, 0.4f);
-            r.bg.color = i == Selected ? MenuKit.RowSelected : MenuKit.RowColor;
+            bool sel = i == Selected;
+            r.text.color = hc && sel ? Color.black : on ? Color.white : new Color(1f, 1f, 1f, hc ? 0.6f : 0.4f);
+            r.bg.color = hc ? (sel ? MenuKit.RowSelectedHighContrast : MenuKit.RowHighContrast) : sel ? MenuKit.RowSelected : MenuKit.RowColor;
+            if (r.valueText != null) r.valueText.color = hc ? (sel ? Color.black : Color.white) : new Color(1f, 0.85f, 0.6f);
             var lrt = r.text.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
             if (r.valueText == null) { lrt.offsetMin = new Vector2(16, 4); lrt.offsetMax = new Vector2(-16, -4); }

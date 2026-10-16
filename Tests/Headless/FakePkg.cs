@@ -45,6 +45,8 @@ namespace UnityEngine.InputSystem
             startButton = new ButtonControl(), selectButton = new ButtonControl(), leftStickButton = new ButtonControl(), rightStickButton = new ButtonControl();
         public StickControl leftStick = new StickControl(), rightStick = new StickControl();
         public DpadControl dpad = new DpadControl();
+        public float lowMotor, highMotor;
+        public void SetMotorSpeeds(float low, float high) { lowMotor = low; highMotor = high; }
     }
     public class DpadControl { public ButtonControl up = new ButtonControl(), down = new ButtonControl(), left = new ButtonControl(), right = new ButtonControl(); public UnityEngine.Vector2 ReadValue() => UnityEngine.Vector2.zero; }
     public class Mouse : InputDevice { public static Mouse current; public ButtonControl leftButton = new ButtonControl(), rightButton = new ButtonControl(); public StickControl delta = new StickControl(), position = new StickControl(), scroll = new StickControl(); }
@@ -53,7 +55,7 @@ namespace UnityEngine.InputSystem
 namespace UnityEngine.Rendering
 {
     public class VolumeParameter<T> { public T value; public void Override(T v) { value = v; } }
-    public class VolumeComponent : ScriptableObject { }
+    public class VolumeComponent : ScriptableObject { public bool active = true; }
     public class VolumeProfile : ScriptableObject
     {
         public T Add<T>(bool overrides = false) where T : VolumeComponent
@@ -268,6 +270,10 @@ namespace UnityEngine.Rendering.Universal
     using UnityEngine.Rendering;
     public class LensDistortion : VolumeComponent { public VolumeParameter<float> intensity, scale; }
     public class ChromaticAberration : VolumeComponent { public VolumeParameter<float> intensity; }
+    // Settings > Graphics
+    public class MotionBlur : VolumeComponent { public VolumeParameter<float> intensity; }
+    public enum DepthOfFieldMode { Off, Gaussian, Bokeh }
+    public class DepthOfField : VolumeComponent { public VolumeParameter<DepthOfFieldMode> mode; public VolumeParameter<float> gaussianStart, gaussianEnd; }
 }
 namespace UnityEngine.EventSystems { public class EventSystem : UIBehaviour { public static EventSystem current; } }
 namespace UnityEngine.InputSystem.UI { public class InputSystemUIInputModule : UnityEngine.EventSystems.UIBehaviour { } }

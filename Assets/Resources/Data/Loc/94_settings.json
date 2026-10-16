@@ -1,0 +1,244 @@
+{
+ "entries": [
+  {
+   "en": "A crop withered: the field was dry for a whole day",
+   "ar": "ذبل محصول: بقي الحقل جافاً يوماً كاملاً"
+  },
+  {
+   "en": "Accessibility",
+   "ar": "سهولة الوصول"
+  },
+  {
+   "en": "Ambient life",
+   "ar": "الحياة المحيطة"
+  },
+  {
+   "en": "Ambient occlusion",
+   "ar": "الإطباق المحيطي"
+  },
+  {
+   "en": "Anti-aliasing",
+   "ar": "تنعيم الحواف"
+  },
+  {
+   "en": "Auto",
+   "ar": "تلقائي"
+  },
+  {
+   "en": "Autosave",
+   "ar": "الحفظ التلقائي"
+  },
+  {
+   "en": "Bloom",
+   "ar": "توهج الإضاءة"
+  },
+  {
+   "en": "Borderless window",
+   "ar": "نافذة بلا حواف"
+  },
+  {
+   "en": "Brightness",
+   "ar": "السطوع"
+  },
+  {
+   "en": "Camera shake",
+   "ar": "اهتزاز الكاميرا"
+  },
+  {
+   "en": "Colour-blind mode",
+   "ar": "وضع عمى الألوان"
+  },
+  {
+   "en": "Crops wither when dry",
+   "ar": "تذبل المحاصيل عند الجفاف"
+  },
+  {
+   "en": "Depth of field",
+   "ar": "عمق المجال"
+  },
+  {
+   "en": "Deuteranopia",
+   "ar": "عمى الأخضر"
+  },
+  {
+   "en": "Display",
+   "ar": "الشاشة"
+  },
+  {
+   "en": "Environment",
+   "ar": "البيئة"
+  },
+  {
+   "en": "Every day",
+   "ar": "كل يوم"
+  },
+  {
+   "en": "FPS limit",
+   "ar": "حد الإطارات في الثانية"
+  },
+  {
+   "en": "FXAA",
+   "ar": "FXAA"
+  },
+  {
+   "en": "Field of view",
+   "ar": "مجال الرؤية"
+  },
+  {
+   "en": "Fog and haze",
+   "ar": "الضباب والغبار"
+  },
+  {
+   "en": "Foliage and props",
+   "ar": "النباتات والزينة"
+  },
+  {
+   "en": "Fullscreen",
+   "ar": "ملء الشاشة"
+  },
+  {
+   "en": "Game",
+   "ar": "اللعبة"
+  },
+  {
+   "en": "Help hints",
+   "ar": "تلميحات المساعدة"
+  },
+  {
+   "en": "Helpers buy seeds",
+   "ar": "العمال يشترون البذور"
+  },
+  {
+   "en": "High-contrast menus",
+   "ar": "قوائم عالية التباين"
+  },
+  {
+   "en": "Level of detail",
+   "ar": "مستوى التفاصيل"
+  },
+  {
+   "en": "MSAA 4x + SMAA",
+   "ar": "MSAA 4x + SMAA"
+  },
+  {
+   "en": "Menus",
+   "ar": "القوائم"
+  },
+  {
+   "en": "Message duration",
+   "ar": "مدة ظهور الرسائل"
+  },
+  {
+   "en": "Motion blur",
+   "ar": "ضبابية الحركة"
+  },
+  {
+   "en": "Native",
+   "ar": "الأصلية"
+  },
+  {
+   "en": "Plowing required (soil compaction)",
+   "ar": "الحراثة مطلوبة (انضغاط التربة)"
+  },
+  {
+   "en": "Protanopia",
+   "ar": "عمى الأحمر"
+  },
+  {
+   "en": "Quality preset",
+   "ar": "إعداد الجودة"
+  },
+  {
+   "en": "Reduce motion",
+   "ar": "تقليل الحركة"
+  },
+  {
+   "en": "Render scale",
+   "ar": "دقة العرض"
+  },
+  {
+   "en": "Resolution",
+   "ar": "الدقة"
+  },
+  {
+   "en": "SMAA",
+   "ar": "SMAA"
+  },
+  {
+   "en": "Shadow distance",
+   "ar": "مسافة الظلال"
+  },
+  {
+   "en": "Shadow quality",
+   "ar": "جودة الظلال"
+  },
+  {
+   "en": "Sound",
+   "ar": "الصوت"
+  },
+  {
+   "en": "Steering sensitivity",
+   "ar": "حساسية التوجيه"
+  },
+  {
+   "en": "Stick dead zone",
+   "ar": "المنطقة الميتة لعصا التحكم"
+  },
+  {
+   "en": "Text and UI size",
+   "ar": "حجم النص والواجهة"
+  },
+  {
+   "en": "Texture quality",
+   "ar": "جودة الخامات"
+  },
+  {
+   "en": "Time scale",
+   "ar": "سرعة الوقت"
+  },
+  {
+   "en": "Tritanopia",
+   "ar": "عمى الأزرق"
+  },
+  {
+   "en": "Tutorials",
+   "ar": "الدروس التعليمية"
+  },
+  {
+   "en": "Unlimited",
+   "ar": "بلا حد"
+  },
+  {
+   "en": "Use day length",
+   "ar": "حسب طول اليوم"
+  },
+  {
+   "en": "VSync",
+   "ar": "المزامنة العمودية"
+  },
+  {
+   "en": "Vibration",
+   "ar": "الاهتزاز"
+  },
+  {
+   "en": "View distance",
+   "ar": "مسافة الرؤية"
+  },
+  {
+   "en": "Voices",
+   "ar": "الأصوات البشرية"
+  },
+  {
+   "en": "Window mode",
+   "ar": "وضع النافذة"
+  },
+  {
+   "en": "Windowed",
+   "ar": "نافذة"
+  },
+  {
+   "en": "[<- ->] Change   LB / RB Page   [Esc] Back",
+   "ar": "[<- ->] تغيير   LB / RB صفحة   [Esc] رجوع"
+  }
+ ]
+}
