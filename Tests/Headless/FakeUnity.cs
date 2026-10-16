@@ -528,11 +528,11 @@ namespace UnityEngine
     }
     public class TextAsset : Object { public string text; }
     public class Font : Object { }
-    public class Shader : Object { public static Shader Find(string n) => new Shader { name = n }; }
+    public class Shader : Object { public static Shader Find(string n) => new Shader { name = n }; public bool isSupported = true; }
     public enum MaterialGlobalIlluminationFlags { None }
     public class Material : Object
     {
-        public Material(Shader s) { } public Material(Material m) { }
+        public Material(Shader s) { shader = s; } public Material(Material m) { shader = m != null ? m.shader : null; } public Shader shader;
         public Color color; public MaterialGlobalIlluminationFlags globalIlluminationFlags; public int renderQueue; public Texture mainTexture; public void SetTexture(string n, Texture t) { mainTexture = t; }
         public void SetColor(string n, Color c) { } public void SetFloat(string n, float v) { } public float GetFloat(string n) => 1; public bool HasProperty(string n) => true; public void EnableKeyword(string k) { }
     }
@@ -610,8 +610,8 @@ namespace UnityEngine
     public class Animation : Behaviour, IEnumerable { public IEnumerator GetEnumerator() { yield break; } public void CrossFade(string n, float t) { } }
     public enum CursorLockMode { None, Locked }
     public static class Cursor { public static CursorLockMode lockState; public static bool visible; }
-    public enum RenderMode { ScreenSpaceOverlay }
-    public class Canvas : Behaviour { public RenderMode renderMode; public int sortingOrder; }
+    public enum RenderMode { ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace }
+    public class Canvas : Behaviour { public RenderMode renderMode; public int sortingOrder; public bool isRootCanvas => transform.parent == null || transform.parent.GetComponentInParent<Canvas>() == null; }
     public class CanvasGroup : Component { public float alpha; }
     public class RectOffset { public RectOffset(int a, int b, int c, int d) { } }
     public enum ParticleSystemStopBehavior { StopEmittingAndClear }

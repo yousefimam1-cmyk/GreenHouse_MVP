@@ -380,3 +380,8 @@ MAZRAA ACADEMY - CONTROLS TUTORIAL + AUDIT FIXES (Oct 16 2026)
     breaks mid-name), training box moved to the top-right, third-person player dressed with Appearance (thobe + shemagh),
     sample sponsor brands renamed to dummy Mazraa / Almadarek brands (Mazraa Seeds, Mazraa Fert, Mazraa Drip,
     Almadarek Solar). Headless tests keep the old 6-minute day (GameSettings.DefaultDayMinutes = 6).
+--- Pink tractor fix: Build.FixPinkMaterials(go) runs on every model loaded through Build.TryModel and swaps missing
+    materials and URP-incompatible shaders (Standard, Legacy, Mobile, Unlit, error shader) for cached URP/Lit copies with the
+    same colour/texture. Tractor.fbx had a missing material (showed bright pink); it now falls back to tractor red
+    (Build.MissingMaterialColor). The main menu hides the HUD/minimap canvases while it is open and always shapes the
+    Arabic wordmark.

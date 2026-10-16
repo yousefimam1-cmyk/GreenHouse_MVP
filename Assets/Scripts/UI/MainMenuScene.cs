@@ -126,6 +126,7 @@ public class MainMenuScene : MonoBehaviour
     {
         Showing = on;
         if (canvas != null) canvas.gameObject.SetActive(on);
+        HideGameUi(on);
         if (on)
         {
             focus = CozyFx.FarmStart;
@@ -145,13 +146,37 @@ public class MainMenuScene : MonoBehaviour
         else if (menuCam != null) menuCam.gameObject.SetActive(false);
     }
 
+    // The farm HUD, minimap and hints stay hidden behind the main menu (restored when it closes).
+    private readonly System.Collections.Generic.List<Canvas> hidden = new System.Collections.Generic.List<Canvas>();
+    private void HideGameUi(bool hide)
+    {
+        if (hide)
+        {
+            hidden.Clear();
+            Canvas menu = GameMenu.Instance != null ? GameMenu.Instance.GetComponentInChildren<Canvas>() : null;
+            foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            {
+                if (c == null || c == canvas || c == menu || !c.enabled || !c.isRootCanvas) continue;
+                if (c.renderMode == RenderMode.WorldSpace) continue;
+                c.enabled = false;
+                hidden.Add(c);
+            }
+        }
+        else
+        {
+            foreach (var c in hidden) if (c != null) c.enabled = true;
+            hidden.Clear();
+        }
+    }
+
     // ------------------------------------------------------------------ text
 
     public void Refresh()
     {
         if (brand == null) return;
         bool ar = Loc.IsArabic;
-        brand.text = ar ? Loc.Display("مزرعة") + "  <size=55%><color=#FAC240>MAZRAA</color></size>" : "MAZRAA  <size=55%><color=#FAC240>" + Loc.Display("مزرعة") + "</color></size>";
+        string arName = ArabicShaper.Shape("مزرعة");   // always shaped, also in English
+        brand.text = ar ? arName + "  <size=55%><color=#FAC240>MAZRAA</color></size>" : "MAZRAA  <size=55%><color=#FAC240>" + arName + "</color></size>";
         tagline.text = Loc.T("Grow, trade and build your farm in Saudi Arabia");
         version.text = "Almadarek Games  -  " + Loc.T("Early access");
         cardsTitle.text = Loc.T("Your farms");

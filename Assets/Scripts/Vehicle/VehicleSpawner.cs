@@ -280,7 +280,9 @@ public class VehicleSpawner : MonoBehaviour
         var yellow = Build.Mat(new Color(0.95f, 0.75f, 0.1f), 0.4f);
         var light = Build.Mat(new Color(1f, 0.95f, 0.8f), 0.8f, 0f, new Color(2.2f, 2.0f, 1.6f));
         var wheels = new Transform[4];
+        Build.MissingMaterialColor = new Color(0.72f, 0.12f, 0.08f);     // tractor red if the model's material is missing
         var tractorModel = Build.TryModel("Tractor", t, 3.6f, -0.75f);
+        Build.MissingMaterialColor = new Color(0.6f, 0.6f, 0.6f);
         if (tractorModel != null) wheels = Build.FaceForwardAndFindWheels(tractorModel, t);
         if (tractorModel == null)
         {

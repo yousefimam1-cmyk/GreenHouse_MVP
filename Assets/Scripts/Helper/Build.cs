@@ -55,6 +55,53 @@ public static class Build
     public static GameObject TryModel(string name, Transform parent) => TryModel(name, parent, 0f, 0f);
 
     /// <summary>
+    /// Replace materials that URP cannot draw (built-in Standard / Legacy shaders, missing or error shaders: they render
+    /// bright pink) with URP/Lit materials of the same colour and texture. Replacements are cached per source material,
+    /// so many copies of a model share one material (low RAM, batching).
+    /// </summary>
+    public static void FixPinkMaterials(GameObject go)
+    {
+        if (go == null) return;
+        foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+        {
+            var mats = r.sharedMaterials;
+            if (mats == null) continue;
+            bool changed = false;
+            for (int i = 0; i < mats.Length; i++)
+            {
+                var m = mats[i];
+                if (!NeedsFix(m)) continue;
+                Material fix;
+                if (m == null || !fixedMats.TryGetValue(m, out fix))
+                {
+                    Color c = m != null && m.HasProperty("_Color") ? m.color : MissingMaterialColor;
+                    fix = Mat(c, 0.3f);
+                    if (m != null && m.mainTexture != null) fix.SetTexture("_BaseMap", m.mainTexture);
+                    if (m != null) fixedMats[m] = fix;
+                }
+                mats[i] = fix;
+                changed = true;
+            }
+            if (changed) r.sharedMaterials = mats;
+        }
+    }
+
+    /// <summary>Colour used when a model's material is missing entirely (set by the caller before TryModel).</summary>
+    public static Color MissingMaterialColor = new Color(0.6f, 0.6f, 0.6f);
+
+    private static readonly System.Collections.Generic.Dictionary<Material, Material> fixedMats = new System.Collections.Generic.Dictionary<Material, Material>();
+
+    private static bool NeedsFix(Material m)
+    {
+        if (m == null) return true;
+        var sh = m.shader;
+        if (sh == null || !sh.isSupported) return true;
+        string n = sh.name ?? "";
+        return n == "Hidden/InternalErrorShader" || n == "Standard" || n.StartsWith("Standard (") || n.StartsWith("Legacy Shaders/")
+            || n.StartsWith("Mobile/") || n.StartsWith("Unlit/") || n.StartsWith("Autodesk Interactive");
+    }
+
+    /// <summary>
     /// Instantiate Resources/Models/name, scaled so its longest horizontal side is fitSize (0 = keep scale),
     /// centred on the parent and with its lowest point at bottomY (parent space). Works whatever units the FBX uses.
     /// </summary>
@@ -69,6 +116,7 @@ public static class Build
         if (prefab == null) return null;
         var go = Object.Instantiate(prefab, parent, false);
         go.name = name;
+        FixPinkMaterials(go);
         foreach (var c in go.GetComponentsInChildren<Collider>(true)) Object.Destroy(c);
         if (fitSize <= 0f || parent == null) return go;
         var rs = go.GetComponentsInChildren<Renderer>(true);
