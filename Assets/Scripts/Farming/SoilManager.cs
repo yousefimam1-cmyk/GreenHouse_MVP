@@ -455,6 +455,7 @@ public class SoilManager : MonoBehaviour
                     s.lastGrowth = p.Growth;
                 }
             }
+            if (!GameSettings.Weeds) s.weeds = 0f; else   // Settings > Game > Weeds
             SoilModel.GrowWeeds(s, seconds * EconomyManager.GrowthSpeed, p.State == PlotState.Growing, p.Growth, p.Water, TempToday);
             SoilModel.Drain(s, seconds, r.drainage);
             dirty.Add(p.index);

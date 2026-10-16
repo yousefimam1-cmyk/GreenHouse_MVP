@@ -337,7 +337,7 @@ public abstract class Vehicle : Interactable
         }
         if (IsDriving) brake = GameInput.Held(GameAction.Brake);
         throttle = Mathf.Clamp(throttle, -1f, 1f);
-        steer = Mathf.Clamp(steer, -1f, 1f);
+        steer = GameSettings.ShapeSteer(Mathf.Clamp(steer, -1f, 1f));   // Settings > Controls: dead zone, steering sensitivity
         float dt = Time.fixedDeltaTime;
         StepDrive(throttle, steer, brake, dt);
 

@@ -164,7 +164,7 @@ public class DesertWeatherFX : MonoBehaviour
     {
         if (FogOverridden) return;
         float density = 0.0025f + 0.016f * Mathf.Clamp01((Wind01 - 0.3f) / 0.55f);
-        RenderSettings.fog = true;
+        RenderSettings.fog = GameSettings.FogHaze;   // Settings > Graphics > Fog and haze
         RenderSettings.fogMode = FogMode.Exponential;
         RenderSettings.fogDensity = density;
         RenderSettings.fogColor = Color.Lerp(fogNight, fogDay, day);
@@ -173,7 +173,7 @@ public class DesertWeatherFX : MonoBehaviour
     private void UpdateHaze()
     {
         if (haze == null) return;
-        haze.weight = GraphicsEnhancer.PostEnabled ? Heat01 : 0f;
+        haze.weight = GraphicsEnhancer.PostEnabled && GameSettings.FogHaze ? Heat01 : 0f;
         if (wobble != null) wobble.intensity.Override(Heat01 * 0.045f * Mathf.Sin(Time.time * 3.7f) * Mathf.Sin(Time.time * 1.3f + 0.7f));
     }
 }
