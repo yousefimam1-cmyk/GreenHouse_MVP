@@ -17,6 +17,7 @@ public class DayNightCycle : MonoBehaviour
     private Material sky;
     private Quaternion sunBaseRot;
     private readonly List<Light> nightLights = new List<Light>();
+    private static readonly Color Moon = new Color(0.62f, 0.72f, 1f);
 
     private void Awake() => Instance = this;
 
@@ -76,16 +77,20 @@ public class DayNightCycle : MonoBehaviour
         {
             float hours = (6f + clock.DayProgress * 24f) % 24f;
             float elevation = (hours - 6f) / 12f * 180f;   // 0 at 06:00, 90 at noon, 180 at 18:00
-            sun.transform.rotation = Quaternion.Euler(Mathf.Clamp(elevation, -10f, 190f), sunBaseRot.eulerAngles.y, 0f);
+            // Below the horizon the light turns into the moon, high in the opposite sky, instead of lighting from under the ground.
+            if (elevation < 4f || elevation > 176f) sun.transform.rotation = Quaternion.Euler(38f, sunBaseRot.eulerAngles.y + 160f, 0f);
+            else sun.transform.rotation = Quaternion.Euler(elevation, sunBaseRot.eulerAngles.y, 0f);
         }
         if (sun != null)
         {
-            sun.intensity = sunIntensity * clock.WeatherLight * Mathf.Lerp(0.03f, 1f, day);
-            sun.color = Color.Lerp(new Color(1f, 0.6f, 0.35f), Color.white, Mathf.Clamp01(h * 2f));
+            // At night the "sun" becomes soft blue moonlight so the farm stays playable.
+            sun.intensity = sunIntensity * clock.WeatherLight * Mathf.Lerp(0.22f, 1f, day);
+            Color dayColor = Color.Lerp(new Color(1f, 0.6f, 0.35f), Color.white, Mathf.Clamp01(h * 2f));
+            sun.color = Color.Lerp(Moon, dayColor, Mathf.Clamp01(day * 2f));
         }
-        RenderSettings.ambientIntensity = ambientIntensity * Mathf.Lerp(0.25f, 1f, day);
-        RenderSettings.ambientLight = ambientColor * Mathf.Lerp(0.25f, 1f, day);
-        if (sky != null && sky.HasProperty("_Exposure")) sky.SetFloat("_Exposure", skyExposure * Mathf.Lerp(0.15f, 1f, day));
+        RenderSettings.ambientIntensity = ambientIntensity * Mathf.Lerp(0.55f, 1f, day);
+        RenderSettings.ambientLight = Color.Lerp(Color.Lerp(ambientColor * 0.6f, Moon * 0.45f, 0.3f), ambientColor, day);
+        if (sky != null && sky.HasProperty("_Exposure")) sky.SetFloat("_Exposure", skyExposure * Mathf.Lerp(0.35f, 1f, day));
         foreach (var l in nightLights) if (l != null) l.enabled = IsNight;
     }
 }

@@ -60,6 +60,18 @@ public static class SaveSlots
         return true;
     }
 
+    /// <summary>Raw slot info for the main-menu farm cards. False when the slot is empty.</summary>
+    public static bool Info(int slot, out int day, out int money, out string saved)
+    {
+        day = 0; money = 0; saved = "";
+        if (!HasSlot(slot)) return false;
+        string[] p = PlayerPrefs.GetString(InfoKey + slot, "").Split('|');
+        if (p.Length >= 1) int.TryParse(p[0], out day);
+        if (p.Length >= 2) int.TryParse(p[1], out money);
+        if (p.Length >= 3) saved = p[2];
+        return true;
+    }
+
     /// <summary>Translated summary of a slot, or "Empty".</summary>
     public static string Describe(int slot)
     {

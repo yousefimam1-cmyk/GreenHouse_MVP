@@ -541,6 +541,7 @@ static class Program
         FakeEngine.PersistentPath = Path.Combine(Path.GetTempPath(), "mazraa_test_" + System.Diagnostics.Process.GetCurrentProcess().Id); // parallel runs don't share saves
         if (Directory.Exists(FakeEngine.PersistentPath)) Directory.Delete(FakeEngine.PersistentPath, true);
         Directory.CreateDirectory(FakeEngine.PersistentPath);
+        GameSettings.DefaultDayMinutes = 6;   // tests were written for the old 6-minute day
 
         Console.WriteLine("Boot");
         BuildWorld();

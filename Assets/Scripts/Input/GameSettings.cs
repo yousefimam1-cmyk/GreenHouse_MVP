@@ -25,6 +25,20 @@ public static class GameSettings
     public static bool InvertY { get => PlayerPrefs.GetInt(P + "invertY", 0) == 1; set { PlayerPrefs.SetInt(P + "invertY", value ? 1 : 0); Save(); } }
     public static bool ThirdPerson { get => PlayerPrefs.GetInt(P + "thirdPerson", 0) == 1; set { PlayerPrefs.SetInt(P + "thirdPerson", value ? 1 : 0); Save(); } }
 
+    /// <summary>Real minutes per in-game day (6 = fast, 24 = default, 48 = relaxed).</summary>
+    public static readonly int[] DayLengths = { 6, 12, 24, 48 };
+    public static int DefaultDayMinutes = 24;   // headless tests use 6 (the old day length)
+    public static int DayMinutes
+    {
+        get { int v = PlayerPrefs.GetInt(P + "dayMinutes", DefaultDayMinutes); return System.Array.IndexOf(DayLengths, v) >= 0 ? v : DefaultDayMinutes; }
+        set { PlayerPrefs.SetInt(P + "dayMinutes", value); Save(); }
+    }
+    public static void CycleDayLength(int d)
+    {
+        int i = System.Array.IndexOf(DayLengths, DayMinutes);
+        DayMinutes = DayLengths[(i + d + DayLengths.Length) % DayLengths.Length];
+    }
+
     private static int DefaultPreset()
     {
         // Follow the old G-key setting if the player used it before settings existed.
@@ -45,6 +59,7 @@ public static class GameSettings
         AudioListener.volume = MasterVolume;
         if (AudioManager.Instance != null) AudioManager.Instance.SetVolumes(MusicVolume, SfxVolume);
         GraphicsEnhancer.SetPreset(GraphicsPreset);
+        if (WorldClock.Instance != null) WorldClock.Instance.secondsPerDay = DayMinutes * 60f;
     }
 
     public static string PresetName(int p) => p <= 0 ? "Low" : p == 1 ? "Medium" : "High";

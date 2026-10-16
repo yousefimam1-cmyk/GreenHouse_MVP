@@ -45,20 +45,12 @@
    "ar": "افتح الخريطة"
   },
   {
-   "en": "Interact",
-   "ar": "تفاعل"
-  },
-  {
    "en": "Get in the tractor",
    "ar": "اركب التراكتور"
   },
   {
    "en": "Drive",
    "ar": "سُق"
-  },
-  {
-   "en": "Brake",
-   "ar": "فرامل"
   },
   {
    "en": "Get out",
@@ -159,6 +151,42 @@
   {
    "en": "[Enter] Skip   [Backspace] Close",
    "ar": "[Enter] تخطَّ   [Backspace] إغلاق"
+  },
+  {
+   "en": "Day length",
+   "ar": "طول اليوم"
+  },
+  {
+   "en": "min",
+   "ar": "دقيقة"
+  },
+  {
+   "en": "Grow, trade and build your farm in Saudi Arabia",
+   "ar": "ازرع وتاجر وابنِ مزرعتك في السعودية"
+  },
+  {
+   "en": "Your farms",
+   "ar": "مزارعك"
+  },
+  {
+   "en": "Farm",
+   "ar": "مزرعة"
+  },
+  {
+   "en": "Empty - choose New game to start a farm",
+   "ar": "فاضية - اختر لعبة جديدة عشان تبدأ مزرعة"
+  },
+  {
+   "en": "Playing",
+   "ar": "قيد اللعب"
+  },
+  {
+   "en": "Saved",
+   "ar": "حُفظت"
+  },
+  {
+   "en": "Early access",
+   "ar": "وصول مبكر"
   }
  ]
 }

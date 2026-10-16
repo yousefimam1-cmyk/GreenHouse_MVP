@@ -29,6 +29,7 @@ public class GameMenu : MonoBehaviour
     private int openedFrame, rebindEndFrame = -10;
     private float timeScaleBefore = 1f;
     private bool waitingForKey;
+    private UnityEngine.UI.Image backdrop;
 
     private void Awake() => Instance = this;
 
@@ -46,7 +47,7 @@ public class GameMenu : MonoBehaviour
     private void Start()
     {
         canvas = MenuKit.Canvas("Game Menu UI", transform, 90);
-        MenuKit.Backdrop(canvas.transform, 0.7f);
+        backdrop = MenuKit.Backdrop(canvas.transform, 0.7f);
         list = new MenuList(canvas.transform, 860);
         canvas.gameObject.SetActive(false);
         Loc.OnLanguageChanged += OnLanguage;
@@ -85,9 +86,22 @@ public class GameMenu : MonoBehaviour
             if (UIManager.Instance != null) UIManager.Instance.SetExternalPanel(true);
         }
         mode = m;
+        ApplyLayout();
         openedFrame = Time.frameCount;
         history.Clear();
         ShowPage(PageId.Root);
+    }
+
+    /// <summary>Main menu: list on the left over the moving farm (MainMenuScene). Pause menu: centred over a dark backdrop.</summary>
+    private void ApplyLayout()
+    {
+        var p = list.Panel;
+        bool main = mode == Mode.Main;
+        if (backdrop != null) backdrop.color = new Color(0.02f, 0.02f, 0.015f, main ? 0.05f : 0.7f);
+        p.anchorMin = p.anchorMax = main ? new Vector2(0f, 0.5f) : new Vector2(0.5f, 0.5f);
+        p.pivot = main ? new Vector2(0f, 0.6f) : new Vector2(0.5f, 0.5f);
+        p.anchoredPosition = main ? new Vector2(64f, 0f) : Vector2.zero;
+        p.sizeDelta = new Vector2(main ? 560f : 860f, p.sizeDelta.y);
     }
 
     public void Close()
@@ -174,7 +188,7 @@ public class GameMenu : MonoBehaviour
         if (mode == Mode.Pause)
         {
             rows.Add(MenuRow.Button(() => UiText.T("New game"), () => Go(PageId.ConfirmNew)));
-            rows.Add(MenuRow.Button(() => UiText.T("Main menu"), () => { mode = Mode.Main; history.Clear(); ShowPage(PageId.Root); }));
+            rows.Add(MenuRow.Button(() => UiText.T("Main menu"), () => { mode = Mode.Main; ApplyLayout(); history.Clear(); ShowPage(PageId.Root); }));
         }
         rows.Add(MenuRow.Button(() => UiText.T("Quit"), Quit));
         return rows;
@@ -210,6 +224,7 @@ public class GameMenu : MonoBehaviour
             MenuRow.Setting(() => UiText.T("Mouse sensitivity"), () => Mult(GameSettings.MouseSensitivity), d => GameSettings.MouseSensitivity = Step(GameSettings.MouseSensitivity, d * 0.1f, 0.1f, 3f)),
             MenuRow.Setting(() => UiText.T("Stick sensitivity"), () => Mult(GameSettings.StickSensitivity), d => GameSettings.StickSensitivity = Step(GameSettings.StickSensitivity, d * 0.1f, 0.1f, 3f)),
             MenuRow.Setting(() => UiText.T("Invert Y axis"), () => OnOff(GameSettings.InvertY), d => GameSettings.InvertY = !GameSettings.InvertY),
+            MenuRow.Setting(() => UiText.T("Day length"), () => GameSettings.DayMinutes + " " + UiText.T("min"), d => GameSettings.CycleDayLength(d)),
             MenuRow.Setting(() => UiText.T("Language"), () => Loc.IsArabic ? Loc.Display("العربية") : "English", d => Loc.Toggle()),
             MenuRow.Setting(() => UiText.T("Camera"), () => UiText.T(GameSettings.ThirdPerson ? "Third person" : "First person"), d => ThirdPersonView.SetMode(!GameSettings.ThirdPerson)),
             MenuRow.Button(() => UiText.T("Controls (rebind keys)"), () => Go(PageId.Controls)),

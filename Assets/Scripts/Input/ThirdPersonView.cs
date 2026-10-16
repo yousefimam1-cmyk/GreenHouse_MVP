@@ -150,6 +150,8 @@ public class ThirdPersonView : MonoBehaviour
             Build.Part(PrimitiveType.Sphere, model.transform, new Vector3(0, 1.62f, 0), new Vector3(0.35f, 0.35f, 0.35f), Build.Mat(new Color(0.85f, 0.7f, 0.55f)), "Head");
         }
         model = holder;
+        // Dressed as a Saudi farmer (thobe + shemagh/ghutra or abaya, from Appearance) instead of the bare model.
+        Appearance.ApplyTo(holder);
         anim = holder.GetComponentInChildren<Animation>();
         clips.Clear();
         if (anim != null)

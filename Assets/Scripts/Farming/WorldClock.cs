@@ -11,7 +11,7 @@ public class WorldClock : MonoBehaviour
 {
     public static WorldClock Instance;
 
-    [Tooltip("Real seconds per in-game day")] public float secondsPerDay = 360f;
+    [Tooltip("Real seconds per in-game day (set from Settings > Day length)")] public float secondsPerDay = 1440f;
     [Tooltip("Days per season")] public int daysPerSeason = 5;
 
     public int Day { get; private set; }               // 1-based day of the whole game
@@ -37,6 +37,7 @@ public class WorldClock : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+        secondsPerDay = GameSettings.DayMinutes * 60f;     // Settings > Day length (default 24 real minutes)
         Day = Mathf.Max(1, SaveData.GetInt("mazraa.day", 1));
         DayProgress = SaveData.GetFloat("mazraa.dayProgress", 0.25f);
         Weather = (Weather)SaveData.GetInt("mazraa.weather", 0);

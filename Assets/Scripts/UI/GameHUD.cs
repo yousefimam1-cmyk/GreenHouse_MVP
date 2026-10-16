@@ -209,12 +209,12 @@ public class GameHUD : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920, 1080);
         scaler.matchWidthOrHeight = 0.5f;
 
-        statusPanel = MakePanel("Status", new Vector2(0, 1), new Vector2(24, -24), new Vector2(430, 0), out statusText, 26);
+        statusPanel = MakePanel("Status", new Vector2(0, 1), new Vector2(24, -24), new Vector2(520, 0), out statusText, 23);
         infoPanel = MakePanel("CropInfo", new Vector2(0, 0.5f), new Vector2(24, 0), new Vector2(480, 0), out infoText, 22);
         hintPanel = MakePanel("Hints", new Vector2(0, 0), new Vector2(24, 24), new Vector2(430, 0), out hintText, 20);
         helpPanel = MakePanel("Help", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 0), out helpText, 26);
         // Below the minimap (top centre).
-        trainingPanel = MakePanel("Training", new Vector2(0.5f, 1), new Vector2(0, -300), new Vector2(520, 0), out trainingText, 22);
+        trainingPanel = MakePanel("Training", new Vector2(1, 1), new Vector2(-24, -84), new Vector2(400, 0), out trainingText, 18);   // top-right, under Co-op: keeps the view clear
         partnerPanel = MakePanel("Partners", new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(460, 0), out partnerText, 20);
         truckPanel = MakePanel("Truck", new Vector2(0.5f, 0), new Vector2(0, 24), new Vector2(420, 0), out truckText, 22);
         truckText.alignment = TextAlignmentOptions.Top;

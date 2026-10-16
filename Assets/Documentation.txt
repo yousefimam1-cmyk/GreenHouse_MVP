@@ -371,3 +371,12 @@ MAZRAA ACADEMY - CONTROLS TUTORIAL + AUDIT FIXES (Oct 16 2026)
     VSync on (was uncapped), URP opaque texture off, fog stripping custom (keeps linear/exp/exp2 so haboob/runtime fog
     show in builds), minimap camera without shadows/post FX, billboards ignore render-texture cameras, rain follows any
     driven vehicle, U ignored while typing in chat, no per-frame arrays in MenuNav.Digit / emote keys.
+--- UI/MainMenuScene.cs [MazraaSystem(61)] Main menu in the style of modern farming sims: slow camera orbit around the
+    farm behind the menu, MAZRAA / مزرعة wordmark, menu column on the left (GameMenu moves its list there in Main mode,
+    pause menu stays centred), "Your farms" cards on the right for the 3 save slots (day, money, saved date, playing).
+    SaveSlots.Info(slot, out day, out money, out saved) feeds the cards.
+--- Oct 16 playtest fixes: Settings > Day length (6/12/24/48 real minutes, default 24; was 6) via GameSettings.DayMinutes,
+    moonlit nights (soft blue light from above, brighter ambient/sky at night), status panel wider (mission text no longer
+    breaks mid-name), training box moved to the top-right, third-person player dressed with Appearance (thobe + shemagh),
+    sample sponsor brands renamed to dummy Mazraa / Almadarek brands (Mazraa Seeds, Mazraa Fert, Mazraa Drip,
+    Almadarek Solar). Headless tests keep the old 6-minute day (GameSettings.DefaultDayMinutes = 6).
