@@ -45,12 +45,37 @@ public static class Glyphs
             case GameAction.Pause: return PadLabel(Pad.Start);
             case GameAction.Map: return PadLabel(Pad.Select);
             case GameAction.View: return PadLabel(Pad.RStick);
+            case GameAction.Crouch: return PadLabel(Pad.LStick);
+            case GameAction.Carry: return PadLabel(Pad.DPad) + "↑";
+            case GameAction.UseTool: return PadLabel(Pad.RT);
+            case GameAction.ToolPrev: return PadLabel(Pad.LB);
+            case GameAction.ToolNext: return PadLabel(Pad.RB);
             default: return GameInput.KeyName(a);
         }
     }
 
+    /// <summary>Gamepad label of an action regardless of the device in use ("" when it has no pad binding).</summary>
+    public static string PadFor(GameAction a, bool playStation)
+    {
+        if (string.IsNullOrEmpty(GameInput.GamepadPath(a))) return "";
+        switch (a)
+        {
+            case GameAction.Interact: return PadLabel(Pad.South, playStation);
+            case GameAction.VehicleAction: return PadLabel(Pad.West, playStation);
+            case GameAction.Implement: return PadLabel(Pad.North, playStation);
+            case GameAction.Pause: return PadLabel(Pad.Start, playStation);
+            case GameAction.Map: return PadLabel(Pad.Select, playStation);
+            case GameAction.Crouch: return PadLabel(Pad.LStick, playStation);
+            case GameAction.Carry: return PadLabel(Pad.DPad, playStation) + "↑";
+            case GameAction.UseTool: return PadLabel(Pad.RT, playStation);
+            case GameAction.ToolPrev: return PadLabel(Pad.LB, playStation);
+            case GameAction.ToolNext: return PadLabel(Pad.RB, playStation);
+            default: return PadLabel(Pad.RStick, playStation);
+        }
+    }
+
     // Bracketed keyboard tokens used in texts -> action (or a fixed gamepad button for non-rebindable keys).
-    private static readonly string[] Tokens = { "E", "R", "Q", "Space", "P", "N", "I", "O", "V", "Esc", "Enter", "Backspace", "LB", "RB" };
+    private static readonly string[] Tokens = { "E", "R", "Q", "Space", "P", "N", "I", "O", "V", "Esc", "Enter", "Backspace", "LB", "RB", "Ctrl", "F", "Z", ",", "." };
 
     private static string Replacement(string token)
     {
@@ -71,6 +96,11 @@ public static class Glyphs
             case "Backspace": return pad ? PadLabel(Pad.DPad) + "↓" : null;
             case "LB": return pad ? PadLabel(Pad.LB) : null;
             case "RB": return pad ? PadLabel(Pad.RB) : null;
+            case "Ctrl": return For(GameAction.Crouch);
+            case "F": return For(GameAction.Carry);
+            case "Z": return For(GameAction.UseTool);
+            case ",": return For(GameAction.ToolPrev);
+            case ".": return For(GameAction.ToolNext);
             default: return null;
         }
     }

@@ -388,10 +388,7 @@ public class GameMenu : MonoBehaviour
     {
         string pad = GameInput.GamepadPath(a);
         if (string.IsNullOrEmpty(pad)) return "";
-        bool ps = GameInput.IsPlayStation;
-        string label = a == GameAction.Interact ? Glyphs.PadLabel(Glyphs.Pad.South, ps) : a == GameAction.VehicleAction ? Glyphs.PadLabel(Glyphs.Pad.West, ps)
-                     : a == GameAction.Implement ? Glyphs.PadLabel(Glyphs.Pad.North, ps) : a == GameAction.Pause ? Glyphs.PadLabel(Glyphs.Pad.Start, ps)
-                     : a == GameAction.Map ? Glyphs.PadLabel(Glyphs.Pad.Select, ps) : Glyphs.PadLabel(Glyphs.Pad.RStick, ps);
+        string label = Glyphs.PadFor(a, GameInput.IsPlayStation);
         return "  /  " + label;
     }
 

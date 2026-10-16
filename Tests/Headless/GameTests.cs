@@ -1057,10 +1057,12 @@ static class Program
 
         CozyTests.Run();
         CropsTests();
+        LifeTests.Run();
         EventsFinTests.Run(args[0]);
         EventDirector.RandomEventsEnabled = false;
         SoilTests();
 
+        LifeTests.BeforeSave();
         Console.WriteLine("Saving");
         SaveData.Flush(true);
         T.Check("Save file written", File.Exists(SaveData.Path));
@@ -1085,6 +1087,7 @@ static class Program
         EventsFinTests.AfterRestart();
 
         CozyTests.AfterRestart();
+        LifeTests.AfterRestart();
 
         Console.WriteLine("New game");
         var hud = UnityEngine.Object.FindAnyObjectByType<GameHUD>();
@@ -1102,6 +1105,7 @@ static class Program
         EventsFinTests.AfterNewGame();
 
         CozyTests.AfterNewGame();
+        LifeTests.AfterNewGame();
 
         UiSection(args[0]);
 
@@ -1724,7 +1728,7 @@ static class EventsFinTests
         T.Check("Haboob running: dust fog on", ed.Running && RenderSettings.fog && RenderSettings.fogDensity > 0.01f, RenderSettings.fogDensity + "");
         float g2growth = g2.Cropbeds.Where(b => b.IsActive).Max(b => b.Growth);
         SetProgress(0.52f); FakeEngine.Run(0.5f);
-        T.Check("Haboob ends: fog restored", ed.Active == null && (!RenderSettings.fog || RenderSettings.fogDensity < 0.01f) && !DesertWeatherFX.FogOverridden, RenderSettings.fogDensity + "");
+        T.Check("Haboob ends: fog restored", ed.Active == null && (!RenderSettings.fog || RenderSettings.fogDensity < 0.02f) /* windy days keep up to 0.0185 sandy haze; the storm is 0.045 */ && !DesertWeatherFX.FogOverridden, RenderSettings.fogDensity + "");
         T.Check("Open greenhouse beds damaged, closed one safe", g2growth > 0f && g2.Cropbeds.Where(b => b.IsActive).All(b => b.Growth < 0.05f) && g1.Cropbeds.Any(b => b.Growth > 0.05f), g2growth + "");
         T.Check("Storm mission not done with a greenhouse open", mm.Current != null && mm.Current.id == "fin_storm");
         vents.First(v => v.greenhouse == g2).Interact();
@@ -2519,5 +2523,323 @@ static class ArtTests
         string ar = Loc.Raw(en);
         Loc.SetLanguage(Language.English);
         return ar != en;
+    }
+}
+
+// ---------------------------------------------------------------- On-foot life (stamina, carrying, hand tools) + animal husbandry
+static class LifeTests
+{
+    static float staminaSaved; static int herdSaved, balesSaved; static string traitsSaved;
+
+    static void Hold(UnityEngine.InputSystem.KeyControl k) { k.wasPressedThisFrame = true; FakeEngine.Tick(0.05f); k.wasPressedThisFrame = false; }
+    static void Press(UnityEngine.InputSystem.ButtonControl b) { b.wasPressedThisFrame = true; FakeEngine.Tick(0.05f); b.wasPressedThisFrame = false; }
+
+    public static void Run()
+    {
+        Console.WriteLine("On-foot life + animal husbandry");
+        // The story intro shown at boot is never closed in these tests: give gameplay input back for this section.
+        int ext = (int)T.Get(UIManager.Instance, "externalCount");
+        for (int i = 0; i < ext; i++) UIManager.Instance.SetExternalPanel(false);
+        int e0 = FakeEngine.Errors.Count;
+        var eco = EconomyManager.Instance; var clock = WorldClock.Instance; var pen = AnimalPen.Instance;
+        var life = PlayerLife.Instance; var herd = HerdManager.Instance;
+        var player = GameObject.Find("PlayerCapsule").transform;
+        var inputs = player.GetComponent<StarterAssets.StarterAssetsInputs>();
+        eco.AddMoney(60000);
+        FakeEngine.Run(1.5f);
+        T.Check("Life: PlayerLife and HerdManager running", life != null && herd != null);
+        int bales0 = life.BaleCount;
+        T.Check("Life: hay bales (2 + pressed from stored alfalfa) and crates by the pen, records board at the gate", life.BaleCount >= 2 && life.BaleCount <= PlayerLife.MaxBales && Carriable.All.Count(c => c.kind == "crate") == 2 && UnityEngine.Object.FindAnyObjectByType<PenBoard>() != null, life.BaleCount + "");
+
+        // --- controls: keyboard + gamepad bindings, glyphs
+        T.Check("Life: 5 new on-foot actions with keyboard and gamepad bindings",
+            new[] { GameAction.Crouch, GameAction.Carry, GameAction.UseTool, GameAction.ToolPrev, GameAction.ToolNext }.All(a => !string.IsNullOrEmpty(GameInput.DefaultKeyPath(a)) && !string.IsNullOrEmpty(GameInput.GamepadPath(a))));
+        GameInput.ForceDevice(true, false);
+        string g = Glyphs.Apply("[,] [.] [Z] [F] [Ctrl]");
+        T.Check("Life: prompts show LB / RB / RT / D-pad / LS on a gamepad", g.Contains("[LB]") && g.Contains("[RB]") && g.Contains("[RT]") && g.Contains("D-PAD") && g.Contains("[LS]"), g);
+        GameInput.ForceDevice(true, true);
+        T.Check("Life: PlayStation labels L1 / R1 / R2", Glyphs.Apply("[,] [.] [Z]") == "[L1] [R1] [R2]", Glyphs.Apply("[,] [.] [Z]"));
+        GameInput.ForceDevice(false, false);
+
+        // --- stamina model
+        var mild = new StaminaModel(); var hot = new StaminaModel();
+        for (int i = 0; i < 30; i++) { mild.Tick(0.1f, true, true, false, 0f, 0f, 0.0003f); hot.Tick(0.1f, true, true, false, 1f, 0f, 0.0003f); }
+        T.Check("Life: sprinting drains stamina", mild.stamina < StaminaModel.Max - 25f, "" + mild.stamina);
+        T.Check("Life: a heatwave drains it about twice as fast", StaminaModel.Max - hot.stamina > (StaminaModel.Max - mild.stamina) * 1.8f, mild.stamina + " vs " + hot.stamina);
+        T.Check("Life: heat also dries you out faster", hot.hydration < mild.hydration);
+        var walk = new StaminaModel { stamina = 30f }; var rest = new StaminaModel { stamina = 30f };
+        for (int i = 0; i < 20; i++) { walk.Tick(0.1f, true, false, false, 0f, 0f, 0f); rest.Tick(0.1f, false, false, true, 0f, 0f, 0f); }
+        T.Check("Life: resting (crouched, still) recovers faster than walking", rest.stamina > walk.stamina + 10f && walk.stamina > 30f, walk.stamina + " / " + rest.stamina);
+        var ex = new StaminaModel();
+        for (int i = 0; i < 200 && !ex.exhausted; i++) ex.Tick(0.1f, true, true, false, 0.5f, 0f, 0f);
+        ex.Tick(1f, false, false, false, 0f, 0f, 0f);
+        T.Check("Life: exhausted = no sprint until stamina is back to 25", ex.exhausted && !MoveRules.CanSprint(0f, false, ex.exhausted));
+        var thirsty = new StaminaModel { hydration = 0f }; thirsty.Tick(5f, false, false, false, 0f, 0f, 0f);
+        T.Check("Life: thirst caps stamina", thirsty.stamina <= 40.01f && thirsty.Cap == 40f);
+        thirsty.Drink();
+        T.Check("Life: drinking restores water and stamina", thirsty.hydration == 1f && thirsty.stamina > 60f);
+
+        // --- stamina in game: sprint in mild weather vs a heatwave, then rest
+        T.SetProp(clock, "DayProgress", 0.3f);
+        player.position = new Vector3(0, 0, -57.4f);
+        T.SetProp(clock, "Weather", Weather.Sunny);
+        life.Model.stamina = StaminaModel.Max; life.Model.hydration = 1f;
+        inputs.move = new Vector2(0, 1); inputs.sprint = true;
+        FakeEngine.Run(2f, 0.1f);
+        float drainMild = StaminaModel.Max - life.Model.stamina;
+        T.SetProp(clock, "Weather", Weather.Heatwave);
+        life.Model.stamina = StaminaModel.Max; life.Model.exhausted = false; life.Model.hydration = 1f;
+        inputs.sprint = true;
+        FakeEngine.Run(2f, 0.1f);
+        float drainHot = StaminaModel.Max - life.Model.stamina;
+        T.Check("Life: sprinting player loses stamina, faster in a heatwave", drainMild > 5f && drainHot > drainMild * 1.3f, drainMild + " vs " + drainHot);
+        inputs.sprint = true; FakeEngine.Run(12f, 0.1f);
+        T.Check("Life: an exhausted player can't sprint (input released)", life.Model.exhausted && !PlayerLife.SprintAllowed && !inputs.sprint, life.Model.stamina + "");
+        inputs.move = Vector2.zero; inputs.sprint = false;
+        float low = life.Model.stamina;
+        var kb = new UnityEngine.InputSystem.Keyboard();
+        foreach (var f in typeof(UnityEngine.InputSystem.Keyboard).GetFields()) if (f.FieldType == typeof(UnityEngine.InputSystem.KeyControl)) f.SetValue(kb, new UnityEngine.InputSystem.KeyControl());
+        UnityEngine.InputSystem.Keyboard.current = kb;
+        Hold(kb.leftCtrlKey);
+        T.Check("Life: Ctrl crouches (controller lowers and slows)", life.IsCrouching && PlayerLife.Crouching && PlayerLife.SpeedFactor < 0.6f && !PlayerLife.SprintAllowed);
+        FakeEngine.Run(3f, 0.1f);
+        T.Check("Life: resting recovers stamina", life.Model.stamina > low + 20f, low + " -> " + life.Model.stamina);
+        Hold(kb.leftCtrlKey);
+        T.Check("Life: Ctrl again stands up", !life.IsCrouching);
+        T.SetProp(clock, "Weather", Weather.Sunny);
+
+        // --- drinking at the well with bare hands
+        var well = UnityEngine.Object.FindAnyObjectByType<WellController>();
+        if (!well.IsRunning) well.Interact();
+        player.position = well.transform.position + new Vector3(1.5f, 0, 0);
+        life.Model.hydration = 0.2f; life.SetTool(HandTool.Hands);
+        string drink = life.UseTool();
+        T.Check("Life: bare hands at the running well: drink", life.Model.hydration == 1f, drink);
+
+        // --- carrying: weight slows you, no sprint with a bale
+        var bale = Carriable.All.First(c => c.kind == "hay_bale");
+        player.position = bale.transform.position + new Vector3(0.8f, 0, 0);
+        FakeEngine.Run(0.2f, 0.1f);
+        float free = PlayerLife.SpeedFactor;
+        Hold(kb.fKey);
+        T.Check("Life: F picks up the nearest hay bale (25 kg)", life.Carried == bale && bale.Carried && life.CarryKg == 25f, life.LastMessage);
+        T.Check("Life: carrying a heavy bale slows you and stops sprinting", PlayerLife.SpeedFactor < free * 0.8f && !PlayerLife.SprintAllowed && PlayerLife.AccelerationFactor < 0.6f, free + " -> " + PlayerLife.SpeedFactor);
+        T.Check("Life: a light crate slows you less", MoveRules.CarryFactor(8f) > MoveRules.CarryFactor(25f) && MoveRules.CanSprint(8f, false, false));
+        FakeEngine.Run(0.3f, 0.1f);
+        T.Check("Life: HUD shows the load and the stamina bar", life.Hud.LastText.Contains("25 kg") && life.Hud.LastText.Contains("Stamina"), life.Hud.LastText);
+
+        // --- herd: two sheep (ewe + ram)
+        T.Check("Life: buy 2 sheep", eco.TryBuy("sheep") && eco.TryBuy("sheep"));
+        herd.Reconcile();
+        var sheep = herd.Animals.Where(a => a.species == "sheep").ToList();
+        T.Check("Life: one record per animal; the pair is a ewe and a ram", herd.Animals.Count == pen.AnimalCount && sheep.Count == 2 && sheep.Count(a => a.male) == 1 && sheep.All(a => a.Adult), herd.Animals.Count + " vs " + pen.AnimalCount);
+        FakeEngine.Run(1.5f);
+        T.Check("Life: every animal in the pen is linked to its record", pen.Animals.All(a => a.uid != 0 && herd.Find(a.uid) != null && herd.Find(a.uid).species == a.animalId));
+
+        // drop the bale in the pen: everyone fed
+        foreach (var a in herd.Animals) a.food = 0.2f;
+        player.position = pen.transform.position;
+        Hold(kb.fKey);
+        T.Check("Life: bale put down in the pen feeds every animal", life.Carried == null && herd.Animals.All(a => a.food == 1f) && life.BaleCount == bales0 - 1, life.LastMessage);
+
+        // --- needs drop daily, feeding and watering restore
+        eco.ConsumeFeed(eco.Feed);
+        T.SetProp(pen, "WaterLevel", 0f);
+        herd.SimulateDay(clock.Day);
+        T.Check("Life: without feed and water, needs drop over a day", herd.Animals.All(a => a.food <= 0.5f && a.water < 0.5f), string.Join(",", herd.Animals.Select(a => a.food + "/" + a.water)));
+        eco.AddFeed(20f);
+        int fed = herd.FeedAll();
+        pen.FillWater(); herd.WaterAll();
+        T.Check("Life: feeding and filling the trough restore food and water", fed == herd.Animals.Count && herd.Animals.All(a => a.food == 1f && a.water == 1f));
+
+        // --- tools
+        life.SetTool(HandTool.Hands);
+        life.CycleTool(1);
+        FakeEngine.Run(0.3f, 0.1f);
+        T.Check("Life: tool wheel cycles (Hands -> Hoe) and shows the ring", life.Tool == HandTool.Hoe && life.Hud.LastText.Contains("( Hoe )"), life.Hud.LastText);
+        Hold(kb.periodKey);
+        T.Check("Life: period selects the next tool", life.Tool == HandTool.WateringCan);
+        var pad = new UnityEngine.InputSystem.Gamepad { name = "XInputControllerWindows" };
+        UnityEngine.InputSystem.Gamepad.current = pad;
+        Press(pad.leftShoulder);
+        T.Check("Life: LB cycles back", life.Tool == HandTool.Hoe);
+        var plot = FieldManager.Instance.Plots.FirstOrDefault(p => p.State == PlotState.Untilled);
+        if (plot != null)
+        {
+            player.position = plot.transform.position;
+            life.Model.stamina = StaminaModel.Max;
+            Press(pad.rightTrigger);
+            T.Check("Life: RT with the hoe plows the plot by hand (costs stamina)", plot.State == PlotState.Plowed && life.Model.stamina < StaminaModel.Max, life.LastMessage);
+            life.SetTool(HandTool.WateringCan);
+            plot.AddWater(-1f);
+            string w = life.UseTool();
+            T.Check("Life: watering can waters the plot", plot.Water >= 0.49f, w);
+        }
+        else T.Check("Life: an untilled plot for the hoe", false);
+        UnityEngine.InputSystem.Gamepad.current = null;
+        life.SetTool(HandTool.Shovel);
+        player.position = pen.transform.position;
+        T.SetProp(pen, "Cleanliness", 0.3f);
+        life.Model.stamina = StaminaModel.Max;
+        string sh = life.UseTool();
+        T.Check("Life: shovel mucks out the pen", pen.Cleanliness > 0.55f, sh);
+        life.SetTool(HandTool.Brush);
+        var body = pen.Animals.First(a => a.animalId == "sheep");
+        player.position = body.transform.position + new Vector3(0.5f, 0, 0);
+        var rec = herd.Find(body.uid);
+        rec.happiness = 0.3f; rec.clean = 0.2f;
+        string br = life.UseTool();
+        T.Check("Life: brushing an animal cleans it and makes it happier", rec.clean == 1f && rec.happiness >= 0.5f, br);
+        T.Check("Life: footsteps know the surface (pen straw, field soil, sand)", PlayerLife.SurfaceAt(pen.transform.position) == "straw"
+            && PlayerLife.SurfaceAt(FieldManager.Instance.Plots[0].transform.position) == "soil" && PlayerLife.SurfaceAt(new Vector3(400, 0, 400)) == "sand");
+
+        // --- illness: produces less, medicine cures
+        var ewe = sheep.First(a => !a.male);
+        ewe.food = ewe.water = ewe.clean = ewe.health = ewe.happiness = 1f; ewe.heatStress = 0f; ewe.illness = "";
+        float healthyP = Husbandry.Productivity(ewe), factor0 = herd.ProductionFactor("sheep");
+        herd.MakeSick(ewe, "respiratory");
+        T.Check("Life: a sick animal produces much less", Husbandry.Productivity(ewe) < healthyP * 0.5f && herd.ProductionFactor("sheep") < factor0, healthyP + " -> " + Husbandry.Productivity(ewe));
+        T.Check("Life: no medicine in stock -> can't treat", ewe.Sick && herd.Treat(ewe).Contains("No medicine"));
+        T.Check("Life: buy medicine at the shop", eco.TryBuy(HerdManager.MedicineId) && herd.Medicine == 1);
+        herd.Treat(ewe);
+        T.Check("Life: medicine cures it", !ewe.Sick && herd.Medicine == 0 && Husbandry.Productivity(ewe) > healthyP * 0.9f);
+        herd.MakeSick(ewe, "digestive");
+        int m0 = eco.Money;
+        string vet = herd.CallVet();
+        T.Check("Life: the vet cures every sick animal for a fee", !ewe.Sick && eco.Money == m0 - HerdManager.VetPrice, vet);
+        T.Check("Life: vet not needed when all are healthy", herd.CallVet().Contains("not needed") && eco.Money == m0 - HerdManager.VetPrice);
+
+        // --- heat stress: shade and misting fans
+        float load = Husbandry.HeatLoad(Season.Summer, Weather.Heatwave);
+        float open = Husbandry.HeatStress("chicken", load, false, false), shaded = Husbandry.HeatStress("chicken", load, true, false), both = Husbandry.HeatStress("chicken", load, true, true);
+        T.Check("Life: summer heatwave stresses hens; shade helps, shade + misting fans more", open > 0.9f && shaded < open - 0.3f && both < shaded - 0.3f, open + " / " + shaded + " / " + both);
+        T.Check("Life: camels hardly mind the heat", Husbandry.HeatStress("camel", load, false, false) < 0.2f);
+        var hotHen = new AnimalRecord { species = "chicken", ageDays = 20, heatStress = open };
+        var coolHen = new AnimalRecord { species = "chicken", ageDays = 20, heatStress = both };
+        T.Check("Life: heat stress lowers production", Husbandry.Productivity(hotHen) < Husbandry.Productivity(coolHen) * 0.6f);
+        T.SetProp(clock, "Weather", Weather.Heatwave);
+        float before = herd.StressFor("sheep");
+        T.Check("Life: buy shade canopy and misting fans", eco.TryBuy(HerdManager.ShadeId) && eco.TryBuy(HerdManager.FansId) && herd.Shade && herd.Fans && !eco.TryBuy(HerdManager.ShadeId));
+        pen.FillWater();
+        T.Check("Life: in the pen, shade + fans cut heat stress", herd.StressFor("sheep") < before * 0.5f + 0.001f && GameObject.Find("Pen Shade") != null && GameObject.Find("Misting Fans") != null, before + " -> " + herd.StressFor("sheep"));
+        T.SetProp(pen, "WaterLevel", 0f);
+        T.Check("Life: fans need water in the trough", !herd.FansWorking);
+        pen.FillWater();
+        T.SetProp(clock, "Weather", Weather.Sunny);
+
+        // --- breeding with gestation and inherited trait
+        herd.Seed(7);
+        var ram = sheep.First(a => a.male);
+        ewe.trait = 1.3f; ram.trait = 1.1f;
+        int owned0 = eco.Owned("sheep"), days = 0;
+        for (; days < 30 && !ewe.Pregnant; days++) { pen.FillWater(); pen.Clean(); eco.AddFeed(5f); herd.SimulateDay(clock.Day + days); foreach (var a in herd.Animals) a.illness = ""; }
+        T.Check("Life: a healthy, happy ewe with a ram conceives", ewe.Pregnant && ewe.gestationLeft == SpeciesTraits.Get("sheep").gestation && Math.Abs(ewe.sireTrait - 1.1f) < 0.001f, "days " + days);
+        herd.SimulateDay(clock.Day + days++);
+        T.Check("Life: no lamb before the gestation time", eco.Owned("sheep") == owned0 && ewe.Pregnant);
+        for (int i = 0; i < 6 && ewe.Pregnant; i++) { pen.FillWater(); eco.AddFeed(5f); herd.SimulateDay(clock.Day + days++); foreach (var a in herd.Animals) a.illness = ""; }
+        var lamb = herd.Animals.LastOrDefault(a => a.species == "sheep" && a.ageDays <= 1);
+        T.Check("Life: after the gestation a lamb is born", eco.Owned("sheep") >= owned0 + 1 && lamb != null && !ewe.Pregnant, eco.Owned("sheep") + "");
+        if (lamb != null)
+        {
+            T.Check("Life: lamb inherits the parents' trait (1.2 +- 0.1)", lamb.trait >= 1.1f - 0.0001f && lamb.trait <= 1.3f + 0.0001f, "" + lamb.trait);
+            T.Check("Life: young animals don't produce yet", Husbandry.Productivity(lamb) == 0f && !lamb.Adult);
+        }
+        FakeEngine.Run(1.5f);
+        T.Check("Life: the newborn walks in the pen", pen.Animals.Count(a => a.animalId == "sheep") == eco.Owned("sheep"));
+        var r = Enumerable.Range(0, 200).Select(i => Husbandry.Inherit(0.8f, 1.0f, new System.Random(i))).ToList();
+        T.Check("Life: inheritance varies but stays within the parents' average +- 0.1", r.Min() >= 0.8f && r.Max() <= 1.0f && r.Max() - r.Min() > 0.1f, r.Min() + ".." + r.Max());
+
+        // --- value by age and health
+        var adult = new AnimalRecord { species = "sheep", ageDays = 20, trait = 1f };
+        var young = new AnimalRecord { species = "sheep", ageDays = 1, trait = 1f };
+        var old = new AnimalRecord { species = "sheep", ageDays = 130, trait = 1f };
+        var weak = new AnimalRecord { species = "sheep", ageDays = 20, trait = 1f, health = 0.3f, illness = "respiratory" };
+        int vA = Husbandry.Value(adult, 2500);
+        T.Check("Life: price by age and health (prime adult worth most)", vA == 2500 && Husbandry.Value(young, 2500) < vA && Husbandry.Value(old, 2500) < vA && Husbandry.Value(weak, 2500) < vA / 2,
+            vA + " " + Husbandry.Value(young, 2500) + " " + Husbandry.Value(old, 2500) + " " + Husbandry.Value(weak, 2500));
+
+        // --- records panel (gamepad)
+        var board = UnityEngine.Object.FindAnyObjectByType<PenBoard>();
+        board.Interact();
+        var panel = herd.Panel;
+        T.Check("Life: records board opens the animal panel (game input paused)", panel.IsOpen && UIManager.Instance.IsUIOpened && panel.LastText.Contains("Animal records") && panel.LastText.Contains("Genetics"), panel.LastText);
+        FakeEngine.Tick(0.05f);
+        UnityEngine.InputSystem.Gamepad.current = pad;
+        int sel = panel.Selected;
+        Press(pad.dpad.down);
+        T.Check("Life: D-pad selects the next animal", panel.Selected == (sel + 1) % herd.Animals.Count, sel + " -> " + panel.Selected);
+        if (lamb != null)
+        {
+            panel.Select(herd, herd.Animals.ToList().IndexOf(lamb));
+            int count0 = eco.Owned("sheep"), money0 = eco.Money;
+            Press(pad.buttonWest);
+            T.Check("Life: X asks before selling", eco.Owned("sheep") == count0 && panel.LastText.Contains("again to sell"), panel.LastText);
+            Press(pad.buttonWest);
+            T.Check("Life: X again sells the lamb at its value", eco.Owned("sheep") == count0 - 1 && eco.Money > money0 && herd.Find(lamb.uid) == null, (eco.Money - money0) + "");
+            FakeEngine.Run(0.5f);
+            T.Check("Life: sold animal leaves the pen", pen.Animals.Count(a => a.animalId == "sheep") == eco.Owned("sheep"));
+        }
+        Press(pad.buttonEast);
+        T.Check("Life: B closes the panel and gives input back", !panel.IsOpen && !UIManager.Instance.IsUIOpened);
+        UnityEngine.InputSystem.Gamepad.current = null;
+        UnityEngine.InputSystem.Keyboard.current = null;
+        GameInput.ForceDevice(false, false);
+
+        // --- daily simulation runs on its own
+        int ages = herd.Animals.Sum(a => a.ageDays);
+        clock.NextDay();
+        T.Check("Life: a new day ages the herd", herd.Animals.Sum(a => a.ageDays) == ages + herd.Animals.Count);
+
+        // --- Arabic for every text
+        var keys = new List<string>();
+        foreach (var f in Directory.GetFiles(Path.Combine(FakeEngine.ResourcesRoot, "..", "Scripts", "Life"), "*.cs"))
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f), "Loc\\.(?:T|Raw)\\(\"((?:[^\"\\\\]|\\\\.)*)\""))
+                keys.Add(m.Groups[1].Value);
+        keys.AddRange(HandTools.All.Select(HandTools.Key));
+        keys.AddRange(Husbandry.Illnesses.Select(Husbandry.IllnessKey));
+        keys.AddRange(new[] { "Hay bale", "Produce crate", "male", "female", "yes", "no", "on", "no water", "Crouch / rest", "Pick up / put down", "Use hand tool", "Previous tool", "Next tool" });
+        Loc.Raw("x");
+        var missing = keys.Distinct().Where(k => !Loc.HasTranslation(k)).ToList();
+        T.Check("Life: every text has Arabic (Loc/92_life.json)", keys.Count > 50 && missing.Count == 0, string.Join(" | ", missing.Take(5)));
+        Loc.SetLanguage(Language.Arabic);
+        board.Interact(); herd.Panel.Refresh(herd);
+        T.Check("Life: panel and prompt in Arabic", herd.Panel.LastText.Contains("سجل الحيوانات") && board.InteractionPrompt.Any(c => c >= 'ﹰ'), board.InteractionPrompt);
+        herd.Panel.Close();
+        Loc.SetLanguage(Language.English);
+
+        // the older sections expect only chickens in the pen: sell the sheep again (keeps shade, fans and genetics records)
+        foreach (var a in herd.Animals.Where(x => x.species == "sheep").ToList()) herd.Sell(a);
+        FakeEngine.Run(0.5f);
+        T.Check("Life: selling empties the sheep from the pen", eco.Owned("sheep") == 0 && pen.Animals.Count(a => a.animalId == "sheep") == 0);
+
+        T.Check("Life: no errors", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
+        for (int i = 0; i < ext; i++) UIManager.Instance.SetExternalPanel(true);
+    }
+
+    /// <summary>Snapshot just before the save file is flushed and the world rebuilt.</summary>
+    public static void BeforeSave()
+    {
+        var herd = HerdManager.Instance; var life = PlayerLife.Instance;
+        life.SetTool(HandTool.Brush);
+        life.Save(); herd.Save();
+        staminaSaved = life.Model.stamina; herdSaved = herd.Animals.Count; balesSaved = life.BaleCount;
+        traitsSaved = string.Join(",", herd.Animals.Select(a => a.uid + ":" + a.trait.ToString("F3") + ":" + a.male));
+    }
+
+    public static void AfterRestart()
+    {
+        var herd = HerdManager.Instance; var life = PlayerLife.Instance;
+        string traits = string.Join(",", herd.Animals.Select(a => a.uid + ":" + a.trait.ToString("F3") + ":" + a.male));
+        T.Check("Life: herd restored with uids, sex and genetics", herd.Animals.Count == herdSaved && traits == traitsSaved, traits + " vs " + traitsSaved);
+        T.Check("Life: shade and fans restored", herd.Shade && herd.Fans && GameObject.Find("Pen Shade") != null);
+        T.Check("Life: stamina, tool and bales restored", Math.Abs(life.Model.stamina - staminaSaved) < 5f && life.Tool == HandTool.Brush && life.BaleCount == balesSaved, life.Model.stamina + " " + life.Tool + " " + life.BaleCount);
+        T.Check("Life: pen bodies linked after restart", AnimalPen.Instance.Animals.All(a => a.uid != 0));
+    }
+
+    public static void AfterNewGame()
+    {
+        var herd = HerdManager.Instance; var life = PlayerLife.Instance;
+        T.Check("Life: new game clears the herd, shade and medicine", herd.Animals.Count == 0 && !herd.Shade && !herd.Fans && herd.Medicine == 0 && GameObject.Find("Pen Shade") == null);
+        T.Check("Life: new game resets stamina, tool and bales", life.Model.stamina >= StaminaModel.Max - 1f && life.Tool == HandTool.Hands && life.BaleCount == 2 && life.Carried == null, life.BaleCount + "");
     }
 }
