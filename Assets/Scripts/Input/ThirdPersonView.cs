@@ -46,7 +46,8 @@ public class ThirdPersonView : MonoBehaviour
 
     private void Start()
     {
-        if (GameSettings.ThirdPerson) Invoke(nameof(ApplySaved), 0.1f);
+        // The game always starts in first person (V or Settings > Camera switches for this session).
+        if (GameSettings.ThirdPerson) GameSettings.ThirdPerson = false;
     }
 
     private void ApplySaved() { if (GameSettings.ThirdPerson && !IsThirdPerson) Set(true); }
@@ -149,6 +150,9 @@ public class ThirdPersonView : MonoBehaviour
             Build.Part(PrimitiveType.Capsule, model.transform, new Vector3(0, 0.8f, 0), new Vector3(0.6f, 0.8f, 0.6f), Build.Mat(new Color(0.3f, 0.45f, 0.7f)), "Body");
             Build.Part(PrimitiveType.Sphere, model.transform, new Vector3(0, 1.62f, 0), new Vector3(0.35f, 0.35f, 0.35f), Build.Mat(new Color(0.85f, 0.7f, 0.55f)), "Head");
         }
+        // Hide the StarterAssets robot body that ships on the player capsule: only our farmer model is drawn.
+        foreach (var r in player.GetComponentsInChildren<Renderer>(true))
+            if (!r.transform.IsChildOf(holder.transform)) r.enabled = false;
         model = holder;
         // Dressed as a Saudi farmer (thobe + shemagh/ghutra or abaya, from Appearance) instead of the bare model.
         Appearance.ApplyTo(holder);
