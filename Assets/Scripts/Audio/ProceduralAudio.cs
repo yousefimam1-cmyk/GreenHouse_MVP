@@ -51,6 +51,7 @@ public static class ProceduralAudio
             case "goat": return Voice(0.7f, 420f, 380f, 22f, new[] { 900f, 1600f, 2900f }, 0.6f, 0.05f, 9);
             case "camel": return Camel();
             case "chicken": return Chicken();
+            case "theme": return MenuMusic.Theme();
             default: return null;
         }
     }

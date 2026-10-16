@@ -45,7 +45,7 @@ static class Program
 
     static void ResetStatics()
     {
-        foreach (var t in new[] { typeof(GameEvents), typeof(Loc), typeof(CropDatabase), typeof(SaveData), typeof(WorldClock), typeof(FieldPlot), typeof(FarmModifiers), typeof(DesertWeatherFX), typeof(CozyFx), typeof(Appearance), typeof(SponsorManager), typeof(CozyAnalytics) })
+        foreach (var t in new[] { typeof(GameEvents), typeof(Loc), typeof(CropDatabase), typeof(SaveData), typeof(WorldClock), typeof(FieldPlot), typeof(FarmModifiers), typeof(DesertWeatherFX), typeof(CozyFx), typeof(Appearance), typeof(SponsorManager), typeof(CozyAnalytics), typeof(LoadingScreen) })
         {
             var m = t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
                 .FirstOrDefault(x => x.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false).Length > 0);
@@ -776,6 +776,21 @@ static class Program
         ArtTests.Run();   // before the sections that rebuild the world
         FishTests();
         MpTests.MultiplayerTests(args[0]);
+        // ---- loading screen + menu theme
+        var theme = ProceduralAudio.Get("theme");
+        float peak = 0f; double sq = 0;
+        foreach (var v in theme.data) { peak = Math.Max(peak, Math.Abs(v)); sq += v * v; }
+        T.Check("Menu theme: 24 s loop, not silent, no clipping", Math.Abs(theme.length - MenuMusic.Length) < 0.05f && Math.Sqrt(sq / theme.data.Length) > 0.03 && peak <= 0.75f, theme.length + "s peak " + peak);
+        Console.WriteLine("Loading screen and menu theme");
+        BuildWorld();
+        FakeEngine.Tick(0.02f);
+        LoadingScreen.Show();
+        FakeEngine.Tick(0.02f);
+        T.Check("Loading screen shows with music and a tip", LoadingScreen.Visible && LoadingScreen.MusicPlaying && LoadingScreen.TipText.Contains("Tip"), LoadingScreen.TipText);
+        FakeEngine.Run(1f);
+        T.Check("Loading bar fills gradually", LoadingScreen.Visible && LoadingScreen.Progress > 0.1f && LoadingScreen.Progress < 0.6f, LoadingScreen.Progress + "");
+        FakeEngine.Run(14f);
+        T.Check("Loading screen closes by itself", !LoadingScreen.Visible && LoadingScreen.Progress >= 0.999f);
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }

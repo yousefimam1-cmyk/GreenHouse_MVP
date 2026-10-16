@@ -603,7 +603,7 @@ namespace UnityEngine
     }
     public class AudioListener : Behaviour { public static float volume = 1f; }
     public class AudioClip : Object { public int samples, channels, frequency; public float[] data; public float length => frequency > 0 ? samples / (float)frequency : 0; public static AudioClip Create(string n, int len, int ch, int freq, bool stream) => new AudioClip { name = n, samples = len, channels = ch, frequency = freq }; public bool SetData(float[] d, int off) { data = d; return true; } }
-    public class AudioSource : Behaviour { public bool isPlaying, loop, playOnAwake = true; public AudioClip clip; public float volume = 1, pitch = 1, spatialBlend, dopplerLevel = 1, minDistance = 1, maxDistance = 500; public AudioRolloffMode rolloffMode; public int oneShots; public void Play() => isPlaying = true; public void Stop() => isPlaying = false; public void PlayOneShot(AudioClip c) { oneShots++; } public void PlayOneShot(AudioClip c, float v) { oneShots++; } }
+    public class AudioSource : Behaviour { public bool isPlaying, loop, playOnAwake = true; public AudioClip clip; public float volume = 1, pitch = 1, spatialBlend, dopplerLevel = 1, minDistance = 1, maxDistance = 500; public AudioRolloffMode rolloffMode; public int oneShots; public void Play() => isPlaying = true; public void Stop() => isPlaying = false; public void Pause() => isPlaying = false; public void UnPause() => isPlaying = true; public void PlayOneShot(AudioClip c) { oneShots++; } public void PlayOneShot(AudioClip c, float v) { oneShots++; } }
     public enum AudioRolloffMode { Logarithmic, Linear, Custom }
     public enum WrapMode { Once, Loop }
     public class AnimationState { public string name; public WrapMode wrapMode; }
@@ -620,7 +620,7 @@ namespace UnityEngine
     public enum ParticleSystemRenderMode { Billboard, Stretch }
     public class ParticleSystem : Component
     {
-        public bool isPlaying; public void Play() => isPlaying = true; public void Stop() => isPlaying = false; public void Stop(bool c, ParticleSystemStopBehavior b) => isPlaying = false;
+        public bool isPlaying; public void Play() => isPlaying = true; public void Stop() => isPlaying = false; public void Pause() => isPlaying = false; public void UnPause() => isPlaying = true; public void Stop(bool c, ParticleSystemStopBehavior b) => isPlaying = false;
         public MainModule main => new MainModule(); public EmissionModule emission => new EmissionModule(); public ShapeModule shape => new ShapeModule();
         public struct MainModule { public float startLifetime { set { } } public float startSpeed { set { } } public float startSize { set { } } public int maxParticles { set { } } public Color startColor { set { } } public ParticleSystemSimulationSpace simulationSpace { set { } } public float gravityModifier { set { } } }
         public struct EmissionModule { public float rateOverTime { set { } } }

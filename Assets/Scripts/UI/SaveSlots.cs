@@ -104,6 +104,7 @@ public static class SaveSlots
         // Feature registries are refilled by the systems of the new scene.
         HudLines.Status.Clear();
         ShopCatalog.Entries.Clear();
+        LoadingScreen.Show();
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         return true;
     }

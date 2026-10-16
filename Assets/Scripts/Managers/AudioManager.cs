@@ -44,6 +44,15 @@ public class AudioManager : MonoBehaviour
     }
     private float waterBase = -1f;
 
+    /// <summary>Pause the farm music while the loading screen / main menu theme plays (LoadingScreen).</summary>
+    public void SetFarmMusicPaused(bool paused)
+    {
+        if (musicAS == null) return;
+        if (paused) { if (musicAS.isPlaying) { musicAS.Pause(); farmMusicPaused = true; } }
+        else if (farmMusicPaused) { musicAS.UnPause(); farmMusicPaused = false; }
+    }
+    private bool farmMusicPaused;
+
     public void PlayHarvest()
     {
         AudioClip clip = harvestSFX != null ? harvestSFX : interactSFX;
