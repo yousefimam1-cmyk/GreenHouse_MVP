@@ -97,7 +97,7 @@ static class Program
         });
     }
 
-    static void BuildWorld()
+    internal static void BuildWorld()
     {
         FakeEngine.Reset();
         ResetStatics();
@@ -1430,6 +1430,9 @@ static class Program
         T.Check("Loading bar fills gradually", LoadingScreen.Visible && LoadingScreen.Progress > 0.1f && LoadingScreen.Progress < 0.6f, LoadingScreen.Progress + "");
         FakeEngine.Run(14f);
         T.Check("Loading screen closes by itself", !LoadingScreen.Visible && LoadingScreen.Progress >= 0.999f);
+
+        DrivingTests.Run();
+        SharedKeyTests.Run();
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
@@ -2970,6 +2973,344 @@ static class EgyptTests
     static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
 }
 
+// ---------------------------------------------------------------- driving: drivetrain, load, traction, assists, wear
+static class DrivingTests
+{
+    const float Dt = 0.02f;
+
+    static void Step(Vehicle v, float seconds, float throttle, float steer = 0f, bool brake = false)
+    {
+        for (float t = 0; t < seconds; t += Dt) v.StepDrive(throttle, steer, brake, Dt);
+    }
+
+    static void Stop(Vehicle v) { T.SetProp(v, "Speed", 0f); v.StepDrive(0f, 0f, false, Dt); }
+
+    static float MaxSlip(Vehicle v, float seconds)
+    {
+        Stop(v);
+        float m = 0f;
+        for (float t = 0; t < seconds; t += Dt) { v.StepDrive(1f, 0f, false, Dt); m = Math.Max(m, v.Drive.Slip); }
+        Stop(v);
+        return m;
+    }
+
+    static void Press(UnityEngine.InputSystem.ButtonControl b) { b.wasPressedThisFrame = true; b.isPressed = true; FakeEngine.Tick(0.02f); b.wasPressedThisFrame = false; b.isPressed = false; }
+    static void PressKey(UnityEngine.InputSystem.KeyControl k) { k.wasPressedThisFrame = true; k.isPressed = true; FakeEngine.Tick(0.02f); k.wasPressedThisFrame = false; k.isPressed = false; }
+
+    static float BrakeDistance(Vehicle v)
+    {
+        T.SetProp(v, "Speed", 12f);
+        float d = 0f;
+        for (int i = 0; i < 500 && v.Speed > 0.01f; i++) { v.StepDrive(0f, 0f, true, Dt); d += v.Speed * Dt; }
+        return d;
+    }
+
+    static float YawRate(Vehicle v, float speed)
+    {
+        for (int i = 0; i < 20; i++) { T.SetProp(v, "Speed", speed); v.StepDrive(0f, 1f, false, Dt); }
+        float y0 = v.Yaw; T.SetProp(v, "Speed", speed); v.StepDrive(0f, 1f, false, Dt);
+        return (v.Yaw - y0) / Dt;
+    }
+
+    const string Hints = "[F] Engine  [Shift]/[Ctrl] Gear  [Y] Cruise [Minus]/[Plus]  [Z] 4WD / diff lock  [Slash] GPS";
+
+    public static void Run()
+    {
+        Console.WriteLine("Driving: drivetrain, load, traction, assists, wear");
+        Program.BuildWorld();
+        FakeEngine.Run(2f);
+        for (int i = 0; i < 400 && LoadingScreen.Visible; i++) FakeEngine.Tick(0.1f);
+        var intro = UnityEngine.Object.FindAnyObjectByType<StoryIntro>();
+        if (intro != null) typeof(StoryIntro).GetMethod("Close", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(intro, null);
+        FakeEngine.Tick(0.02f);
+        T.Check("Driving: no panel open (inputs reach the vehicle)", !UIManager.Instance.IsUIOpened);
+        var kb = new UnityEngine.InputSystem.Keyboard();
+        foreach (var f in typeof(UnityEngine.InputSystem.Keyboard).GetFields())
+            if (f.FieldType == typeof(UnityEngine.InputSystem.KeyControl)) f.SetValue(kb, new UnityEngine.InputSystem.KeyControl());
+        UnityEngine.InputSystem.Keyboard.current = kb;
+        var pad = new UnityEngine.InputSystem.Gamepad { name = "XInputControllerWindows", displayName = "Xbox Controller" };
+        UnityEngine.InputSystem.Gamepad.current = pad;
+        var eco = EconomyManager.Instance;
+        var truck = FarmTruck.Instance; var tractor = Tractor.Instance;
+        T.Check("Driving: defaults keep the classic feel (automatic, road tyres, auto engine start)",
+            GameSettings.Gearbox == GearboxMode.Automatic && !GameSettings.LowTyrePressure && GameSettings.AutoEngineStart);
+        var gameRows = (List<MenuRow>)typeof(GameMenu).GetMethod("GameRows", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(GameMenu.Instance, null);
+        T.Check("Driving: Settings > Game has the Vehicles rows (gearbox, tyre pressure, auto engine start)",
+            new[] { "Gearbox", "Tyre pressure", "Auto engine start" }.All(k => gameRows.Any(r => r.label() == UiText.T(k))));
+        GameSettings.Gearbox = GearboxMode.CVT; GameSettings.LowTyrePressure = true; GameSettings.AutoEngineStart = false;
+        GameSettings.ResetGameDefaults();
+        T.Check("Driving: Reset to defaults (Game) restores the vehicle settings", GameSettings.Gearbox == GearboxMode.Automatic && !GameSettings.LowTyrePressure && GameSettings.AutoEngineStart);
+
+        // ---- engine + gearbox
+        truck.Interact(); FakeEngine.Tick(Dt);
+        truck.SurfaceOverride = DriveSurface.Asphalt; truck.RefreshSurface();
+        T.Check("Driving: engine running at idle after getting in", truck.Drive.EngineOn && Math.Abs(truck.Drive.Rpm - truck.Drive.idleRpm) < 50f, truck.Drive.Rpm + "");
+        Stop(truck);
+        var gearsSeen = new List<int>();
+        for (float t = 0; t < 12f; t += Dt) { truck.StepDrive(1f, 0f, false, Dt); if (gearsSeen.Count == 0 || gearsSeen[gearsSeen.Count - 1] != truck.Drive.Gear) gearsSeen.Add(truck.Drive.Gear); }
+        bool rising = gearsSeen.Count >= 4; for (int i = 1; i < gearsSeen.Count; i++) rising &= gearsSeen[i] == gearsSeen[i - 1] + 1;
+        T.Check("Driving: automatic gearbox starts in 1st and shifts up with speed", gearsSeen[0] == 1 && rising && truck.Drive.Gear >= 5, string.Join(",", gearsSeen) + " at " + truck.Speed);
+        T.Check("Driving: RPM stays within the governor", truck.Drive.Rpm > 1300f && truck.Drive.Rpm <= truck.Drive.governorRpm + 1f, truck.Drive.Rpm + "");
+        float topSpeed = truck.Speed;
+        T.Check("Driving: truck still reaches its top speed (classic feel)", topSpeed > truck.maxSpeed * 0.9f, topSpeed + "");
+        Step(truck, 2f, 0f);
+        float engineBrake = topSpeed - truck.Speed;
+        Step(truck, 6f, 0f, 0f, true);
+        T.Check("Driving: automatic shifts down as you stop", Math.Abs(truck.Speed) < 0.01f && truck.Drive.Gear == 1, truck.Drive.Gear + " " + truck.Speed);
+        T.SetProp(truck, "Speed", topSpeed); truck.Drive.StopEngine();
+        Step(truck, 2f, 0f);
+        float coastOff = topSpeed - truck.Speed;
+        truck.Drive.StartEngine(true);
+        T.Check("Driving: engine braking slows you more than coasting with the engine off", engineBrake > coastOff * 2f, engineBrake + " vs " + coastOff);
+        Stop(truck);
+        Step(truck, 1.5f, -1f);
+        T.Check("Driving: pulling back at a standstill selects reverse", truck.Drive.Gear == -1 && truck.Speed < -0.5f && truck.Drive.GearLabel == "R", truck.Drive.Gear + " " + truck.Speed);
+        Stop(truck); Step(truck, 0.5f, 1f); Stop(truck);
+        T.Check("Driving: forward again after reverse", truck.Drive.Gear == 1);
+
+        GameSettings.Gearbox = GearboxMode.Manual;
+        Stop(truck);
+        Step(truck, 4f, 1f);
+        float firstGearTop = truck.Speed;
+        T.Check("Driving: manual gearbox holds 1st (limited by the revs)", truck.Drive.Gear == 1 && firstGearTop < truck.Drive.GearTop(1) * 1.15f && truck.Drive.GearLabel == "M1", firstGearTop + " " + truck.Drive.GearLabel);
+        PressKey(kb.leftShiftKey); PressKey(kb.leftShiftKey);
+        T.Check("Driving: Shift shifts up in manual", truck.Drive.Gear == 3, truck.Drive.Gear + "");
+        Press(pad.rightShoulder);
+        bool rb = truck.Drive.Gear == 4;
+        Press(pad.leftShoulder);
+        T.Check("Driving: RB shifts up, LB shifts down (gamepad)", rb && truck.Drive.Gear == 3, truck.Drive.Gear + "");
+        Step(truck, 4f, 1f);
+        T.Check("Driving: higher gear goes faster", truck.Speed > firstGearTop * 1.6f, truck.Speed + " vs " + firstGearTop);
+        float wear0 = truck.Drive.EngineWear;
+        for (int i = 0; i < 3; i++) truck.Drive.ShiftDown();
+        Step(truck, 0.5f, 0f);
+        T.Check("Driving: downshifting at speed over-revs and wears the engine", truck.Drive.EngineWear > wear0 + 0.002f, wear0 + " -> " + truck.Drive.EngineWear);
+        GameSettings.Gearbox = GearboxMode.CVT;
+        Stop(truck);
+        float cvtRpm = 0f;
+        for (float t = 0; t < 8f; t += Dt) { truck.StepDrive(1f, 0f, false, Dt); if (t > 0.5f && truck.Speed < truck.maxSpeed * 0.7f) cvtRpm = Math.Max(cvtRpm, truck.Drive.Rpm); }
+        T.Check("Driving: CVT accelerates smoothly, engine held in its torque band", truck.Drive.GearLabel == "CVT" && truck.Speed > 10f && cvtRpm < 1700f && cvtRpm > 1300f, truck.Speed + " " + cvtRpm);
+        GameSettings.Gearbox = GearboxMode.Automatic;
+        Stop(truck);
+        truck.Drive.EngineWear = truck.Drive.TyreWear = 0f;
+
+        // ---- engine key, idle fuel
+        PressKey(kb.fKey);
+        T.Check("Driving: F switches the engine off", !truck.Drive.EngineOn);
+        GameSettings.AutoEngineStart = false;
+        Step(truck, 1f, 1f);
+        T.Check("Driving: engine off = no drive", Math.Abs(truck.Speed) < 0.01f);
+        Press(pad.leftStickButton);
+        T.Check("Driving: L3 starts the engine (cranks first)", truck.Drive.EngineOn && truck.Drive.Starting);
+        Step(truck, 1f, 0f);
+        T.Check("Driving: engine runs after cranking", truck.Drive.EngineOn && !truck.Drive.Starting && truck.Drive.Rpm > 600f);
+        GameSettings.AutoEngineStart = true;
+        float fuel0 = truck.Fuel; Step(truck, 10f, 0f);
+        float idleUse = fuel0 - truck.Fuel;
+        T.Check("Driving: idling burns a little fuel", idleUse > 0.01f && idleUse < truck.fuelPerSecond * 10f * 0.15f, idleUse + "");
+
+        // ---- load and weight
+        Stop(truck); Step(truck, 4f, 1f);
+        float vEmpty = truck.Speed;
+        float brakeEmpty = BrakeDistance(truck);
+        float massEmpty = truck.TotalMass;
+        float fullLoad = eco.TruckCapacity / Math.Max(0.01f, eco.Good("wheat").weight);
+        truck.Cargo["wheat"] = fullLoad;
+        truck.RefreshSurface();
+        Stop(truck); Step(truck, 4f, 1f);
+        float vFull = truck.Speed;
+        float brakeFull = BrakeDistance(truck);
+        T.Check("Driving: full truck is heavier", truck.TotalMass > massEmpty + 3000f, massEmpty + " -> " + truck.TotalMass);
+        T.Check("Driving: heavier load = slower acceleration", vEmpty > vFull * 1.3f, vEmpty + " vs " + vFull);
+        T.Check("Driving: heavier load = longer braking distance", brakeFull > brakeEmpty * 1.2f, brakeEmpty + " vs " + brakeFull);
+        truck.Drive.SlopeSin = 0.25f;
+        Stop(truck);
+        Step(truck, 25f, 1f); float hillFull = truck.Speed;
+        truck.Cargo.Clear(); truck.RefreshSurface();
+        Stop(truck); Step(truck, 25f, 1f); float hillEmpty = truck.Speed;
+        truck.Drive.SlopeSin = 0f;
+        T.Check("Driving: loaded truck is slower up a hill", hillEmpty > hillFull + 1f && hillFull > 1f, hillEmpty + " vs " + hillFull + " g" + truck.Drive.Gear + " rpm" + truck.Drive.Rpm + " slip" + truck.Drive.Slip + " sh" + truck.Drive.Shifting + " " + truck.SurfaceNow);
+
+        // ---- cruise control + limiter (also fuel by load)
+        truck.SurfaceOverride = DriveSurface.DirtRoad; truck.RefreshSurface();
+        Stop(truck); Step(truck, 3f, 1f);
+        PressKey(kb.yKey);
+        T.Check("Driving: Y sets cruise control at the current speed", truck.Assist.Cruise == CruiseMode.Cruise && Math.Abs(truck.Assist.CruiseSpeed - truck.Speed) < 0.6f, truck.Assist.CruiseSpeed + " vs " + truck.Speed);
+        truck.Assist.SetCruise(CruiseMode.Cruise, 30f / 3.6f);
+        Step(truck, 15f, 0f);
+        float fuelA = truck.Fuel; Step(truck, 10f, 0f); float useEmpty = fuelA - truck.Fuel;
+        T.Check("Driving: cruise control holds the set speed", Math.Abs(truck.Speed * 3.6f - 30f) < 1f, truck.Speed * 3.6f + " km/h");
+        truck.Cargo["wheat"] = fullLoad; truck.RefreshSurface();
+        Step(truck, 15f, 0f);
+        fuelA = truck.Fuel; Step(truck, 10f, 0f); float useFull = fuelA - truck.Fuel;
+        T.Check("Driving: cruise holds speed with a full load too", Math.Abs(truck.Speed * 3.6f - 30f) < 1.5f, truck.Speed * 3.6f + " km/h");
+        T.Check("Driving: fuel use rises with load (same speed, full truck)", useFull > useEmpty * 1.05f, useEmpty + " vs " + useFull);
+        truck.Cargo.Clear(); truck.RefreshSurface();
+        Press(pad.dpad.right); Press(pad.dpad.right);
+        T.Check("Driving: D-pad right raises the set speed", Math.Abs(truck.Assist.CruiseSpeed * 3.6f - 32f) < 0.01f, truck.Assist.CruiseSpeed * 3.6f + "");
+        PressKey(kb.commaKey);
+        T.Check("Driving: comma lowers the set speed", Math.Abs(truck.Assist.CruiseSpeed * 3.6f - 31f) < 0.01f);
+        Step(truck, 0.2f, 0f, 0f, true);
+        T.Check("Driving: braking cancels cruise control", truck.Assist.Cruise == CruiseMode.Off);
+        truck.Assist.SetCruise(CruiseMode.Limiter, 15f / 3.6f);
+        Stop(truck); Step(truck, 10f, 1f);
+        T.Check("Driving: speed limiter caps full throttle for field work", truck.Speed * 3.6f < 16f && truck.Speed * 3.6f > 13f, truck.Speed * 3.6f + " km/h");
+        truck.Assist.Reset();
+        Press(pad.dpad.up);
+        T.Check("Driving: D-pad up toggles cruise (gamepad)", truck.Assist.Cruise == CruiseMode.Cruise);
+        truck.Assist.Reset();
+
+        // ---- speed-sensitive steering
+        float slowTurn = YawRate(truck, 5f), fastTurn = YawRate(truck, 15f);
+        T.Check("Driving: steering is calmer at high speed", fastTurn < slowTurn * 0.85f && fastTurn > 0f, slowTurn + " vs " + fastTurn);
+        Stop(truck); Step(truck, 0.4f, 0f);
+        T.SetProp(truck, "Speed", 0f);
+        truck.SurfaceOverride = null;
+        truck.Exit();
+        T.Check("Driving: getting out stops the engine and saves wear", !truck.Drive.EngineOn && SaveData.GetFloat("mazraa.wear.engine.truck", -1f) >= 0f);
+
+        // ---- traction: surfaces, rain, 4WD, diff lock, tyre pressure
+        tractor.transform.position = DeliveryZone.LoadingBay.transform.position + new Vector3(8f, 0f, 0f);
+        tractor.Interact(); FakeEngine.Tick(Dt);
+        T.SetProp(tractor, "ActiveImplement", Implement.None);
+        tractor.SurfaceOverride = DriveSurface.Asphalt; tractor.RefreshSurface();
+        float asphaltLimit = tractor.Drive.TractionLimit(), slipAsphalt = MaxSlip(tractor, 1.5f);
+        tractor.SurfaceOverride = DriveSurface.Field; tractor.RefreshSurface();
+        float fieldLimit = tractor.Drive.TractionLimit(), slipField = MaxSlip(tractor, 1.5f);
+        T.SetProp(WorldClock.Instance, "Weather", Weather.Rain); tractor.RefreshSurface();
+        float wetLimit = tractor.Drive.TractionLimit(), slipWet = MaxSlip(tractor, 1.5f);
+        T.Check("Driving: field has less grip than asphalt, rain makes it worse", asphaltLimit > fieldLimit && fieldLimit > wetLimit && tractor.SurfaceWet, asphaltLimit + " > " + fieldLimit + " > " + wetLimit);
+        T.Check("Driving: more wheel slip in a wet field", slipWet > slipField && slipField > slipAsphalt, slipAsphalt + " < " + slipField + " < " + slipWet);
+        PressKey(kb.zKey);
+        float slip4wd = MaxSlip(tractor, 1.5f);
+        Press(pad.dpad.down);
+        float slipLock = MaxSlip(tractor, 1.5f);
+        T.Check("Driving: Z / D-pad down: 4WD then diff lock", tractor.TractionMode == 2 && tractor.Drive.FourWD && tractor.Drive.DiffLock);
+        T.Check("Driving: 4WD reduces slip in the wet field", slip4wd < slipWet * 0.7f, slipWet + " -> " + slip4wd);
+        T.Check("Driving: diff lock reduces it further", slipLock < slip4wd, slip4wd + " -> " + slipLock);
+        PressKey(kb.zKey);
+        T.Check("Driving: third press back to 2WD", tractor.TractionMode == 0);
+        GameSettings.LowTyrePressure = true; tractor.RefreshSurface();
+        float slipLow = MaxSlip(tractor, 1.5f);
+        T.Check("Driving: low tyre pressure grips better in the field", slipLow < slipWet, slipWet + " -> " + slipLow);
+        tractor.SurfaceOverride = DriveSurface.Asphalt; tractor.RefreshSurface();
+        float lowTop = tractor.Drive.TopSpeed;
+        GameSettings.LowTyrePressure = false; tractor.RefreshSurface();
+        T.Check("Driving: high tyre pressure is faster on the road", tractor.Drive.TopSpeed > lowTop * 1.2f, lowTop + " vs " + tractor.Drive.TopSpeed);
+        T.SetProp(WorldClock.Instance, "Weather", Weather.Sunny);
+        tractor.SurfaceOverride = null;
+        tractor.transform.position = new Vector3(400f, 0f, 400f);
+        tractor.RefreshSurface();
+        T.Check("Driving: open desert is sand", tractor.SurfaceNow == DriveSurface.Sand || DesertDressing.Instance == null, tractor.SurfaceNow + "");
+        tractor.transform.position = DeliveryZone.LoadingBay.transform.position; tractor.RefreshSurface();
+        T.Check("Driving: loading bay pad is asphalt", tractor.SurfaceNow == DriveSurface.Asphalt, tractor.SurfaceNow + "");
+        var sb = new System.Text.StringBuilder(); GameHUD.DriveLines(tractor, sb);
+        T.Check("Driving: HUD shows gear, RPM, slip %, surface and condition", sb.ToString().Contains("Slip") && sb.ToString().Contains("rpm") && sb.ToString().Contains("Asphalt") && sb.ToString().Contains("Tyres"), sb.ToString());
+
+        // ---- implements: drag, working speed, fuel by load, ballast
+        var plot = FieldManager.Instance.Plots[0];
+        tractor.transform.position = plot.transform.position + tractor.transform.forward * 2.6f; tractor.RefreshSurface();
+        T.SetProp(tractor, "ActiveImplement", Implement.Plow); T.Set(tractor, "workCheckTime", -1f);
+        Stop(tractor); Step(tractor, 1f, 1f);
+        T.Check("Driving: plow in the ground while moving over a plot", tractor.Working && tractor.SurfaceNow == DriveSurface.Field, tractor.Working + " " + tractor.SurfaceNow);
+        Step(tractor, 6f, 1f); float plowSpeed = tractor.Speed;
+        T.Check("Driving: plowing is limited to working speed", plowSpeed * 3.6f <= 12.1f && plowSpeed * 3.6f > 9f, plowSpeed * 3.6f + " km/h g" + tractor.Drive.Gear + " rpm" + tractor.Drive.Rpm + " slip" + tractor.Drive.Slip + " m" + tractor.TotalMass);
+        T.SetProp(tractor, "ActiveImplement", Implement.Seeder); T.Set(tractor, "workCheckTime", -1f);
+        Stop(tractor); Step(tractor, 1.5f, 1f); float seedPickup = tractor.Speed; bool seedWorking = tractor.Working;
+        T.SetProp(tractor, "ActiveImplement", Implement.Plow); T.Set(tractor, "workCheckTime", -1f);
+        Stop(tractor); Step(tractor, 1.5f, 1f); float plowPickup = tractor.Speed; bool plowWorking = tractor.Working;
+        T.Check("Driving: plowing drags harder than seeding", plowWorking && seedWorking && plowPickup < seedPickup * 0.9f, plowPickup + " vs " + seedPickup);
+        // same 8 km/h on the cruise control: pulling the plow needs more throttle and fuel than driving free
+        tractor.Assist.SetCruise(CruiseMode.Cruise, 8f / 3.6f);
+        Step(tractor, 8f, 0f);
+        float plowFuel0 = tractor.Fuel; Step(tractor, 10f, 0f); float plowFuel = plowFuel0 - tractor.Fuel; float plowLoad = tractor.Drive.Load;
+        T.SetProp(tractor, "ActiveImplement", Implement.None); T.Set(tractor, "workCheckTime", -1f);
+        Step(tractor, 8f, 0f);
+        float freeFuel0 = tractor.Fuel; Step(tractor, 10f, 0f); float freeFuel = freeFuel0 - tractor.Fuel;
+        T.Check("Driving: fuel use rises with load (plowing vs no implement at the same speed)", plowFuel > freeFuel * 1.2f && plowLoad > tractor.Drive.Load, plowFuel + " vs " + freeFuel + ", load " + plowLoad + " vs " + tractor.Drive.Load);
+        tractor.Assist.Reset();
+        float m0 = tractor.TotalMass;
+        eco.AddMoney(5000);
+        T.Check("Driving: buy tractor front weights (shop, Upgrades)", eco.TryBuy("tractor_ballast") && tractor.BallastLevel == 1 && ShopCatalog.Find("tractor_ballast").category == "Upgrades");
+        tractor.RefreshSurface();
+        T.Check("Driving: ballast adds mass and grip", tractor.TotalMass > m0 + 500f && tractor.Drive.BallastMass > 0f, m0 + " -> " + tractor.TotalMass);
+        tractor.SetBallast(0);
+        Stop(tractor);
+
+        // ---- GPS straight line
+        tractor.transform.position = DeliveryZone.LoadingBay.transform.position + new Vector3(0f, 0.55f, 20f);
+        T.Set(tractor, "yaw", 0f); tractor.transform.rotation = Quaternion.identity;
+        FakeEngine.Tick(Dt);
+        PressKey(kb.slashKey);
+        T.Check("Driving: / turns on the GPS straight line", tractor.Assist.LaneAssist);
+        T.Set(tractor, "yaw", 10f);
+        tractor.transform.position += new Vector3(1.5f, 0f, 0f);
+        pad.rightTrigger.value = 0.6f;
+        FakeEngine.Run(12f, Dt);
+        T.Check("Driving: GPS line pulls back onto the line and holds the heading", Math.Abs(tractor.Assist.LaneOffset(tractor.transform.position)) < 0.5f && Math.Abs(Mathf.DeltaAngle(tractor.Yaw, 0f)) < 4f,
+            tractor.Assist.LaneOffset(tractor.transform.position) + " m, yaw " + tractor.Yaw);
+        pad.leftStick.value = new Vector2(1f, 0f);
+        for (int i = 0; i < 2000 && Math.Abs(Mathf.DeltaAngle(tractor.Yaw, 180f)) > 25f; i++) FakeEngine.Tick(Dt);
+        pad.leftStick.value = Vector2.zero;
+        FakeEngine.Run(12f, Dt);
+        float off = tractor.Assist.LaneOffset(tractor.transform.position);
+        T.Check("Driving: after a headland turn it follows the next parallel lane back", Math.Abs(Mathf.DeltaAngle(tractor.Yaw, 180f)) < 4f && Math.Abs(off) < 0.6f,
+            "offset " + off + ", yaw " + tractor.Yaw);
+        pad.rightTrigger.value = 0f;
+        Press(pad.rightStickButton);
+        T.Check("Driving: R3 turns the GPS line off", !tractor.Assist.LaneAssist);
+        FakeEngine.Run(3f, Dt);
+
+        // ---- wear and repair
+        tractor.SurfaceOverride = DriveSurface.Field; tractor.RefreshSurface();
+        tractor.Drive.EngineWear = tractor.Drive.TyreWear = 0f;
+        Stop(tractor);
+        Step(tractor, 60f, 1f);
+        float ew = tractor.Drive.EngineWear, tw = tractor.Drive.TyreWear;
+        T.Check("Driving: engine and tyre wear accumulate with use", ew > 0.003f && tw > 0.001f, ew + " / " + tw);
+        tractor.SurfaceOverride = DriveSurface.Asphalt; tractor.RefreshSurface();
+        tractor.Drive.EngineWear = 0f; Stop(tractor); Step(tractor, 3f, 1f); float newSpeed = tractor.Speed;
+        tractor.Drive.EngineWear = 0.8f; Stop(tractor); Step(tractor, 3f, 1f);
+        T.Check("Driving: a worn engine has less power", tractor.Speed < newSpeed * 0.9f, newSpeed + " vs " + tractor.Speed);
+        tractor.Drive.TyreWear = 0.5f;
+        tractor.SurfaceOverride = null;
+        Stop(tractor);
+        tractor.transform.position = DeliveryZone.LoadingBay.transform.position; tractor.RefreshSurface();
+        int cost = tractor.RepairCost;
+        T.Check("Driving: parked on the loading bay = workshop, repair has a price", tractor.AtWorkshop && cost > 1000, cost + "");
+        sb.Clear(); GameHUD.DriveLines(tractor, sb);
+        T.Check("Driving: HUD offers the repair", sb.ToString().Contains("Repair for"), sb.ToString());
+        eco.AddMoney(-eco.Money);
+        T.Check("Driving: no repair without the money", !tractor.TryRepair() && tractor.Drive.EngineWear > 0.7f);
+        eco.AddMoney(cost + 100);
+        Press(pad.buttonWest);
+        T.Check("Driving: X / Square on the bay repairs for money (wear reset)", tractor.Drive.EngineWear < 0.001f && tractor.Drive.TyreWear < 0.001f && eco.Money == 100, eco.Money + "");
+        tractor.Drive.EngineWear = 0.3f;
+        T.SetProp(tractor, "Speed", 0f);
+        tractor.Exit();
+        SaveData.Flush(true);
+        Program.BuildWorld(); FakeEngine.Run(1f);
+        T.Check("Driving: wear is saved with the vehicle", Math.Abs(Tractor.Instance.Drive.EngineWear - 0.3f) < 0.001f, Tractor.Instance.Drive.EngineWear + "");
+        GameEvents.RaiseNewGameStarted();
+        T.Check("Driving: new game resets wear", Tractor.Instance.Drive.EngineWear == 0f);
+
+        // ---- controls + texts
+        var drivingActions = new[] { GameAction.EngineToggle, GameAction.GearUp, GameAction.GearDown, GameAction.Cruise, GameAction.CruiseFaster, GameAction.CruiseSlower, GameAction.Traction, GameAction.LaneAssist };
+        T.Check("Driving: every driving action has a keyboard key and a gamepad button with a glyph",
+            drivingActions.All(a => !string.IsNullOrEmpty(GameInput.DefaultKeyPath(a)) && !string.IsNullOrEmpty(GameInput.GamepadPath(a)) && Glyphs.PadFor(a, false) != null && Glyphs.PadFor(a, true) != null));
+        Tractor.Instance.Interact(); FakeEngine.Tick(Dt);   // F / Ctrl / Z hints mean the vehicle actions only in a vehicle
+        GameInput.ForceDevice(true, false);
+        string hint = Glyphs.Apply(Loc.T(Hints));
+        T.Check("Driving: hints show gamepad glyphs (LS, RB, LB, D-pad, RS)", hint.Contains("[LS]") && hint.Contains("[RB]") && hint.Contains("[LB]") && hint.Contains("D-PAD↑") && hint.Contains("[RS]"), hint);
+        GameInput.ForceDevice(false, false);
+        T.Check("Driving: keyboard hints show the keys", Glyphs.Apply(Loc.T(Hints)).Contains("[LeftShift]"), Glyphs.Apply(Loc.T(Hints)));
+        T.SetProp(Tractor.Instance, "Speed", 0f); Tractor.Instance.Exit();
+        T.Check("Driving: driving texts have Arabic", drivingActions.All(a => Loc.HasTranslation(GameInput.Label(a))) && Loc.HasTranslation("Slip {0}%   {1}") && Loc.HasTranslation("Gearbox"));
+        T.Check("Driving: no errors", FakeEngine.Errors.Count == 0, string.Join(" | ", FakeEngine.Errors.Take(3)));
+        UnityEngine.InputSystem.Gamepad.current = null;
+    }
+}
+
 // ---------------------------------------------------------------- On-foot life (stamina, carrying, hand tools) + animal husbandry
 static class LifeTests
 {
@@ -3129,6 +3470,8 @@ static class LifeTests
         T.Check("Life: shovel mucks out the pen", pen.Cleanliness > 0.55f, sh);
         life.SetTool(HandTool.Brush);
         var body = pen.Animals.First(a => a.animalId == "sheep");
+        // the brush grooms the nearest animal: move the others (a wandering chicken may be closer) out of reach first
+        foreach (var other in pen.Animals) if (other != null && other != body) other.transform.position = body.transform.position + new Vector3(0f, 0f, 25f);
         player.position = body.transform.position + new Vector3(0.5f, 0, 0);
         var rec = herd.Find(body.uid);
         rec.happiness = 0.3f; rec.clean = 0.2f;
@@ -3173,6 +3516,7 @@ static class LifeTests
 
         // --- breeding with gestation and inherited trait
         herd.Seed(7);
+        ewe.gestationLeft = 0;   // earlier SimulateDay calls use the unseeded RNG and may already have made her pregnant (flaky)
         var ram = sheep.First(a => a.male);
         ewe.trait = 1.3f; ram.trait = 1.1f;
         ewe.gestationLeft = 0;   // other systems may have run days earlier in the suite (time scale settings)
@@ -3286,5 +3630,122 @@ static class LifeTests
         var herd = HerdManager.Instance; var life = PlayerLife.Instance;
         T.Check("Life: new game clears the herd, shade and medicine", herd.Animals.Count == 0 && !herd.Shade && !herd.Fans && herd.Medicine == 0 && GameObject.Find("Pen Shade") == null);
         T.Check("Life: new game resets stamina, tool and bales", life.Model.stamina >= StaminaModel.Max - 1f && life.Tool == HandTool.Hands && life.BaleCount == 2 && life.Carried == null, life.BaleCount + "");
+    }
+}
+
+// ---------------------------------------------------------------- shared keys: driving vs on-foot actions read by context
+static class SharedKeyTests
+{
+    static void Key(UnityEngine.InputSystem.KeyControl k) { k.wasPressedThisFrame = true; k.isPressed = true; FakeEngine.Tick(0.02f); k.wasPressedThisFrame = false; k.isPressed = false; FakeEngine.Tick(0.02f); }
+    static void Pad(UnityEngine.InputSystem.ButtonControl b) { b.wasPressedThisFrame = true; b.isPressed = true; FakeEngine.Tick(0.02f); b.wasPressedThisFrame = false; b.isPressed = false; FakeEngine.Tick(0.02f); }
+
+    public static void Run()
+    {
+        Console.WriteLine("Shared keys: vehicle actions only in a vehicle, on-foot actions only on foot");
+        Program.BuildWorld();
+        FakeEngine.Run(2f);
+        for (int i = 0; i < 400 && LoadingScreen.Visible; i++) FakeEngine.Tick(0.1f);
+        var intro = UnityEngine.Object.FindAnyObjectByType<StoryIntro>();
+        if (intro != null) typeof(StoryIntro).GetMethod("Close", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(intro, null);
+        FakeEngine.Run(0.5f);
+        var kb = new UnityEngine.InputSystem.Keyboard();
+        foreach (var f in typeof(UnityEngine.InputSystem.Keyboard).GetFields())
+            if (f.FieldType == typeof(UnityEngine.InputSystem.KeyControl)) f.SetValue(kb, new UnityEngine.InputSystem.KeyControl());
+        UnityEngine.InputSystem.Keyboard.current = kb;
+        var pad = new UnityEngine.InputSystem.Gamepad { name = "XInputControllerWindows", displayName = "Xbox Controller" };
+        UnityEngine.InputSystem.Gamepad.current = pad;
+        GameSettings.Gearbox = GearboxMode.Manual;
+        var life = PlayerLife.Instance; var truck = FarmTruck.Instance;
+        var player = GameObject.Find("PlayerCapsule").transform;
+        var bale = Carriable.All.FirstOrDefault(c => c != null && c.kind == "hay_bale");
+        T.Check("Shared keys: world ready (player life, bale, no panel open)", life != null && bale != null && !UIManager.Instance.IsUIOpened && Vehicle.Current == null);
+        if (life == null || bale == null) return;
+
+        // ---- on foot: F / Ctrl / Z / , . / LB RB / D-pad up drive the on-foot actions and never the vehicle
+        truck.transform.position = bale.transform.position + new Vector3(4f, 0f, 0f);
+        player.position = bale.transform.position + new Vector3(0.8f, 0f, 0f);
+        FakeEngine.Run(0.2f, 0.1f);
+        bool engine0 = truck.Drive.EngineOn; int gear0 = truck.Drive.Gear; int trac0 = truck.TractionMode; var cruise0 = truck.Assist.Cruise; float set0 = truck.Assist.CruiseSpeed;
+        Key(kb.fKey);
+        T.Check("Shared keys: on foot F picks up, engine untouched", life.Carried == bale && truck.Drive.EngineOn == engine0, life.LastMessage);
+        Key(kb.fKey);
+        T.Check("Shared keys: on foot F puts down", life.Carried == null);
+        Key(kb.leftCtrlKey);
+        T.Check("Shared keys: on foot Ctrl crouches, no gear change", life.IsCrouching && truck.Drive.Gear == gear0);
+        Key(kb.leftCtrlKey);
+        string msg = life.LastMessage;
+        Key(kb.zKey);
+        T.Check("Shared keys: on foot Z uses the hand tool, 4WD untouched", truck.TractionMode == trac0);
+        var tool0 = life.Tool;
+        Key(kb.periodKey);
+        T.Check("Shared keys: on foot . picks the next tool, cruise speed untouched", life.Tool != tool0 && Math.Abs(truck.Assist.CruiseSpeed - set0) < 0.001f, life.Tool + "");
+        Key(kb.commaKey);
+        Pad(pad.rightShoulder);
+        T.Check("Shared keys: on foot RB cycles tools, no gear change", life.Tool != tool0 && truck.Drive.Gear == gear0);
+        Pad(pad.leftShoulder);
+        T.Check("Shared keys: on foot LB cycles back", life.Tool == tool0);
+        Pad(pad.dpad.up);
+        T.Check("Shared keys: on foot D-pad up picks up, cruise untouched", life.Carried != null && truck.Assist.Cruise == cruise0, life.LastMessage + " carried=" + (life.Carried != null) + " d=" + Vector3.Distance(player.position, bale.transform.position));
+        Pad(pad.dpad.up);
+        Pad(pad.leftStickButton);
+        T.Check("Shared keys: on foot L3 crouches, engine untouched", life.IsCrouching && truck.Drive.EngineOn == engine0);
+        Pad(pad.leftStickButton);
+        var journal = FarmLifeScreen.Instance;
+        if (journal != null)
+        {
+            Key(kb.yKey);
+            T.Check("Shared keys: on foot Y opens the Farm life journal, cruise untouched", journal.IsOpen && truck.Assist.Cruise == cruise0);
+            journal.Close(); FakeEngine.Tick(0.02f); FakeEngine.Tick(0.02f);
+            Pad(pad.dpad.down);
+            T.Check("Shared keys: on foot D-pad down opens the journal, 4WD untouched", journal.IsOpen && truck.TractionMode == trac0);
+            journal.Close(); FakeEngine.Tick(0.02f); FakeEngine.Tick(0.02f);
+        }
+
+        // ---- in the vehicle: the same keys drive the vehicle and never the on-foot actions
+        truck.transform.position = bale.transform.position + new Vector3(1f, 0f, 0f);   // a bale within reach if pick-up leaked through
+        truck.Interact(); FakeEngine.Tick(0.02f);
+        T.Check("Shared keys: in the truck, engine running", Vehicle.Current == truck && truck.Drive.EngineOn);
+        var toolIn = life.Tool; string msgIn = life.LastMessage;
+        Key(kb.fKey);
+        T.Check("Shared keys: in a vehicle F stops the engine, picks nothing up", !truck.Drive.EngineOn && life.Carried == null && !bale.Carried);
+        Key(kb.fKey);
+        T.Check("Shared keys: in a vehicle F starts it again", truck.Drive.EngineOn && life.Carried == null);
+        Key(kb.leftShiftKey); Key(kb.leftShiftKey);
+        int g = truck.Drive.Gear;
+        Key(kb.leftCtrlKey);
+        T.Check("Shared keys: in a vehicle Ctrl shifts down, no crouch", truck.Drive.Gear == g - 1 && !life.IsCrouching && !PlayerLife.Crouching, g + " -> " + truck.Drive.Gear);
+        Key(kb.zKey);
+        T.Check("Shared keys: in a vehicle Z toggles 4WD, no hand tool", truck.TractionMode == 1 && life.LastMessage == msgIn);
+        Key(kb.periodKey); Key(kb.commaKey); Key(kb.commaKey);
+        T.Check("Shared keys: in a vehicle , . set the cruise speed, tool unchanged", Math.Abs(truck.Assist.CruiseSpeed * 3.6f - (set0 * 3.6f - 1f)) < 0.01f && life.Tool == toolIn);
+        g = truck.Drive.Gear;
+        Pad(pad.rightShoulder);
+        T.Check("Shared keys: in a vehicle RB shifts up, tool unchanged", truck.Drive.Gear == g + 1 && life.Tool == toolIn);
+        Pad(pad.leftShoulder);
+        T.Check("Shared keys: in a vehicle LB shifts down, tool unchanged", truck.Drive.Gear == g && life.Tool == toolIn);
+        Pad(pad.dpad.up);
+        T.Check("Shared keys: in a vehicle D-pad up sets cruise, picks nothing up", truck.Assist.Cruise == CruiseMode.Cruise && life.Carried == null);
+        truck.Assist.Reset(); trac0 = truck.TractionMode;
+        Key(kb.yKey);
+        Pad(pad.dpad.down);
+        T.Check("Shared keys: in a vehicle Y / D-pad down are cruise / 4WD, the journal stays shut",
+            truck.Assist.Cruise == CruiseMode.Cruise && truck.TractionMode == (trac0 + 1) % 3 && (FarmLifeScreen.Instance == null || !FarmLifeScreen.Instance.IsOpen));
+        truck.Assist.Reset();
+        Pad(pad.leftStickButton);
+        T.Check("Shared keys: in a vehicle L3 is the engine, no crouch", !truck.Drive.EngineOn && !life.IsCrouching);
+        GameInput.ForceDevice(false, false);
+        string inHint = Glyphs.Apply("[F] [Ctrl] [Z]");
+        T.SetProp(truck, "Speed", 0f); truck.Exit(); FakeEngine.Tick(0.02f);
+        string footHint = Glyphs.Apply("[F] [Ctrl] [Z]");
+        GameInput.ForceDevice(true, false);
+        string padIn = "", padFoot = Glyphs.Apply("[F] [Ctrl] [Z]");
+        truck.Interact(); FakeEngine.Tick(0.02f); padIn = Glyphs.Apply("[F] [Ctrl] [Z]");
+        T.SetProp(truck, "Speed", 0f); truck.Exit(); FakeEngine.Tick(0.02f);
+        GameInput.ForceDevice(false, false);
+        T.Check("Shared keys: hint glyphs follow the context (engine / gear / 4WD in a vehicle, pick up / crouch / tool on foot)",
+            inHint == footHint && padIn.Contains("[LS]") && padIn.Contains("[LB]") && padIn.Contains("D-PAD↓") && padFoot.Contains("D-PAD↑") && padFoot.Contains("[RT]"), padIn + " | " + padFoot);
+        T.Check("Shared keys: no errors", FakeEngine.Errors.Count == 0, string.Join(" | ", FakeEngine.Errors.Take(3)));
+        GameSettings.Gearbox = GearboxMode.Automatic;
+        UnityEngine.InputSystem.Gamepad.current = null;
     }
 }

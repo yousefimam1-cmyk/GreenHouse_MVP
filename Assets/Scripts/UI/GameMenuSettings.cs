@@ -112,6 +112,10 @@ public partial class GameMenu
             Toggle(() => UiText.T("Help hints"), () => GameSettings.ShowHints, v => GameSettings.ShowHints = v),
             Toggle(() => UiText.T("Camera shake"), () => GameSettings.CameraShake, v => GameSettings.CameraShake = v),
             Toggle(() => UiText.T("Tutorials"), () => GameSettings.Tutorials, v => GameSettings.Tutorials = v),
+            // Vehicles (Drivetrain): gearbox, tyre pressure, engine start
+            MenuRow.Setting(() => UiText.T("Gearbox"), () => UiText.T(GameSettings.GearboxName(GameSettings.Gearbox)), d => GameSettings.Gearbox = (GearboxMode)(((int)GameSettings.Gearbox + d + 3) % 3)),
+            MenuRow.Setting(() => UiText.T("Tyre pressure"), () => UiText.T(GameSettings.LowTyrePressure ? "Low (field)" : "High (road)"), d => GameSettings.LowTyrePressure = !GameSettings.LowTyrePressure),
+            Toggle(() => UiText.T("Auto engine start"), () => GameSettings.AutoEngineStart, v => GameSettings.AutoEngineStart = v),
         };
     }
 

@@ -376,7 +376,7 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
         string pad = GameInput.GamepadPath(a);
         if (string.IsNullOrEmpty(pad)) return "";
         string label = Glyphs.PadFor(a, GameInput.IsPlayStation);
-        return "  /  " + label;
+        return string.IsNullOrEmpty(label) ? "" : "  /  " + label;
     }
 
     private string ControlsFooter() => waitingForKey ? UiText.T("Press the new key ([Esc] cancels)") : UiText.T("[Enter] Change key   [Esc] Back");

@@ -53,7 +53,8 @@ public static partial class GameSettings
 
     public static void ResetGameDefaults()
     {
-        Delete("timeScale", "dayMinutes", "autosave", "withering", "weeds", "plowing", "helperRefill", "ambientDensity", "hints", "cameraShake", "tutorials");
+        Delete("timeScale", "dayMinutes", "autosave", "withering", "weeds", "plowing", "helperRefill", "ambientDensity", "hints", "cameraShake", "tutorials",
+            "gearbox", "lowTyres", "autoEngine");
     }
 
     // ================================================================== DISPLAY

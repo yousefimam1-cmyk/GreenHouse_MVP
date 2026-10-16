@@ -36,46 +36,42 @@ public static class Glyphs
     public static string For(GameAction a)
     {
         if (!GameInput.UsingGamepad) return GameInput.KeyName(a);
-        switch (a)
-        {
-            case GameAction.Interact: return PadLabel(Pad.South);
-            case GameAction.VehicleAction: return PadLabel(Pad.West);
-            case GameAction.Implement: return PadLabel(Pad.North);
-            case GameAction.Brake: return PadLabel(Pad.LT);
-            case GameAction.Pause: return PadLabel(Pad.Start);
-            case GameAction.Map: return PadLabel(Pad.Select);
-            case GameAction.View: return PadLabel(Pad.RStick);
-            case GameAction.Crouch: return PadLabel(Pad.LStick);
-            case GameAction.Carry: return PadLabel(Pad.DPad) + "↑";
-            case GameAction.UseTool: return PadLabel(Pad.RT);
-            case GameAction.ToolPrev: return PadLabel(Pad.LB);
-            case GameAction.ToolNext: return PadLabel(Pad.RB);
-            default: return GameInput.KeyName(a);
-        }
+        return PadFor(a, GameInput.IsPlayStation) ?? GameInput.KeyName(a);
     }
 
-    /// <summary>Gamepad label of an action regardless of the device in use ("" when it has no pad binding).</summary>
-    public static string PadFor(GameAction a, bool playStation)
+    /// <summary>Gamepad label of an action (null when it has no pad button).</summary>
+    public static string PadFor(GameAction a, bool ps)
     {
-        if (string.IsNullOrEmpty(GameInput.GamepadPath(a))) return "";
         switch (a)
         {
-            case GameAction.Interact: return PadLabel(Pad.South, playStation);
-            case GameAction.VehicleAction: return PadLabel(Pad.West, playStation);
-            case GameAction.Implement: return PadLabel(Pad.North, playStation);
-            case GameAction.Pause: return PadLabel(Pad.Start, playStation);
-            case GameAction.Map: return PadLabel(Pad.Select, playStation);
-            case GameAction.Crouch: return PadLabel(Pad.LStick, playStation);
-            case GameAction.Carry: return PadLabel(Pad.DPad, playStation) + "↑";
-            case GameAction.UseTool: return PadLabel(Pad.RT, playStation);
-            case GameAction.ToolPrev: return PadLabel(Pad.LB, playStation);
-            case GameAction.ToolNext: return PadLabel(Pad.RB, playStation);
-            default: return PadLabel(Pad.RStick, playStation);
+            case GameAction.Interact: return PadLabel(Pad.South, ps);
+            case GameAction.VehicleAction: return PadLabel(Pad.West, ps);
+            case GameAction.Implement: return PadLabel(Pad.North, ps);
+            case GameAction.Brake: return PadLabel(Pad.LT, ps);
+            case GameAction.Pause: return PadLabel(Pad.Start, ps);
+            case GameAction.Map: return PadLabel(Pad.Select, ps);
+            case GameAction.View: return PadLabel(Pad.RStick, ps);
+            case GameAction.EngineToggle: return PadLabel(Pad.LStick, ps);
+            case GameAction.GearUp: return PadLabel(Pad.RB, ps);
+            case GameAction.GearDown: return PadLabel(Pad.LB, ps);
+            case GameAction.Cruise: return PadLabel(Pad.DPad, ps) + "↑";
+            case GameAction.CruiseFaster: return PadLabel(Pad.DPad, ps) + "→";
+            case GameAction.CruiseSlower: return PadLabel(Pad.DPad, ps) + "←";
+            case GameAction.Traction: return PadLabel(Pad.DPad, ps) + "↓";
+            case GameAction.LaneAssist: return PadLabel(Pad.RStick, ps);
+            case GameAction.Crouch: return PadLabel(Pad.LStick, ps);
+            case GameAction.Carry: return PadLabel(Pad.DPad, ps) + "↑";
+            case GameAction.UseTool: return PadLabel(Pad.RT, ps);
+            case GameAction.ToolPrev: return PadLabel(Pad.LB, ps);
+            case GameAction.ToolNext: return PadLabel(Pad.RB, ps);
+            default: return null;
         }
     }
 
     // Bracketed keyboard tokens used in texts -> action (or a fixed gamepad button for non-rebindable keys).
-    private static readonly string[] Tokens = { "E", "R", "Q", "Space", "P", "N", "I", "O", "V", "Esc", "Enter", "Backspace", "LB", "RB", "Ctrl", "F", "Z", ",", "." };
+    // F, Ctrl and Z are shared: in a vehicle they mean engine / gear down / 4WD, on foot pick up / crouch / hand tool.
+    private static readonly string[] Tokens = { "E", "R", "Q", "Space", "P", "N", "I", "O", "V", "Esc", "Enter", "Backspace", "LB", "RB",
+        "F", "Shift", "Ctrl", "Y", "Plus", "Minus", "Z", "Slash", ",", "." };
 
     private static string Replacement(string token)
     {
@@ -91,14 +87,19 @@ public static class Glyphs
             case "I": return For(GameAction.Inventory);
             case "O": return For(GameAction.Stats);
             case "V": return For(GameAction.View);
+            case "F": return For(Vehicle.Current != null ? GameAction.EngineToggle : GameAction.Carry);
+            case "Shift": return For(GameAction.GearUp);
+            case "Ctrl": return For(Vehicle.Current != null ? GameAction.GearDown : GameAction.Crouch);
+            case "Y": return For(GameAction.Cruise);
+            case "Plus": return For(GameAction.CruiseFaster);
+            case "Minus": return For(GameAction.CruiseSlower);
+            case "Z": return For(Vehicle.Current != null ? GameAction.Traction : GameAction.UseTool);
+            case "Slash": return For(GameAction.LaneAssist);
             case "Esc": return pad ? PadLabel(Pad.East) : null;
             case "Enter": return pad ? PadLabel(Pad.South) : null;
             case "Backspace": return pad ? PadLabel(Pad.DPad) + "↓" : null;
             case "LB": return pad ? PadLabel(Pad.LB) : null;
             case "RB": return pad ? PadLabel(Pad.RB) : null;
-            case "Ctrl": return For(GameAction.Crouch);
-            case "F": return For(GameAction.Carry);
-            case "Z": return For(GameAction.UseTool);
             case ",": return For(GameAction.ToolPrev);
             case ".": return For(GameAction.ToolNext);
             default: return null;

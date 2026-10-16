@@ -86,7 +86,7 @@ static class FarmLifeTests
         T.Check("HUD shows level and reward ready", Hud().Contains("Farm level " + (L + 1)) && Hud().Contains("reward ready"), Hud());
         float feed0 = eco.Feed;
         string claimed = lvl.ClaimPending();
-        T.Check("Collect the level reward (coins + feed / seeds)", lvl.Pending.Count == 0 && eco.Money == money + (row != null ? row.money : FarmLevel.AutoReward(L + 1).money) && claimed.Contains("Level " + (L + 1)), claimed);
+        T.Check("Collect the level reward (coins + feed / seeds)", lvl.Pending.Count == 0 && eco.Money == money + (row != null ? row.money : FarmLevel.AutoReward(L + 1).money) && claimed.Contains("Level " + (L + 1)), claimed + " money " + money + " -> " + eco.Money + " mission " + MissionManager.Instance?.Current?.id + " quests " + string.Join(",", DailyQuests.Instance.Quests.Select(q => q.type + (q.done ? "*" : ""))));
         T.Check("Nothing to collect twice", lvl.ClaimPending() == "" && eco.Money == money + (row != null ? row.money : FarmLevel.AutoReward(L + 1).money));
         // level-gated decor: the pigeon tower (level 8)
         var tower = FarmLife.Decor("fl_dovecote");

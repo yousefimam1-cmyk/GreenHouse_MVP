@@ -89,10 +89,11 @@ public class AmbientAudio : MonoBehaviour
         engine.transform.position = v.transform.position;
         float speed01 = Mathf.Clamp01(Mathf.Abs(v.Speed) / Mathf.Max(1f, v.maxSpeed));
         float basePitch = v is Tractor ? 0.75f : 0.95f;
-        bool noFuel = v.Fuel <= 0f;
-        float target = noFuel ? 0.5f : basePitch + speed01 * 1.1f;
+        bool off = v.Fuel <= 0f || !v.Drive.EngineOn;
+        float rpm01 = Mathf.Clamp01((v.Drive.Rpm - v.Drive.idleRpm) / (v.Drive.ratedRpm - v.Drive.idleRpm));
+        float target = off ? 0.5f : basePitch + rpm01 * 0.75f + speed01 * 0.35f + v.Drive.Load * 0.08f;   // follows the revs (gear changes are audible)
         engine.pitch = Mathf.Lerp(engine.pitch <= 0f ? target : engine.pitch, target, Time.deltaTime * 4f);
-        engine.volume = (noFuel ? 0.15f : 0.35f + 0.35f * speed01) * fx;
+        engine.volume = (off ? 0.05f : 0.3f + 0.25f * speed01 + 0.2f * v.Drive.Load) * fx;
     }
 
     // ------------------------------------------------------------------ footsteps
