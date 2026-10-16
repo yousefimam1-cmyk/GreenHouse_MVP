@@ -3,29 +3,29 @@
  "slots": [
   {
    "module": "Irrigation",
-   "nameEn": "Irrigation partner - slot available",
-   "nameAr": "شريك الري - مساحة متاحة",
+   "nameEn": "Mazraa Drip",
+   "nameAr": "مزرعة للري",
    "taglineEn": "Drip lines & pumps",
    "taglineAr": "خطوط تنقيط ومضخات"
   },
   {
    "module": "Nutrient",
-   "nameEn": "Fertilizer partner - slot available",
-   "nameAr": "شريك الأسمدة - مساحة متاحة",
+   "nameEn": "Mazraa Fert",
+   "nameAr": "أسمدة مزرعة",
    "taglineEn": "Fertigation solutions",
    "taglineAr": "حلول التسميد مع الري"
   },
   {
    "module": "Energy",
-   "nameEn": "Energy partner - slot available",
-   "nameAr": "شريك الطاقة - مساحة متاحة",
+   "nameEn": "Mazraa Solar",
+   "nameAr": "مزرعة للطاقة الشمسية",
    "taglineEn": "Solar power for farms",
    "taglineAr": "طاقة شمسية للمزارع"
   },
   {
    "module": "ClimateControl",
-   "nameEn": "Climate partner - slot available",
-   "nameAr": "شريك المناخ - مساحة متاحة",
+   "nameEn": "Mazraa Climate",
+   "nameAr": "مزرعة للتبريد",
    "taglineEn": "Cooling pads, fans, sensors",
    "taglineAr": "خلايا تبريد ومراوح وحساسات"
   }

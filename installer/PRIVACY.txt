@@ -1,0 +1,17 @@
+Mazraa - Privacy Policy
+Last updated: 16 October 2026
+
+Mazraa is a single-player farming game by Almadarek Games (publisher account: Sladewilsontv).
+
+What we collect: nothing. The game does not ask for your name, e-mail, location, contacts or any other personal
+information, does not show third-party ads and does not sell or share data.
+
+What stays on your PC: your save games, settings and a small local gameplay statistics file are stored only in your
+Windows user folder (AppData). They never leave your computer. Uninstalling the game removes them (Microsoft Store
+version) or you can delete the "Almadarek Games\Mazraa" folder under AppData\LocalLow.
+
+Crash reports: the Unity engine may write a local crash log; it is not sent anywhere by the game.
+
+Children: the game collects no data from anyone, including children.
+
+Contact: moimam@gmail.com

@@ -85,12 +85,13 @@ public static class MazraaRelease
         string folder = Path.Combine(ReleaseDir, name);
         if (Directory.Exists(folder)) Directory.Delete(folder, true);
         CopyClean(BuildDir, folder);
-        foreach (var doc in new[] { "README.txt", "EULA.txt" })
+        foreach (var doc in new[] { "README.txt", "EULA.txt", "PRIVACY.txt" })
         {
             string src = Path.Combine("installer", doc);
             if (File.Exists(src)) File.Copy(src, Path.Combine(folder, doc), true);
         }
-        if (File.Exists("CREDITS.md")) File.Copy("CREDITS.md", Path.Combine(folder, "CREDITS.txt"), true);
+        foreach (var c in new[] { "CREDITS.md", "Assets/ThirdParty/CREDITS.md" })
+            if (File.Exists(c)) { File.Copy(c, Path.Combine(folder, "CREDITS.txt"), true); break; }
 
         string zip = Path.Combine(ReleaseDir, name + ".zip");
         if (File.Exists(zip)) File.Delete(zip);
