@@ -673,7 +673,7 @@ static class Program
         GameSettings.PlowingRequired = true;
         T.Check("Plowing requirement off: compaction costs no yield", plowOff && SoilModel.CompactionFactor(0.9f) < 0.9f);
         GameSettings.Weeds = false;
-        FakeEngine.Run(1f, 0.1f);
+        FakeEngine.Run(3f, 0.1f);   // soil ticks every 2 s
         T.Check("Weeds off: no weeds on any field", FieldManager.Instance.Plots.All(p => SoilManager.Instance == null || SoilManager.Instance.Soil(p).weeds == 0f));
         GameSettings.Weeds = true;
         var plot = FieldManager.Instance.Plots[0];
@@ -1125,6 +1125,7 @@ static class Program
         FakeEngine.ResourcesRoot = args[0];
         EventDirector.RandomEventsEnabled = false; // random farm events would make the core checks flaky; EventsFinTests turn them on
         GameMenu.ShowOnStart = false;   // the main menu pauses the game; the UI section tests it on its own
+        FarmLife.PassiveBonuses = false; // beauty / mastery bonuses would shift exact price and amount checks; FarmLifeTests turns them on
         FakeEngine.PersistentPath = Path.Combine(Path.GetTempPath(), "mazraa_test_" + System.Diagnostics.Process.GetCurrentProcess().Id); // parallel runs don't share saves
         if (Directory.Exists(FakeEngine.PersistentPath)) Directory.Delete(FakeEngine.PersistentPath, true);
         Directory.CreateDirectory(FakeEngine.PersistentPath);
@@ -1334,6 +1335,13 @@ static class Program
         CozyTests.AfterRestart();
         LifeTests.AfterRestart();
 
+        // Farm life runs after the restart checks above (it advances the calendar and places decor), then restarts again.
+        FarmLifeTests.Run();
+        SaveData.Flush(true);
+        BuildWorld();
+        FakeEngine.Run(2f);
+        FarmLifeTests.AfterRestart();
+
         Console.WriteLine("New game");
         var hud = UnityEngine.Object.FindAnyObjectByType<GameHUD>();
         typeof(GameHUD).GetMethod("NewGame", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(hud, null);
@@ -1351,6 +1359,7 @@ static class Program
 
         CozyTests.AfterNewGame();
         LifeTests.AfterNewGame();
+        FarmLifeTests.AfterNewGame();
 
         UiSection(args[0]);
 
@@ -3489,6 +3498,16 @@ static class SharedKeyTests
         Pad(pad.leftStickButton);
         T.Check("Shared keys: on foot L3 crouches, engine untouched", life.IsCrouching && truck.Drive.EngineOn == engine0);
         Pad(pad.leftStickButton);
+        var journal = FarmLifeScreen.Instance;
+        if (journal != null)
+        {
+            Key(kb.yKey);
+            T.Check("Shared keys: on foot Y opens the Farm life journal, cruise untouched", journal.IsOpen && truck.Assist.Cruise == cruise0);
+            journal.Close(); FakeEngine.Tick(0.02f); FakeEngine.Tick(0.02f);
+            Pad(pad.dpad.down);
+            T.Check("Shared keys: on foot D-pad down opens the journal, 4WD untouched", journal.IsOpen && truck.TractionMode == trac0);
+            journal.Close(); FakeEngine.Tick(0.02f); FakeEngine.Tick(0.02f);
+        }
 
         // ---- in the vehicle: the same keys drive the vehicle and never the on-foot actions
         truck.transform.position = bale.transform.position + new Vector3(1f, 0f, 0f);   // a bale within reach if pick-up leaked through
@@ -3514,6 +3533,12 @@ static class SharedKeyTests
         T.Check("Shared keys: in a vehicle LB shifts down, tool unchanged", truck.Drive.Gear == g && life.Tool == toolIn);
         Pad(pad.dpad.up);
         T.Check("Shared keys: in a vehicle D-pad up sets cruise, picks nothing up", truck.Assist.Cruise == CruiseMode.Cruise && life.Carried == null);
+        truck.Assist.Reset(); trac0 = truck.TractionMode;
+        Key(kb.yKey);
+        Pad(pad.dpad.down);
+        T.Check("Shared keys: in a vehicle Y / D-pad down are cruise / 4WD, the journal stays shut",
+            truck.Assist.Cruise == CruiseMode.Cruise && truck.TractionMode == (trac0 + 1) % 3 && (FarmLifeScreen.Instance == null || !FarmLifeScreen.Instance.IsOpen));
+        truck.Assist.Reset();
         Pad(pad.leftStickButton);
         T.Check("Shared keys: in a vehicle L3 is the engine, no crouch", !truck.Drive.EngineOn && !life.IsCrouching);
         GameInput.ForceDevice(false, false);
