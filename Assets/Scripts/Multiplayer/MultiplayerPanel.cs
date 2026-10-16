@@ -33,6 +33,7 @@ public class MultiplayerPanel : MonoBehaviour
         var mp = MultiplayerManager.Instance;
         var kb = Keyboard.current;
         if (mp == null || kb == null) return;
+        if (!NetSession.Backend.Available) { if (IsOpen) Close(); return; }   // release builds without Netcode: no co-op UI at all
         bool otherUI = UIManager.Instance != null && UIManager.Instance.IsUIOpened && !holdingUI;
 
         if (kb.f8Key.wasPressedThisFrame && !ChatOpen)
@@ -155,7 +156,7 @@ public class MultiplayerPanel : MonoBehaviour
     private void OnGUI()
     {
         var mp = MultiplayerManager.Instance;
-        if (mp == null) return;
+        if (mp == null || !NetSession.Backend.Available) return;
         MakeStyles();
         if (IsOpen) DrawPanel(mp);
         else if (Cursor.visible && !ChatOpen && GUI.Button(R(Screen.width / scale - 190f, 12f, 175f, 44f), Mp.Tr("Co-op (F8)"), button)) Open();
