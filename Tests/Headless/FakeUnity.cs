@@ -565,7 +565,7 @@ namespace UnityEngine
     }
     public class MeshRenderer : Renderer { }
     public class SkinnedMeshRenderer : Renderer { }
-    public class Collider : Component { public bool enabled = true; public PhysicsMaterial material; public Bounds bounds => new Bounds(transform.position, Vector3.Scale(transform.lossyScale, this is BoxCollider b ? b.size : Vector3.one)); }
+    public class Collider : Component { public bool enabled = true, isTrigger; public PhysicsMaterial material; public Bounds bounds => new Bounds(transform.position, Vector3.Scale(transform.lossyScale, this is BoxCollider b ? b.size : Vector3.one)); }
     public class BoxCollider : Collider { public Vector3 center, size; }
     public class CharacterController : Collider { }
     public class PhysicsMaterial : Object { public PhysicsMaterial(string n) { name = n; } public float dynamicFriction, staticFriction; public PhysicsMaterialCombine frictionCombine; }
@@ -580,9 +580,60 @@ namespace UnityEngine
         public Quaternion rotation { get => transform.rotation; set => transform.rotation = value; }
         public void MoveRotation(Quaternion q) => transform.rotation = q;
         internal void Integrate(float dt) { transform.position = transform.position + linearVelocity * dt; }
+        // Like Unity: sweeps every collider of this body; colliders it already overlaps at the start are not reported.
+        public bool SweepTest(Vector3 direction, out RaycastHit hit, float maxDistance, QueryTriggerInteraction q) => FakePhysics.Sweep(this, direction, out hit, maxDistance);
+        public bool SweepTest(Vector3 direction, out RaycastHit hit, float maxDistance) => FakePhysics.Sweep(this, direction, out hit, maxDistance);
     }
-    public struct ContactPoint { public Vector3 normal; }
-    public class Collision { public int contactCount; public ContactPoint GetContact(int i) => default; }
+    /// <summary>Box-only physics queries (oriented boxes, separating axis test) for the sweep tests.</summary>
+    public static class FakePhysics
+    {
+        public struct Box { public Vector3 c; public Vector3[] ax; public float[] e; public BoxCollider col; }
+        public static Box Of(BoxCollider b, Vector3 offset)
+        {
+            var t = b.transform; var s = t.lossyScale; var r = t.rotation;
+            return new Box { c = t.TransformPoint(b.center) + offset, ax = new[] { r * Vector3.right, r * Vector3.up, r * Vector3.forward },
+                e = new[] { Math.Abs(b.size.x * s.x) * 0.5f, Math.Abs(b.size.y * s.y) * 0.5f, Math.Abs(b.size.z * s.z) * 0.5f }, col = b };
+        }
+        static float Proj(Box b, Vector3 axis) { float p = 0; for (int i = 0; i < 3; i++) p += b.e[i] * Math.Abs(Vector3.Dot(b.ax[i], axis)); return p; }
+        public static bool Overlap(Box a, Box b)
+        {
+            var axes = new List<Vector3>(); axes.AddRange(a.ax); axes.AddRange(b.ax);
+            foreach (var x in a.ax) foreach (var y in b.ax) { var c = Vector3.Cross(x, y); if (c.sqrMagnitude > 1e-6f) axes.Add(c.normalized); }
+            Vector3 d = b.c - a.c;
+            foreach (var ax in axes) if (Math.Abs(Vector3.Dot(d, ax)) > Proj(a, ax) + Proj(b, ax)) return false;
+            return true;
+        }
+        public static bool Sweep(Rigidbody rb, Vector3 dir, out RaycastHit hit, float maxDistance)
+        {
+            hit = default;
+            dir = dir.normalized;
+            var own = rb.gameObject.GetComponentsInChildren<BoxCollider>().Where(c => c.enabled).ToList();
+            var others = FakeEngine.Objects.Where(g => !g.destroyed && g.activeInHierarchy).SelectMany(g => g.components).OfType<BoxCollider>()
+                .Where(c => !c.destroyed && c.enabled && !c.isTrigger && !own.Contains(c) && c.GetComponentInParent<Rigidbody>() != rb).ToList();
+            var start = new HashSet<BoxCollider>(others.Where(o => own.Any(m => Overlap(Of(m, Vector3.zero), Of(o, Vector3.zero)))));
+            const float step = 0.02f;
+            int n = (int)Math.Ceiling(maxDistance / step);
+            for (int k = 1; k <= n; k++)
+            {
+                float dist = Math.Min(k * step, maxDistance);
+                foreach (var o in others)
+                {
+                    if (start.Contains(o)) continue;
+                    var ob = Of(o, Vector3.zero);
+                    if (!own.Any(m => Overlap(Of(m, dir * dist), ob))) continue;
+                    // normal: the face of the other box that faces the mover
+                    var me = Of(own[0], dir * dist);
+                    Vector3 rel = me.c - ob.c; int best = 0; float bestV = -1; float sgn = 1;
+                    for (int i = 0; i < 3; i++) { float v = Vector3.Dot(rel, ob.ax[i]) / Math.Max(1e-4f, ob.e[i] + Proj(me, ob.ax[i])); if (Math.Abs(v) > bestV) { bestV = Math.Abs(v); best = i; sgn = Math.Sign(v) == 0 ? 1 : Math.Sign(v); } }
+                    hit.normal = ob.ax[best] * sgn; hit.distance = Math.Max(0f, dist - step); hit.collider = o; hit.point = ob.c + ob.ax[best] * sgn * ob.e[best];
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    public struct ContactPoint { public Vector3 normal, point; }
+    public class Collision { public int contactCount; public Collider collider; public ContactPoint GetContact(int i) => default; }
     public struct RaycastHit { public Vector3 point, normal; public float distance; public Collider collider; }
     public struct Ray { public Vector3 origin, direction; }
     public struct LayerMask { public int value; public static implicit operator int(LayerMask m) => m.value; }

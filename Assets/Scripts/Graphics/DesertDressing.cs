@@ -108,6 +108,8 @@ public class DesertDressing : MonoBehaviour
         built = true;
         // hundreds of primitive parts -> a few merged meshes per material (fewer objects and draw calls)
         MergedParts = ProcMesh.MergeChildren(root, r => r.gameObject.name == "Sand" || r.gameObject.name == "Track" || r.GetComponent<TMPro.TMP_Text>() != null);
+        // Prop colliders (palm / tree trunks, house, sell points) stay on the prop roots, apart from the merged meshes.
+        VehicleObstacles.OpenGates();   // the track needs a gate wherever it crosses a farm fence
     }
 
     // ------------------------------------------------------------------ layout data

@@ -1439,6 +1439,7 @@ static class Program
 
         DrivingTests.Run();
         SharedKeyTests.Run();
+        BumpTests.Run();
         FrontEndTests.Run();   // title screen, main menu, Career slots + new-farm wizard, play modes, multiplayer screen
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");

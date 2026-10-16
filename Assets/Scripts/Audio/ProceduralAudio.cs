@@ -52,6 +52,7 @@ public static class ProceduralAudio
             case "camel": return Camel();
             case "chicken": return Chicken();
             case "theme": return MenuMusic.Theme();
+            case "thump": return Thump();
             default: return null;
         }
     }
@@ -80,6 +81,27 @@ public static class ProceduralAudio
         foreach (var s in d) m = Math.Max(m, Math.Abs(s));
         float k = peak / m;
         for (int i = 0; i < d.Length; i++) d[i] *= k;
+    }
+
+    /// <summary>Dull body thump (vehicle bumping a fence or wall): a falling low sine with a short knock of filtered noise. 0.4 s.</summary>
+    private static float[] Thump()
+    {
+        var rnd = new System.Random(23);
+        int n = (int)(Rate * 0.4f);
+        var d = new float[n];
+        float lp = 0f, ph = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            float t = i / (float)Rate;
+            float f = 48f + 70f * Mathf.Exp(-t * 18f);                   // pitch drops like a hollow panel
+            ph += 2f * Mathf.PI * f / Rate;
+            lp += (((float)rnd.NextDouble() * 2f - 1f) - lp) * 0.12f;
+            float body = Mathf.Sin(ph) * Mathf.Exp(-t * 11f) * Mathf.Min(1f, t * 600f);
+            float knock = lp * 3f * Mathf.Exp(-t * 60f);
+            d[i] = body * 0.9f + knock * 0.5f;
+        }
+        Normalize(d, 0.75f);
+        return d;
     }
 
     // ------------------------------------------------------------------ loops

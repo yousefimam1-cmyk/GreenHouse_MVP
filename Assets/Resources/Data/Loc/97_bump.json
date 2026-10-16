@@ -1,0 +1,14 @@
+{
+ "entries": [
+  { "en": "Hey! Watch where you're driving!", "ar": "هيه! انتبه لطريقك!" },
+  { "en": "Slow down, please!", "ar": "على مهلك، لو سمحت!" },
+  { "en": "Careful with that truck!", "ar": "انتبه بسيارتك!" },
+  { "en": "Whoa! I nearly spilled my tea!", "ar": "يا ساتر! كاد الشاي ينسكب!" },
+  { "en": "Oops! Easy there!", "ar": "أوه! على مهلك!" },
+  { "en": "Hey, no running on the farm!", "ar": "هيه، لا تركض في المزرعة!" },
+  { "en": "Watch your step, friend!", "ar": "انتبه لخطواتك يا صديقي!" },
+  { "en": "{0} is upset with you", "ar": "{0} منزعج منك" },
+  { "en": "Fine for reckless driving: {0} SAR", "ar": "مخالفة قيادة متهورة: {0} ريال" },
+  { "en": "Fines", "ar": "المخالفات" }
+ ]
+}
