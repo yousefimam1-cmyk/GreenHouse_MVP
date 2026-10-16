@@ -250,6 +250,12 @@ def _():
     aware = 'ForwardPlusUsed()' in strip and 'keep.Count == 0' in strip
     return aware or not fplus, fplus
 
+
+@test('Input System control types have their using (real Unity keeps them in UnityEngine.InputSystem.Controls)')
+def _():
+    bad = [os.path.relpath(p, A) for p, s in src.items() if re.search(r'\b(KeyControl|ButtonControl|AxisControl|StickControl|Vector2Control|DpadControl)\b', s) and 'UnityEngine.InputSystem.Controls' not in s]
+    return not bad, bad
+
 # ---------------------------------------------------------------- report
 ok = sum(1 for r in results if r[1])
 for name, passed, details in results:
