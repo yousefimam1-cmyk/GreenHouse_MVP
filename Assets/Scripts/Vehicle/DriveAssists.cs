@@ -99,8 +99,13 @@ public class DriveAssist
 /// farmyard compacted dirt, open desert beyond the farm sand.</summary>
 public static class DriveSurfaces
 {
+    /// <summary>Open world (World/OpenWorld): asphalt / dirt roads, sand or fields beyond the scene terrain (null = not there).</summary>
+    public static System.Func<Vector3, DriveSurface?> WorldSurface;
+
     public static DriveSurface At(Vector3 p)
     {
+        var world = WorldSurface?.Invoke(p);
+        if (world.HasValue) return world.Value;
         var fm = FieldManager.Instance;
         if (fm != null) foreach (var plot in fm.Plots) if (plot != null && plot.Contains(p)) return DriveSurface.Field;
         if (OnPad(DeliveryZone.LoadingBay, p) || OnPad(DeliveryZone.Market, p)) return DriveSurface.Asphalt;

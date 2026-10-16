@@ -25,6 +25,15 @@ public class Minimap : MonoBehaviour
     public Vector3 Center { get; private set; }
     public float FullRange { get; private set; } = 150f;
 
+    // ---- open world (World/WorldMap): the full map can frame the whole world, zoom, and map clicks set waypoints
+    /// <summary>Largest half-range of the full map (OpenWorld sets it to the world's half-size).</summary>
+    public static float MaxFullRange = 400f;
+    /// <summary>The full map's icon layer (same size and centre as the map image): map clicks are measured in it.</summary>
+    public RectTransform FullMapRect => fullIcons;
+    /// <summary>Look at a part of the full map (zoom / pan), clamped to 40 m .. MaxFullRange.</summary>
+    public void SetFullView(Vector3 center, float range) { Center = center; FullRange = Mathf.Clamp(range, 40f, MaxFullRange); }
+    // ---- end open world
+
     private Camera mapCam;
     private RenderTexture rt;
     private Canvas canvas;
@@ -311,7 +320,7 @@ public class Minimap : MonoBehaviour
         foreach (var i in MinimapIcon.All) if (i != null && i.isActiveAndEnabled) add(i.transform.position);
         if (!any) return;
         Center = new Vector3((minX + maxX) * 0.5f, anchor != null ? anchor.position.y : 0f, (minZ + maxZ) * 0.5f);
-        FullRange = Mathf.Clamp(Mathf.Max(maxX - minX, maxZ - minZ) * 0.5f + 25f, 60f, 400f);
+        FullRange = Mathf.Clamp(Mathf.Max(maxX - minX, maxZ - minZ) * 0.5f + 25f, 60f, MaxFullRange);
     }
 
     private void LateUpdate()

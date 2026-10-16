@@ -34,7 +34,8 @@ public class FieldManager : MonoBehaviour
     /// <summary>Add a plot at grid cell (row, col); rows beyond `rows` extend the field. Index = Plots.Count (its save key).</summary>
     public FieldPlot AddPlot(int r, int c)
     {
-        int i = Plots.Count;
+        int i = 0;   // save key = place in the farm grid (open-world plots have their own keys from WorldPlotBase)
+        foreach (var q in Plots) if (q != null && q.index < WorldPlotBase) i++;
         Vector3 local = new Vector3((c - (columns - 1) * 0.5f) * (plotSize.x + gap), 0, (r - (rows - 1) * 0.5f) * (plotSize.y + gap));
         Vector3 p = Build.OnGround(GridCenter + GridRotation * local);
         var go = new GameObject("Field " + (i + 1));
@@ -44,6 +45,22 @@ public class FieldManager : MonoBehaviour
         Plots.Add(plot);
         return plot;
     }
+
+    // ---- open world (World/WorldLand): farmland bought elsewhere on the map
+    /// <summary>Save keys of open-world plots start here (mazraa.plot.200+), clear of the farm grid and the land office.</summary>
+    public const int WorldPlotBase = 200;
+
+    /// <summary>Add a plot anywhere (an open-world parcel) with its own save index.</summary>
+    public FieldPlot AddPlotAt(int saveIndex, Vector3 pos, Quaternion rot, Vector2 size)
+    {
+        var go = new GameObject("Field " + (saveIndex + 1));
+        go.transform.SetPositionAndRotation(pos, rot);
+        var plot = go.AddComponent<FieldPlot>();
+        plot.Setup(saveIndex, size);
+        Plots.Add(plot);
+        return plot;
+    }
+    // ---- end open world
 
     public void ResetAll() { foreach (var p in Plots) if (p != null) p.ResetPlot(); }
 }

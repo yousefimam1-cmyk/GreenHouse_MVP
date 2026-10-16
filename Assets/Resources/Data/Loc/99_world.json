@@ -1,0 +1,176 @@
+{
+ "entries": [
+  {
+   "en": "Town market",
+   "ar": "سوق البلدة"
+  },
+  {
+   "en": "Fuel station",
+   "ar": "محطة الوقود"
+  },
+  {
+   "en": "Dealership & workshop",
+   "ar": "معرض وورشة المعدات"
+  },
+  {
+   "en": "Dry port (export)",
+   "ar": "الميناء الجاف (تصدير)"
+  },
+  {
+   "en": "Damietta port (export)",
+   "ar": "ميناء دمياط (تصدير)"
+  },
+  {
+   "en": "Abu Fahd's farm",
+   "ar": "مزرعة أبو فهد"
+  },
+  {
+   "en": "Al-Otaibi farm",
+   "ar": "مزرعة العتيبي"
+  },
+  {
+   "en": "Al-Harbi farm",
+   "ar": "مزرعة الحربي"
+  },
+  {
+   "en": "Hajj Mahmoud's farm",
+   "ar": "غيط الحاج محمود"
+  },
+  {
+   "en": "Saad's farm",
+   "ar": "غيط سعد"
+  },
+  {
+   "en": "Fathy's farm",
+   "ar": "غيط فتحي"
+  },
+  {
+   "en": "Farmland for sale",
+   "ar": "أرض زراعية للبيع"
+  },
+  {
+   "en": "Your farm",
+   "ar": "مزرعتك"
+  },
+  {
+   "en": "Discovered: {0} - fast travel unlocked (map)",
+   "ar": "اكتشفت: {0} - صار التنقل السريع متاح (الخريطة)"
+  },
+  {
+   "en": "End of the map - turn back",
+   "ar": "نهاية الخريطة - ارجع"
+  },
+  {
+   "en": "{0} doesn't buy this load",
+   "ar": "{0} ما يشتري هالحمولة"
+  },
+  {
+   "en": "Sold at {0} for {1} SAR",
+   "ar": "انباع في {0} بـ {1} ريال"
+  },
+  {
+   "en": "{0} doesn't buy the rest of the load",
+   "ar": "{0} ما يشتري باقي الحمولة"
+  },
+  {
+   "en": "Not for sale",
+   "ar": "مو للبيع"
+  },
+  {
+   "en": "You already own this land",
+   "ar": "هالأرض حقتك من قبل"
+  },
+  {
+   "en": "[E] Buy farmland",
+   "ar": "[E] اشترِ الأرض"
+  },
+  {
+   "en": "km",
+   "ar": "كم"
+  },
+  {
+   "en": "Waypoint",
+   "ar": "نقطة الطريق"
+  },
+  {
+   "en": "Waypoint reached",
+   "ar": "وصلت نقطة الطريق"
+  },
+  {
+   "en": "north",
+   "ar": "شمال"
+  },
+  {
+   "en": "north-east",
+   "ar": "شمال شرق"
+  },
+  {
+   "en": "east",
+   "ar": "شرق"
+  },
+  {
+   "en": "south-east",
+   "ar": "جنوب شرق"
+  },
+  {
+   "en": "south",
+   "ar": "جنوب"
+  },
+  {
+   "en": "south-west",
+   "ar": "جنوب غرب"
+  },
+  {
+   "en": "west",
+   "ar": "غرب"
+  },
+  {
+   "en": "north-west",
+   "ar": "شمال غرب"
+  },
+  {
+   "en": "Not available",
+   "ar": "غير متاح"
+  },
+  {
+   "en": "Visit it first to unlock fast travel",
+   "ar": "زره أول عشان ينفتح التنقل السريع"
+  },
+  {
+   "en": "You are already here",
+   "ar": "أنت هنا أصلاً"
+  },
+  {
+   "en": "Fast travel to {0} for {1} SAR",
+   "ar": "تنقّل سريع إلى {0} بـ {1} ريال"
+  },
+  {
+   "en": "Places",
+   "ar": "الأماكن"
+  },
+  {
+   "en": "owned",
+   "ar": "ملكك"
+  },
+  {
+   "en": "for sale",
+   "ar": "للبيع"
+  },
+  {
+   "en": "fast travel",
+   "ar": "تنقّل سريع"
+  },
+  {
+   "en": "not visited",
+   "ar": "ما زرته"
+  },
+  {
+   "en": "[W/S] choose  [Enter] waypoint  [E] fast travel",
+   "ar": "[W/S] اختر  [Enter] نقطة طريق  [E] تنقّل سريع"
+  },
+  {
+   "en": "Click: waypoint  Right click: clear  Wheel: zoom",
+   "ar": "نقرة: نقطة طريق  نقرة يمين: مسح  العجلة: تكبير"
+  }
+ ]
+}

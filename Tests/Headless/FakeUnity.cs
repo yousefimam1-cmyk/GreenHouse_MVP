@@ -332,6 +332,9 @@ namespace UnityEngine
         public static Vector3 down => new Vector3(0, -1, 0);
         public static Vector3 forward => new Vector3(0, 0, 1);
         public static Vector3 right => new Vector3(1, 0, 0);
+        public static Vector3 left => new Vector3(-1, 0, 0);
+        public static Vector3 back => new Vector3(0, 0, -1);
+        public void Normalize() { this = normalized; }
         public float magnitude => (float)Math.Sqrt(x * x + y * y + z * z);
         public float sqrMagnitude => x * x + y * y + z * z;
         public Vector3 normalized { get { float m = magnitude; return m > 1e-6f ? this / m : zero; } }
@@ -463,6 +466,8 @@ namespace UnityEngine
         public static float Floor(float v) => (float)Math.Floor(v);
         public static float Pow(float a, float b) => (float)Math.Pow(a, b);
         public static float InverseLerp(float a, float b, float v) => a == b ? 0 : Clamp01((v - a) / (b - a));
+        public static float Atan2(float y, float x) => (float)Math.Atan2(y, x);
+        public static float SmoothStep(float a, float b, float t) { t = Clamp01(t); t = t * t * (3 - 2 * t); return a + (b - a) * t; }
         public static float PerlinNoise(float x, float y) => 0.5f + 0.25f * (float)(Math.Sin(x * 1.7 + y * 0.3) + Math.Sin(y * 1.3 - x * 0.2)) * 0.5f;
     }
     public static class Random
@@ -553,7 +558,7 @@ namespace UnityEngine
     public class MeshCollider : Collider { public Mesh sharedMesh; }
     public struct CombineInstance { public Mesh mesh; public Matrix4x4 transform; public int subMeshIndex; }
     public struct Matrix4x4 { public static Matrix4x4 identity => new Matrix4x4(); public static Matrix4x4 operator *(Matrix4x4 a, Matrix4x4 b) => a; }
-    public class TerrainCollider : Collider { }
+    public class TerrainCollider : Collider { public TerrainData terrainData; }
     public static class StaticBatchingUtility { public static void Combine(GameObject root) { } }
     public class MeshFilter : Component { public Mesh mesh, sharedMesh = new Mesh(); }
     public class Renderer : Component
@@ -598,8 +603,54 @@ namespace UnityEngine
         public static bool Raycast(Ray r, out RaycastHit h, float dist, int mask) { h = default; return false; }
         public static void IgnoreCollision(Collider a, Collider b, bool i) { }
     }
-    public class Terrain : Component { public static Terrain activeTerrain; public TerrainData terrainData; public float SampleHeight(Vector3 p) => 0; }
-    public class TerrainData : Object { public Vector3 size; }
+    // Terrain: only members that exist in Unity 6 with the same signatures (UnityEngine.TerrainModule).
+    public class Terrain : Behaviour
+    {
+        public static Terrain activeTerrain;
+        public TerrainData terrainData;
+        public Material materialTemplate;
+        public float basemapDistance = 1000f, heightmapPixelError = 5f;
+        public bool drawTreesAndFoliage = true, drawInstanced, allowAutoConnect = true;
+        public int groupingID;
+        public Terrain leftNeighbor, rightNeighbor, topNeighbor, bottomNeighbor;
+        public void SetNeighbors(Terrain left, Terrain top, Terrain right, Terrain bottom) { leftNeighbor = left; topNeighbor = top; rightNeighbor = right; bottomNeighbor = bottom; }
+        /// <summary>Height above the terrain's own y at a world position (bilinear, like Unity).</summary>
+        public float SampleHeight(Vector3 p) => terrainData == null ? 0 : terrainData.Sample((p.x - transform.position.x) / Math.Max(1e-4f, terrainData.size.x), (p.z - transform.position.z) / Math.Max(1e-4f, terrainData.size.z));
+        public static GameObject CreateTerrainGameObject(TerrainData data)
+        {
+            var go = new GameObject("Terrain");
+            go.AddComponent<Terrain>().terrainData = data;
+            go.AddComponent<TerrainCollider>().terrainData = data;
+            return go;
+        }
+    }
+    public class TerrainData : Object
+    {
+        int res = 33; Vector3 _size = new Vector3(1000, 600, 1000);
+        float[,] heights = new float[33, 33];
+        public int heightmapResolution { get => res; set { res = value; heights = new float[value, value]; } }
+        public Vector3 size { get => _size; set => _size = value; }
+        public int alphamapResolution = 16, baseMapResolution = 16;
+        public TerrainLayer[] terrainLayers = new TerrainLayer[0];
+        public int alphamapLayers => terrainLayers.Length;
+        public float[,,] alphamaps;
+        public void SetHeights(int xBase, int yBase, float[,] h) { for (int y = 0; y < h.GetLength(0); y++) for (int x = 0; x < h.GetLength(1); x++) heights[yBase + y, xBase + x] = h[y, x]; }
+        public float[,] GetHeights(int xBase, int yBase, int w, int hgt) { var o = new float[hgt, w]; for (int y = 0; y < hgt; y++) for (int x = 0; x < w; x++) o[y, x] = heights[yBase + y, xBase + x]; return o; }
+        public void SetAlphamaps(int x, int y, float[,,] map) { alphamaps = map; }
+        public float GetInterpolatedHeight(float x, float y) => Sample(x, y);
+        internal float Sample(float u, float v)
+        {
+            u = Mathf.Clamp01(u) * (res - 1); v = Mathf.Clamp01(v) * (res - 1);
+            int x0 = Math.Min((int)u, res - 2), y0 = Math.Min((int)v, res - 2); float fx = u - x0, fy = v - y0;
+            float h = (heights[y0, x0] * (1 - fx) + heights[y0, x0 + 1] * fx) * (1 - fy) + (heights[y0 + 1, x0] * (1 - fx) + heights[y0 + 1, x0 + 1] * fx) * fy;
+            return h * _size.y;
+        }
+    }
+    public class TerrainLayer : Object { public Texture2D diffuseTexture; public Vector2 tileSize = new Vector2(15, 15), tileOffset; }
+    public static class RectTransformUtility
+    {
+        public static bool ScreenPointToLocalPointInRectangle(RectTransform rect, Vector2 screenPoint, Camera cam, out Vector2 localPoint) { localPoint = screenPoint; return rect != null; }
+    }
     public enum LightType { Spot, Directional, Point }
     public enum LightShadows { None, Soft }
     public class Light : Behaviour { public LightType type; public float intensity = 1, range, spotAngle; public Color color; public LightShadows shadows; }

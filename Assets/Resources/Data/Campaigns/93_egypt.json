@@ -58,6 +58,17 @@
    "introAr": "«النيل بيدّي للي بيصبر،» بيقول عم حسن وهو بيبص على المية العالية في الترع. برسيم الشتا، ورز الصيف، وقطن تحت شمس الخريف: ازرع سنة النيل كلها.",
    "outroEn": "The best farm in the Delta, from five quiet feddans. Your grandmother would be proud. Mabrouk!",
    "outroAr": "أحسن أرض في الدلتا، من خمس فدادين كانوا ساكتين. ستك كانت هتبقى فخورة بيك. مبروك!"
+  },
+  {
+   "id": "eg_road",
+   "fromMission": 21,
+   "reward": 1200,
+   "titleEn": "The Canal Road",
+   "titleAr": "طريق الترعة",
+   "introEn": "'Don't sell everything to the middleman at the gate,' says Am Hassan. 'The gin, the rice mill, the village souq and the bandar all pay their own price. Take the canal road, and look at the land next to ours - the owner wants to sell.'",
+   "introAr": "«ماتبيعش كل حاجة للتاجر اللي على الباب،» بيقول عم حسن. «المحلج ومضرب الرز وسوق القرية والبندر كل واحد بسعره. خد طريق الترعة، وبص على الأرض اللي جنبنا - صاحبها عايز يبيع.»",
+   "outroEn": "Every driver on the canal road waves at your truck now. The farm has grown beyond the old bund.",
+   "outroAr": "كل سواق على طريق الترعة بيشاورلك دلوقتي. الغيط كبر وعدّى الجسر القديم."
   }
  ]
 }

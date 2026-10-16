@@ -112,11 +112,15 @@ public abstract class Vehicle : Interactable
     /// <summary>Worn enough that the workshop offers a repair (R / X on the loading bay repairs instead of resetting).</summary>
     public bool NeedsRepair => drive.EngineWear + drive.TyreWear > 0.01f;
 
-    /// <summary>Parked on the loading bay (the farm workshop).</summary>
+    /// <summary>Open world (World/OpenWorld): the dealership's workshop yard also repairs.</summary>
+    public static System.Func<Vector3, bool> WorkshopAt;
+
+    /// <summary>Parked on the loading bay (the farm workshop) or in the dealership's workshop yard.</summary>
     public bool AtWorkshop
     {
         get
         {
+            if (WorkshopAt != null && Mathf.Abs(Speed) <= 0.5f && WorkshopAt(transform.position)) return true;
             var bay = DeliveryZone.LoadingBay;
             if (bay == null || Mathf.Abs(Speed) > 0.5f) return false;
             Vector3 d = transform.position - bay.transform.position; d.y = 0f;

@@ -237,7 +237,27 @@ public class MarketManager : MonoBehaviour
     public void SetDestination(string pointId) { Destination = pointId == "" || Point(pointId) != null ? pointId : ""; SaveState(); }
 
     private string PointFor(string goodId) =>
+        DirectPoint != "" && MarketMath.Accepts(Point(DirectPoint), goodId) ? DirectPoint :
         Destination != "" && MarketMath.Accepts(Point(Destination), goodId) ? Destination : BestPoint(goodId);
+
+    // ---------------- open world: the truck sells at the selling point it drove to (World/OpenWorld) ----------------
+
+    /// <summary>Selling point of the sale in progress at a world place ("" = none): its own prices, no transport cost
+    /// (the farmer hauled it) and a small direct-delivery bonus.</summary>
+    public string DirectPoint { get; private set; } = "";
+    public const float DirectSaleBonus = 1.1f;
+
+    /// <summary>Sell goods at one point (contracts first, like every sale). Goods it doesn't buy should be filtered out
+    /// before (Accepts). Money, ledger and delivery events go through EconomyManager.SellAll. Returns money earned.</summary>
+    public int SellDirect(string pointId, Dictionary<string, float> cargo, List<string> messages)
+    {
+        var eco = EconomyManager.Instance;
+        if (eco == null || Point(pointId) == null) return 0;
+        DirectPoint = pointId;
+        try { return eco.SellAll(cargo, messages); }
+        finally { DirectPoint = ""; }
+    }
+    // ---------------- end open world ----------------
 
     // ---------------- selling ----------------
 
@@ -287,7 +307,8 @@ public class MarketManager : MonoBehaviour
         if (!MarketMath.Accepts(p, goodId) || g == null || amount <= 0f) { p = Point(CentralId); pointId = CentralId; }
         if (p == null || g == null || amount <= 0f) return 0f;
         float g0 = Glut(pointId, goodId), g1 = MarketMath.GlutAfter(p, g0, amount);
-        float value = MarketMath.SaleValue(PriceNoGlut(goodId, p), g0, g1, amount) - amount * p.haul * g.weight;
+        bool direct = pointId == DirectPoint;   // open world: sold on the spot
+        float value = MarketMath.SaleValue(PriceNoGlut(goodId, p), g0, g1, amount) * (direct ? DirectSaleBonus : 1f) - (direct ? 0f : amount * p.haul * g.weight);
         glut[Key(pointId, goodId)] = g1;
         return Mathf.Max(0f, value);
     }

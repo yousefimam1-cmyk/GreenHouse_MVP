@@ -79,6 +79,17 @@
    "introAr": "المزرعة أهلها كمان: السلوقي عند الباب، والجيران في المجلس، والشركاء في السوق. كن قلب القرية.",
    "outroEn": "From a dry well to the heart of the village. Grandfather's land feeds the family again. Mabrook!",
    "outroAr": "من بير ناشف إلى قلب القرية. أرض جدك رجعت تأكّل العيلة. مبروك!"
+  },
+  {
+   "id": "open_road",
+   "fromMission": 46,
+   "reward": 1500,
+   "titleEn": "The Open Road",
+   "titleAr": "الطريق المفتوح",
+   "introEn": "'The farm is only the start,' Abu Saleh says, pointing past the gate. 'The highway runs to the town, the silos, the dairy and the dry port. Every buyer pays his own price - drive your crops to the one who pays best, and keep an eye on the land for sale next door.'",
+   "introAr": "«المزرعة بس البداية،» يقول أبو صالح ويأشّر ورا البوابة. «الخط يودّي للبلدة والصوامع وجمعية الألبان والميناء الجاف. كل تاجر له سعره - ودّ محصولك للي يدفع أكثر، وعينك على الأرض المعروضة للبيع جنبك.»",
+   "outroEn": "Your truck is known on every road around Buraidah, and your fields now reach past the old fence.",
+   "outroAr": "شاحنتك صارت معروفة في كل طرق بريدة، ومزارعك صارت تتعدّى السياج القديم."
   }
  ]
 }
