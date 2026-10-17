@@ -1,0 +1,52 @@
+# Builds the game for WebGL and publishes it on GitHub Pages:
+#   https://yousefimam1-cmyk.github.io/GreenHouse_MVP/
+# One-time setup (repo Settings):
+#   1. Secrets and variables > Actions: add UNITY_LICENSE (contents of your Unity_v20xx.ulf), UNITY_EMAIL, UNITY_PASSWORD.
+#   2. Pages > Build and deployment > Source: GitHub Actions.
+# Then: Actions tab > "WebGL build" > Run workflow (or push to mazraa-dev).
+name: WebGL build
+on:
+  workflow_dispatch:
+  push:
+    branches: [mazraa-dev]
+    paths: ['Assets/**', 'Packages/**', 'ProjectSettings/**']
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: webgl
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-WebGL-${{ hashFiles('Packages/packages-lock.json') }}
+          restore-keys: Library-WebGL-
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: WebGL
+          buildMethod: MazraaBuild.WebGL
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/WebGL/Mazraa
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

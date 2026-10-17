@@ -1,0 +1,24 @@
+{
+ "entries": [
+  {
+   "en": "Village souq",
+   "ar": "سوق القرية"
+  },
+  {
+   "en": "Agricultural cooperative",
+   "ar": "الجمعية الزراعية"
+  },
+  {
+   "en": "Cotton gin",
+   "ar": "محلج القطن"
+  },
+  {
+   "en": "Rice mill",
+   "ar": "مضرب الأرز"
+  },
+  {
+   "en": "Canal water reached {0} fields",
+   "ar": "مية الترعة وصلت {0} غيطان"
+  }
+ ]
+}

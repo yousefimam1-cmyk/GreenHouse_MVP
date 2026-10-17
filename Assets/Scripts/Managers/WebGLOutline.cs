@@ -21,7 +21,7 @@ public class WebGLOutline : MonoBehaviour
         MeshFilter mf = GetComponent<MeshFilter>();
         MeshRenderer mr = GetComponent<MeshRenderer>();
 
-        if (mf == null || mr == null) return;
+        if (mf == null || mr == null || mf.sharedMesh == null) return;
 
         outlineObject = new GameObject("Outline");
         outlineObject.transform.SetParent(transform);

@@ -7,19 +7,25 @@ public class ControllStation : Interactable
     private bool ActionPerformed = false;
     public string ActionText;
 
+    public bool IsLocked => ActionRequired && !ActionPerformed;
+
     protected override void Awake()
     {
+        base.Awake();
         greenhouseManager = GetComponentInParent<GreenhouseManager>();
     }
+
     public void SetActionPerformed(bool val)
     {
         ActionPerformed = val;
     }
+
     public override void Interact()
     {
-        if (ActionRequired && !ActionPerformed)
+        if (UIManager.Instance == null) return;
+        if (IsLocked)
         {
-            UIManager.Instance.ShowAlertMessage(ActionText);
+            UIManager.Instance.ShowAlertMessage(Loc.T(string.IsNullOrEmpty(ActionText) ? "Start the well first to optimize modules!" : ActionText));
             return;
         }
         base.Interact();

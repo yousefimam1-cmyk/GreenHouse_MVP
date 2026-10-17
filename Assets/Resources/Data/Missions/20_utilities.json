@@ -1,0 +1,34 @@
+{
+  "missions": [
+    {
+      "id": "util_solar",
+      "type": "installSolar",
+      "target": 1,
+      "reward": 1500,
+      "titleEn": "Power from the sun",
+      "titleAr": "كهرباء من الشمس",
+      "descEn": "Qassim sun is strong: buy solar panels at a Farm Shop (Power page).",
+      "descAr": "شمس القصيم قوية: اشترِ ألواح شمسية من محل المزرعة (صفحة الكهرباء)."
+    },
+    {
+      "id": "util_power2d",
+      "type": "powerPositiveDays",
+      "target": 2,
+      "reward": 1200,
+      "titleEn": "Steady power",
+      "titleAr": "كهرباء ثابتة",
+      "descEn": "Keep power supply above demand for 2 days in a row (U shows the utilities).",
+      "descAr": "خلّ الكهرباء تكفي الطلب يومين ورا بعض (U يعرض الخدمات)."
+    },
+    {
+      "id": "util_irrigation",
+      "type": "installEfficientIrrigation",
+      "target": 1,
+      "reward": 2000,
+      "titleEn": "Save every drop",
+      "titleAr": "وفّر كل قطرة",
+      "descEn": "Install drip irrigation or a center pivot for the fields (Water page of the shop).",
+      "descAr": "ركّب ري بالتنقيط أو رشاش محوري للحقول (صفحة الماء في المحل)."
+    }
+  ]
+}

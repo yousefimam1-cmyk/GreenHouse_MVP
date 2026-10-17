@@ -1,0 +1,56 @@
+{
+  "notes": "Saudi crops pack (Al-Qassim). goods/fieldCrops use the EconomyFile format (merged by id into economy.json). cropMeta, trees, pests and cures are read by Scripts/Crops (CropCareManager, OrchardManager). Real-world sources and the time/money scale factors are in DATA_SOURCES.md at the repo root. Seasons: spring = Mar-May, summer = Jun-Aug, autumn = Sep-Nov, winter = Dec-Feb; the cool season (Oct-Apr) is the main open-field season, summer is for heat-tolerant crops only.",
+  "goods": [
+    { "id": "alfalfa",       "nameEn": "Alfalfa hay",     "nameAr": "برسيم",          "unitEn": "kg", "unitAr": "كجم", "price": 2,  "weight": 1 },
+    { "id": "sorghum",       "nameEn": "Sorghum",         "nameAr": "ذرة رفيعة",      "unitEn": "kg", "unitAr": "كجم", "price": 5,  "weight": 1 },
+    { "id": "millet",        "nameEn": "Millet",          "nameAr": "دخن",            "unitEn": "kg", "unitAr": "كجم", "price": 6,  "weight": 1 },
+    { "id": "tomato",        "nameEn": "Field tomatoes",  "nameAr": "طماطم مكشوفة",   "unitEn": "kg", "unitAr": "كجم", "price": 9,  "weight": 1 },
+    { "id": "dates_sukkari", "nameEn": "Sukkari dates",   "nameAr": "تمر سكري",       "unitEn": "kg", "unitAr": "كجم", "price": 26, "weight": 1 },
+    { "id": "dates_khalas",  "nameEn": "Khalas dates",    "nameAr": "تمر خلاص",       "unitEn": "kg", "unitAr": "كجم", "price": 20, "weight": 1 },
+    { "id": "dates_ajwa",    "nameEn": "Ajwa dates",      "nameAr": "تمر عجوة",       "unitEn": "kg", "unitAr": "كجم", "price": 45, "weight": 1 },
+    { "id": "olives",        "nameEn": "Olives",          "nameAr": "زيتون",          "unitEn": "kg", "unitAr": "كجم", "price": 10, "weight": 1 },
+    { "id": "pomegranate",   "nameEn": "Pomegranates",    "nameAr": "رمان",           "unitEn": "kg", "unitAr": "كجم", "price": 12, "weight": 1 },
+    { "id": "grapes",        "nameEn": "Grapes",          "nameAr": "عنب",            "unitEn": "kg", "unitAr": "كجم", "price": 10, "weight": 1 },
+    { "id": "lemons",        "nameEn": "Lemons",          "nameAr": "ليمون",          "unitEn": "kg", "unitAr": "كجم", "price": 8,  "weight": 1 }
+  ],
+  "fieldCrops": [
+    { "id": "alfalfa", "nameEn": "Alfalfa (barseem)", "nameAr": "برسيم", "seedPrice": 180, "seasons": ["autumn", "winter", "spring"], "growSeconds": 100, "yieldKg": 40, "r": 0.45, "g": 0.75, "b": 0.3 },
+    { "id": "sorghum", "nameEn": "Sorghum",           "nameAr": "ذرة رفيعة", "seedPrice": 80, "seasons": ["spring", "summer"], "growSeconds": 160, "yieldKg": 60, "r": 0.7, "g": 0.35, "b": 0.2 },
+    { "id": "millet",  "nameEn": "Millet",            "nameAr": "دخن",     "seedPrice": 60,  "seasons": ["summer"], "growSeconds": 120, "yieldKg": 45, "r": 0.85, "g": 0.78, "b": 0.5 },
+    { "id": "tomato",  "nameEn": "Field tomatoes",    "nameAr": "طماطم مكشوفة", "seedPrice": 200, "seasons": ["autumn", "spring"], "growSeconds": 160, "yieldKg": 80, "r": 0.85, "g": 0.15, "b": 0.12 }
+  ],
+  "cropMeta": [
+    { "id": "wheat",      "family": "grain" },
+    { "id": "sorghum",    "family": "grain",      "feedPerKg": 0.05 },
+    { "id": "millet",     "family": "grain",      "feedPerKg": 0.05 },
+    { "id": "potato",     "family": "nightshade" },
+    { "id": "tomato",     "family": "nightshade" },
+    { "id": "onion",      "family": "allium" },
+    { "id": "watermelon", "family": "cucurbit" },
+    { "id": "alfalfa",    "family": "legume",     "cuts": 6, "regrowFrom": 0.6, "feedPerKg": 0.1 }
+  ],
+  "trees": [
+    { "id": "palm_sukkari", "nameEn": "Sukkari palm", "nameAr": "نخلة سكري", "good": "dates_sukkari", "saplingPrice": 500, "matureSeasons": 3, "fruitSeason": "summer", "ripenDay": 3, "yieldKg": 30, "palm": true,  "model": "Trees/palm", "r": 0.85, "g": 0.6, "b": 0.2 },
+    { "id": "palm_khalas",  "nameEn": "Khalas palm",  "nameAr": "نخلة خلاص", "good": "dates_khalas",  "saplingPrice": 400, "matureSeasons": 3, "fruitSeason": "summer", "ripenDay": 3, "yieldKg": 30, "palm": true,  "model": "Trees/palm", "r": 0.6,  "g": 0.32, "b": 0.12 },
+    { "id": "palm_ajwa",    "nameEn": "Ajwa palm",    "nameAr": "نخلة عجوة", "good": "dates_ajwa",    "saplingPrice": 800, "matureSeasons": 3, "fruitSeason": "summer", "ripenDay": 3, "yieldKg": 20, "palm": true,  "model": "Trees/palm", "r": 0.25, "g": 0.12, "b": 0.08 },
+    { "id": "olive",        "nameEn": "Olive tree",   "nameAr": "شجرة زيتون", "good": "olives",       "saplingPrice": 250, "matureSeasons": 3, "fruitSeason": "autumn", "yieldKg": 20, "palm": false, "model": "Trees/olive", "r": 0.3, "g": 0.35, "b": 0.15 },
+    { "id": "pomegranate",  "nameEn": "Pomegranate tree", "nameAr": "شجرة رمان", "good": "pomegranate", "saplingPrice": 250, "matureSeasons": 2, "fruitSeason": "autumn", "yieldKg": 25, "palm": false, "model": "Trees/pomegranate", "r": 0.75, "g": 0.1, "b": 0.15 },
+    { "id": "grape",        "nameEn": "Grape vine",   "nameAr": "عريشة عنب", "good": "grapes",        "saplingPrice": 200, "matureSeasons": 2, "fruitSeason": "summer", "yieldKg": 25, "palm": false, "model": "Trees/grape", "r": 0.45, "g": 0.2, "b": 0.5 },
+    { "id": "lemon",        "nameEn": "Lemon tree",   "nameAr": "شجرة ليمون", "good": "lemons",       "saplingPrice": 250, "matureSeasons": 3, "fruitSeason": "winter", "yieldKg": 35, "palm": false, "model": "Trees/lemon", "r": 0.95, "g": 0.85, "b": 0.2 }
+  ],
+  "pests": [
+    { "id": "aphids",   "nameEn": "Aphids",           "nameAr": "المنّ",               "seasons": ["winter", "spring"], "families": ["grain", "legume", "nightshade", "allium"], "chance": 0.08, "heatwave": 1, "rain": 1.5, "bedChance": 0, "growthMult": 0.6, "damagePerDay": 0.03 },
+    { "id": "whitefly", "nameEn": "Whitefly",         "nameAr": "الذبابة البيضاء",     "seasons": ["summer", "autumn"], "families": ["nightshade", "cucurbit"],                  "chance": 0.1,  "heatwave": 1.5, "rain": 1, "bedChance": 0.06, "growthMult": 0.6, "damagePerDay": 0.04 },
+    { "id": "blight",   "nameEn": "Blight",           "nameAr": "اللفحة",              "seasons": ["winter", "spring"], "families": ["nightshade"],                              "chance": 0.04, "heatwave": 0, "rain": 4, "bedChance": 0, "growthMult": 0.5, "damagePerDay": 0.06 },
+    { "id": "weevil",   "nameEn": "Red palm weevil",  "nameAr": "سوسة النخيل الحمراء", "seasons": ["spring", "summer", "autumn", "winter"], "families": ["palm"],         "chance": 0.025, "heatwave": 1, "rain": 1, "bedChance": 0, "growthMult": 1, "damagePerDay": 0.05 },
+    { "id": "locust",   "nameEn": "Desert locusts",   "nameAr": "الجراد الصحراوي",     "seasons": ["winter", "spring"], "families": [],                                          "chance": 0.015, "heatwave": 0, "rain": 3, "bedChance": 0, "growthMult": 0.4, "damagePerDay": 0.08 }
+  ],
+  "cures": [
+    { "id": "ladybugs",    "nameEn": "Ladybugs",          "nameAr": "دعسوقة (خنافس نافعة)", "price": 70, "cures": ["aphids"], "protectDays": 6 },
+    { "id": "neem",        "nameEn": "Neem spray",        "nameAr": "رش زيت النيم",        "price": 40, "cures": ["aphids", "whitefly"], "protectDays": 2 },
+    { "id": "pesticide",   "nameEn": "Pesticide",         "nameAr": "مبيد",                "price": 60, "cures": ["aphids", "whitefly", "blight", "locust"], "protectDays": 1 },
+    { "id": "weevil_trap", "nameEn": "Palm weevil trap",  "nameAr": "مصيدة سوسة النخيل",    "price": 90, "cures": ["weevil"], "protectDays": 10 },
+    { "id": "fertilizer",  "nameEn": "Fertilizer (NPK)",  "nameAr": "سماد كيماوي",          "price": 80, "cures": [], "fertility": 0.35 },
+    { "id": "manure",      "nameEn": "Manure",            "nameAr": "سماد بلدي",            "price": 50, "cures": [], "fertility": 0.25 }
+  ]
+}

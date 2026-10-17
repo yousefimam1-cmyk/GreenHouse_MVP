@@ -1,0 +1,565 @@
+{
+ "notes": "Learn mode tip cards (K). unlock: start, wellStarted, fieldPlanted, harvestField, harvestGreenhouse, animal, animal:<id>, heatwave, day:N, dates, villager:neighbour, sponsor. Each quiz: 3 questions, 'correct' is the 0-based answer index. reward = SAR for the first pass.",
+ "cards": [
+  {
+   "id": "drip",
+   "unlock": "wellStarted",
+   "reward": 40,
+   "titleEn": "Drip irrigation",
+   "titleAr": "الري بالتنقيط",
+   "textEn": "Drip lines put water right at the roots, drop by drop.\nThey use 30-50% less water than flooding a field.\nWater early in the morning or at night so less is lost to the heat.\nCheck the drippers often - sand and salt can block them.",
+   "textAr": "خطوط التنقيط توصّل الموية للجذور نقطة نقطة.\nتوفّر من ٣٠ إلى ٥٠٪ من الموية مقارنة بالغمر.\nاسقِ الصبح بدري أو بالليل عشان ما تضيع الموية مع الحر.\nافحص النقّاطات دايم - الرمل والملح يسدّونها.",
+   "quiz": [
+    {
+     "qEn": "Where does drip irrigation put the water?",
+     "qAr": "وين يوصّل الري بالتنقيط الموية؟",
+     "aEn": [
+      "On the leaves",
+      "At the roots",
+      "Between the rows"
+     ],
+     "aAr": [
+      "على الورق",
+      "عند الجذور",
+      "بين الخطوط"
+     ],
+     "correct": 1
+    },
+    {
+     "qEn": "About how much water can drip save compared with flooding?",
+     "qAr": "تقريباً كم يوفّر التنقيط من الموية مقارنة بالغمر؟",
+     "aEn": [
+      "30-50%",
+      "5%",
+      "90%"
+     ],
+     "aAr": [
+      "٣٠ إلى ٥٠٪",
+      "٥٪",
+      "٩٠٪"
+     ],
+     "correct": 0
+    },
+    {
+     "qEn": "Best time to irrigate in the Qassim summer?",
+     "qAr": "أفضل وقت للسقي في صيف القصيم؟",
+     "aEn": [
+      "Midday",
+      "Early morning or night",
+      "Any time"
+     ],
+     "aAr": [
+      "الظهر",
+      "الصبح بدري أو الليل",
+      "أي وقت"
+     ],
+     "correct": 1
+    }
+   ]
+  },
+  {
+   "id": "rotation",
+   "unlock": "fieldPlanted",
+   "reward": 40,
+   "titleEn": "Crop rotation",
+   "titleAr": "الدورة الزراعية",
+   "textEn": "Don't plant the same crop in the same field every season.\nRotate wheat with onions, potatoes or legumes like beans.\nRotation keeps pests and diseases from building up.\nLegumes put nitrogen back into the soil for free.",
+   "textAr": "لا تزرع نفس المحصول في نفس الحقل كل موسم.\nبدّل القمح مع البصل أو البطاط أو البقوليات مثل الفاصوليا.\nالتبديل يخفف الآفات والأمراض.\nالبقوليات ترجّع النيتروجين للتربة ببلاش.",
+   "quiz": [
+    {
+     "qEn": "Why rotate crops?",
+     "qAr": "ليش نبدّل المحاصيل؟",
+     "aEn": [
+      "To stop pests and diseases building up",
+      "To use more water",
+      "Because seeds are cheaper"
+     ],
+     "aAr": [
+      "عشان ما تتراكم الآفات والأمراض",
+      "عشان نستهلك موية أكثر",
+      "لأن البذور أرخص"
+     ],
+     "correct": 0
+    },
+    {
+     "qEn": "Which crops add nitrogen to the soil?",
+     "qAr": "وش المحاصيل اللي تضيف نيتروجين للتربة؟",
+     "aEn": [
+      "Wheat",
+      "Legumes (beans)",
+      "Watermelon"
+     ],
+     "aAr": [
+      "القمح",
+      "البقوليات (الفاصوليا)",
+      "الحبحب"
+     ],
+     "correct": 1
+    },
+    {
+     "qEn": "A good crop after wheat is...",
+     "qAr": "محصول زين بعد القمح هو...",
+     "aEn": [
+      "Wheat again",
+      "Onions or beans",
+      "Nothing ever"
+     ],
+     "aAr": [
+      "قمح مرة ثانية",
+      "بصل أو فاصوليا",
+      "ولا شي أبد"
+     ],
+     "correct": 1
+    }
+   ]
+  },
+  {
+   "id": "water",
+   "unlock": "day:2",
+   "reward": 40,
+   "titleEn": "Saving water",
+   "titleAr": "ترشيد الموية",
+   "textEn": "Groundwater in Najd is ancient and refills very slowly.\nMulch (straw or palm fronds) keeps the soil cool and damp.\nFix leaking pipes and taps - small leaks waste a lot.\nChoose crops that suit the season instead of fighting the heat.",
+   "textAr": "الموية الجوفية في نجد قديمة وتتجدد ببطء شديد.\nالتغطية بالتبن أو سعف النخل تخلي التربة باردة ورطبة.\nصلّح التسريبات في المواسير والحنفيات - التسريب الصغير يهدر كثير.\nاختر محاصيل تناسب الموسم بدال ما تعاند الحر.",
+   "quiz": [
+    {
+     "qEn": "Why save groundwater in Najd?",
+     "qAr": "ليش نرشّد الموية الجوفية في نجد؟",
+     "aEn": [
+      "It refills very slowly",
+      "It is salty",
+      "It is free"
+     ],
+     "aAr": [
+      "لأنها تتجدد ببطء",
+      "لأنها مالحة",
+      "لأنها ببلاش"
+     ],
+     "correct": 0
+    },
+    {
+     "qEn": "What does mulch do?",
+     "qAr": "وش فايدة التغطية (الملش)؟",
+     "aEn": [
+      "Heats the soil",
+      "Keeps soil cool and damp",
+      "Kills plants"
+     ],
+     "aAr": [
+      "تسخّن التربة",
+      "تخلي التربة باردة ورطبة",
+      "تموّت النبات"
+     ],
+     "correct": 1
+    },
+    {
+     "qEn": "A dripping tap...",
+     "qAr": "الحنفية اللي تقطّر...",
+     "aEn": [
+      "Doesn't matter",
+      "Wastes a lot over time",
+      "Saves water"
+     ],
+     "aAr": [
+      "ما تفرق",
+      "تهدر كثير مع الوقت",
+      "توفّر موية"
+     ],
+     "correct": 1
+    }
+   ]
+  },
+  {
+   "id": "palms",
+   "unlock": "start",
+   "reward": 40,
+   "titleEn": "Date palm care",
+   "titleAr": "العناية بالنخل",
+   "textEn": "Qassim is famous for its dates - Sukkari is the star of Buraidah.\nPalms need deep watering, less often, and more in summer.\nIn spring, farmers pollinate the female flowers by hand (tilqeeh).\nThin the bunches so the remaining dates grow bigger and sweeter.",
+   "textAr": "القصيم مشهورة بالتمر - والسكري نجم بريدة.\nالنخل يبي سقي عميق على فترات، ويزيد في الصيف.\nفي الربيع يلقّح المزارعين الطلع بيدهم (التلقيح).\nخفّف العذوق عشان يكبر التمر اللي يبقى ويصير أحلى.",
+   "quiz": [
+    {
+     "qEn": "Which date variety is Buraidah famous for?",
+     "qAr": "وش نوع التمر اللي تشتهر فيه بريدة؟",
+     "aEn": [
+      "Sukkari",
+      "Medjool",
+      "Deglet Nour"
+     ],
+     "aAr": [
+      "السكري",
+      "المجدول",
+      "دقلة نور"
+     ],
+     "correct": 0
+    },
+    {
+     "qEn": "How are palm flowers pollinated on farms?",
+     "qAr": "كيف يتلقّح طلع النخل في المزارع؟",
+     "aEn": [
+      "By the wind only",
+      "By hand (tilqeeh)",
+      "They don't need it"
+     ],
+     "aAr": [
+      "بالهوا بس",
+      "باليد (التلقيح)",
+      "ما يحتاج"
+     ],
+     "correct": 1
+    },
+    {
+     "qEn": "Why thin the date bunches?",
+     "qAr": "ليش نخفّف العذوق؟",
+     "aEn": [
+      "Bigger, sweeter dates",
+      "To sell the bunches",
+      "To save water"
+     ],
+     "aAr": [
+      "تمر أكبر وأحلى",
+      "عشان نبيع العذوق",
+      "عشان نوفر موية"
+     ],
+     "correct": 0
+    }
+   ]
+  },
+  {
+   "id": "greenhouse",
+   "unlock": "harvestGreenhouse",
+   "reward": 40,
+   "titleEn": "Greenhouse climate",
+   "titleAr": "مناخ البيت المحمي",
+   "textEn": "Tomatoes like 21-27 C by day and cooler nights.\nCooling pads and fans keep the greenhouse from cooking in summer.\nHumidity that is too high brings fungus - ventilate.\nFertigation feeds the plants through the drip water.",
+   "textAr": "الطماطم تحب ٢١ إلى ٢٧ درجة بالنهار وليل أبرد.\nخلايا التبريد والمراوح تحمي البيت المحمي من الحر في الصيف.\nالرطوبة الزايدة تجيب الفطريات - هوّ البيت.\nالتسميد مع الري يغذّي النبات عن طريق موية التنقيط.",
+   "quiz": [
+    {
+     "qEn": "Good daytime temperature for tomatoes?",
+     "qAr": "الحرارة المناسبة للطماطم بالنهار؟",
+     "aEn": [
+      "10-15 C",
+      "21-27 C",
+      "40-45 C"
+     ],
+     "aAr": [
+      "١٠-١٥ درجة",
+      "٢١-٢٧ درجة",
+      "٤٠-٤٥ درجة"
+     ],
+     "correct": 1
+    },
+    {
+     "qEn": "Too much humidity in the greenhouse brings...",
+     "qAr": "الرطوبة الزايدة في البيت المحمي تجيب...",
+     "aEn": [
+      "Fungus",
+      "More fruit",
+      "Nothing"
+     ],
+     "aAr": [
+      "فطريات",
+      "ثمر أكثر",
+      "ولا شي"
+     ],
+     "correct": 0
+    },
+    {
+     "qEn": "Fertigation means...",
+     "qAr": "التسميد مع الري يعني...",
+     "aEn": [
+      "Fertilizer in the drip water",
+      "Spraying leaves only",
+      "No fertilizer"
+     ],
+     "aAr": [
+      "سماد مع موية التنقيط",
+      "رش الورق بس",
+      "بدون سماد"
+     ],
+     "correct": 0
+    }
+   ]
+  },
+  {
+   "id": "wheat",
+   "unlock": "harvestField",
+   "reward": 40,
+   "titleEn": "Wheat in Qassim",
+   "titleAr": "القمح في القصيم",
+   "textEn": "Wheat is sown in late autumn and harvested in spring.\nCentre-pivot fields made Qassim's green circles famous.\nToday farmers grow less wheat to save groundwater.\nHarvest when the grain is hard and golden.",
+   "textAr": "القمح ينزرع آخر الخريف وينحصد في الربيع.\nالرشاشات المحورية خلّت دواير القصيم الخضرا مشهورة.\nاليوم المزارعين يزرعون قمح أقل عشان يوفرون الموية الجوفية.\nاحصد لا صار الحب قاسي وذهبي.",
+   "quiz": [
+    {
+     "qEn": "When is wheat sown in Qassim?",
+     "qAr": "متى ينزرع القمح في القصيم؟",
+     "aEn": [
+      "Mid-summer",
+      "Late autumn",
+      "Any month"
+     ],
+     "aAr": [
+      "نص الصيف",
+      "آخر الخريف",
+      "أي شهر"
+     ],
+     "correct": 1
+    },
+    {
+     "qEn": "What made Qassim's green circles?",
+     "qAr": "وش اللي سوّى دواير القصيم الخضرا؟",
+     "aEn": [
+      "Centre-pivot irrigation",
+      "Rain",
+      "Greenhouses"
+     ],
+     "aAr": [
+      "الرشاشات المحورية",
+      "المطر",
+      "البيوت المحمية"
+     ],
+     "correct": 0
+    },
+    {
+     "qEn": "Ready wheat grain is...",
+     "qAr": "حب القمح الجاهز يكون...",
+     "aEn": [
+      "Soft and green",
+      "Hard and golden",
+      "Red"
+     ],
+     "aAr": [
+      "طري وأخضر",
+      "قاسي وذهبي",
+      "أحمر"
+     ],
+     "correct": 1
+    }
+   ]
+  },
+  {
+   "id": "chickens",
+   "unlock": "animal:chicken",
+   "reward": 40,
+   "titleEn": "Happy hens",
+   "titleAr": "دجاج مرتاح",
+   "textEn": "Hens need shade, fresh water and good feed every day.\nIn the summer heat they drink twice as much.\nCollect eggs daily and keep the coop clean.\nA clean pen means healthier birds and more eggs.",
+   "textAr": "الدجاج يبي ظل وموية نظيفة وعلف زين كل يوم.\nفي حر الصيف يشرب الضعف.\nاجمع البيض كل يوم ونظّف العشّة.\nالحظيرة النظيفة يعني دجاج أصح وبيض أكثر.",
+   "quiz": [
+    {
+     "qEn": "In summer heat, hens drink...",
+     "qAr": "في حر الصيف الدجاج يشرب...",
+     "aEn": [
+      "Less",
+      "About twice as much",
+      "Nothing"
+     ],
+     "aAr": [
+      "أقل",
+      "تقريباً الضعف",
+      "ولا شي"
+     ],
+     "correct": 1
+    },
+    {
+     "qEn": "How often should you collect eggs?",
+     "qAr": "كل كم تجمع البيض؟",
+     "aEn": [
+      "Every day",
+      "Once a month",
+      "Never"
+     ],
+     "aAr": [
+      "كل يوم",
+      "مرة بالشهر",
+      "أبد"
+     ],
+     "correct": 0
+    },
+    {
+     "qEn": "A clean pen gives...",
+     "qAr": "الحظيرة النظيفة تعطيك...",
+     "aEn": [
+      "Sick birds",
+      "Healthier birds and more eggs",
+      "Less feed"
+     ],
+     "aAr": [
+      "دجاج مريض",
+      "دجاج أصح وبيض أكثر",
+      "علف أقل"
+     ],
+     "correct": 1
+    }
+   ]
+  },
+  {
+   "id": "livestock",
+   "unlock": "animal:sheep",
+   "reward": 40,
+   "titleEn": "Sheep and cows",
+   "titleAr": "الغنم والبقر",
+   "textEn": "Najdi sheep are a local breed that handles the heat well.\nGive animals shade, water troughs and clean bedding.\nCows give more milk when they are calm and well fed.\nA vet check before summer prevents many problems.",
+   "textAr": "الغنم النجدي سلالة محلية تتحمّل الحر.\nوفّر للحلال ظل وأحواض موية وفرشة نظيفة.\nالبقر يعطي حليب أكثر لا كان مرتاح وشبعان.\nكشف البيطري قبل الصيف يمنع مشاكل كثيرة.",
+   "quiz": [
+    {
+     "qEn": "Which sheep breed is local to Najd?",
+     "qAr": "وش سلالة الغنم المحلية في نجد؟",
+     "aEn": [
+      "Najdi",
+      "Merino",
+      "Suffolk"
+     ],
+     "aAr": [
+      "النجدي",
+      "المارينو",
+      "السوفولك"
+     ],
+     "correct": 0
+    },
+    {
+     "qEn": "Cows give more milk when they are...",
+     "qAr": "البقر يعطي حليب أكثر لا كان...",
+     "aEn": [
+      "Stressed",
+      "Calm and well fed",
+      "Hungry"
+     ],
+     "aAr": [
+      "متوتر",
+      "مرتاح وشبعان",
+      "جوعان"
+     ],
+     "correct": 1
+    },
+    {
+     "qEn": "When is a good time for a vet check?",
+     "qAr": "متى وقت زين لكشف البيطري؟",
+     "aEn": [
+      "Before summer",
+      "Never",
+      "Only when sick"
+     ],
+     "aAr": [
+      "قبل الصيف",
+      "أبد",
+      "بس لا مرض"
+     ],
+     "correct": 0
+    }
+   ]
+  },
+  {
+   "id": "kleija",
+   "unlock": "villager:neighbour",
+   "reward": 60,
+   "titleEn": "Recipe tip: kleija",
+   "titleAr": "وصفة: الكليجا",
+   "textEn": "Kleija are Qassim's famous date cookies (a tip from Abu Nasser).\nMix flour, butter (samn), a little sugar, cardamom and saffron.\nFill the dough with date paste, shape and bake until golden.\nThey sell well at the Buraidah date festival!",
+   "textAr": "الكليجا كعك القصيم المشهور بالتمر (نصيحة من أبو ناصر).\nاخلط الطحين والسمن وشوي سكر وهيل وزعفران.\nاحشِ العجينة بالعجوة وشكّلها واخبزها لين تحمر.\nتنباع زين في مهرجان تمور بريدة!",
+   "quiz": [
+    {
+     "qEn": "What is the filling of kleija?",
+     "qAr": "وش حشوة الكليجا؟",
+     "aEn": [
+      "Cheese",
+      "Date paste",
+      "Meat"
+     ],
+     "aAr": [
+      "جبن",
+      "عجوة",
+      "لحم"
+     ],
+     "correct": 1
+    },
+    {
+     "qEn": "Which spices give kleija its smell?",
+     "qAr": "وش البهارات اللي تعطي الكليجا ريحتها؟",
+     "aEn": [
+      "Cardamom and saffron",
+      "Chili",
+      "Pepper"
+     ],
+     "aAr": [
+      "الهيل والزعفران",
+      "الفلفل الحار",
+      "البهار الأسود"
+     ],
+     "correct": 0
+    },
+    {
+     "qEn": "Kleija comes from which region?",
+     "qAr": "الكليجا من أي منطقة؟",
+     "aEn": [
+      "Qassim",
+      "Asir",
+      "Eastern Province"
+     ],
+     "aAr": [
+      "القصيم",
+      "عسير",
+      "الشرقية"
+     ],
+     "correct": 0
+    }
+   ]
+  },
+  {
+   "id": "soil",
+   "unlock": "sponsor",
+   "reward": 40,
+   "titleEn": "Feeding the soil",
+   "titleAr": "تغذية التربة",
+   "textEn": "Sandy soils lose nutrients quickly - add compost and manure.\nOrganic matter holds water like a sponge.\nTest the soil before adding fertilizer; too much burns roots.\nSmall, regular doses through the drip work best.",
+   "textAr": "التربة الرملية تخسر العناصر بسرعة - أضف سماد عضوي وروث.\nالمادة العضوية تمسك الموية مثل الإسفنجة.\nافحص التربة قبل التسميد؛ الزيادة تحرق الجذور.\nجرعات صغيرة ومنتظمة مع التنقيط أفضل شي.",
+   "quiz": [
+    {
+     "qEn": "What helps sandy soil hold water?",
+     "qAr": "وش يساعد التربة الرملية تمسك الموية؟",
+     "aEn": [
+      "Organic matter",
+      "More sand",
+      "Salt"
+     ],
+     "aAr": [
+      "المادة العضوية",
+      "رمل زيادة",
+      "ملح"
+     ],
+     "correct": 0
+    },
+    {
+     "qEn": "Too much fertilizer can...",
+     "qAr": "السماد الزايد ممكن...",
+     "aEn": [
+      "Burn roots",
+      "Make fruit sweeter",
+      "Save water"
+     ],
+     "aAr": [
+      "يحرق الجذور",
+      "يحلّي الثمر",
+      "يوفّر موية"
+     ],
+     "correct": 0
+    },
+    {
+     "qEn": "Best way to give fertilizer with drip?",
+     "qAr": "أفضل طريقة للتسميد مع التنقيط؟",
+     "aEn": [
+      "One huge dose",
+      "Small regular doses",
+      "Never"
+     ],
+     "aAr": [
+      "جرعة كبيرة وحدة",
+      "جرعات صغيرة ومنتظمة",
+      "أبد"
+     ],
+     "correct": 1
+    }
+   ]
+  }
+ ]
+}

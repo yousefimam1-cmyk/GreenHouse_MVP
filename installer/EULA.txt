@@ -1,0 +1,10 @@
+MAZRAA - END USER LICENSE AGREEMENT (DRAFT - have a lawyer review before commercial release)
+
+Copyright (c) 2026 Almadarek Games. All rights reserved.
+
+1. Licence. You may install and play this game for personal, non-commercial use.
+2. Restrictions. You may not sell, rent, redistribute or reverse-engineer the game, except as allowed by law.
+3. Third-party content. The game includes free assets under their own licences (CC0 and others), listed in CREDITS.txt.
+4. No warranty. The game is provided "as is", without warranty of any kind.
+5. Liability. Almadarek Games is not liable for any damages from using the game, to the extent allowed by law.
+6. Governing law. These terms are governed by the laws of the Kingdom of Saudi Arabia.

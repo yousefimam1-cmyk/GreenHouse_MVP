@@ -1,0 +1,25 @@
+{
+  "notes": "Egypt Nile Delta DLC crops pack (EconomyFile + CropsPackFile format, merged by id). fieldCrops with regions [nile_delta] are only sold and planted on that map; wheat, onion and potato from the base game stay available on both maps. Delta agronomy (MALR / FAO): rice is transplanted in May-June and harvested in September (summer, ~125 days, flooded paddy, ~9-10 t/ha paddy); Egyptian long-staple cotton (Giza varieties) is sown in March-April and picked in September (spring-summer, ~180 days, ~2.6 t/ha seed cotton = 8 kantar/feddan); berseem (Egyptian clover, Trifolium alexandrinum) is the winter forage and nitrogen crop, sown in October, 4 cuts until April (feeds the animals: feedPerKg); summer (nili) maize ~115 days, ~8 t/ha. growSeconds = 1.6 s per real day like the Saudi crops, yields use the same ~11.5 kg per t/ha scale, prices are game-balance values relative to wheat (2024 Egyptian farm-gate prices: paddy ~1.2x wheat, seed cotton ~5x, maize ~0.9x, fresh berseem ~0.15x). model = crop whose stage models are used as a placeholder until the DLC has its own plants.",
+  "goods": [
+    { "id": "rice",    "nameEn": "Rice (paddy)",             "nameAr": "أرز شعير",   "unitEn": "kg", "unitAr": "كيلو", "price": 8,  "weight": 1 },
+    { "id": "cotton",  "nameEn": "Egyptian cotton",          "nameAr": "قطن مصري",  "unitEn": "kg", "unitAr": "كيلو", "price": 35, "weight": 1 },
+    { "id": "maize",   "nameEn": "Maize",                    "nameAr": "درة شامي",  "unitEn": "kg", "unitAr": "كيلو", "price": 6,  "weight": 1 },
+    { "id": "berseem", "nameEn": "Berseem (green fodder)",   "nameAr": "برسيم",     "unitEn": "kg", "unitAr": "كيلو", "price": 2,  "weight": 1 }
+  ],
+  "fieldCrops": [
+    { "id": "rice",    "nameEn": "Rice",                     "nameAr": "رز",              "seedPrice": 140, "seasons": ["summer"],           "growSeconds": 210, "yieldKg": 110, "r": 0.86, "g": 0.78, "b": 0.45, "regions": ["nile_delta"], "model": "wheat" },
+    { "id": "cotton",  "nameEn": "Egyptian cotton (Giza)",   "nameAr": "قطن (جيزة)",      "seedPrice": 220, "seasons": ["spring", "summer"], "growSeconds": 290, "yieldKg": 30,  "r": 0.96, "g": 0.96, "b": 0.93, "regions": ["nile_delta"], "model": "cabbage" },
+    { "id": "berseem", "nameEn": "Berseem clover",           "nameAr": "برسيم مصري",      "seedPrice": 150, "seasons": ["autumn", "winter"], "growSeconds": 95,  "yieldKg": 45,  "r": 0.35, "g": 0.7,  "b": 0.3,  "regions": ["nile_delta"], "model": "alfalfa" },
+    { "id": "maize",   "nameEn": "Summer maize",             "nameAr": "درة صيفي",        "seedPrice": 110, "seasons": ["summer"],           "growSeconds": 185, "yieldKg": 90,  "r": 0.95, "g": 0.8,  "b": 0.3,  "regions": ["nile_delta"], "model": "corn" }
+  ],
+  "cropMeta": [
+    { "id": "rice",    "family": "grain" },
+    { "id": "cotton",  "family": "fiber" },
+    { "id": "berseem", "family": "legume", "cuts": 4, "regrowFrom": 0.55, "feedPerKg": 0.1 },
+    { "id": "maize",   "family": "grain", "feedPerKg": 0.05 }
+  ],
+  "pests": [
+    { "id": "cotton_leafworm", "nameEn": "Cotton leafworm", "nameAr": "دودة ورق القطن", "seasons": ["summer", "autumn"], "families": ["fiber"],
+      "chance": 0.08, "heatwave": 1.3, "rain": 1, "bedChance": 0, "growthMult": 0.6, "damagePerDay": 0.04, "curedBy": ["neem", "pesticide"] }
+  ]
+}

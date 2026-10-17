@@ -1,4 +1,4 @@
-﻿[Ll]ibrary/
+[Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
 [Bb]uild/
@@ -20,4 +20,11 @@
 *.mdb
 *.opendb
 *.VC.db
-*.meta
+
+# NOTE: .meta files MUST be committed (they hold asset GUIDs).
+
+Tests/Headless/*.exe
+Tests/Headless/*.dll
+
+# Packaged releases (zip / installer)
+[Rr]elease/

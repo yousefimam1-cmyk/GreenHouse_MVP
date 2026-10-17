@@ -1,0 +1,252 @@
+{
+ "entries": [
+  {
+   "en": "Fishing",
+   "ar": "صيد السمك"
+  },
+  {
+   "en": "Processing",
+   "ar": "تصنيع"
+  },
+  {
+   "en": "Already built",
+   "ar": "مبني من قبل"
+  },
+  {
+   "en": "Already owned",
+   "ar": "عندك وحدة من قبل"
+  },
+  {
+   "en": "Owned",
+   "ar": "عندك"
+  },
+  {
+   "en": "Built",
+   "ar": "مبني"
+  },
+  {
+   "en": "Farm reservoir",
+   "ar": "بركة المزرعة"
+  },
+  {
+   "en": "Aquaculture tanks",
+   "ar": "أحواض الاستزراع السمكي"
+  },
+  {
+   "en": "Processing yard",
+   "ar": "ساحة التصنيع"
+  },
+  {
+   "en": "Apiary",
+   "ar": "المنحل"
+  },
+  {
+   "en": "Dovecote",
+   "ar": "برج الحمام"
+  },
+  {
+   "en": "Date packing house",
+   "ar": "مصنع تعبئة التمور"
+  },
+  {
+   "en": "Dairy",
+   "ar": "معمل ألبان"
+  },
+  {
+   "en": "Flour mill",
+   "ar": "مطحنة دقيق"
+  },
+  {
+   "en": "Juice press",
+   "ar": "معصرة عصير"
+  },
+  {
+   "en": "[E] Cast line",
+   "ar": "[E] ارمِ السنارة"
+  },
+  {
+   "en": "no bait",
+   "ar": "بدون طُعم"
+  },
+  {
+   "en": "Line cast - wait for the bobber to dip, then press E",
+   "ar": "رميت السنارة - انتظر لين تغطس العوامة واضغط E"
+  },
+  {
+   "en": "Waiting for a bite... ([E] reel in)",
+   "ar": "تنتظر السمكة تاكل... ([E] اسحب)"
+  },
+  {
+   "en": "[E] BITE! Reel in now!",
+   "ar": "[E] أكلت! اسحب الحين!"
+  },
+  {
+   "en": "BITE! Press E to reel in",
+   "ar": "أكلت! اضغط E واسحب"
+  },
+  {
+   "en": "Fishing: waiting for a bite...",
+   "ar": "الصيد: تنتظر السمكة تاكل..."
+  },
+  {
+   "en": "Too early - the fish got away",
+   "ar": "بدري - السمكة هربت"
+  },
+  {
+   "en": "Too slow - the fish got away",
+   "ar": "تأخرت - السمكة هربت"
+  },
+  {
+   "en": "It slipped off the hook",
+   "ar": "فلتت من السنارة"
+  },
+  {
+   "en": "You caught a fish",
+   "ar": "صدت سمكة"
+  },
+  {
+   "en": "Nothing is biting right now - try another time of day",
+   "ar": "ما فيه سمك ياكل الحين - جرّب وقت ثاني"
+  },
+  {
+   "en": "Tilapia fingerlings",
+   "ar": "إصبعيات بلطي"
+  },
+  {
+   "en": "The fish tank is already stocked",
+   "ar": "الحوض فيه سمك من قبل"
+  },
+  {
+   "en": "Empty tank - buy tilapia fingerlings at the shop (Fishing)",
+   "ar": "الحوض فاضي - اشترِ إصبعيات بلطي من المحل (صيد السمك)"
+  },
+  {
+   "en": "Aquaculture tank (empty)",
+   "ar": "حوض الاستزراع (فاضي)"
+  },
+  {
+   "en": "[E] Harvest tilapia (~{0} kg)",
+   "ar": "[E] حصّد البلطي (~{0} كجم)"
+  },
+  {
+   "en": "[E] Feed the fish ({0}% grown)",
+   "ar": "[E] أكّل السمك (نما {0}%)"
+  },
+  {
+   "en": "Fish growing: {0}% - fed today",
+   "ar": "السمك ينمو: {0}% - أكل اليوم"
+  },
+  {
+   "en": "Fish fed",
+   "ar": "أكّلت السمك"
+  },
+  {
+   "en": "The fish are fed for today",
+   "ar": "السمك أكل اليوم خلاص"
+  },
+  {
+   "en": "Harvested {0} kg of tilapia",
+   "ar": "حصّدت {0} كجم بلطي"
+  },
+  {
+   "en": "The tilapia in the fish tank are ready to harvest",
+   "ar": "البلطي في الحوض جاهز للحصاد"
+  },
+  {
+   "en": "Fish tank",
+   "ar": "حوض السمك"
+  },
+  {
+   "en": "ready to harvest",
+   "ar": "جاهز للحصاد"
+  },
+  {
+   "en": "fed today",
+   "ar": "أكل اليوم"
+  },
+  {
+   "en": "needs feed",
+   "ar": "يبي أكل"
+  },
+  {
+   "en": "Buy this building at the shop first",
+   "ar": "اشترِ هالمبنى من المحل أول"
+  },
+  {
+   "en": "Working... {0} s left",
+   "ar": "يشتغل... باقي {0} ث"
+  },
+  {
+   "en": "Processing started",
+   "ar": "بدأ التصنيع"
+  },
+  {
+   "en": "Needs in storage",
+   "ar": "يحتاج في المخزن"
+  },
+  {
+   "en": "[E] Start processing",
+   "ar": "[E] ابدأ التصنيع"
+  },
+  {
+   "en": "Bee hive (Sidr honey)",
+   "ar": "خلية نحل (عسل سدر)"
+  },
+  {
+   "en": "The apiary is full",
+   "ar": "المنحل مليان"
+  },
+  {
+   "en": "Buy bee hives at the shop (Animals)",
+   "ar": "اشترِ خلايا نحل من المحل (حيوانات)"
+  },
+  {
+   "en": "The bees are still making honey",
+   "ar": "النحل للحين يسوي العسل"
+  },
+  {
+   "en": "Apiary (buy bee hives at the shop)",
+   "ar": "المنحل (اشترِ خلايا نحل من المحل)"
+  },
+  {
+   "en": "[E] Collect honey ({0} kg)",
+   "ar": "[E] اجمع العسل ({0} كجم)"
+  },
+  {
+   "en": "Honey ready: {0} kg",
+   "ar": "العسل جاهز: {0} كجم"
+  },
+  {
+   "en": "Dovecote (4 pigeons)",
+   "ar": "برج حمام (4 حمامات)"
+  },
+  {
+   "en": "Pigeons x2",
+   "ar": "حمام ×2"
+  },
+  {
+   "en": "Build a dovecote first",
+   "ar": "ابنِ برج الحمام أول"
+  },
+  {
+   "en": "The dovecote is full",
+   "ar": "برج الحمام مليان"
+  },
+  {
+   "en": "Buy the dovecote at the shop (Animals)",
+   "ar": "اشترِ برج الحمام من المحل (حيوانات)"
+  },
+  {
+   "en": "Dovecote site (buy it at the shop)",
+   "ar": "مكان برج الحمام (اشتره من المحل)"
+  },
+  {
+   "en": "[E] Collect from the dovecote ({0} pigeons)",
+   "ar": "[E] اجمع من برج الحمام ({0} حمامة)"
+  },
+  {
+   "en": "Pigeons: {0} - squab waiting {1}",
+   "ar": "الحمام: {0} - زغاليل جاهزة {1}"
+  }
+ ]
+}

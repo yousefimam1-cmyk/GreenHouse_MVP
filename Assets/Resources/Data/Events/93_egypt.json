@@ -1,0 +1,86 @@
+{
+  "notes": "Egypt Nile Delta DLC farm events (FarmEventFile; regions [nile_delta] = only on that map, which then gets no base events: no haboob dust storms, no wadi floods). canal_turn (type canal) is not random (weight 0): the map's canal rotation (regions.json canalEvery) forecasts it every few days; on the day every planted field gets water and dries slower. dry_turn / winter_closure: canal closed (waterBan) - the winter closure (al-sadda al-shitwiya) is a real January maintenance stop. nile_flood: high Nile season, low plots flooded, silt bonus on their next harvest (bonusEn/Ar). cotton_festival: cotton harvest demand (priceMul). rice_export: big buyer for rice (good). khamaseen: hot spring wind, milder than a haboob.",
+  "events": [
+    {
+      "id": "canal_turn", "type": "canal", "regions": ["nile_delta"], "seasons": [], "weight": 0, "minDay": 1,
+      "fieldDry": 0.4,
+      "nameEn": "Canal water turn (nobat el-mayya)", "nameAr": "نوبة المية",
+      "warnEn": "Tomorrow is your turn on the canal: the ditches fill and every field gets water.",
+      "warnAr": "بكرة نوبتك على الترعة: المساقي هتتملي وكل الغيطان هتشرب.",
+      "startEn": "Nobat el-mayya! The canal gate is open - water runs into the fields.",
+      "startAr": "نوبة المية! بوابة الترعة اتفتحت والمية داخلة الغيطان."
+    },
+    {
+      "id": "dry_turn", "type": "waterBan", "regions": ["nile_delta"], "seasons": ["summer"], "weight": 1.2, "minDay": 3,
+      "nameEn": "Canal closed (dry turn)", "nameAr": "الترعة مقفولة (بطالة)",
+      "warnEn": "Tomorrow is the other villages' turn: the canal is closed for us, no irrigation all day.",
+      "warnAr": "بكرة نوبة البلاد التانية: الترعة مقفولة علينا، مفيش ري طول اليوم.",
+      "startEn": "The canal is dry today. Water your fields before the next turn.",
+      "startAr": "الترعة ناشفة النهارده. اسقي غيطانك قبل النوبة الجاية."
+    },
+    {
+      "id": "winter_closure", "type": "waterBan", "regions": ["nile_delta"], "seasons": ["winter"], "weight": 0.8, "minDay": 3,
+      "nameEn": "Winter canal closure", "nameAr": "السدة الشتوية",
+      "warnEn": "The ministry closes the canals tomorrow for the winter clean-out. No irrigation for a day.",
+      "warnAr": "الري هيقفل الترع بكرة عشان تطهير الشتا. مفيش ري يوم كامل.",
+      "startEn": "Winter closure: the canals are being cleaned. No irrigation today.",
+      "startAr": "السدة الشتوية: الترع بتتطهّر. مفيش ري النهارده."
+    },
+    {
+      "id": "nile_flood", "type": "flood", "regions": ["nile_delta"], "seasons": ["summer", "autumn"], "weight": 0.8, "minDay": 4,
+      "startHour": 9, "hours": 3, "plots": 2, "fertility": 1.3,
+      "nameEn": "High Nile season", "nameAr": "موسم الفيضان",
+      "warnEn": "The Nile is high: the canals may overflow onto the low fields tomorrow morning.",
+      "warnAr": "النيل عالي: الترع ممكن تفيض على الغيطان الواطية بكرة الصبح.",
+      "startEn": "The canal overflowed! Brown Nile water covers the low fields.",
+      "startAr": "الترعة فاضت! مية النيل الحمرا غطّت الغيطان الواطية.",
+      "bonusEn": "Nile silt bonus: +{0} kg", "bonusAr": "خير طمي النيل: +{0} كيلو"
+    },
+    {
+      "id": "cotton_festival", "type": "demand", "regions": ["nile_delta"], "seasons": ["autumn"], "weight": 1.2, "minDay": 3,
+      "days": 2, "priceMul": 1.4, "goods": ["cotton"],
+      "nameEn": "Cotton harvest festival", "nameAr": "موسم جني القطن",
+      "warnEn": "The cotton picking festival starts tomorrow: the gins pay 40% more for cotton for two days.",
+      "warnAr": "موسم جني القطن بيبدأ بكرة: المحالج هتدفع 40% زيادة في القطن يومين.",
+      "startEn": "Cotton festival! Songs in the fields and high prices at the gin.",
+      "startAr": "موسم القطن! أغاني في الغيطان وأسعار عالية في المحلج."
+    },
+    {
+      "id": "rice_export", "type": "buyer", "regions": ["nile_delta"], "seasons": ["autumn", "winter"], "weight": 1, "minDay": 3,
+      "bonus": 1.7, "amount": 150, "good": "rice",
+      "buyerEn": "Alexandria rice exporter", "buyerAr": "مُصدّر أرز إسكندراني",
+      "nameEn": "Rice export contract", "nameAr": "عقد تصدير رز",
+      "warnEn": "An Alexandria exporter comes to the souq tomorrow and wants rice.",
+      "warnAr": "مُصدّر من إسكندرية جاي السوق بكرة وعايز رز.",
+      "startEn": "The rice exporter is at the souq!",
+      "startAr": "مُصدّر الرز وصل السوق!"
+    },
+    {
+      "id": "khamaseen", "type": "heat", "regions": ["nile_delta"], "seasons": ["spring"], "weight": 1.5, "minDay": 2,
+      "fieldDry": 1.4, "penWater": 1.3,
+      "nameEn": "Khamaseen wind", "nameAr": "رياح الخماسين",
+      "warnEn": "A hot, dusty khamaseen wind tomorrow: the fields dry faster.",
+      "warnAr": "بكرة رياح خماسين حامية ومتربة: الغيطان هتنشف أسرع.",
+      "startEn": "Khamaseen! A hot wind from the desert - water the fields.",
+      "startAr": "خماسين! هوا سخن جاي من الصحرا - اسقي الغيطان."
+    },
+    {
+      "id": "eg_heat", "type": "heat", "regions": ["nile_delta"], "seasons": ["summer"], "weight": 1.5, "minDay": 2,
+      "fieldDry": 1.6, "penWater": 1.6,
+      "nameEn": "Summer heatwave", "nameAr": "موجة حر",
+      "warnEn": "Over 40 C and humid tomorrow: the fields and the animals need more water.",
+      "warnAr": "بكرة فوق الأربعين ورطوبة: الغيطان والبهايم محتاجين مية أكتر.",
+      "startEn": "Heatwave! Keep the paddies flooded and the trough full.",
+      "startAr": "موجة حر! خلّي الرز مغمور والحوض مليان."
+    },
+    {
+      "id": "eg_ramadan", "type": "demand", "regions": ["nile_delta"], "seasons": [], "weight": 0.6, "minDay": 5,
+      "days": 3, "priceMul": 1.5, "goods": ["rice", "milk", "eggs"],
+      "nameEn": "Ramadan demand", "nameAr": "طلب رمضان",
+      "warnEn": "Ramadan starts tomorrow: rice, milk and eggs sell 50% higher for three days.",
+      "warnAr": "رمضان بكرة: الرز واللبن والبيض هيتباعوا 50% زيادة تلات أيام.",
+      "startEn": "Ramadan Kareem! The souq is busy.",
+      "startAr": "رمضان كريم! السوق زحمة."
+    }
+  ]
+}
