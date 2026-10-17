@@ -76,7 +76,7 @@ namespace UnityEngine.Rendering.Universal
     public class ColorAdjustments : VolumeComponent { public VolumeParameter<float> postExposure, contrast, saturation; public VolumeParameter<UnityEngine.Color> colorFilter; }
     public class WhiteBalance : VolumeComponent { public VolumeParameter<float> temperature; }
     public class Vignette : VolumeComponent { public VolumeParameter<float> intensity, smoothness; }
-    public class UniversalRenderPipelineAsset : RenderPipelineAsset { public int msaaSampleCount, mainLightShadowmapResolution = 2048; public float renderScale, shadowDistance;
+    public partial class UniversalRenderPipelineAsset : RenderPipelineAsset { public int msaaSampleCount, mainLightShadowmapResolution = 2048; public float renderScale, shadowDistance;
         public override RenderPipeline CreatePipeline() => null; }
     public enum AntialiasingMode { None, FastApproximateAntialiasing, SubpixelMorphologicalAntiAliasing }
     public enum AntialiasingQuality { Low, Medium, High }
@@ -241,7 +241,7 @@ namespace UnityEngine
     public enum CameraClearFlags { Skybox = 1, SolidColor = 2, Depth = 3, Nothing = 4 }
     public enum SendMessageOptions { RequireReceiver, DontRequireReceiver }
     public class Texture : Object { public int width, height; public FilterMode filterMode; public TextureWrapMode wrapMode; }
-    public class Texture2D : Texture
+    public partial class Texture2D : Texture
     {
         public Color[] pixels;
         public Texture2D(int w, int h, TextureFormat f, bool mips) { width = w; height = h; }

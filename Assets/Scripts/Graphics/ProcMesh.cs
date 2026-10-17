@@ -132,6 +132,7 @@ public static class ProcMesh
             if (mr == null || mf.sharedMesh == null || mr.sharedMaterial == null) continue;
             // (primitive parts still carry their auto collider until the end of the frame, so test MeshCollider only)
             if (mf.GetComponent<MeshCollider>() != null || (keep != null && keep(mr))) continue;
+            if (mf.GetComponentInParent<LODGroup>() != null) continue;   // vegetation keeps its LODs (graphics makeover)
             List<MeshFilter> list;
             if (!groups.TryGetValue(mr.sharedMaterial, out list)) groups[mr.sharedMaterial] = list = new List<MeshFilter>();
             list.Add(mf);
@@ -151,6 +152,10 @@ public static class ProcMesh
                     mesh.name = "Merged " + g.Key.name + " " + part;
                     mesh.CombineMeshes(batch.ToArray(), true, true);
                     mesh.RecalculateBounds();
+                    // ---- graphics makeover: PBR look materials get world-scale box UVs (a 10 m wall and a beam share the texel density)
+                    var look = LookLibrary.Classify(g.Key);
+                    if (look.HasValue && !LookLibrary.IsFoliage(look.Value) && LookLibrary.IsTextured(look.Value))
+                        LookLibrary.BoxUV(mesh, root.localToWorldMatrix, LookLibrary.TileSize(look.Value));
                     var go = new GameObject("Merged " + part++);
                     go.transform.SetParent(root, false);
                     go.AddComponent<MeshFilter>().sharedMesh = mesh;

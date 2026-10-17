@@ -90,47 +90,11 @@ public static class Appearance
 
     public const string HeadwearName = "CozyHeadwear";
 
-    /// <summary>Dress any character model: tints its materials towards the robe colour and adds a shemagh/ghutra or headscarf.</summary>
+    /// <summary>Dress any character model: tints its materials towards the robe colour, adds a draped thobe / abaya and a
+    /// shemagh/ghutra with agal or a headscarf (graphics makeover: real cloth meshes and fabric, see NpcWardrobe).</summary>
     public static void ApplyOutfit(GameObject character, OutfitStyle style, Color robe, Color head)
     {
         if (character == null) return;
-        // remove old headwear
-        foreach (var t in character.GetComponentsInChildren<Transform>(true))
-            if (t != null && t.name == HeadwearName && t != character.transform) { t.SetParent(null, false); UnityEngine.Object.Destroy(t.gameObject); }
-        CozyFx.Tint(character, robe, style == OutfitStyle.Abaya ? 0.75f : 0.55f, HeadwearName);
-
-        // Find the top of the model (world bounds of its renderers).
-        Bounds b = default; bool any = false;
-        foreach (var r in character.GetComponentsInChildren<Renderer>(true))
-        {
-            if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
-        }
-        if (!any) return;
-        float h = Mathf.Max(0.3f, b.size.y), w = Mathf.Clamp(Mathf.Min(b.size.x, b.size.z) * 0.6f, 0.15f, 0.6f);
-        var hw = new GameObject(HeadwearName);
-        hw.transform.SetParent(character.transform, false);
-        hw.transform.position = new Vector3(b.center.x, b.max.y, b.center.z);
-        var s = character.transform.lossyScale;
-        hw.transform.localScale = new Vector3(1f / Mathf.Max(0.01f, s.x), 1f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
-        var cloth = Build.Mat(head, 0.2f);
-        if (style == OutfitStyle.Thobe)
-        {
-            // shemagh / ghutra draped over the head, black agal ring on top
-            Build.Part(PrimitiveType.Cube, hw.transform, new Vector3(0, -0.02f * h, 0), new Vector3(w * 1.15f, 0.05f * h, w * 1.15f), cloth, "Shemagh");
-            Build.Part(PrimitiveType.Cube, hw.transform, new Vector3(0, -0.12f * h, -w * 0.55f), new Vector3(w * 1.1f, 0.22f * h, 0.04f), cloth, "Drape");
-            Build.Part(PrimitiveType.Cube, hw.transform, new Vector3(w * 0.58f, -0.1f * h, 0), new Vector3(0.04f, 0.18f * h, w), cloth, "Drape");
-            Build.Part(PrimitiveType.Cube, hw.transform, new Vector3(-w * 0.58f, -0.1f * h, 0), new Vector3(0.04f, 0.18f * h, w), cloth, "Drape");
-            if (head.g < 0.5f) // red shemagh: white check stripes
-                Build.Part(PrimitiveType.Cube, hw.transform, new Vector3(0, 0.006f * h, 0), new Vector3(w * 1.16f, 0.01f * h, w * 0.15f), Build.Mat(Color.white, 0.2f), "Check");
-            Build.Part(PrimitiveType.Cylinder, hw.transform, new Vector3(0, 0.02f * h, 0), new Vector3(w * 0.9f, 0.015f * h, w * 0.9f), Build.Mat(new Color(0.05f, 0.05f, 0.05f), 0.4f), "Agal");
-        }
-        else
-        {
-            // headscarf + abaya hem
-            Build.Part(PrimitiveType.Sphere, hw.transform, new Vector3(0, -0.06f * h, 0), new Vector3(w * 1.2f, 0.2f * h, w * 1.2f), cloth, "Scarf");
-            Build.Part(PrimitiveType.Cube, hw.transform, new Vector3(0, -0.18f * h, -w * 0.5f), new Vector3(w * 1.1f, 0.3f * h, 0.05f), cloth, "Drape");
-            Build.Part(PrimitiveType.Cylinder, hw.transform, new Vector3(0, -0.88f * h, 0), new Vector3(w * 1.5f, 0.12f * h, w * 1.3f), Build.Mat(robe, 0.2f), "Hem");
-        }
-        foreach (var r in hw.GetComponentsInChildren<Renderer>(true)) { r.gameObject.layer = character.layer; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On; }
+        NpcWardrobe.Dress(character, style == OutfitStyle.Abaya ? Outfit.Abaya : Outfit.Thobe, robe, head);
     }
 }

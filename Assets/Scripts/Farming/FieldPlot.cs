@@ -126,6 +126,16 @@ public class FieldPlot : Interactable
         Refresh();
     }
 
+    // ---- graphics makeover: tilled-soil PBR texture (CC0) tinted to the state colour, tiled to the plot size
+    private Material SoilLook(Color c, float smooth)
+    {
+        if (!LookLibrary.IsTextured(LookMat.Tilled)) return Build.Mat(c, smooth);
+        Color avg = LookLibrary.AverageColor(LookMat.Tilled);
+        var tint = new Color(Mathf.Clamp(c.r / avg.r, 0.3f, 2f), Mathf.Clamp(c.g / avg.g, 0.3f, 2f), Mathf.Clamp(c.b / avg.b, 0.3f, 2f));
+        float tile = LookLibrary.TileSize(LookMat.Tilled) * 0.6f;
+        return LookLibrary.Tinted(LookMat.Tilled, tint, smooth, new Vector2(Mathf.Max(1f, size.x / tile), Mathf.Max(1f, size.y / tile)));
+    }
+
     private void BuildSoil()
     {
         var col = gameObject.AddComponent<BoxCollider>();
@@ -135,7 +145,7 @@ public class FieldPlot : Interactable
         plantsRoot.SetParent(transform, false);
         // Furrows
         for (int i = 0; i < 5; i++)
-            Build.Part(PrimitiveType.Cube, soil, new Vector3(0, 0.55f, -0.4f + i * 0.2f), new Vector3(0.96f, 0.3f, 0.04f), Build.Mat(new Color(0.32f, 0.24f, 0.16f), 0.05f), "Furrow");
+            Build.Part(PrimitiveType.Cube, soil, new Vector3(0, 0.55f, -0.4f + i * 0.2f), new Vector3(0.96f, 0.3f, 0.04f), SoilLook(new Color(0.32f, 0.24f, 0.16f), 0.05f), "Furrow");
         gameObject.layer = 7;
         foreach (var r in GetComponentsInChildren<Renderer>(true)) r.gameObject.layer = 7;
     }
@@ -316,7 +326,7 @@ public class FieldPlot : Interactable
         var soilColor = Color.Lerp(new Color(0.55f, 0.45f, 0.3f), new Color(0.28f, 0.2f, 0.13f), wet);
         if (State == PlotState.Untilled) soilColor = new Color(0.5f, 0.47f, 0.33f);
         var r = soil.GetComponent<MeshRenderer>();
-        r.sharedMaterial = Build.Mat(new Color(Mathf.Round(soilColor.r * 20f) / 20f, Mathf.Round(soilColor.g * 20f) / 20f, Mathf.Round(soilColor.b * 20f) / 20f), 0.05f + Mathf.Round(wet * 5f) / 5f * 0.3f);
+        r.sharedMaterial = SoilLook(new Color(Mathf.Round(soilColor.r * 20f) / 20f, Mathf.Round(soilColor.g * 20f) / 20f, Mathf.Round(soilColor.b * 20f) / 20f), 0.05f + Mathf.Round(wet * 5f) / 5f * 0.3f);
         for (int i = 0; i < soil.childCount; i++) soil.GetChild(i).gameObject.SetActive(State != PlotState.Untilled);
 
         int stage = State == PlotState.Growing ? (Growth < 0.34f ? 1 : Growth < 0.67f ? 2 : 3) : State == PlotState.Ripe ? 4 : 0;

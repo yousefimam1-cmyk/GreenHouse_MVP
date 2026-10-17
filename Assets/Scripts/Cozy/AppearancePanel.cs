@@ -86,9 +86,6 @@ public class AppearancePanel : MonoBehaviour
         }
     }
 
-    public static void DressNpc(GameObject go, bool female, int seed)
-    {
-        if (female) Appearance.ApplyOutfit(go, OutfitStyle.Abaya, Appearance.AbayaColors[seed % 2], Appearance.ScarfColors[0]);
-        else Appearance.ApplyOutfit(go, OutfitStyle.Thobe, Appearance.ThobeColors[seed % 3 == 2 ? 1 : 0], Appearance.ShemaghColors[seed % 2]);
-    }
+    /// <summary>Regional clothes: thobe + shemagh / abaya in Najd, galabeya + emma / tarha on the Nile Delta (NpcWardrobe).</summary>
+    public static void DressNpc(GameObject go, bool female, int seed) => NpcWardrobe.DressRegional(go, female, seed);
 }

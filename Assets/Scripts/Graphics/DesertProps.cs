@@ -1,9 +1,11 @@
 using UnityEngine;
 
 /// <summary>
-/// Builders for Al-Qassim desert props: date palm, acacia (talh/samur), sidr tree, Najdi mud-brick farmhouse and
+/// Builders for Al-Qassim desert props: date palm, acacia (talh/samur), ghaf, sidr tree, Najdi mud-brick farmhouse and
 /// evaporative cooling pads / exhaust fans for greenhouse walls. A model dropped at Resources/Models/DatePalm,
-/// Acacia, Sidr or NajdiHouse replaces the primitive version automatically.
+/// Acacia, Sidr or NajdiHouse replaces the built-in version automatically.
+/// Graphics makeover: trees are the procedural LOD trees of Vegetation (real bark, CC0 leaf atlases, wind) and the
+/// buildings use the PBR look materials (mud brick, lime plaster, weathered wood, galvanised steel; LookLibrary).
 /// Prop colliders use the Ignore Raycast layer so ground-following raycasts (actors, vehicles) never land on them.
 /// </summary>
 public static class DesertProps
@@ -11,6 +13,11 @@ public static class DesertProps
     public const int PropLayer = 2; // Ignore Raycast
 
     private static Material M(float r, float g, float b, float smooth = 0.1f) => Build.Mat(new Color(r, g, b), smooth);
+    /// <summary>A PBR look material tinted (1 = the texture's own colour).</summary>
+    private static Material L(LookMat m, float r = 1f, float g = 1f, float b = 1f) => LookLibrary.Tinted(m, new Color(r, g, b));
+
+    /// <summary>Procedural LOD tree (Vegetation) under an existing root, unless a model replaced it.</summary>
+    private static void Tree(GameObject root, TreeType type, System.Random rnd) => Vegetation.Assemble(root, type, rnd.Next(FoliageMeshes.Variants));
 
     private static void Blocker(GameObject go, Vector3 center, Vector3 size)
     {
@@ -27,45 +34,8 @@ public static class DesertProps
         root.transform.position = pos;
         root.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
         float height = 5.5f + (float)rnd.NextDouble() * 3.5f;
-        if (Build.TryModel("DatePalm", root.transform, 0f, 0f) == null)
-        {
-            var bark = M(0.42f, 0.32f, 0.22f); var bark2 = M(0.36f, 0.27f, 0.18f);
-            var frond = M(0.28f, 0.45f, 0.2f, 0.25f); var frondDry = M(0.55f, 0.48f, 0.28f);
-            var dates = M(0.62f, 0.32f, 0.08f, 0.35f);
-            float lean = ((float)rnd.NextDouble() - 0.5f) * 0.5f;
-            const int segs = 7;
-            Vector3 top = Vector3.zero;
-            for (int i = 0; i < segs; i++)
-            {
-                float k = i / (float)segs;
-                float y = height * (i + 0.5f) / segs;
-                float w = Mathf.Lerp(0.55f, 0.38f, k);
-                var seg = Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(lean * k * k * 2f, y, 0f), new Vector3(w, height / segs * 0.5f, w), i % 2 == 0 ? bark : bark2, "Trunk");
-                seg.transform.localEulerAngles = new Vector3(0f, i * 25f, -lean * 12f * k);
-                top = new Vector3(lean * 2f, height, 0f);
-            }
-            int fronds = 13;
-            for (int i = 0; i < fronds; i++)
-            {
-                float yaw = i * 360f / fronds + (float)rnd.NextDouble() * 12f;
-                bool dry = i % 5 == 4;
-                float droop = dry ? 70f : 18f + (float)rnd.NextDouble() * 30f;
-                var pivot = new GameObject("Frond").transform;
-                pivot.SetParent(root.transform, false);
-                pivot.localPosition = top;
-                pivot.localEulerAngles = new Vector3(droop, yaw, 0f);
-                float len = 2.6f + (float)rnd.NextDouble() * 0.8f;
-                Build.Part(PrimitiveType.Cube, pivot, new Vector3(0f, 0f, len * 0.5f), new Vector3(0.9f, 0.05f, len), dry ? frondDry : frond, "Leaf");
-                Build.Part(PrimitiveType.Cube, pivot, new Vector3(0f, -0.15f, len * 0.95f), new Vector3(0.55f, 0.04f, len * 0.4f), dry ? frondDry : frond, "Tip", new Vector3(25f, 0f, 0f));
-            }
-            for (int i = 0; i < 3; i++)
-            {
-                float a = i * 120f + 30f;
-                Vector3 off = Quaternion.Euler(0f, a, 0f) * new Vector3(0f, 0f, 0.45f);
-                Build.Part(PrimitiveType.Sphere, root.transform, top + off + new Vector3(0f, -0.55f, 0f), new Vector3(0.45f, 0.7f, 0.45f), dates, "Dates");
-            }
-            Build.Part(PrimitiveType.Sphere, root.transform, top + new Vector3(0, 0.05f, 0), new Vector3(0.7f, 0.5f, 0.7f), frond, "Heart");
-        }
+        root.transform.localScale = Vector3.one * (0.85f + height / 9f * 0.3f);
+        if (Build.TryModel("DatePalm", root.transform, 0f, 0f) == null) Tree(root, TreeType.DatePalm, rnd);
         Blocker(root, new Vector3(0f, 1.5f, 0f), new Vector3(0.6f, 3f, 0.6f));
         return root;
     }
@@ -79,20 +49,7 @@ public static class DesertProps
         root.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
         float s = 0.8f + (float)rnd.NextDouble() * 0.6f;
         root.transform.localScale = Vector3.one * s;
-        if (Build.TryModel("Acacia", root.transform, 0f, 0f) == null)
-        {
-            var bark = M(0.35f, 0.28f, 0.22f); var leaf = M(0.45f, 0.5f, 0.27f, 0.15f); var leaf2 = M(0.5f, 0.52f, 0.3f, 0.15f);
-            Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, 1f, 0f), new Vector3(0.28f, 1f, 0.28f), bark, "Trunk", new Vector3(0f, 0f, 8f));
-            for (int i = 0; i < 3; i++)
-            {
-                float a = i * 120f + (float)rnd.NextDouble() * 40f;
-                Vector3 dir = Quaternion.Euler(0f, a, 0f) * Vector3.forward;
-                Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, 2.3f, 0f) + dir * 0.6f, new Vector3(0.14f, 0.75f, 0.14f), bark, "Branch",
-                    new Vector3(dir.z * 40f, 0f, -dir.x * 40f));
-                Build.Part(PrimitiveType.Sphere, root.transform, new Vector3(0f, 3.1f, 0f) + dir * 1.4f, new Vector3(3.2f, 0.55f, 2.6f), i == 1 ? leaf2 : leaf, "Canopy");
-            }
-            Build.Part(PrimitiveType.Sphere, root.transform, new Vector3(0f, 3.35f, 0f), new Vector3(3.6f, 0.6f, 3.6f), leaf, "Canopy");
-        }
+        if (Build.TryModel("Acacia", root.transform, 0f, 0f) == null) Tree(root, TreeType.Acacia, rnd);
         Blocker(root, new Vector3(0f, 1f, 0f), new Vector3(0.5f, 2f, 0.5f));
         return root;
     }
@@ -105,20 +62,33 @@ public static class DesertProps
         root.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
         float s = 0.8f + (float)rnd.NextDouble() * 0.5f;
         root.transform.localScale = Vector3.one * s;
-        if (Build.TryModel("Sidr", root.transform, 0f, 0f) == null)
-        {
-            var bark = M(0.3f, 0.24f, 0.19f); var leaf = M(0.27f, 0.4f, 0.19f, 0.2f); var leaf2 = M(0.32f, 0.44f, 0.22f, 0.2f);
-            Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, 0.8f, 0f), new Vector3(0.32f, 0.8f, 0.32f), bark, "Trunk");
-            for (int i = 0; i < 5; i++)
-            {
-                float a = i * 72f + (float)rnd.NextDouble() * 30f;
-                Vector3 dir = Quaternion.Euler(0f, a, 0f) * Vector3.forward;
-                float r = 1.6f + (float)rnd.NextDouble() * 0.6f;
-                Build.Part(PrimitiveType.Sphere, root.transform, new Vector3(0f, 2.2f + (float)rnd.NextDouble() * 0.5f, 0f) + dir * 0.9f, new Vector3(r, r * 0.8f, r), i % 2 == 0 ? leaf : leaf2, "Crown");
-            }
-            Build.Part(PrimitiveType.Sphere, root.transform, new Vector3(0f, 2.9f, 0f), new Vector3(2.2f, 1.6f, 2.2f), leaf, "Crown");
-        }
+        if (Build.TryModel("Sidr", root.transform, 0f, 0f) == null) Tree(root, TreeType.Sidr, rnd);
         Blocker(root, new Vector3(0f, 1f, 0f), new Vector3(0.6f, 2f, 0.6f));
+        return root;
+    }
+
+    /// <summary>Ghaf (Prosopis cineraria): drought-proof desert tree with a drooping grey-green crown.</summary>
+    public static GameObject Ghaf(Transform parent, Vector3 pos, System.Random rnd)
+    {
+        var root = new GameObject("Ghaf");
+        root.transform.SetParent(parent, true);
+        root.transform.position = pos;
+        root.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
+        root.transform.localScale = Vector3.one * (0.85f + (float)rnd.NextDouble() * 0.4f);
+        if (Build.TryModel("Ghaf", root.transform, 0f, 0f) == null) Tree(root, TreeType.Ghaf, rnd);
+        Blocker(root, new Vector3(0f, 1.2f, 0f), new Vector3(0.55f, 2.4f, 0.55f));
+        return root;
+    }
+
+    /// <summary>Low desert shrub (green) or dry grass clump: no collider, walk-through.</summary>
+    public static GameObject Shrub(Transform parent, Vector3 pos, System.Random rnd, bool dry)
+    {
+        var root = new GameObject(dry ? "Dry Shrub" : "Shrub");
+        root.transform.SetParent(parent, true);
+        root.transform.position = pos;
+        root.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
+        root.transform.localScale = Vector3.one * (0.7f + (float)rnd.NextDouble() * 0.6f);
+        Tree(root, dry ? TreeType.DryShrub : TreeType.Shrub, rnd);
         return root;
     }
 
@@ -133,9 +103,9 @@ public static class DesertProps
         var t = root.transform;
         if (Build.TryModel("NajdiHouse", t, 11f, 0f) == null)
         {
-            var mud = M(0.7f, 0.53f, 0.36f, 0.05f); var mudDark = M(0.6f, 0.44f, 0.29f, 0.05f);
-            var plaster = M(0.86f, 0.78f, 0.64f, 0.08f); var hole = M(0.12f, 0.08f, 0.06f, 0f);
-            var wood = M(0.36f, 0.22f, 0.12f, 0.2f); var woodLight = M(0.62f, 0.45f, 0.25f, 0.2f);
+            var mud = L(LookMat.MudBrick, 1.04f, 1f, 0.95f); var mudDark = L(LookMat.MudBrick, 0.86f, 0.8f, 0.74f);
+            var plaster = L(LookMat.Plaster, 0.96f, 0.9f, 0.8f); var hole = M(0.12f, 0.08f, 0.06f, 0f);
+            var wood = L(LookMat.Wood, 0.9f, 0.75f, 0.6f); var woodLight = L(LookMat.Wood, 1.35f, 1.15f, 0.9f);
             var tri = ProcMesh.TrianglePrism();
 
             // main block, base band, parapet
@@ -233,7 +203,7 @@ public static class DesertProps
         Vector3 outward = longX ? Vector3.forward : Vector3.right;
         Vector3 centre = new Vector3(b.center.x, groundY, b.center.z);
         var pad = M(0.66f, 0.52f, 0.32f, 0.35f); var padDark = M(0.5f, 0.38f, 0.22f, 0.3f);
-        var steel = Build.Mat(new Color(0.62f, 0.64f, 0.66f), 0.6f, 0.6f); var dark = M(0.12f, 0.12f, 0.13f, 0.4f);
+        var steel = L(LookMat.Corrugated, 1f, 1.02f, 1.04f); var dark = M(0.12f, 0.12f, 0.13f, 0.4f);
         float padLen = length * 0.7f, padH = Mathf.Min(2f, wallH * 0.45f);
         Quaternion face = Quaternion.LookRotation(outward);
 
@@ -255,7 +225,7 @@ public static class DesertProps
         for (int i = 0; i < fans; i++)
         {
             float x = (i - (fans - 1) * 0.5f) * (length * 0.7f / fans);
-            Build.Part(PrimitiveType.Cube, fanRoot, new Vector3(x, 1.3f, 0f), new Vector3(1.3f, 1.3f, 0.14f), steel, "FanBox");
+            Build.Part(PrimitiveType.Cube, fanRoot, new Vector3(x, 1.3f, 0f), new Vector3(1.3f, 1.3f, 0.14f), L(LookMat.Metal, 1.1f, 1.1f, 1.1f), "FanBox");
             Build.Part(PrimitiveType.Cylinder, fanRoot, new Vector3(x, 1.3f, 0.06f), new Vector3(1.1f, 0.02f, 1.1f), dark, "Fan", new Vector3(90f, 0f, 0f));
             for (int k = 0; k < 4; k++)
                 Build.Part(PrimitiveType.Cube, fanRoot, new Vector3(x, 1.3f, 0.09f), new Vector3(1.15f, 0.04f, 0.02f), steel, "Guard", new Vector3(0f, 0f, k * 45f));
@@ -274,19 +244,7 @@ public static class DesertProps
         root.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
         float s = 0.85f + (float)rnd.NextDouble() * 0.4f;
         root.transform.localScale = Vector3.one * s;
-        if (Build.TryModel("Eucalyptus", root.transform, 0f, 0f) == null)
-        {
-            var bark = M(0.72f, 0.68f, 0.6f); var leaf = M(0.33f, 0.45f, 0.36f, 0.2f); var leaf2 = M(0.4f, 0.5f, 0.38f, 0.2f);
-            Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, 3f, 0f), new Vector3(0.3f, 3f, 0.3f), bark, "Trunk");
-            for (int i = 0; i < 4; i++)
-            {
-                float a = i * 90f + (float)rnd.NextDouble() * 40f;
-                Vector3 dir = Quaternion.Euler(0f, a, 0f) * Vector3.forward;
-                float h = 5.2f + i * 0.9f;
-                Build.Part(PrimitiveType.Sphere, root.transform, new Vector3(0f, h, 0f) + dir * 0.55f, new Vector3(1.6f, 2.2f, 1.6f), i % 2 == 0 ? leaf : leaf2, "Crown");
-            }
-            Build.Part(PrimitiveType.Sphere, root.transform, new Vector3(0f, 8.6f, 0f), new Vector3(1.3f, 1.8f, 1.3f), leaf, "Crown");
-        }
+        if (Build.TryModel("Eucalyptus", root.transform, 0f, 0f) == null) Tree(root, TreeType.Eucalyptus, rnd);
         Blocker(root, new Vector3(0f, 1.5f, 0f), new Vector3(0.5f, 3f, 0.5f));
         return root;
     }
@@ -299,7 +257,7 @@ public static class DesertProps
         root.transform.position = pos;
         if (Build.TryModel("PigeonTower", root.transform, 0f, 0f) == null)
         {
-            var mud = M(0.62f, 0.5f, 0.36f); var lime = M(0.9f, 0.88f, 0.82f); var pot = M(0.24f, 0.17f, 0.12f);
+            var mud = L(LookMat.MudBrick, 0.95f, 0.92f, 0.86f); var lime = L(LookMat.Plaster); var pot = M(0.24f, 0.17f, 0.12f);
             Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, 1.5f, 0f), new Vector3(3.2f, 1.5f, 3.2f), mud, "Base");
             Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, 4.2f, 0f), new Vector3(2.5f, 1.2f, 2.5f), lime, "Tower");
             Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, 6.1f, 0f), new Vector3(1.7f, 0.7f, 1.7f), lime, "Top");
@@ -323,14 +281,14 @@ public static class DesertProps
         var root = new GameObject("Sell Point");
         root.transform.SetParent(parent, true);
         root.transform.SetPositionAndRotation(pos, rot);
-        var wall = Build.Mat(color, 0.08f); var roof = M(0.35f, 0.3f, 0.26f); var door = M(0.3f, 0.2f, 0.13f);
+        var wall = LookLibrary.Tinted(LookMat.Plaster, color); var roof = L(LookMat.Concrete, 0.6f, 0.55f, 0.5f); var door = L(LookMat.Wood, 0.8f, 0.65f, 0.5f);
         var awning = Build.Mat(new Color(Mathf.Clamp01(color.r * 0.6f + 0.3f), color.g * 0.45f, color.b * 0.35f), 0.2f);
         Build.Part(PrimitiveType.Cube, root.transform, new Vector3(0f, 1.7f, 0f), new Vector3(7f, 3.4f, 5f), wall, "Walls");
         Build.Part(PrimitiveType.Cube, root.transform, new Vector3(0f, 3.5f, 0f), new Vector3(7.4f, 0.2f, 5.4f), roof, "Roof");
         Build.Part(PrimitiveType.Cube, root.transform, new Vector3(0f, 1.1f, 2.51f), new Vector3(1.8f, 2.2f, 0.05f), door, "Door");
         Build.Part(PrimitiveType.Cube, root.transform, new Vector3(0f, 2.6f, 3.1f), new Vector3(5.5f, 0.08f, 1.4f), awning, "Awning", new Vector3(-12f, 0f, 0f));
         for (int i = 0; i < 3; i++)
-            Build.Part(PrimitiveType.Cube, root.transform, new Vector3(-2.2f + i * 2.2f, 0.4f, 3.3f), new Vector3(0.8f, 0.8f, 0.8f), M(0.85f, 0.82f, 0.74f), "Sack");
+            Build.Part(PrimitiveType.Cube, root.transform, new Vector3(-2.2f + i * 2.2f, 0.4f, 3.3f), new Vector3(0.8f, 0.8f, 0.8f), L(LookMat.Hessian, 1.1f, 1.05f, 1f), "Sack");
         Blocker(root, new Vector3(0f, 1.7f, 0f), new Vector3(7f, 3.4f, 5f));
         return root;
     }

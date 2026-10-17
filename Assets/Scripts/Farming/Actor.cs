@@ -60,8 +60,37 @@ public class Actor : MonoBehaviour
     {
         string c = Clip(keys);
         if (anim == null || c == null || c == playing) return;
-        anim.CrossFade(c, 0.25f);
+        anim.CrossFade(c, BlendTime);
         playing = c;
+    }
+
+    // ---- graphics makeover: smoother blends, feet that match the ground speed, idle variety
+    /// <summary>Cross-fade time between loops (longer = smoother, 0.35 s reads well for walk / idle).</summary>
+    public const float BlendTime = 0.35f;
+    private float idleVariety = -1f;
+    /// <summary>One-off idle gestures played now and then while standing (picked from the clips the model has).</summary>
+    private static readonly string[] IdleGestures = { "interact-right", "emote-yes", "pick-up" };
+
+    /// <summary>Walk / run clips play at a speed matching how fast the actor really moves (no foot sliding).</summary>
+    private void SyncSpeed(float metresPerSecond)
+    {
+        if (anim == null || playing == null) return;
+        var st = anim[playing];
+        if (st == null) return;
+        bool run = playing.ToLowerInvariant().Contains("run") || playing.ToLowerInvariant().Contains("sprint");
+        float nominal = (run ? 3.2f : 1.25f) * Mathf.Max(0.3f, transform.lossyScale.y);
+        st.speed = Mathf.Clamp(metresPerSecond / nominal, 0.6f, 1.8f);
+    }
+
+    /// <summary>While idling, now and then a short gesture (look busy) instead of a frozen loop.</summary>
+    private void IdleVariety()
+    {
+        if (idleVariety < 0f) idleVariety = Random.Range(6f, 14f);
+        idleVariety -= Time.deltaTime;
+        if (idleVariety > 0f) return;
+        idleVariety = Random.Range(8f, 16f);
+        string g = IdleGestures[Random.Range(0, IdleGestures.Length)];
+        if (Clip(g) != null) React(g, 1.6f);
     }
 
     /// <summary>One-off reaction (e.g. shopkeeper nods after a sale), then back to the loop.</summary>
@@ -83,7 +112,7 @@ public class Actor : MonoBehaviour
             case ActorMode.Wander: case ActorMode.Worker: Wander(); break;
             case ActorMode.FollowPlayer: Follow(); break;
             case ActorMode.Fly: Fly(); break;
-            case ActorMode.Stand: if ((wait -= Time.deltaTime) <= 0f) Play("idle"); break;
+            case ActorMode.Stand: if ((wait -= Time.deltaTime) <= 0f) { Play("idle"); IdleVariety(); } break;
             case ActorMode.Driver:
                 bool show = vehicle != null && (vehicle.IsDriving || vehicle.RemoteDriven);
                 if (model.activeSelf != show) model.SetActive(show);
@@ -110,6 +139,7 @@ public class Actor : MonoBehaviour
         }
         MoveTowards(to, speed);
         Play("walking", "walk", "run");
+        SyncSpeed(speed);
     }
 
     private void Follow()
@@ -124,6 +154,7 @@ public class Actor : MonoBehaviour
             float s = d > 9f ? speed * 3f : speed * 1.6f;
             MoveTowards(to, s);
             Play(d > 9f ? "run" : "walking", "walking", "walk", "run");
+            SyncSpeed(s);
         }
         else Play("idle", "sit");
     }

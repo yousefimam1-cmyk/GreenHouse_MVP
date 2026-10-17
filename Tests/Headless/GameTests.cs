@@ -1437,6 +1437,7 @@ static class Program
 
         DrivingTests.Run();
         SharedKeyTests.Run();
+        LookTests.Run();   // graphics makeover (Tests/Headless/LookTests.cs)
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
@@ -2718,7 +2719,8 @@ static class ArtTests
         GraphicsEnhancer.SetPreset(1);
         T.Check("Medium preset", GraphicsEnhancer.Preset == 1 && GraphicsEnhancer.PostEnabled && GraphicsEnhancer.DressingDensity < 1f);
         GraphicsEnhancer.SetPreset(7);
-        T.Check("Preset clamps and saves", GraphicsEnhancer.Preset == 2 && SaveData.GetInt("mazraa.gfxPreset", -1) == 2);
+        T.Check("Preset clamps and saves (top preset is Ultra)", GraphicsEnhancer.Preset == GraphicsEnhancer.PresetUltra && SaveData.GetInt("mazraa.gfxPreset", -1) == GraphicsEnhancer.PresetUltra);
+        GraphicsEnhancer.SetPreset(2);   // back to High for the checks below
         T.Check("Medium has an Arabic name", Loc.Raw("Graphics: Medium") == "Graphics: Medium" && LocHas("Graphics: Medium"));
 
         Console.WriteLine("Desert weather");

@@ -41,6 +41,9 @@ public class DesertDressing : MonoBehaviour
     public string BuiltRegion { get; private set; } = "";
     /// <summary>Ground colour of the current build (sand in Najd, green-brown alluvium on the Delta).</summary>
     public Color GroundColor { get; private set; } = SandColor;
+    /// <summary>Graphics makeover: desert shrubs / dry clumps and instanced grass tufts placed by the last build.</summary>
+    public int Shrubs { get; private set; }
+    public int GrassTufts { get; private set; }
 
     private struct KeepOut { public Vector3 p; public float r; public bool major; public KeepOut(Vector3 p, float r, bool major) { this.p = p; this.r = r; this.major = major; } }
     private readonly List<KeepOut> keep = new List<KeepOut>();
@@ -82,6 +85,8 @@ public class DesertDressing : MonoBehaviour
         placed.Clear(); Track.Clear();
         Palms = Trees = Dunes = CoolingWalls = SandCells = 0; HasHouse = false;
         Canals = Eucalyptus = SellPoints = 0; HasPigeonTower = false;
+        Shrubs = GrassTufts = 0;
+        if (FoliageGrass.Instance != null) FoliageGrass.Instance.Clear();   // grass is rebuilt with the dressing
         var rnd = new System.Random(Seed);
         float density = GraphicsEnhancer.DressingDensity;
         var look = Regions.Look;
@@ -103,6 +108,7 @@ public class DesertDressing : MonoBehaviour
             if (look.dunes) BuildDunes(rnd, RegionLook.C(look.dune, DuneColor));
             if (look.trees == "eucalyptus" && density > 0.01f) BuildWindbreaks(rnd, density);   // Settings > Foliage 0 = no trees
             BuildTrees(rnd, density, look);
+            BuildUndergrowth(new System.Random(Seed + 7), density, look);
         }
         catch (System.Exception e) { Debug.LogWarning("[DesertDressing] " + e.Message); }
         built = true;
@@ -326,6 +332,8 @@ public class DesertDressing : MonoBehaviour
         go.AddComponent<MeshFilter>().sharedMesh = mesh;
         var mr = go.AddComponent<MeshRenderer>();
         mr.sharedMaterial = Build.Mat(color, 0.08f);
+        // graphics makeover: real sand / soil / gravel textures, world UVs matching the terrain layers
+        if (name == "Sand" || name == "Track" || name == "Dune") GroundLook.DressMesh(mr, Vegetation.BiomeOf(BuiltRegion), name == "Sand" ? "ground" : name.ToLowerInvariant());
         mr.shadowCastingMode = collider ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
         if (collider) go.AddComponent<MeshCollider>().sharedMesh = mesh;
         return go;
@@ -447,9 +455,40 @@ public class DesertDressing : MonoBehaviour
             if (DistanceToFarm(p) < 16f) continue;
             if (!Free(p, 3.2f)) continue;
             if (delta) { if (rnd.NextDouble() < 0.65) { DesertProps.Eucalyptus(root, OnGround(p), rnd); Eucalyptus++; } else DesertProps.Sidr(root, OnGround(p), rnd); }
-            else if (rnd.NextDouble() < 0.55) DesertProps.Acacia(root, OnGround(p), rnd); else DesertProps.Sidr(root, OnGround(p), rnd);
+            else { double k = rnd.NextDouble(); if (k < 0.42) DesertProps.Acacia(root, OnGround(p), rnd); else if (k < 0.62) DesertProps.Ghaf(root, OnGround(p), rnd); else DesertProps.Sidr(root, OnGround(p), rnd); }
             Mark(p); Trees++;
         }
+    }
+
+    // ------------------------------------------------------------------ graphics makeover: shrubs + instanced grass
+    /// <summary>True where vegetation may grow: on the map, off plots / pads / buildings / colliders and the track.</summary>
+    public bool ClearForVegetation(Vector3 p)
+    {
+        if (p.x < mapMin.x + 2f || p.z < mapMin.z + 2f || p.x > mapMax.x - 2f || p.z > mapMax.z - 2f) return false;
+        if (InKeepOut(p, 0.8f)) return false;
+        return DistanceToTrack(Flat(p)) > 3.4f;
+    }
+
+    // Low shrubs and dry clumps across the open land, then grass: dry tufts in the desert, green under the date garden;
+    // lush grass on the Delta. Counts follow Settings > Graphics > Foliage (density).
+    private void BuildUndergrowth(System.Random rnd, float density, RegionLook look)
+    {
+        if (density <= 0.01f) return;
+        bool delta = look.trees == "eucalyptus";
+        int want = Mathf.RoundToInt((delta ? 30f : 46f) * density);
+        Vector3 size = mapMax - mapMin;
+        for (int tries = want * 10; Shrubs < want && tries > 0; tries--)
+        {
+            Vector3 p = new Vector3(mapMin.x + 6f + (float)rnd.NextDouble() * (size.x - 12f), 0f, mapMin.z + 6f + (float)rnd.NextDouble() * (size.z - 12f));
+            if (DistanceToFarm(p) < 12f || !Free(p, 1.4f)) continue;
+            DesertProps.Shrub(root, OnGround(p), rnd, !delta && rnd.NextDouble() < 0.6);
+            Mark(p); Shrubs++;
+        }
+        var area = new Bounds((mapMin + mapMax) * 0.5f, new Vector3(size.x, 50f, size.z));
+        System.Func<Vector3, bool> clear = p => ClearForVegetation(p) && DistanceToFarm(p) > 4f;
+        GrassTufts += Vegetation.ScatterGrass(area, delta ? Biome.Delta : Biome.Desert, Seed + 11, clear, density);
+        if (HasHouse)   // the farmhouse's palm garden is watered: green grass under the palms
+            GrassTufts += Vegetation.ScatterGrass(new Bounds(HousePosition, new Vector3(46f, 50f, 46f)), Biome.Oasis, Seed + 13, clear, density);
     }
 
     // ------------------------------------------------------------------ Nile Delta: canals, windbreaks, pigeon tower, sell points

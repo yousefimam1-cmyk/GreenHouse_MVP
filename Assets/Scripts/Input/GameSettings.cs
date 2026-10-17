@@ -14,11 +14,11 @@ public static partial class GameSettings   // more settings (pages Game / Displa
     public static float MasterVolume { get => Get("master", 1f); set => Set("master", Mathf.Clamp01(value)); }
     public static float MusicVolume { get => Get("music", 0.8f); set => Set("music", Mathf.Clamp01(value)); }
     public static float SfxVolume { get => Get("sfx", 1f); set => Set("sfx", Mathf.Clamp01(value)); }
-    /// <summary>0 Low, 1 Medium, 2 High.</summary>
+    /// <summary>0 Low, 1 Medium, 2 High, 3 Ultra.</summary>
     public static int GraphicsPreset
     {
-        get => Mathf.Clamp(PlayerPrefs.GetInt(P + "graphics", DefaultPreset()), 0, 2);
-        set { PlayerPrefs.SetInt(P + "graphics", Mathf.Clamp(value, 0, 2)); Save(); }
+        get => Mathf.Clamp(PlayerPrefs.GetInt(P + "graphics", DefaultPreset()), 0, GraphicsEnhancer.PresetCount - 1);
+        set { PlayerPrefs.SetInt(P + "graphics", Mathf.Clamp(value, 0, GraphicsEnhancer.PresetCount - 1)); Save(); }
     }
     public static float MouseSensitivity { get => Get("mouseSens", 1f); set => Set("mouseSens", Mathf.Clamp(value, 0.1f, 4f)); }
     public static float StickSensitivity { get => Get("stickSens", 1f); set => Set("stickSens", Mathf.Clamp(value, 0.1f, 4f)); }
@@ -69,5 +69,5 @@ public static partial class GameSettings   // more settings (pages Game / Displa
         ApplyOptions();
     }
 
-    public static string PresetName(int p) => p <= 0 ? "Low" : p == 1 ? "Medium" : "High";
+    public static string PresetName(int p) => p <= 0 ? "Low" : p == 1 ? "Medium" : p == 2 ? "High" : "Ultra";
 }

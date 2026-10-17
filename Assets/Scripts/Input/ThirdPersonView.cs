@@ -175,7 +175,10 @@ public class ThirdPersonView : MonoBehaviour
         {
             string c;
             if (!clips.TryGetValue(k, out c)) continue;
-            if (c != playing) { anim.CrossFade(c, 0.2f); playing = c; }
+            if (c != playing) { anim.CrossFade(c, Actor.BlendTime); playing = c; }
+            // graphics makeover: feet match the ground speed (no sliding)
+            var st = anim[c];
+            if (st != null) st.speed = k == "idle" ? 1f : Mathf.Clamp(speed / (k == "walk" ? 1.4f : 4.2f), 0.6f, 1.7f);
             return;
         }
     }

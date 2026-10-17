@@ -355,7 +355,7 @@ namespace UnityEngine
         public static float SignedAngle(Vector3 a, Vector3 b, Vector3 axis) { float ang = Angle(a, b); return Dot(axis, Cross(a, b)) < 0 ? -ang : ang; }
         public override string ToString() => $"({x:F2}, {y:F2}, {z:F2})";
     }
-    public struct Quaternion
+    public partial struct Quaternion
     {
         public float x, y, z, w;
         public Quaternion(float x, float y, float z, float w) { this.x = x; this.y = y; this.z = z; this.w = w; }
@@ -405,7 +405,7 @@ namespace UnityEngine
             }
         }
     }
-    public struct Color
+    public partial struct Color
     {
         public float r, g, b, a;
         public Color(float r, float g, float b, float a = 1) { this.r = r; this.g = g; this.b = b; this.a = a; }
@@ -426,7 +426,7 @@ namespace UnityEngine
         public static string ToHtmlStringRGB(Color c) => H(c.r) + H(c.g) + H(c.b);
         public static string ToHtmlStringRGBA(Color c) => H(c.r) + H(c.g) + H(c.b) + H(c.a);
     }
-    public struct Bounds
+    public partial struct Bounds
     {
         public Vector3 center, size;
         public Bounds(Vector3 c, Vector3 s) { center = c; size = s; }
@@ -439,7 +439,7 @@ namespace UnityEngine
         }
         public void Encapsulate(Bounds b) { Encapsulate(b.min); Encapsulate(b.max); }
     }
-    public static class Mathf
+    public static partial class Mathf
     {
         public const float PI = (float)Math.PI, Rad2Deg = 57.29578f, Deg2Rad = 0.0174533f;
         public static float Abs(float v) => Math.Abs(v); public static int Abs(int v) => Math.Abs(v);
@@ -514,7 +514,7 @@ namespace UnityEngine
         public static T FromJson<T>(string json) => Newtonsoft.Json.JsonConvert.DeserializeObject<T>(json, S);
         public static string ToJson(object o, bool pretty = false) => Newtonsoft.Json.JsonConvert.SerializeObject(o, pretty ? Newtonsoft.Json.Formatting.Indented : Newtonsoft.Json.Formatting.None);
     }
-    public static class Resources
+    public static partial class Resources
     {
         public static T[] LoadAll<T>(string path) where T : Object
         {
@@ -536,27 +536,27 @@ namespace UnityEngine
                 var g = new GameObject(path); g.SetActive(false); FakeEngine.Objects.Remove(g);
                 return g as T;
             }
-            return null; // fonts etc.: placeholders are used
+            return LoadLook<T>(path); // look materials / textures (FakeLook.cs); fonts etc.: placeholders are used
         }
     }
     public class TextAsset : Object { public string text; }
     public class Font : Object { }
-    public class Shader : Object { public static Shader Find(string n) => new Shader { name = n }; public bool isSupported = true; }
+    public partial class Shader : Object { public static Shader Find(string n) => new Shader { name = n }; public bool isSupported = true; }
     public enum MaterialGlobalIlluminationFlags { None }
-    public class Material : Object
+    public partial class Material : Object
     {
         public Material(Shader s) { shader = s; } public Material(Material m) { shader = m != null ? m.shader : null; } public Shader shader;
         public Color color; public MaterialGlobalIlluminationFlags globalIlluminationFlags; public int renderQueue; public Texture mainTexture; public void SetTexture(string n, Texture t) { mainTexture = t; }
         public void SetColor(string n, Color c) { } public void SetFloat(string n, float v) { } public float GetFloat(string n) => 1; public bool HasProperty(string n) => true; public void EnableKeyword(string k) { }
     }
-    public class Mesh : Object { public int subMeshCount = 1; public Bounds bounds; public int vertexCount => vertices.Length; public void CombineMeshes(CombineInstance[] c, bool merge, bool useMatrices) { } public Vector3[] vertices = new Vector3[0]; public int[] triangles = new int[0]; public Rendering.IndexFormat indexFormat; public void RecalculateNormals() { } public void RecalculateBounds() { } }
+    public partial class Mesh : Object { public int subMeshCount = 1; public Bounds bounds; public int vertexCount => vertices.Length; public void CombineMeshes(CombineInstance[] c, bool merge, bool useMatrices) { } public Vector3[] vertices = new Vector3[0]; public int[] triangles = new int[0]; public Rendering.IndexFormat indexFormat; public void RecalculateNormals() { } public void RecalculateBounds() { } }
     public class MeshCollider : Collider { public Mesh sharedMesh; }
     public struct CombineInstance { public Mesh mesh; public Matrix4x4 transform; public int subMeshIndex; }
-    public struct Matrix4x4 { public static Matrix4x4 identity => new Matrix4x4(); public static Matrix4x4 operator *(Matrix4x4 a, Matrix4x4 b) => a; }
-    public class TerrainCollider : Collider { }
+    public partial struct Matrix4x4 { public static Matrix4x4 identity => new Matrix4x4(); public static Matrix4x4 operator *(Matrix4x4 a, Matrix4x4 b) => a; }
+    public partial class TerrainCollider : Collider { }
     public static class StaticBatchingUtility { public static void Combine(GameObject root) { } }
     public class MeshFilter : Component { public Mesh mesh, sharedMesh = new Mesh(); }
-    public class Renderer : Component
+    public partial class Renderer : Component
     {
         public bool enabled = true; public Material material, sharedMaterial; public Material[] materials, sharedMaterials;
         public Rendering.ShadowCastingMode shadowCastingMode; public bool receiveShadows;
@@ -598,11 +598,11 @@ namespace UnityEngine
         public static bool Raycast(Ray r, out RaycastHit h, float dist, int mask) { h = default; return false; }
         public static void IgnoreCollision(Collider a, Collider b, bool i) { }
     }
-    public class Terrain : Component { public static Terrain activeTerrain; public TerrainData terrainData; public float SampleHeight(Vector3 p) => 0; }
-    public class TerrainData : Object { public Vector3 size; }
+    public partial class Terrain : Component { public static Terrain activeTerrain; public TerrainData terrainData; public float SampleHeight(Vector3 p) => 0; }
+    public partial class TerrainData : Object { public Vector3 size; }
     public enum LightType { Spot, Directional, Point }
-    public enum LightShadows { None, Soft }
-    public class Light : Behaviour { public LightType type; public float intensity = 1, range, spotAngle; public Color color; public LightShadows shadows; }
+    public enum LightShadows { None, Hard, Soft }
+    public partial class Light : Behaviour { public LightType type; public float intensity = 1, range, spotAngle; public Color color; public LightShadows shadows; }
     public static class RenderSettings { public static Light sun; public static float ambientIntensity = 1; public static Color ambientLight; public static Material skybox; public static bool fog; public static float fogDensity = 0.01f; public static Color fogColor; public static FogMode fogMode = FogMode.Exponential; }
     public enum FogMode { Linear = 1, Exponential = 2, ExponentialSquared = 3 }
     public class Camera : Behaviour
@@ -619,8 +619,8 @@ namespace UnityEngine
     public class AudioSource : Behaviour { public bool isPlaying, loop, playOnAwake = true; public AudioClip clip; public float volume = 1, pitch = 1, spatialBlend, dopplerLevel = 1, minDistance = 1, maxDistance = 500; public AudioRolloffMode rolloffMode; public int oneShots; public void Play() => isPlaying = true; public void Stop() => isPlaying = false; public void Pause() => isPlaying = false; public void UnPause() => isPlaying = true; public void PlayOneShot(AudioClip c) { oneShots++; } public void PlayOneShot(AudioClip c, float v) { oneShots++; } }
     public enum AudioRolloffMode { Logarithmic, Linear, Custom }
     public enum WrapMode { Once, Loop }
-    public class AnimationState { public string name; public WrapMode wrapMode; }
-    public class Animation : Behaviour, IEnumerable { public IEnumerator GetEnumerator() { yield break; } public void CrossFade(string n, float t) { } }
+    public partial class AnimationState { public string name; public WrapMode wrapMode; }
+    public partial class Animation : Behaviour, IEnumerable { public IEnumerator GetEnumerator() { yield break; } public void CrossFade(string n, float t) { } }
     public enum CursorLockMode { None, Locked }
     public static class Cursor { public static CursorLockMode lockState; public static bool visible; }
     public enum RenderMode { ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace }

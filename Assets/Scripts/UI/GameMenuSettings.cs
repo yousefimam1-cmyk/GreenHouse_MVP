@@ -138,7 +138,7 @@ public partial class GameMenu
     {
         return new List<MenuRow>
         {
-            MenuRow.Setting(() => UiText.T("Quality preset"), () => UiText.T(GameSettings.PresetName(GameSettings.GraphicsPreset)), d => GameSettings.GraphicsPreset = (GameSettings.GraphicsPreset + d + 3) % 3),
+            MenuRow.Setting(() => UiText.T("Quality preset"), () => UiText.T(GameSettings.PresetName(GameSettings.GraphicsPreset)), d => GameSettings.GraphicsPreset = (GameSettings.GraphicsPreset + d + GraphicsEnhancer.PresetCount) % GraphicsEnhancer.PresetCount),
             MenuRow.Setting(() => UiText.T("Shadow quality"), () => Named(GameSettings.ShadowQualityNames, GameSettings.ShadowQuality), d => GameSettings.ShadowQuality = CycleAuto(GameSettings.ShadowQuality, 4, d)),
             MenuRow.Setting(() => UiText.T("Shadow distance"), () => GameSettings.ShadowDistance > 0 ? GameSettings.ShadowDistance + " m" : Auto(), d => GameSettings.ShadowDistance = GameSettings.Cycle(GameSettings.ShadowDistances, GameSettings.ShadowDistance, d)),
             MenuRow.Setting(() => UiText.T("View distance"), () => GameSettings.ViewDistance > 0 ? GameSettings.ViewDistance + " m" : Auto(), d => GameSettings.ViewDistance = GameSettings.Cycle(GameSettings.ViewDistances, GameSettings.ViewDistance, d)),

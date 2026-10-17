@@ -7,12 +7,15 @@ using UnityEngine.Rendering.Universal;
 /// Runtime graphics upgrade for URP: a global post-processing volume (ACES tonemapping, bloom, warm grading,
 /// vignette), SMAA, MSAA, longer soft shadows. Three quality presets (Low / Medium / High): shadow distance,
 /// render scale, MSAA, post-processing on/off and how much desert dressing is placed. G cycles them; a settings
-/// menu can call GraphicsEnhancer.SetPreset(0..2). Saved. Default: High on PC, Low on WebGL and phones.
+/// menu can call GraphicsEnhancer.SetPreset(0..3). Saved. Default: High on PC, Low on WebGL and phones.
+/// Ultra (graphics makeover): longest shadows, sharpest shadow map, more LOD detail, 256 px reflection probe and the
+/// longest grass distance (see AtmosphereLook / FoliageGrass).
 /// </summary>
 public class GraphicsEnhancer : MonoBehaviour
 {
-    public const int PresetLow = 0, PresetMedium = 1, PresetHigh = 2;
-    public static readonly string[] PresetNames = { "Graphics: Low", "Graphics: Medium", "Graphics: High" };
+    public const int PresetLow = 0, PresetMedium = 1, PresetHigh = 2, PresetUltra = 3;
+    public const int PresetCount = 4;
+    public static readonly string[] PresetNames = { "Graphics: Low", "Graphics: Medium", "Graphics: High", "Graphics: Ultra" };
 
     private struct PresetData { public float shadow, scale, volume, dressing; public int msaa; public bool post, smaa; }
     private static readonly PresetData[] presets =
@@ -20,10 +23,13 @@ public class GraphicsEnhancer : MonoBehaviour
         new PresetData { shadow = 35f, scale = 0.75f, msaa = 1, post = false, smaa = false, volume = 0f,   dressing = 0.35f },
         new PresetData { shadow = 60f, scale = 0.9f,  msaa = 2, post = true,  smaa = false, volume = 0.75f, dressing = 0.7f },
         new PresetData { shadow = 90f, scale = 1f,    msaa = 4, post = true,  smaa = true,  volume = 1f,   dressing = 1f },
+        new PresetData { shadow = 150f, scale = 1f,   msaa = 4, post = true,  smaa = true,  volume = 1f,   dressing = 1f },   // Ultra
     };
+    /// <summary>LOD bias per preset when Settings > Level of detail is Auto (multiplies the project's own bias).</summary>
+    private static readonly float[] presetLodBias = { 0.7f, 1f, 1.3f, 1.8f };
 
     public static GraphicsEnhancer Instance { get; private set; }
-    /// <summary>Current preset: 0 Low, 1 Medium, 2 High.</summary>
+    /// <summary>Current preset: 0 Low, 1 Medium, 2 High, 3 Ultra.</summary>
     public static int Preset { get; private set; } = 2;
     /// <summary>Kept for older callers: true on the High preset.</summary>
     public static bool High => Preset >= 2;
@@ -81,7 +87,7 @@ public class GraphicsEnhancer : MonoBehaviour
         // The Settings menu (GameSettings, PlayerPrefs) is the source of truth; the old save keys are only a fallback.
         int saved = PlayerPrefs.HasKey("mazraa.settings.graphics") ? PlayerPrefs.GetInt("mazraa.settings.graphics") : SaveData.GetInt("mazraa.gfxPreset", -1);
         if (saved < 0) saved = SaveData.GetInt("mazraa.gfxHigh", -1) == 0 ? PresetLow : (SaveData.GetInt("mazraa.gfxHigh", -1) == 1 ? PresetHigh : DefaultPreset());
-        Preset = Mathf.Clamp(saved, 0, 2);
+        Preset = Mathf.Clamp(saved, 0, PresetCount - 1);
         BuildVolume();
         BuildSettingsVolumes();
         Apply();
@@ -103,15 +109,15 @@ public class GraphicsEnhancer : MonoBehaviour
         var kb = Keyboard.current;
         if (kb != null && !NetSession.Typing && kb.gKey.wasPressedThisFrame)
         {
-            SetPreset((Preset + 1) % 3);
+            SetPreset((Preset + 1) % PresetCount);
             if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.T(PresetNames[Preset]));
         }
     }
 
-    /// <summary>Switch quality preset (0 Low, 1 Medium, 2 High). Saved; safe to call before the game has started.</summary>
+    /// <summary>Switch quality preset (0 Low, 1 Medium, 2 High, 3 Ultra). Saved; safe to call before the game has started.</summary>
     public static void SetPreset(int preset)
     {
-        int next = Mathf.Clamp(preset, 0, 2);
+        int next = Mathf.Clamp(preset, 0, PresetCount - 1);
         bool changed = next != Preset;
         Preset = next;
         SaveData.SetInt("mazraa.gfxPreset", Preset);
@@ -232,7 +238,7 @@ public class GraphicsEnhancer : MonoBehaviour
     {
         int q = GameSettings.ShadowQuality < 0 ? Preset + 1 : GameSettings.ShadowQuality;   // Low preset = low shadows
         QualitySettings.shadows = q == 0 ? UnityEngine.ShadowQuality.Disable : q == 1 ? UnityEngine.ShadowQuality.HardOnly : UnityEngine.ShadowQuality.All;
-        QualitySettings.shadowResolution = q <= 1 ? UnityEngine.ShadowResolution.Low : q == 2 ? UnityEngine.ShadowResolution.Medium : UnityEngine.ShadowResolution.High;
+        QualitySettings.shadowResolution = q <= 1 ? UnityEngine.ShadowResolution.Low : q == 2 ? UnityEngine.ShadowResolution.Medium : q == 3 ? UnityEngine.ShadowResolution.High : UnityEngine.ShadowResolution.VeryHigh;
         QualitySettings.shadowDistance = EffectiveShadowDistance;
         // URP ignores QualitySettings shadow resolution: set the main light shadow map on the pipeline asset.
         var urp = Instance != null ? Instance.urpAsset : null;
@@ -242,7 +248,7 @@ public class GraphicsEnhancer : MonoBehaviour
             urp.mainLightShadowmapResolution = q <= 1 ? 1024 : q == 2 ? 2048 : 4096;
         }
         if (origLodBias < 0f) origLodBias = QualitySettings.lodBias;
-        QualitySettings.lodBias = GameSettings.LodBias > 0 ? GameSettings.LodBias / 100f : origLodBias;
+        QualitySettings.lodBias = GameSettings.LodBias > 0 ? GameSettings.LodBias / 100f : origLodBias * presetLodBias[Mathf.Clamp(Preset, 0, PresetCount - 1)];
     }
 
     private void BuildSettingsVolumes()

@@ -117,6 +117,8 @@ public static class Build
         var go = Object.Instantiate(prefab, parent, false);
         go.name = name;
         FixPinkMaterials(go);
+        // ---- graphics makeover: matte fur / wool / skin materials and shadows for animals and characters (ModelLook)
+        ModelLook.Upgrade(go, name);
         foreach (var c in go.GetComponentsInChildren<Collider>(true)) Object.Destroy(c);
         if (fitSize <= 0f || parent == null) return go;
         var rs = go.GetComponentsInChildren<Renderer>(true);

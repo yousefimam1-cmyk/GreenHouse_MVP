@@ -256,6 +256,64 @@ def _():
     bad = [os.path.relpath(p, A) for p, s in src.items() if re.search(r'\b(KeyControl|ButtonControl|AxisControl|StickControl|Vector2Control|DpadControl)\b', s) and 'UnityEngine.InputSystem.Controls' not in s]
     return not bad, bad
 
+# ---------------------------------------------------------------- graphics makeover (Resources/Look)
+LOOK = os.path.join(A, 'Resources', 'Look')
+
+@test('Look textures: <= 2048, mipmapped, compressed, normal maps typed, foliage keeps alpha coverage; total < 150 MB')
+def _():
+    bad, total = [], 0
+    tdir = os.path.join(LOOK, 'Textures')
+    if not os.path.isdir(tdir): return False, ['missing ' + tdir]
+    for f in sorted(os.listdir(tdir)):
+        if f.endswith('.meta'): continue
+        p = os.path.join(tdir, f); total += os.path.getsize(p)
+        m = open(p + '.meta').read()
+        sizes = [int(x) for x in re.findall(r'maxTextureSize: (\d+)', m)]
+        if not sizes or max(sizes) > 2048: bad.append(f + ' size')
+        if 'enableMipMap: 1' not in m: bad.append(f + ' mips')
+        if re.search(r'textureCompression: 0', m): bad.append(f + ' uncompressed')
+        if f.endswith('_n.jpg') and 'textureType: 1' not in m: bad.append(f + ' not a normal map')
+        if (f.endswith('_n.jpg') or f.endswith('_m.png')) and 'sRGBTexture: 0' not in m: bad.append(f + ' should be linear')
+        if f.endswith('_d.png') and 'mipMapsPreserveCoverage: 1' not in m: bad.append(f + ' alpha coverage')
+    if total > 150 * 1024 * 1024: bad.append('total %d MB' % (total // 2**20))
+    return not bad, bad + ['%.1f MB' % (total / 2**20)]
+
+@test('Look materials: every texture GUID resolves, shaders are URP Lit / Terrain Lit / Mazraa/Foliage / built-in sky')
+def _():
+    bad = []
+    known = {'933532a4fcc9baf4fa0491de14d08ed7', '69c1f799e772cb6438f56c23efccb782', '0000000000000000f000000000000000'}
+    for p in walk(os.path.join(LOOK, 'Shaders'), ('.shader.meta',)): known.add(re.search(r'guid: (\w+)', open(p).read()).group(1))
+    mats = list(walk(os.path.join(LOOK, 'Materials'), ('.mat',)))
+    for p in mats:
+        t = open(p).read()
+        g = re.search(r'm_Shader: \{fileID: -?\d+, guid: (\w+)', t).group(1)
+        if g not in known: bad.append(os.path.basename(p) + ' shader ' + g)
+        for tg in re.findall(r'm_Texture: \{fileID: 2800000, guid: (\w+)', t):
+            if tg not in guid_of: bad.append(os.path.basename(p) + ' texture ' + tg)
+    names = {os.path.basename(p)[:-4] for p in mats}
+    enum = re.search(r'public enum LookMat\s*\{(.*?)\}', allsrc, re.S).group(1)
+    for n in re.findall(r'\b([A-Z]\w+)\b', re.sub(r'//.*', '', enum)):
+        if n not in names: bad.append('LookMat.%s has no .mat' % n)
+    return not bad and len(mats) > 20, bad
+
+@test('Look shader: foliage shader has forward, shadow, depth and depth-normals passes with instancing')
+def _():
+    t = open(os.path.join(LOOK, 'Shaders', 'MazraaFoliage.shader')).read()
+    need = ['"LightMode" = "UniversalForward"', '"LightMode" = "ShadowCaster"', '"LightMode" = "DepthOnly"', '"LightMode" = "DepthNormals"', 'CBUFFER_START(UnityPerMaterial)']
+    bad = [n for n in need if n not in t]
+    if t.count('#pragma multi_compile_instancing') < 4: bad.append('instancing in every pass')
+    if 'LOD_FADE_CROSSFADE' in t or '_FORWARD_PLUS' in t: bad.append('uses keywords the build strips')
+    return not bad, bad
+
+@test('Look assets credited (Assets/ThirdParty/CREDITS.md lists Poly Haven and every source asset)')
+def _():
+    c = open(os.path.join(A, 'ThirdParty', 'CREDITS.md'), encoding='utf-8').read()
+    srcs = ['sandy_gravel_02', 'gravelly_sand', 'dry_riverbed_rock', 'brown_mud_02', 'grass_ground', 'aerial_mud_1', 'rough_plaster_brick_02', 'white_stucco',
+            'concrete_wall_008', 'corrugated_iron', 'rusty_metal_sheet', 'weathered_brown_planks', 'rough_linen', 'curly_teddy_natural', 'hessian_230',
+            'palm_bark', 'bark_brown_02', 'palm_tree_bark', 'jacaranda_tree', 'grass_medium_01', 'island_tree_02', 'shrub_04']
+    miss = [x for x in srcs if x not in c]
+    return 'Poly Haven' in c and not miss, miss
+
 # ---------------------------------------------------------------- report
 ok = sum(1 for r in results if r[1])
 for name, passed, details in results:
