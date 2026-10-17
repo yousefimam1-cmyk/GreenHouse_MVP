@@ -179,7 +179,7 @@ static class FrontEndTests
         T.Check("Campaign farm started with the chosen map / start / economy / name in slot 2",
             !GameMenu.IsOpen && GameModes.Current == GameModes.Mode.Campaign && Regions.CurrentId == "najd" && eco.Money == 25000 && Career.CurrentEconomy == Career.Economy.Hard
             && GameModes.CurrentFarmName == "Palm Oasis Farm" && SaveSlots.ActiveSlot == 2 && SaveSlots.HasSlot(2), eco.Money + " " + Career.CurrentEconomy + " " + GameModes.CurrentFarmName);
-        T.Check("Campaign: story chapters and the mission chain are on", mm.Missions.Length == 45 && mm.Current != null && camp.Chapters.Length == 7 && GameModes.HasStory && !FarmLevel.IsUnlocked(topDecor.id));
+        T.Check("Campaign: story chapters and the mission chain are on", mm.Missions.Length == 50 && mm.Current != null && camp.Chapters.Length == 8 && GameModes.HasStory && !FarmLevel.IsUnlocked(topDecor.id));
 
         // ---- challenge on slot 3 (mouse / direct choose): Desert start
         ToMain();
@@ -216,7 +216,7 @@ static class FrontEndTests
             GameModes.Result + " day " + WorldClock.Instance.Day + " deadline " + GameModes.DeadlineDay);
         Menu.StartCareer("najd", Career.Start.NewFarmer, Career.Economy.Normal);
         FakeEngine.Run(0.3f);
-        T.Check("Pause-menu style New game is a campaign again", GameModes.Current == GameModes.Mode.Campaign && GameModes.CurrentChallenge == null && mm.Missions.Length == 45 && camp.Chapters.Length == 7);
+        T.Check("Pause-menu style New game is a campaign again", GameModes.Current == GameModes.Mode.Campaign && GameModes.CurrentChallenge == null && mm.Missions.Length == 50 && camp.Chapters.Length == 8);
 
         // ---- Career cards with map / money / day / mode
         ToMain();

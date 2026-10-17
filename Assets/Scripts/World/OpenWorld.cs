@@ -66,6 +66,7 @@ public class OpenWorld : MonoBehaviour
         GameEvents.NewGameStarted += OnNewGame;
         DriveSurfaces.WorldSurface = SurfaceAt;
         Vehicle.WorkshopAt = AtWorkshop;
+        ObjectiveMarker.TargetHooks.RemoveAll(h => h.Target is OpenWorld);   // a previous scene's world
         ObjectiveMarker.TargetHooks.Add(MissionTarget);
         Invoke(nameof(BuildWorld), 0.4f);   // after VehicleSpawner, FieldManager and the land office placed the farm
     }
@@ -145,6 +146,7 @@ public class OpenWorld : MonoBehaviour
         }
         catch (System.Exception e) { Debug.LogWarning("[OpenWorld] " + e); }
         Minimap.MaxFullRange = Layout != null ? Layout.Half + 60f : 400f;
+        VehicleObstacles.OpenGates();   // a gate wherever the farm road crosses a scene fence
         tick = 0f;
         Built?.Invoke();
     }
