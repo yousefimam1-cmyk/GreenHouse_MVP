@@ -3,27 +3,38 @@ using UnityEditor;
 using UnityEditor.Build;
 
 /// <summary>
-/// Co-op over the network is off by default (single player always compiles). Menu Mazraa > Co-op > Enable Netcode
-/// adds the MAZRAA_NETCODE define for Windows/Mac/Linux so NetcodeBackend.cs is compiled (needs the
-/// com.unity.netcode.gameobjects and com.unity.transport packages from Packages/manifest.json).
-/// If it doesn't compile, use Disable to go back to single player.
+/// Co-op switches for Windows / Mac / Linux builds (Project Settings > Player > Scripting Define Symbols, Standalone):
+///  - MAZRAA_NETCODE: compiles NetcodeBackend.cs (LAN / direct IP co-op; needs com.unity.netcode.gameobjects and
+///    com.unity.transport from Packages/manifest.json). On by default.
+///  - MAZRAA_ONLINE: compiles UgsOnlineServices.cs (internet co-op with Unity Relay join codes and the public games
+///    list; needs com.unity.services.multiplayer and the project linked in Edit > Project Settings > Services). On by
+///    default; it only works together with MAZRAA_NETCODE.
+/// If something doesn't compile (e.g. a package couldn't be downloaded), use the Disable entries to go back to a build
+/// without online play (Disable Netcode turns both off: single player only).
 /// </summary>
 public static class MazraaNetcodeToggle
 {
-    const string Define = "MAZRAA_NETCODE";
+    const string Netcode = "MAZRAA_NETCODE";
+    const string Online = "MAZRAA_ONLINE";
 
-    [MenuItem("Mazraa/Co-op/Enable Netcode")]
-    public static void Enable() => Set(true);
+    [MenuItem("Mazraa/Co-op/Enable Netcode (LAN)")]
+    public static void Enable() => Set(Netcode, true);
 
-    [MenuItem("Mazraa/Co-op/Disable Netcode")]
-    public static void Disable() => Set(false);
+    [MenuItem("Mazraa/Co-op/Disable Netcode (single player only)")]
+    public static void Disable() { Set(Online, false); Set(Netcode, false); }
 
-    static void Set(bool on)
+    [MenuItem("Mazraa/Co-op/Enable Online (Unity Relay + Lobby)")]
+    public static void EnableOnline() { Set(Netcode, true); Set(Online, true); }
+
+    [MenuItem("Mazraa/Co-op/Disable Online (keep LAN)")]
+    public static void DisableOnline() => Set(Online, false);
+
+    static void Set(string define, bool on)
     {
         var target = NamedBuildTarget.Standalone;
-        var defines = PlayerSettings.GetScriptingDefineSymbols(target).Split(';').Where(d => d.Length > 0 && d != Define).ToList();
-        if (on) defines.Add(Define);
+        var defines = PlayerSettings.GetScriptingDefineSymbols(target).Split(';').Where(d => d.Length > 0 && d != define).ToList();
+        if (on) defines.Add(define);
         PlayerSettings.SetScriptingDefineSymbols(target, string.Join(";", defines));
-        UnityEngine.Debug.Log("Mazraa co-op Netcode " + (on ? "enabled" : "disabled") + ". Unity will recompile.");
+        UnityEngine.Debug.Log("Mazraa co-op " + define + " " + (on ? "enabled" : "disabled") + ". Unity will recompile.");
     }
 }

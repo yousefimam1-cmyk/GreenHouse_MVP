@@ -256,6 +256,25 @@ def _():
     bad = [os.path.relpath(p, A) for p, s in src.items() if re.search(r'\b(KeyControl|ButtonControl|AxisControl|StickControl|Vector2Control|DpadControl)\b', s) and 'UnityEngine.InputSystem.Controls' not in s]
     return not bad, bad
 
+# ---------------------------------------------------------------- online co-op
+@test('Netcode / Unity Gaming Services code only in define-guarded files; Windows defines and packages agree')
+def _():
+    bad = []
+    for p, s in src.items():
+        uses_ngo = re.search(r'^using Unity\.(Netcode|Networking\.Transport)', s, re.M)
+        uses_ugs = re.search(r'^using Unity\.Services\.', s, re.M)
+        first = s.lstrip('\ufeff').split('\n', 1)[0].strip()
+        if uses_ugs and not first.startswith('#if MAZRAA_ONLINE && MAZRAA_NETCODE'): bad.append('UGS outside MAZRAA_ONLINE: ' + os.path.relpath(p, A))
+        elif uses_ngo and not uses_ugs and not first.startswith('#if MAZRAA_NETCODE'): bad.append('Netcode outside MAZRAA_NETCODE: ' + os.path.relpath(p, A))
+    ps = open(os.path.join(root, 'ProjectSettings', 'ProjectSettings.asset'), encoding='utf-8', errors='ignore').read()
+    m = re.search(r'^    Standalone: (.*)$', ps[ps.index('scriptingDefineSymbols:'):], re.M)
+    defs = m.group(1).split(';') if m else []
+    man = json.load(open(os.path.join(root, 'Packages', 'manifest.json')))['dependencies']
+    if 'MAZRAA_NETCODE' in defs and not ('com.unity.netcode.gameobjects' in man and 'com.unity.transport' in man): bad.append('MAZRAA_NETCODE without the Netcode packages')
+    if 'MAZRAA_ONLINE' in defs and 'com.unity.services.multiplayer' not in man: bad.append('MAZRAA_ONLINE without com.unity.services.multiplayer')
+    if 'MAZRAA_ONLINE' in defs and 'MAZRAA_NETCODE' not in defs: bad.append('MAZRAA_ONLINE needs MAZRAA_NETCODE')
+    return not bad, bad + ['Standalone defines: ' + ';'.join(defs)]
+
 # ---------------------------------------------------------------- report
 ok = sum(1 for r in results if r[1])
 for name, passed, details in results:

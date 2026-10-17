@@ -1,6 +1,7 @@
 // Front end (GameMenuFrontEnd.cs, MainMenuScene.cs) and play modes (GameModes.cs): title screen -> main menu, Career
 // save-slot cards, the new-farm wizard on an empty slot (campaign / free play / challenge), load and delete with a
-// confirmation, the Multiplayer screen (greyed without Netcode, digit-picker join with a backend), gamepad navigation
+// confirmation, the Multiplayer screen (greyed without Netcode; LAN digit-picker join; online host / join code / browse
+// with a fake Relay + Lobby service, handshake, kick / ban, visibility, name picker), gamepad navigation
 // through every screen and Arabic. Runs in its own world at the end of Program.Main.
 using System;
 using System.Collections.Generic;
@@ -21,6 +22,7 @@ static class FrontEndTests
     static void Pad(ButtonControl b) { b.wasPressedThisFrame = true; b.isPressed = true; FakeEngine.Tick(0.02f); b.wasPressedThisFrame = false; b.isPressed = false; FakeEngine.Tick(0.02f); }
     static List<string> Labels() => Menu.List.Rows.Select(r => r.label()).ToList();
     static string Sel() => Menu.List.Rows[Menu.List.Selected].label();
+    static MenuRow Row(string label) => Menu.List.Rows.First(r => r.label() == label);
     static bool HasArabic(string s) => System.Text.RegularExpressions.Regex.IsMatch(s ?? "", "[؀-ۿﭐ-﷿ﹰ-﻿]");
 
     /// <summary>D-pad down until the selected row's label contains the text (gamepad navigation). True when found.</summary>
@@ -255,13 +257,15 @@ static class FrontEndTests
 
         // ---- multiplayer: greyed without Netcode
         NetSession.Register(null);
+        NetSession.RegisterOnline(null);
         ToMain();
         PadTo("Multiplayer"); Pad(pad.buttonSouth);
         labels = Labels();
         var rows = Menu.List.Rows;
-        T.Check("Multiplayer without Netcode: 'coming in a future update', Host and Join greyed",
+        var startRows = new[] { "Host an online game", "Join with a code", "Browse public games", "Host on local network (LAN)", "Join on local network (LAN)" };
+        T.Check("Multiplayer without Netcode: 'coming in a future update', online and LAN rows greyed",
             Menu.Front == GameMenu.FrontScreen.Multiplayer && labels[0].Contains("Multiplayer is coming in a future update") && !rows[0].IsEnabled
-            && labels[1] == "Host a game" && !rows[1].IsEnabled && labels[2] == "Join a game" && !rows[2].IsEnabled && Sel() == "Multiplayer settings", string.Join(" | ", labels));
+            && startRows.All(l => labels.Contains(l) && !Row(l).IsEnabled) && Sel() == "Multiplayer settings", string.Join(" | ", labels));
         FakeEngine.Run(0.3f);
         T.Check("Multiplayer without Netcode: no developer messages", !labels.Any(l => l.Contains("Netcode") || l.Contains("package")) && !Scene.InfoText.Contains("Netcode")
             && Scene.InfoText.Contains("coming in a future update"), Scene.InfoText);
@@ -270,35 +274,197 @@ static class FrontEndTests
         Pad(pad.dpad.right);
         T.Check("Multiplayer settings: D-pad changes the chat mode", Menu.PageName == "MpSettings" && ChatSafety.Chat != chatBefore);
         Pad(pad.dpad.left);
+        // ---- name picker (no typing): Left / Right through the list, a random name, always a listed name
+        PadTo("Your name");
+        string name0 = PlayerNames.Current;
+        Pad(pad.dpad.right);
+        T.Check("Name picker: D-pad picks the next name from the list (shown to other players)", PlayerNames.Current != name0 && PlayerNames.IsGenerated(PlayerNames.Current)
+            && MultiplayerManager.Instance.PlayerName == PlayerNames.Current && Menu.List.Rows[Menu.List.Selected].value() == PlayerNames.Current, PlayerNames.Current + " / " + Sel());
+        PadTo("New random name"); Pad(pad.buttonSouth);
+        T.Check("Name picker: a new random name is still a listed name", PlayerNames.IsGenerated(MultiplayerManager.Instance.PlayerName) && !PlayerNames.IsGenerated("Sara") && !PlayerNames.IsGenerated("Golden Palm 100")
+            && !PlayerNames.IsGenerated("Golden Palm 07") && PlayerNames.IsGenerated("Golden Palm 7"), MultiplayerManager.Instance.PlayerName);
+        Loc.SetLanguage(Language.Arabic);
+        T.Check("Name picker: listed names are shown in Arabic to Arabic players", HasArabic(PlayerNames.Display("Golden Palm 7")) && PlayerNames.Display("Sara") == "Sara"
+            && PlayerNames.All.All(n => HasArabic(n[1])), PlayerNames.Display("Golden Palm 7"));
+        Loc.SetLanguage(Language.English);
         Pad(pad.buttonEast);
         T.Check("B back to the Multiplayer screen", Menu.PageName == "Multiplayer" && ChatSafety.Chat == chatBefore);
         Pad(pad.buttonEast);
 
-        // ---- multiplayer with a backend: host / join with the digit picker
+        // ---- Netcode but no online services: LAN works, online greyed with a short reason
         var net = new TestBackend();
         NetSession.Register(net);
         PadTo("Multiplayer"); Pad(pad.buttonSouth);
-        T.Check("Multiplayer with a backend: Host and Join enabled, no 'coming soon'", Menu.List.Rows[0].label() == "Host a game" && Menu.List.Rows[0].IsEnabled && Menu.List.Rows[1].IsEnabled
-            && !Labels().Any(l => l.Contains("future update")));
-        PadTo("Join a game"); Pad(pad.buttonSouth);
-        T.Check("Join: four address parts + Connect", Menu.PageName == "MpJoin" && Labels().Count == 6 && Labels()[4].StartsWith("Connect"));
+        labels = Labels();
+        T.Check("Netcode without online services: LAN enabled, online greyed ('Not in this version'), no 'coming soon'",
+            Row("Host on local network (LAN)").IsEnabled && Row("Join on local network (LAN)").IsEnabled && !Row("Host an online game").IsEnabled && !Row("Join with a code").IsEnabled
+            && !Row("Browse public games").IsEnabled && Row("Host an online game").value() == "Not in this version" && !labels.Any(l => l.Contains("future update")), string.Join(" | ", labels));
+        PadTo("Join on local network"); Pad(pad.buttonSouth);
+        T.Check("LAN join: four address parts + Connect", Menu.PageName == "MpJoin" && Labels().Count == 6 && Labels()[4].StartsWith("Connect"));
         string addr0 = Menu.JoinAddress;
         Pad(pad.dpad.right);            // part 1 + 1
         Pad(pad.rightShoulder);         // part 1 + 10
         Pad(pad.dpad.down); Pad(pad.leftShoulder);   // part 2 - 10
         var p0 = addr0.Split('.').Select(int.Parse).ToArray(); var p1 = Menu.JoinAddress.Split('.').Select(int.Parse).ToArray();
-        T.Check("Join: D-pad +-1 and LB / RB +-10 pick the address digits (no typing)", p1[0] == (p0[0] + 11) % 256 && p1[1] == ((p0[1] - 10) % 256 + 256) % 256, addr0 + " -> " + Menu.JoinAddress);
+        T.Check("LAN join: D-pad +-1 and LB / RB +-10 pick the address digits (no typing)", p1[0] == (p0[0] + 11) % 256 && p1[1] == ((p0[1] - 10) % 256 + 256) % 256, addr0 + " -> " + Menu.JoinAddress);
         string want = Menu.JoinAddress;
         PadTo("Connect"); Pad(pad.buttonSouth);
-        T.Check("Join connects to the picked address and closes the menu", !GameMenu.IsOpen && MultiplayerManager.Instance.LastAddress == want, MultiplayerManager.Instance.LastAddress + " vs " + want);
+        var hs = NetHandshake.Decode(net.ConnectPayload);
+        T.Check("LAN join connects to the picked address with the version handshake and closes the menu", !GameMenu.IsOpen && MultiplayerManager.Instance.LastAddress == want && !net.relay
+            && hs.ok && hs.version == NetHandshake.GameVersion && hs.name == MultiplayerManager.Instance.PlayerName, MultiplayerManager.Instance.LastAddress + " vs " + want + " " + net.ConnectPayload);
         MultiplayerManager.Instance.Leave();
         Keyboard.current = null;   // gamepad only while hosting (the fake keyboard has no emote-key indexer)
         ToMain();
-        PadTo("Multiplayer"); Pad(pad.buttonSouth); Pad(pad.buttonSouth);   // Host a game
-        T.Check("Host a game hosts this farm and resumes", NetSession.IsHost && !GameMenu.IsOpen);
+        PadTo("Multiplayer"); Pad(pad.buttonSouth); PadTo("Host on local network"); Pad(pad.buttonSouth);
+        T.Check("LAN host hosts this farm and resumes", NetSession.IsHost && !GameMenu.IsOpen && !net.relay && !MultiplayerManager.Instance.IsOnlineSession);
         MultiplayerManager.Instance.Leave();
+
+        // ---- online with a fake Unity Relay / Lobby service
+        var mp = MultiplayerManager.Instance;
+        var online = new FakeOnline();
+        NetSession.RegisterOnline(online);
+        MultiplayerManager.Visibility = OnlineVisibility.CodeOnly;
+        MultiplayerManager.MaxPlayers = 4;
+        ToMain();
+        PadTo("Multiplayer"); Pad(pad.buttonSouth);
+        T.Check("Online services: Host online / Join with a code / Browse enabled", Row("Host an online game").IsEnabled && Row("Join with a code").IsEnabled && Row("Browse public games").IsEnabled
+            && Row("Host an online game").value == null, string.Join(" | ", Labels()));
+        PadTo("Host an online game"); Pad(pad.buttonSouth);
+        T.Check("Host options: players, who can join, chat, name, start hosting", Menu.PageName == "MpHost"
+            && Labels().Take(5).SequenceEqual(new[] { "Players", "Who can join", "Chat", "Your name", "Start hosting" }), string.Join(",", Labels()));
+        Pad(pad.dpad.left);
+        T.Check("Host options: players 2-4 (D-pad)", MultiplayerManager.MaxPlayers == 3 && Sel() == "Players", "" + MultiplayerManager.MaxPlayers);
+        Pad(pad.dpad.down); Pad(pad.dpad.right);
+        T.Check("Host options: who can join -> public (listed)", MultiplayerManager.Visibility == OnlineVisibility.Public && ChatSafety.Join == ChatSafety.JoinMode.Anyone);
+        PadTo("Start hosting"); Pad(pad.buttonSouth);
+        T.Check("Start hosting: waits for the Relay server, Cancel offered", Menu.PageName == "Multiplayer" && mp.Busy == MultiplayerManager.OnlineStep.Hosting
+            && Labels()[0].Contains("Please wait") && Labels().Contains("Cancel") && !NetSession.IsOnline, string.Join(" | ", Labels()));
+        online.Complete();
+        FakeEngine.Run(0.3f);
+        labels = Labels();
+        T.Check("Online host: the join code is shown big on the Multiplayer screen", NetSession.IsHost && net.relay && mp.IsOnlineSession && mp.JoinCode == "ABC123"
+            && labels[0].Contains("ABC 123") && Scene.InfoText.Contains("ABC 123") && Scene.InfoText.Contains("size=260%"), labels[0] + " / " + Scene.InfoText);
+        T.Check("Online host: public farm listed (farm name, map, version, players x/3)", online.Published != null && online.Published.code == "ABC123" && online.Published.maxPlayers == 3
+            && online.Published.players == 1 && online.Published.version == NetHandshake.GameVersion && online.Published.farmName == GameModes.CurrentFarmNameRaw && online.Published.map == Regions.CurrentId);
+        T.Check("Online host: start rows greyed while hosting, Players / Stop hosting / Continue offered", startRows.All(l => !Row(l).IsEnabled)
+            && labels.Contains("Players") && labels.Contains("Stop hosting") && labels.Contains("Continue farming"), string.Join(" | ", labels));
+        string ver = NetHandshake.GameVersion;
+        T.Check("Handshake: same version and a listed name are let in (lobby count updated)", net.TryJoin(11, NetHandshake.Encode(ver, "anon-11", "Golden Palm 7")) == null
+            && mp.Players[11] == "Golden Palm 7" && online.LastCount == 2);
+        string refuse = net.TryJoin(12, NetHandshake.Encode("0.1.0", "anon-12", "Busy Bee 3"));
+        T.Check("Handshake: another game version is refused with a clear 'update' message", refuse != null && refuse.StartsWith(NetHandshake.Version)
+            && NetHandshake.ReasonMessage(refuse).Contains("Different game version") && Loc.HasTranslation(NetHandshake.ReasonMessage(refuse)) && !mp.Players.ContainsKey(12), refuse);
+        T.Check("Handshake: no handshake at all (old build) is refused as a version mismatch", (net.TryJoin(20, "") ?? "").StartsWith(NetHandshake.Version));
+        T.Check("Handshake: typed (not listed) names are refused online", net.TryJoin(13, NetHandshake.Encode(ver, "anon-13", "xXbadXx")) == NetHandshake.BadName);
+        T.Check("Max players: 3rd player in, 4th refused as full", net.TryJoin(14, NetHandshake.Encode(ver, "anon-14", "Wise Owl 2")) == null
+            && net.TryJoin(15, NetHandshake.Encode(ver, "anon-15", "Calm Camel 1")) == NetHandshake.Full && NetHandshake.ReasonMessage(NetHandshake.Full) == "That farm is full");
+        // host tools from the menu: Players > player > Ban for this session
+        PadTo("Players"); Pad(pad.buttonSouth);
+        T.Check("Players page lists everyone (you greyed)", Menu.PageName == "MpPlayers" && Labels().Any(l => l.Contains("Golden Palm 7")) && Labels().Any(l => l.Contains("Wise Owl 2"))
+            && !Menu.List.Rows[0].IsEnabled, string.Join(" | ", Labels()));
+        PadTo("Golden Palm 7"); Pad(pad.buttonSouth);
+        T.Check("Player actions: friend, block, report, remove, ban", Menu.PageName == "MpPlayer"
+            && new[] { "Friend", "Block", "Report", "Remove from the farm", "Ban for this session" }.All(Labels().Contains), string.Join(",", Labels()));
+        PadTo("Ban for this session"); Pad(pad.buttonSouth);
+        T.Check("Ban: the player is removed with the 'banned' reason", !net.Clients.Contains(11) && net.KickReasons[11] == NetHandshake.Banned && Menu.PageName == "MpPlayers"
+            && NetHandshake.ReasonMessage(NetHandshake.Banned).Length > 0);
+        net.RaiseClientDisconnected(11);
+        T.Check("Ban: the same player (anonymous id) can't come back this session, even with another name", net.TryJoin(16, NetHandshake.Encode(ver, "anon-11", "Happy Farmer 5")) == NetHandshake.Banned
+            && mp.Bans.Count == 1);
+        mp.Kick(14);
+        T.Check("Kick: removed with the 'kicked' reason", !net.Clients.Contains(14) && net.KickReasons[14] == NetHandshake.Kicked);
+        net.RaiseClientDisconnected(14);
+        T.Check("Kick: a kicked player may come back", net.TryJoin(17, NetHandshake.Encode(ver, "anon-14", "Wise Owl 2")) == null && mp.Players[17] == "Wise Owl 2");
+        MultiplayerManager.Visibility = OnlineVisibility.FriendsOnly;
+        T.Check("Friends only (who can join): strangers refused", net.TryJoin(18, NetHandshake.Encode(ver, "anon-18", "Calm Camel 1")) == NetHandshake.FriendsOnly
+            && ChatSafety.Join == ChatSafety.JoinMode.FriendsOnly && NetHandshake.ReasonMessage(NetHandshake.FriendsOnly).Contains("friends"));
+        ChatSafety.SetBlocked("Busy Bee 3", true);
+        T.Check("Blocked players can't join", net.TryJoin(21, NetHandshake.Encode(ver, "anon-21", "Busy Bee 3")) == NetHandshake.Blocked);
+        ChatSafety.SetBlocked("Busy Bee 3", false);
+        net.RaiseClientDisconnected(17);
+        ChatSafety.SetFriend("Calm Camel 1", true);
+        T.Check("Friends only: friends get in", net.TryJoin(19, NetHandshake.Encode(ver, "anon-19", "Calm Camel 1")) == null);
+        ChatSafety.Chat = ChatSafety.ChatMode.Everyone;
+        int chatN = mp.ChatLog.Count;
+        net.Sent.Clear();
+        net.Receive(19, NetProtocol.Make(NetProtocol.Chat, "what the shit <b>x</b>"));
+        T.Check("Online chat: filtered and tags stripped when shown and when relayed", mp.ChatLog.Count == chatN + 1 && mp.ChatLog.Last().text == "Calm Camel 1: what the **** bx/b"
+            && !net.Sent.Any(x => x.msg.Contains("shit")), mp.ChatLog.Last().text);
+        net.Receive(19, NetProtocol.Make(NetProtocol.Hello, "rude typed name"));
+        T.Check("Online: a client can't rename itself to a typed name", mp.Players[19] == "Calm Camel 1");
+        ChatSafety.SetFriend("Calm Camel 1", false);
+        MultiplayerManager.Visibility = OnlineVisibility.CodeOnly;
+        Menu.Back();
+        PadTo("Stop hosting"); Pad(pad.buttonSouth);
+        T.Check("Stop hosting: public listing removed, code cleared, bans forgotten", online.Closed && !NetSession.IsOnline && mp.JoinCode == "" && mp.Bans.Count == 0 && !mp.IsOnlineSession);
+        MultiplayerManager.MaxPlayers = 4;
+
+        // ---- join with a code (character picker), wrong code, version mismatch, host left
+        net = new TestBackend();
+        NetSession.Register(net);
+        FakeEngine.Run(0.1f);
+        PadTo("Join with a code"); Pad(pad.buttonSouth);
+        T.Check("Join with a code: 6 character pickers + Join", Menu.PageName == "MpCode" && Labels().Count == 8 && Labels()[6].StartsWith("Join") && Menu.PickedCode == "AAAAAA", string.Join(",", Labels()));
+        Pad(pad.dpad.right);            // A -> B
+        Pad(pad.rightShoulder);         // B -> L (+10)
+        Pad(pad.dpad.down); Pad(pad.dpad.left);   // A -> 9 (wraps)
+        T.Check("Code picker: D-pad +-1 and LB / RB +-10, letters and digits (no typing)", Menu.PickedCode == "L9AAAA", Menu.PickedCode);
+        PadTo("Join"); Pad(pad.buttonSouth);
+        T.Check("Join with a code: waits for the Relay server", mp.Busy == MultiplayerManager.OnlineStep.Joining && online.JoinedCode == "L9AAAA" && GameMenu.IsOpen);
+        online.FailNext = OnlineError.WrongCode;
+        online.Complete();
+        FakeEngine.Run(0.2f);
+        T.Check("Wrong code: clear message on the Multiplayer screen, nothing started", mp.Status == OnlineErrors.Message(OnlineError.WrongCode) && !NetSession.IsOnline && !net.connecting
+            && Menu.PageName == "Multiplayer" && Menu.List.Rows.Count > 0 && Loc.HasTranslation(mp.Status), mp.Status);
+        T.Check("Invalid codes are refused before asking the server", !mp.JoinWithCode("AB12") && !mp.JoinWithCode("ABC12!") && mp.Busy == MultiplayerManager.OnlineStep.Idle && JoinCodes.Normalize(" abc-123 ") == "ABC123");
+        T.Check("Join with a code: started", mp.JoinWithCode("abc 123"));
+        online.Complete();
+        hs = NetHandshake.Decode(net.ConnectPayload);
+        T.Check("Code accepted: Relay client started with the handshake (version, anonymous id, listed name)", net.relay && net.connecting && online.JoinedCode == "ABC123"
+            && hs.ok && hs.version == ver && hs.playerId == online.PlayerId && hs.playerId.Length > 0 && PlayerNames.IsGenerated(hs.name), net.ConnectPayload);
+        net.RaiseRefused(NetHandshake.Version + ":9.9.9");
+        T.Check("Version mismatch: the joining player is told to update the game", mp.Status.Contains("Different game version") && !SaveData.InSession && !mp.IsOnlineSession, mp.Status);
+        PlayerPrefs.SetString("mazraa.mp.lastCode", "");
+        mp.JoinWithCode("ABC123"); online.Complete();
+        net.RaiseConnected();
+        FakeEngine.Run(0.2f);
+        T.Check("Connected: on the host's farm, the menu closes", SaveData.InSession && NetSession.IsClient && mp.IsOnlineSession && !GameMenu.IsOpen);
+        net.RaiseRefused("");
+        T.Check("Host left: clear message, back on your own farm", mp.Status == "The host left the game" && !SaveData.InSession && !NetSession.IsOnline);
+        mp.JoinWithCode("ABC123"); online.Complete(); net.RaiseConnected();
+        net.RaiseRefused(NetHandshake.Kicked);
+        T.Check("Removed by the host: told so", mp.Status == NetHandshake.ReasonMessage(NetHandshake.Kicked) && !SaveData.InSession);
+
+        // ---- browse public games
+        online.Lobbies.Add(new LobbyInfo { id = "l1", farmName = "Palm Oasis Farm", map = "najd", code = "XYZ789", version = ver, players = 2, maxPlayers = 4 });
+        online.Lobbies.Add(new LobbyInfo { id = "l2", farmName = "Old Farm", map = "najd", code = "OLD111", version = "0.1.0", players = 1, maxPlayers = 4 });
+        online.Lobbies.Add(new LobbyInfo { id = "l3", farmName = "Full Farm", map = "najd", code = "FUL222", version = ver, players = 4, maxPlayers = 4 });
+        ToMain();
+        PadTo("Multiplayer"); Pad(pad.buttonSouth);
+        PadTo("Browse public games"); Pad(pad.buttonSouth);
+        T.Check("Browse: looking...", Menu.PageName == "MpBrowse" && mp.Busy == MultiplayerManager.OnlineStep.Browsing && online.QueriedVersion == ver);
+        online.Complete();
+        FakeEngine.Run(0.2f);
+        labels = Labels();
+        T.Check("Browse: public farms of this version with room are listed (farm name, map, players)", labels.Count == 3 && labels[0].Contains("Palm Oasis Farm") && labels[0].Contains("2/4")
+            && labels[0].Contains("Najd") && labels[1] == "Refresh", string.Join(" | ", labels));
+        Pad(pad.buttonSouth);
+        online.Complete();
+        T.Check("Browse: choosing a farm joins it with its code", online.JoinedCode == "XYZ789" && net.relay && net.connecting);
+        mp.Leave();
+        online.FailNext = OnlineError.NoInternet;
+        mp.BrowsePublic(); online.Complete();
+        T.Check("No internet: clear message", mp.Status == OnlineErrors.Message(OnlineError.NoInternet) && Loc.HasTranslation(mp.Status));
+        T.Check("Every online error and refusal has an Arabic translation", Enum.GetValues(typeof(OnlineError)).Cast<OnlineError>().Where(x => x != OnlineError.None).All(x => Loc.HasTranslation(OnlineErrors.Message(x)))
+            && new[] { NetHandshake.Version, NetHandshake.Full, NetHandshake.Banned, NetHandshake.Kicked, NetHandshake.FriendsOnly, NetHandshake.Blocked, NetHandshake.BadName, NetHandshake.Closed }.All(r => Loc.HasTranslation(NetHandshake.ReasonMessage(r)))
+            && new[] { OnlineVisibility.Public, OnlineVisibility.CodeOnly, OnlineVisibility.FriendsOnly }.All(v => Loc.HasTranslation(MultiplayerManager.VisibilityLabel(v))));
+        Menu.Close();
         NetSession.Register(null);
+        NetSession.RegisterOnline(null);
+        mp.Leave();
         Keyboard.current = kb;
+        ToMain();
+        Menu.Close();
 
         // ---- pause menu: unchanged, and Main menu returns to the front end
         Key(kb.pKey);
