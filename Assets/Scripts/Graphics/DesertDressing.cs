@@ -131,7 +131,7 @@ public class DesertDressing : MonoBehaviour
 
     private void FindMap()
     {
-        terrain = Terrain.activeTerrain;
+        terrain = OpenWorld.CoreTerrain != null ? OpenWorld.CoreTerrain : Terrain.activeTerrain;   // open world: the scene terrain, not a world tile
         if (terrain != null && terrain.terrainData != null)
         {
             mapMin = terrain.transform.position;
@@ -222,6 +222,7 @@ public class DesertDressing : MonoBehaviour
         Vector3 f = Flat(p);
         foreach (var k in keep) if ((f - k.p).sqrMagnitude < (k.r + r) * (k.r + r)) return false;
         foreach (var q in placed) if ((f - q).sqrMagnitude < (r + 2f) * (r + 2f)) return false;
+        if (OpenWorld.Instance != null && OpenWorld.Instance.RoadNear(f, r + 4f)) return false;   // open world: keep off the farm road
         return DistanceToTrack(f) > r + 3f;
     }
 
@@ -433,6 +434,7 @@ public class DesertDressing : MonoBehaviour
                 Vector3 c = a + along * (s + hl * 0.6f) + inward * (hw * 0.6f + 1f + (float)rnd.NextDouble() * 4f);
                 s += hl * 1.5f + (float)rnd.NextDouble() * 6f;
                 if (InKeepOut(c, hl + 3f) || DistanceToTrack(Flat(c)) < hl + 4f || DistanceToFarm(c) < hl + 12f) continue;
+                if (OpenWorld.Instance != null && OpenWorld.Instance.RoadNear(c, hl + 10f)) continue;   // open world: the farm road leaves through a gap
                 c.y = Ground(c);
                 Vector3 dir = Quaternion.Euler(0f, ((float)rnd.NextDouble() - 0.5f) * 30f, 0f) * along;
                 // steep lee side faces Cross(dir, up): point it toward the map edge so the gentle slope faces the farm

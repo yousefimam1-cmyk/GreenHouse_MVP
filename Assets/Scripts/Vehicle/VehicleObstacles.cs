@@ -95,6 +95,7 @@ public static class VehicleObstacles
         if (pen != null && InRect(pen.transform, pen.size, p, 1f + r)) return true;
         var dressing = DesertDressing.Instance;
         if (dressing != null && dressing.Track.Count > 1 && dressing.DistanceToTrack(p) < 3.5f + r) return true;
+        if (OpenWorld.Instance != null && OpenWorld.Instance.RoadNear(p, 1.5f + r)) return true;   // open world: the farm road and world roads
         return false;
     }
 

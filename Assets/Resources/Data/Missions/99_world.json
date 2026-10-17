@@ -1,0 +1,120 @@
+{
+ "notes": "Open world story missions (World/OpenWorld). Najd: untagged (base chain, chapter 8 'The Open Road' in campaign.json). Delta: tagged nile_delta (chapter 6 in Campaigns/93_egypt.json). Types come from GameEvents.Custom: visitTown / visitDealer (place discovered), sellAtTown (kg sold at the town market), buyWorldLand (a parcel bought on the map), fastTravel.",
+ "missions": [
+  {
+   "id": "w_road",
+   "type": "visitTown",
+   "target": 1,
+   "reward": 300,
+   "titleEn": "The road to town",
+   "titleAr": "الطريق إلى البلدة",
+   "descEn": "Leave the farm by the farm road and follow the highway signs to the town market.",
+   "descAr": "اطلع من المزرعة مع طريق المزرعة وتبع لوحات الطريق لين توصل سوق البلدة."
+  },
+  {
+   "id": "w_town_sell",
+   "type": "sellAtTown",
+   "target": 150,
+   "reward": 500,
+   "titleEn": "Sell in town",
+   "titleAr": "بيع في البلدة",
+   "descEn": "Drive a loaded truck onto the town market pad and sell 150 kg at the town's prices.",
+   "descAr": "ودّ الشاحنة محمّلة على منصة سوق البلدة وبيع 150 كجم بأسعار البلدة."
+  },
+  {
+   "id": "w_dealer",
+   "type": "visitDealer",
+   "target": 1,
+   "reward": 200,
+   "titleEn": "Meet the dealer",
+   "titleAr": "زور معرض المعدات",
+   "descEn": "Visit the dealership & workshop: upgrades for your vehicles, repairs in the yard ([R]).",
+   "descAr": "زور معرض وورشة المعدات: تطويرات لمعداتك وتصليح في الساحة ([R])."
+  },
+  {
+   "id": "w_land",
+   "type": "buyWorldLand",
+   "target": 1,
+   "reward": 800,
+   "titleEn": "A neighbouring field",
+   "titleAr": "أرض جنب المزرعة",
+   "descEn": "Buy one of the fields for sale next to the farm (yellow $ on the map, [E] at its sign).",
+   "descAr": "اشترِ وحدة من الأراضي المعروضة للبيع جنب المزرعة ($ الصفراء في الخريطة، [E] عند لوحتها)."
+  },
+  {
+   "id": "w_travel",
+   "type": "fastTravel",
+   "target": 1,
+   "reward": 100,
+   "titleEn": "Know the way",
+   "titleAr": "تعرف الطريق",
+   "descEn": "Open the map (N), pick a place you have visited and fast travel there ([E]).",
+   "descAr": "افتح الخريطة (N)، اختر مكان زرته وانتقل له بسرعة ([E])."
+  },
+  {
+   "id": "eg_w_road",
+   "type": "visitTown",
+   "target": 1,
+   "reward": 300,
+   "regions": [
+    "nile_delta"
+   ],
+   "titleEn": "The road to the bandar",
+   "titleAr": "الطريق للبندر",
+   "descEn": "Take the farm road out to the canal road and follow the signs to the town market.",
+   "descAr": "اطلع بطريق الغيط لحد طريق الترعة وامشي ورا اليافطات لحد سوق البندر."
+  },
+  {
+   "id": "eg_w_town_sell",
+   "type": "sellAtTown",
+   "target": 150,
+   "reward": 500,
+   "regions": [
+    "nile_delta"
+   ],
+   "titleEn": "Sell in the bandar",
+   "titleAr": "بيع في البندر",
+   "descEn": "Drive the loaded truck onto the town market pad and sell 150 kg there.",
+   "descAr": "ودّي العربية محمّلة على منصة سوق البندر وبيع 150 كيلو هناك."
+  },
+  {
+   "id": "eg_w_dealer",
+   "type": "visitDealer",
+   "target": 1,
+   "reward": 200,
+   "regions": [
+    "nile_delta"
+   ],
+   "titleEn": "The tractor dealer",
+   "titleAr": "توكيل الجرارات",
+   "descEn": "Visit the dealership & workshop on the canal road: upgrades, and repairs in the yard ([R]).",
+   "descAr": "روح معرض وورشة المعدات على طريق الترعة: تطويرات، وتصليح في الحوش ([R])."
+  },
+  {
+   "id": "eg_w_land",
+   "type": "buyWorldLand",
+   "target": 1,
+   "reward": 800,
+   "regions": [
+    "nile_delta"
+   ],
+   "titleEn": "A few more qirats",
+   "titleAr": "كام قيراط زيادة",
+   "descEn": "Buy one of the fields for sale next to the farm (yellow $ on the map, [E] at its sign).",
+   "descAr": "اشتري حتة أرض من المعروضة للبيع جنب الغيط ($ الصفرا على الخريطة، [E] عند اليافطة)."
+  },
+  {
+   "id": "eg_w_travel",
+   "type": "fastTravel",
+   "target": 1,
+   "reward": 100,
+   "regions": [
+    "nile_delta"
+   ],
+   "titleEn": "Shortcut",
+   "titleAr": "سكة مختصرة",
+   "descEn": "Open the map (N), pick a place you have been to and fast travel there ([E]).",
+   "descAr": "افتح الخريطة (N)، اختار مكان رحته قبل كده واتنقل له على طول ([E])."
+  }
+ ]
+}

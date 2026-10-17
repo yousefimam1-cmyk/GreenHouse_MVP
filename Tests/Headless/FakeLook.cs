@@ -151,7 +151,6 @@ namespace UnityEngine
         public int alphamapLayers => terrainLayers != null ? terrainLayers.Length : 0;
         public float[,,] alphamaps;
         public float GetSteepness(float x, float y) => x > 0.9f ? 45f : 0f;   // a steep strip along one edge (rock layer test)
-        public float GetInterpolatedHeight(float x, float y) => 0f;
         public void SetAlphamaps(int x, int y, float[,,] map)
         {
             int layers = alphamapLayers;

@@ -15,6 +15,11 @@ public class ObjectiveMarker : MonoBehaviour
     /// <summary>Where the current mission wants the player to go (null if nowhere). Used by the minimap.</summary>
     public static Transform CurrentTarget { get; private set; }
 
+    // ---- open world (World/OpenWorld): targets for mission types this file doesn't know (town, dealership, land...)
+    public delegate Transform TargetHook(MissionDef m, out float height);
+    public static readonly System.Collections.Generic.List<TargetHook> TargetHooks = new System.Collections.Generic.List<TargetHook>();
+    // ---- end open world
+
     private void Start()
     {
         var root = new GameObject("Objective Marker");
@@ -92,7 +97,9 @@ public class ObjectiveMarker : MonoBehaviour
                 h = 4f;
                 if (Vehicle.Current is Tractor && FieldManager.Instance != null && FieldManager.Instance.Plots.Count > 0) return FieldManager.Instance.Plots[0].transform;
                 return Tractor.Instance != null ? Tractor.Instance.transform : null;
-            default: return null;
+            default:
+                foreach (var hook in TargetHooks) { var t = hook(m, out h); if (t != null) return t; }
+                return null;
         }
     }
 

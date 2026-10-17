@@ -594,8 +594,8 @@ public class MultiplayerManager : MonoBehaviour
 
     private void HostPlotJob(int index, int job)
     {
-        if (FieldManager.Instance == null || index < 0 || index >= FieldManager.Instance.Plots.Count) return;
-        var plot = FieldManager.Instance.Plots[index];
+        if (FieldManager.Instance == null || index < 0) return;
+        var plot = FieldManager.Instance.Plots.Find(x => x != null && x.index == index);   // plot save index (open-world plots are 200+)
         if (plot == null) return;
         bool done = job == (int)Implement.Plow ? plot.TryPlow(false)
                   : job == (int)Implement.Seeder ? plot.TrySeed(false)

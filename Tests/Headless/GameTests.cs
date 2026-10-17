@@ -1033,7 +1033,7 @@ static class Program
 
         // ---- campaign chapters
         var camp = CampaignManager.Instance;
-        T.Check("Campaign loads 7 chapters", camp != null && camp.Chapters.Length == 7, camp == null ? "null" : "" + camp.Chapters.Length);
+        T.Check("Campaign loads 8 chapters", camp != null && camp.Chapters.Length == 8, camp == null ? "null" : "" + camp.Chapters.Length);
         T.Check("Missions map to chapters", camp.ChapterOfMission(0) == 0 && camp.ChapterOfMission(6) == 1 && camp.ChapterOfMission(44) == 6);
         T.Check("Chapter card has title and narrator", camp.ChapterCard(1, true, 0).Contains("Iron and Wheels") && camp.ChapterCard(1, true, 0).Contains("Abu Saleh"));
         T.Check("Campaign overview lists chapters", camp.Overview().Contains("The Inheritance") && camp.Overview().Contains("Heart of the Village"));
@@ -1442,6 +1442,7 @@ static class Program
         BumpTests.Run();
         FrontEndTests.Run();   // title screen, main menu, Career slots + new-farm wizard, play modes, multiplayer screen
         LookTests.Run();   // graphics makeover (Tests/Headless/LookTests.cs)
+        WorldTests.Run();      // open world: terrain tiles, roads, places, selling at a place, land, map, waypoint, fast travel, Delta layout
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
@@ -2839,7 +2840,7 @@ static class EgyptTests
         T.Check("Egypt: cotton leafworm only attacks cotton and is treated by neem / pesticide",
             CropsData.Pest("cotton_leafworm") != null && CropsData.Pest("cotton_leafworm").families.SequenceEqual(new[] { "fiber" }) && CropsData.Pest("cotton_leafworm").curedBy.Contains("pesticide"));
         var arabicMissions = mm.AllMissions.Where(m => m.regions != null && m.regions.Contains("nile_delta")).ToList();
-        T.Check("Egypt: 20 story missions, all bilingual", arabicMissions.Count == 20 && arabicMissions.All(m => !string.IsNullOrEmpty(m.titleAr) && !string.IsNullOrEmpty(m.descAr) && m.target > 0f));
+        T.Check("Egypt: 25 story missions (incl. the open world), all bilingual", arabicMissions.Count == 25 && arabicMissions.All(m => !string.IsNullOrEmpty(m.titleAr) && !string.IsNullOrEmpty(m.descAr) && m.target > 0f));
         var src = File.ReadAllText("../../Assets/Scripts/Managers/MissionManager.cs");
         var bad = arabicMissions.Where(m => !src.Contains("\"" + m.type + "\"") && !m.type.StartsWith("plant_") && !m.type.StartsWith("harvest_") && !m.type.StartsWith("sell_") && !m.type.StartsWith("event_")).Select(m => m.type).ToList();
         T.Check("Egypt: every mission type is handled", bad.Count == 0, string.Join(",", bad));
@@ -2858,8 +2859,8 @@ static class EgyptTests
         plot.ResetPlot(); FieldPlot.PreferredSeed = "cotton";
         plot.TryPlow(false);
         T.Check("Najd: a gifted Egypt seed is not planted here", plot.BestSeed() == null || plot.BestSeed().id != "cotton");
-        T.Check("Najd: base mission chain, first mission the well, no Egypt missions", mm.Missions.Length == 45 && mm.Current?.id == "well" && mm.Missions.All(m => !m.id.StartsWith("eg_")), mm.Missions.Length + " " + mm.Current?.id);
-        T.Check("Najd: campaign unchanged (7 chapters, Abu Saleh)", camp.Chapters.Length == 7 && camp.Chapters[0].id == "inheritance" && camp.Narrator == "Abu Saleh" && !camp.IsRegionCampaign && StoryIntro.Body() == Loc.T("STORY_BODY"));
+        T.Check("Najd: base mission chain, first mission the well, no Egypt missions", mm.Missions.Length == 50 && mm.Current?.id == "well" && mm.Missions.All(m => !m.id.StartsWith("eg_")), mm.Missions.Length + " " + mm.Current?.id);
+        T.Check("Najd: base campaign (8 chapters with the open road, Abu Saleh)", camp.Chapters.Length == 8 && camp.Chapters[0].id == "inheritance" && camp.Narrator == "Abu Saleh" && !camp.IsRegionCampaign && StoryIntro.Body() == Loc.T("STORY_BODY"));
         T.Check("Najd: events unchanged (8, haboob, no canal turns)", ed.Data.events.Length == 8 && ed.Find("haboob") != null && ed.Find("canal_turn") == null);
         T.Check("Najd: daily quests unchanged", dq.Templates.Length == 9 && dq.Templates.All(t => t.regions == null || t.regions.Length == 0));
         T.Check("Najd: market and shop names", LabelKeys().Contains("Market") && LabelKeys().Contains("Farm Shop") && !LabelKeys().Contains("Village souq"));
@@ -2874,14 +2875,14 @@ static class EgyptTests
         T.Check("Egypt: career on the Nile Delta in EGP", Regions.Current.id == "nile_delta" && Regions.IsEgypt && Loc.Raw("SAR") == "EGP");
         T.Check("Egypt: Delta crops offered next to wheat, onion and potato", EgyptCrops.All(c => ShopIds().Contains("seed_" + c)) && new[] { "wheat", "onion", "potato" }.All(c => ShopIds().Contains("seed_" + c)));
         T.Check("Egypt: starts with berseem seed and the usual wheat", eco.Seeds("berseem") == 2 && eco.Seeds("wheat") == 2 && eco.Seeds("cotton") == 0 && eco.Seeds("rice") == 0, eco.Seeds("berseem") + " " + eco.Seeds("wheat"));
-        T.Check("Egypt: own mission chain from the pump", mm.Missions.Length == 20 && mm.Current?.id == "eg_pump" && mm.Index == 0 && mm.Missions.All(m => m.id.StartsWith("eg_")), mm.Missions.Length + " " + mm.Current?.id);
-        T.Check("Egypt: campaign chapter 1 is the Egypt story told by Am Hassan", camp.IsRegionCampaign && camp.Chapters.Length == 5 && camp.Chapters[0].id == "eg_land"
+        T.Check("Egypt: own mission chain from the pump", mm.Missions.Length == 25 && mm.Current?.id == "eg_pump" && mm.Index == 0 && mm.Missions.All(m => m.id.StartsWith("eg_")), mm.Missions.Length + " " + mm.Current?.id);
+        T.Check("Egypt: campaign chapter 1 is the Egypt story told by Am Hassan", camp.IsRegionCampaign && camp.Chapters.Length == 6 && camp.Chapters[0].id == "eg_land"
             && camp.Narrator == "Am Hassan" && camp.Chapters[0].titleEn == "The Land by the Canal" && StoryIntro.Body().Contains("Am Hassan") && StoryIntro.Body().Contains("Kafr El-Sheikh"));
         Loc.SetLanguage(Language.Arabic);
         bool egyptianArabic = camp.Narrator == "عم حسن" && CampaignManager.Intro(camp.Chapters[0]).Contains("فدادين") && MissionManager.Title(mm.Current) == "شغّل ماكينة الري";
         Loc.SetLanguage(Language.English);
         T.Check("Egypt: Egyptian Arabic story texts", egyptianArabic);
-        T.Check("Egypt: 5 chapters cover the 20 missions", camp.Chapters.Select(c => c.fromMission).SequenceEqual(new[] { 1, 5, 9, 13, 17 }));
+        T.Check("Egypt: 6 chapters cover the 25 missions", camp.Chapters.Select(c => c.fromMission).SequenceEqual(new[] { 1, 5, 9, 13, 17, 21 }));
         T.Check("Egypt: own events (canal turn, Nile flood, cotton festival, rice export), no haboob dust storms",
             ed.Data.events.All(e => e.regions != null && e.regions.Contains("nile_delta")) && ed.Find("haboob") == null && ed.Find("flood") == null
             && new[] { "canal_turn", "nile_flood", "cotton_festival", "rice_export" }.All(id => ed.Find(id) != null) && ed.Data.events.All(e => !string.IsNullOrEmpty(e.nameAr) && !string.IsNullOrEmpty(e.warnAr) && !string.IsNullOrEmpty(e.startAr)));
@@ -2979,7 +2980,7 @@ static class EgyptTests
             string.Join(",", EgyptCrops.Select(c => c + ":" + eco.Seeds(c) + "/" + eco.Stored(c))) + " wheat " + eco.Seeds("wheat") + " money " + eco.Money);
         FakeEngine.Run(0.5f);
         T.Check("Switch to Najd: region, SAR, Najd crops only", Regions.Current.id == "najd" && Loc.Raw("SAR") == "SAR" && !EgyptCrops.Any(c => ShopIds().Contains("seed_" + c)));
-        T.Check("Switch to Najd: base campaign and events", camp.Chapters.Length == 7 && camp.Narrator == "Abu Saleh" && ed.Data.events.Length == 8 && ed.Pending == null && ed.Active == null);
+        T.Check("Switch to Najd: base campaign and events", camp.Chapters.Length == 8 && camp.Narrator == "Abu Saleh" && ed.Data.events.Length == 8 && ed.Pending == null && ed.Active == null);
         T.Check("Switch to Najd: base quests, Saudi buyers", dq.Templates.Length == 9 && dq.Quests.All(qq => !qq.template.StartsWith("eg_")) && market.Offers.All(c => !EgyptClient(c.buyerEn)) && market.Point("gin") == null);
         T.Check("Switch to Najd: market name, desert look and grade back", LabelKeys().Contains("Market") && LabelKeys().Contains("Farm Shop") && !LabelKeys().Contains("Village souq")
             && dd.BuiltRegion == "najd" && dd.Dunes > 0 && dd.Canals == 0 && dd.SellPoints == 0 && dd.Eucalyptus == 0 && GraphicsEnhancer.Instance.GradeSaturation == 12f && GameObject.Find("Sell Point gin") == null);

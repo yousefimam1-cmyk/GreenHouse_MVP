@@ -146,6 +146,9 @@ public class MissionManager : MonoBehaviour
         else if (EconomyManager.Instance != null && EconomyManager.Instance.Animal(id) != null) Add("buyAnimal", 1f);
     }
 
+    // Open world (World/OpenWorld, WorldLand, WorldMap) raises these through GameEvents.Custom (handled by Add above):
+    // "visitTown", "visitDealer" (place discovered), "sellAtTown" (kg sold at the town market), "buyWorldLand", "fastTravel".
+
     /// <summary>State-based mission types added by features: type -> current value (checked every second).</summary>
     public static readonly System.Collections.Generic.Dictionary<string, Func<float>> StateMissions =
         new System.Collections.Generic.Dictionary<string, Func<float>>(StringComparer.OrdinalIgnoreCase);

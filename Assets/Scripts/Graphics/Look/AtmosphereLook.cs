@@ -81,7 +81,12 @@ public class AtmosphereLook : MonoBehaviour
     /// <summary>Dress the active terrain(s) for the current map.</summary>
     public void DressTerrain()
     {
-        foreach (var t in Terrain.activeTerrains ?? new Terrain[0]) GroundLook.ApplyTerrain(t, Vegetation.Current);
+        foreach (var t in Terrain.activeTerrains ?? new Terrain[0])
+        {
+            // Open-world tiles paint their own roads/fields (Assets/Scripts/World); repainting them here would erase the roads.
+            if (t != null && t.gameObject.name.StartsWith("World Tile")) continue;
+            GroundLook.ApplyTerrain(t, Vegetation.Current);
+        }
     }
 
     private static void NpcWardrobeRedress()
