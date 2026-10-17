@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Main menu (shown at start), pause menu (P / Start), save slots, settings and key rebinding, all built in code.
+/// Front end (title screen, main menu, Career save slots and new-farm wizard, Multiplayer - GameMenuFrontEnd.cs),
+/// pause menu (P / Start), save slots, settings and key rebinding, all built in code.
 /// Keyboard, mouse and gamepad: Up/Down select, Left/Right change a setting, Enter / A choose, Esc / B back.
 /// The game is paused (timeScale 0) while the menu is open. Autosaves every in-game day (SaveSlots).
 /// </summary>
@@ -11,7 +12,8 @@ using UnityEngine;
 public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameMenuSettings.cs
 {
     public enum Mode { Closed, Main, Pause }
-    private enum PageId { Root, Save, Load, Settings, Controls, ConfirmNew, Campaign, Map, Start, Economy, Credits, Achievements, SettingsPage }
+    private enum PageId { Root, Save, Load, Settings, Controls, ConfirmNew, Campaign, Map, Start, Economy, Credits, Achievements, SettingsPage,
+                          Title, Career, SlotActions, ConfirmDelete, GameModePick, FreeMoney, ChallengePick, FarmName, Multiplayer, MpJoin, MpSettings }
 
     /// <summary>Show the main menu when the game starts (headless tests turn this off).</summary>
     public static bool ShowOnStart = true;
@@ -24,14 +26,13 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
 
     private Mode mode = Mode.Closed;
     private PageId page = PageId.Root;
-    private readonly Stack<PageId> history = new Stack<PageId>();
+    private readonly Stack<KeyValuePair<PageId, int>> history = new Stack<KeyValuePair<PageId, int>>();   // page + selected row to return to
     private Canvas canvas;
     private MenuList list;
     private int openedFrame, rebindEndFrame = -10;
     private float timeScaleBefore = 1f;
     private bool waitingForKey;
-    private string pendingRegion = Regions.DefaultId;
-    private Career.Start pendingStart = Career.Start.NewFarmer;
+    private NewFarm pending = new NewFarm();   // new-farm wizard / pause-menu New game choices
     private UnityEngine.UI.Image backdrop;
 
     private void Awake() => Instance = this;
@@ -61,7 +62,7 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
         else if (skip && UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(UiText.T("Game loaded"));
     }
 
-    private void OpenMainMenu() { if (mode == Mode.Closed) Open(Mode.Main); }
+    private void OpenMainMenu() { if (mode == Mode.Closed) OpenTitle(); }
 
     private void OnLanguage() { if (mode != Mode.Closed) list.Refresh(); }
 
@@ -128,25 +129,39 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
             return;
         }
         if (Time.frameCount == openedFrame || GameInput.Rebinding || Time.frameCount - rebindEndFrame < 3) return;
+        if (page == PageId.Title) { if (TitleInput()) ShowPage(PageId.Root); return; }   // "Press any key / A to start"
         if (mode == Mode.Pause && page == PageId.Root && GameInput.Pressed(GameAction.Pause)) { Close(); return; }
         if (MenuNav.Back()) { Back(); return; }
-        if (SettingsTabInput()) return;
+        if (SettingsTabInput() || IpPageInput()) return;
         list.HandleInput();
     }
 
     public void Back()
     {
-        if (history.Count > 0) { ShowPage(history.Pop(), false); return; }
+        if (history.Count > 0) { var h = history.Pop(); ShowPage(h.Key, false, h.Value); return; }
         if (mode == Mode.Pause) Close();
-        else if (mode == Mode.Main && HasSave()) Close();   // Esc on the main menu = Continue
+        else if (mode == Mode.Main && page == PageId.Root) ShowPage(PageId.Title);   // B on the main menu: back to the title screen
     }
 
-    private void Go(PageId p) { history.Push(page); ShowPage(p); }
+    private void Go(PageId p) { history.Push(new KeyValuePair<PageId, int>(page, list.Selected)); ShowPage(p); }
 
-    private void ShowPage(PageId p, bool fresh = true)
+    /// <summary>Go back several pages at once, to the given page (e.g. after deleting a farm: back to Career).</summary>
+    private void BackTo(PageId target)
+    {
+        while (history.Count > 0)
+        {
+            var h = history.Pop();
+            if (h.Key == target) { ShowPage(h.Key, false, h.Value); return; }
+        }
+        ShowPage(target);
+    }
+
+    private void ShowPage(PageId p, bool fresh = true, int returnSel = 0)
     {
         page = p;
-        int sel = fresh ? 0 : list.Selected;
+        int sel = fresh ? 0 : returnSel;
+        list.Panel.gameObject.SetActive(p != PageId.Title);   // the title screen is only the logo and "press any key"
+        if (ShowFrontEndPage(p, sel, fresh)) return;
         switch (p)
         {
             case PageId.Root: list.Show(() => MenuKit.Title(Loc.T(mode == Mode.Main ? "Mazraa" : "Paused")), RootRows(), () => UiText.T("[Enter] Choose   [Esc] Back"), sel); break;
@@ -165,7 +180,7 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
                 list.Show(() => MenuKit.Title(UiText.T("Start a new game?")), new List<MenuRow>
                 {
                     MenuRow.Button(() => UiText.T("No, go back"), Back),
-                    MenuRow.Button(() => UiText.T("Yes, clear the current save (slots are kept)"), () => Go(PageId.Map)),
+                    MenuRow.Button(() => UiText.T("Yes, clear the current save (slots are kept)"), () => { pending = new NewFarm(); Go(PageId.Map); }),
                 }, () => UiText.T("[Enter] Choose   [Esc] Back"));
                 break;
         }
@@ -197,46 +212,31 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
 
     private List<MenuRow> RootRows()
     {
-        var rows = new List<MenuRow>();
-        if (mode == Mode.Main)
-        {
-            rows.Add(new MenuRow { label = () => UiText.T("Continue"), confirm = Close, enabled = HasSave });
-            rows.Add(MenuRow.Button(() => UiText.T("New game"), () => { if (HasSave()) Go(PageId.ConfirmNew); else Go(PageId.Map); }));
-            for (int i = 1; i <= SaveSlots.Count; i++)
-            {
-                int slot = i;
-                rows.Add(new MenuRow { label = () => Loc.Display(UiText.Raw("Load slot") + " " + slot + ": " + SaveSlots.Describe(slot)), confirm = () => LoadSlot(slot), enabled = () => SaveSlots.HasSlot(slot) });
-            }
-        }
-        else
-        {
-            rows.Add(MenuRow.Button(() => UiText.T("Resume"), Close));
-            rows.Add(MenuRow.Button(() => UiText.T("Map"), () => { Close(); if (Minimap.Instance != null) Minimap.Instance.SetFull(true); }));
-            rows.Add(MenuRow.Button(() => UiText.T("Farm overview"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Stats); }));
-            rows.Add(MenuRow.Button(() => UiText.T("Inventory"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Inventory); }));
-            rows.Add(MenuRow.Button(() => UiText.T("Fields (precision farming)"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Fields); }));
-            rows.Add(MenuRow.Button(() => UiText.T("Market prices"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Prices); }));
-            rows.Add(MenuRow.Button(() => UiText.T("Contracts"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Contracts); }));
-            rows.Add(MenuRow.Button(() => UiText.T("Production"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Production); }));
-            rows.Add(MenuRow.Button(() => UiText.T("Finances"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Finances); }));
-            // farm life (FarmLife/*.cs): journal (level, stand orders, friends, festivals) and photo mode
-            rows.Add(MenuRow.Button(() => UiText.T("Farm life journal"), () => { Close(); if (FarmLifeScreen.Instance != null) FarmLifeScreen.Instance.Show(FarmLifeScreen.Tab.Overview); }));
-            rows.Add(MenuRow.Button(() => UiText.T("Photo mode"), () => { Close(); if (PhotoMode.Instance != null) PhotoMode.Instance.Enter(); }));
-            if (CampaignManager.Instance != null && CampaignManager.Instance.Chapters.Length > 0)
-                rows.Add(MenuRow.Button(() => UiText.T("Campaign"), () => Go(PageId.Campaign)));
-            rows.Add(MenuRow.Button(() => UiText.T("Save game"), () => Go(PageId.Save)));
-            rows.Add(MenuRow.Button(() => UiText.T("Load game"), () => Go(PageId.Load)));
-        }
+        if (mode == Mode.Main) return MainRows();   // front end: Continue, Career, Multiplayer, Achievements, Settings, Credits, Quit
+        var rows = new List<MenuRow>();   // pause menu
+        rows.Add(MenuRow.Button(() => UiText.T("Resume"), Close));
+        rows.Add(MenuRow.Button(() => UiText.T("Map"), () => { Close(); if (Minimap.Instance != null) Minimap.Instance.SetFull(true); }));
+        rows.Add(MenuRow.Button(() => UiText.T("Farm overview"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Stats); }));
+        rows.Add(MenuRow.Button(() => UiText.T("Inventory"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Inventory); }));
+        rows.Add(MenuRow.Button(() => UiText.T("Fields (precision farming)"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Fields); }));
+        rows.Add(MenuRow.Button(() => UiText.T("Market prices"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Prices); }));
+        rows.Add(MenuRow.Button(() => UiText.T("Contracts"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Contracts); }));
+        rows.Add(MenuRow.Button(() => UiText.T("Production"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Production); }));
+        rows.Add(MenuRow.Button(() => UiText.T("Finances"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Finances); }));
+        // farm life (FarmLife/*.cs): journal (level, stand orders, friends, festivals) and photo mode
+        rows.Add(MenuRow.Button(() => UiText.T("Farm life journal"), () => { Close(); if (FarmLifeScreen.Instance != null) FarmLifeScreen.Instance.Show(FarmLifeScreen.Tab.Overview); }));
+        rows.Add(MenuRow.Button(() => UiText.T("Photo mode"), () => { Close(); if (PhotoMode.Instance != null) PhotoMode.Instance.Enter(); }));
+        if (CampaignManager.Instance != null && CampaignManager.Instance.Chapters.Length > 0)
+            rows.Add(MenuRow.Button(() => UiText.T("Campaign"), () => Go(PageId.Campaign)));
+        rows.Add(MenuRow.Button(() => UiText.T("Save game"), () => Go(PageId.Save)));
+        rows.Add(MenuRow.Button(() => UiText.T("Load game"), () => Go(PageId.Load)));
         rows.Add(MenuRow.Button(() => UiText.T("Controls tutorial"), StartControls));
         rows.Add(MenuRow.Button(() => UiText.T("Tutorial"), StartTutorial));
         rows.Add(MenuRow.Button(() => UiText.T("Settings"), () => Go(PageId.Settings)));
         rows.Add(MenuRow.Button(() => UiText.T("Achievements"), () => Go(PageId.Achievements)));
-        if (mode == Mode.Main) rows.Add(MenuRow.Button(() => UiText.T("Credits"), () => Go(PageId.Credits)));
-        if (mode == Mode.Pause)
-        {
-            rows.Add(MenuRow.Button(() => UiText.T("New game"), () => Go(PageId.ConfirmNew)));
-            rows.Add(MenuRow.Button(() => UiText.T("Main menu"), () => { mode = Mode.Main; ApplyLayout(); history.Clear(); ShowPage(PageId.Root); }));
-        }
+        rows.Add(MenuRow.Button(() => UiText.T("New game"), () => { pending = new NewFarm(); Go(PageId.ConfirmNew); }));
+        // Main menu: the front end (main menu column, Career, Multiplayer) over the cinematic farm
+        rows.Add(MenuRow.Button(() => UiText.T("Main menu"), () => { mode = Mode.Main; ApplyLayout(); history.Clear(); ShowPage(PageId.Root); }));
         rows.Add(MenuRow.Button(() => UiText.T("Quit"), Quit));
         return rows;
     }
@@ -253,7 +253,7 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
             {
                 label = () => Loc.Display(Regions.Name(region) + " - " + Regions.Country(region)) + "\n<size=70%><color=#FFFFFFAA>" + Loc.Display(Regions.Desc(region)) + "</color></size>",
                 value = () => region.comingSoon ? UiText.T("Coming soon") : region.dlc && !Dlc.Owns(region.id) ? UiText.T("DLC - not owned") : region.dlc ? UiText.T("DLC") : "",
-                confirm = () => { if (!Regions.IsPlayable(region)) return; pendingRegion = region.id; Go(PageId.Start); },
+                confirm = () => { if (!Regions.IsPlayable(region)) return; pending.region = region.id; pending.nameIndex = GameModes.DefaultFarmName(region.id); Go(NextAfterMap()); },
                 enabled = () => Regions.IsPlayable(region),
             });
         }
@@ -271,7 +271,7 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
             {
                 label = () => UiText.T(Career.StartName(start)) + "\n<size=70%><color=#FFFFFFAA>" + UiText.T(Career.StartDesc(start)) + "</color></size>",
                 value = () => Career.StartMoney(start).ToString("N0") + " " + UiText.T("SAR"),
-                confirm = () => { pendingStart = start; Go(PageId.Economy); },
+                confirm = () => { pending.start = start; Go(PageId.Economy); },
             });
         }
         rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
@@ -288,20 +288,40 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
             {
                 label = () => UiText.T(Career.EconomyName(econ)),
                 value = () => UiText.T(Career.EconomyDesc(econ)),
-                confirm = () => StartCareer(pendingRegion, pendingStart, econ),
+                confirm = () => { pending.economy = econ; if (pending.slot > 0) Go(PageId.FarmName); else StartCareer(pending.region, pending.start, econ); },
             });
         }
         rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
         return rows;
     }
 
-    /// <summary>Start a new farm with the chosen map, start and economy (also used by tests).</summary>
+    /// <summary>Start a new campaign farm with the chosen map, start and economy (pause menu New game; also used by tests).</summary>
     public void StartCareer(string region, Career.Start start, Career.Economy economy)
     {
-        if (!Regions.IsPlayable(Regions.Find(region))) region = Regions.DefaultId;   // locked / coming-soon map: the base map
+        StartCareer(new NewFarm { region = region, start = start, economy = economy, mode = GameModes.Mode.Campaign, nameIndex = GameModes.DefaultFarmName(region) });
+    }
+
+    /// <summary>Start a new farm from the wizard: play mode, map, start / money / challenge, economy, name, save slot.</summary>
+    public void StartCareer(NewFarm f)
+    {
+        if (f == null) return;
+        string region = Regions.IsPlayable(Regions.Find(f.region)) ? f.region : Regions.DefaultId;   // locked / coming-soon map: the base map
+        var start = f.start; var economy = f.economy;
+        if (f.mode == GameModes.Mode.Challenge)
+        {
+            var c = GameModes.FindChallenge(f.challenge) ?? GameModes.Challenges[0];
+            start = c.start; economy = c.economy;
+        }
+        // Starting a farm in another Career slot: keep the running farm's progress in its own slot first.
+        if (f.slot > 0 && SaveSlots.ActiveSlot > 0 && SaveSlots.ActiveSlot != f.slot && SaveSlots.HasSlot(SaveSlots.ActiveSlot)) SaveSlots.Save(SaveSlots.ActiveSlot);
         if (GameHUD.Instance != null) GameHUD.Instance.StartNewGame();
+        GameModes.Begin(f.mode, f.challenge, f.freeMoney);   // before the map: missions and story rebuild for the mode
+        var name = GameModes.FarmNamePair(f.nameIndex);
+        GameModes.SetFarmName(name[0], name[1]);
         Regions.Select(region);   // raises RegionChanged: crops, story, events, quests, market and look switch to this map
         Career.Apply(start, economy);
+        GameModes.AfterCareer(f.freeMoney);
+        if (f.slot >= 1 && f.slot <= SaveSlots.Count) SaveSlots.Save(f.slot);   // the farm takes its Career slot (autosaves go there)
         Close();
         LoadingScreen.Show();
     }
@@ -410,7 +430,7 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
         list.Refresh();
     }
 
-    private void LoadSlot(int slot)
+    internal void LoadSlot(int slot)
     {
         if (!SaveSlots.HasSlot(slot)) return;
         Close();

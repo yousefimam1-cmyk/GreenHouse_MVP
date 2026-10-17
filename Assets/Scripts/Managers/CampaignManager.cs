@@ -64,6 +64,7 @@ public class CampaignManager : MonoBehaviour
     public void SelectForRegion()
     {
         file = baseFile;
+        if (!GameModes.HasStory) { Chapters = new CampaignChapter[0]; return; }   // free play / challenge: no story chapters
         string id = Regions.CurrentId;
         foreach (var c in regionFiles) if (c.region == id) { file = c; break; }
         Chapters = file != null && file.chapters != null ? file.chapters : new CampaignChapter[0];
@@ -75,7 +76,7 @@ public class CampaignManager : MonoBehaviour
 
     private void OnRegion(string regionId) { SelectForRegion(); SaveData.SetInt(SeenKey, 0); SaveData.SetInt(PaidKey, 0); Hide(); }
 
-    private void OnNewGame() { SaveData.SetInt(SeenKey, 0); SaveData.SetInt(PaidKey, 0); Hide(); }
+    private void OnNewGame() { SelectForRegion(); SaveData.SetInt(SeenKey, 0); SaveData.SetInt(PaidKey, 0); Hide(); }
 
     // ------------------------------------------------------------------ chapter maths
 

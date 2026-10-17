@@ -40,13 +40,19 @@ public partial class GameMenu
                   () => UiText.T("[<- ->] Change   LB / RB Page   [Esc] Back"), sel);
     }
 
+    /// <summary>LB / Page Up = -1, RB / Page Down = +1, else 0 (settings tabs, the Join page's +-10).</summary>
+    private static int PageInput()
+    {
+        var kb = Keyboard.current;
+        return MenuNav.PageNext() || (kb != null && kb.pageDownKey != null && kb.pageDownKey.wasPressedThisFrame) ? 1
+             : MenuNav.PagePrev() || (kb != null && kb.pageUpKey != null && kb.pageUpKey.wasPressedThisFrame) ? -1 : 0;
+    }
+
     /// <summary>LB / RB (Page Up / Page Down) turn the settings pages. Returns true when handled.</summary>
     private bool SettingsTabInput()
     {
         if (page != PageId.SettingsPage) return false;
-        var kb = Keyboard.current;
-        int d = MenuNav.PageNext() || (kb != null && kb.pageDownKey != null && kb.pageDownKey.wasPressedThisFrame) ? 1
-              : MenuNav.PagePrev() || (kb != null && kb.pageUpKey != null && kb.pageUpKey.wasPressedThisFrame) ? -1 : 0;
+        int d = PageInput();
         if (d == 0) return false;
         int n = SettingsTabNames.Length;
         settingsTab = (SettingsTab)(((int)settingsTab + d + n) % n);

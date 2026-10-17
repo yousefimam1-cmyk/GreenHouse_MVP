@@ -10,11 +10,11 @@ using UnityEngine;
 public static class Ledger
 {
     public const string Sales = "sales", Contracts = "contracts", Production = "production", Loans = "loans", Rewards = "rewards",
-        Purchases = "purchases", Wages = "wages", Interest = "interest", Utilities = "utilities", Fuel = "fuel", Repairs = "repairs", Other = "other";
+        Purchases = "purchases", Wages = "wages", Interest = "interest", Utilities = "utilities", Fuel = "fuel", Repairs = "repairs", Fines = "fines", Other = "other";
     /// <summary>Scope that books nothing (starting capital of a new career).</summary>
     public const string Skip = "-";
-    public static readonly string[] Categories = { Sales, Contracts, Production, Purchases, Wages, Interest, Loans, Utilities, Fuel, Repairs, Rewards, Other };
-    public static readonly string[] Names = { "Sales", "Contracts", "Production", "Purchases", "Wages", "Loan interest", "Loans", "Utilities", "Fuel", "Repairs", "Rewards", "Other" };
+    public static readonly string[] Categories = { Sales, Contracts, Production, Purchases, Wages, Interest, Loans, Utilities, Fuel, Repairs, Fines, Rewards, Other };
+    public static readonly string[] Names = { "Sales", "Contracts", "Production", "Purchases", "Wages", "Loan interest", "Loans", "Utilities", "Fuel", "Repairs", "Fines", "Rewards", "Other" };
 
     private static string scope;
 
