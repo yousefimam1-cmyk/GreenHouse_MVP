@@ -80,16 +80,7 @@ public static class GroundLook
         var mats = LayersOf(biome);
         var ls = new TerrainLayer[mats.Length];
         for (int i = 0; i < mats.Length; i++) { ls[i] = Layer(mats[i]); if (ls[i] == null) return false; }
-        var data = t.terrainData;
-        if (Application.isEditor && !cloned.Contains(data))
-        {
-            data = Object.Instantiate(data);
-            data.name = t.terrainData.name + " (look)";
-            cloned.Add(data);
-            t.terrainData = data;
-            var col = t.GetComponent<TerrainCollider>();
-            if (col != null) col.terrainData = data;
-        }
+        var data = RuntimeData(t);
         data.terrainLayers = ls;
         Paint(data, t.transform.position, biome);
         var tm = Resources.Load<Material>(TerrainMaterial);
@@ -98,6 +89,27 @@ public static class GroundLook
         TerrainsDressed++;
         LastBiome = biome;
         return true;
+    }
+
+    /// <summary>
+    /// The terrain's data, safe to change at runtime: in the editor it is cloned once (and the collider pointed at the
+    /// clone) so Play mode never writes into the TerrainData asset; in a build the loaded data is already a copy.
+    /// Shared by the look (splat maps) and the open world (rim heights, World/WorldRim).
+    /// </summary>
+    public static TerrainData RuntimeData(Terrain t)
+    {
+        if (t == null || t.terrainData == null) return null;
+        var data = t.terrainData;
+        if (Application.isEditor && !cloned.Contains(data))
+        {
+            data = Object.Instantiate(data);
+            data.name = t.terrainData.name + " (runtime)";
+            cloned.Add(data);
+            t.terrainData = data;
+            var col = t.GetComponent<TerrainCollider>();
+            if (col != null) col.terrainData = data;
+        }
+        return data;
     }
 
     /// <summary>Paint the splat map: rock on slopes, noise patches of the second layer, the main ground elsewhere.</summary>

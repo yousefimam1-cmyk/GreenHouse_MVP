@@ -122,6 +122,7 @@ namespace UnityEngine
         public static T Instantiate<T>(T original) where T : Object
         {
             if (original is ScriptableObject) return (T)typeof(object).GetMethod("MemberwiseClone", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(original, null);
+            if (original is TerrainData td) return td.Copy() as T;   // like Unity: a new TerrainData with the same heights
             return original;
         }
         public static T Instantiate<T>(T original, Transform parent, bool worldStays) where T : Object
@@ -569,9 +570,10 @@ namespace UnityEngine
     }
     public class MeshRenderer : Renderer { }
     public class SkinnedMeshRenderer : Renderer { }
-    public class Collider : Component { public bool enabled = true, isTrigger; public PhysicsMaterial material; public Bounds bounds => new Bounds(transform.position, Vector3.Scale(transform.lossyScale, this is BoxCollider b ? b.size : Vector3.one)); }
+    public class Collider : Component { public bool enabled = true, isTrigger; public PhysicsMaterial material; public Bounds bounds => this is BoxCollider b ? FakePhysics.WorldBounds(b) : new Bounds(transform.position, transform.lossyScale); }
     public class BoxCollider : Collider { public Vector3 center, size; }
-    public class CharacterController : Collider { }
+    // Unity defaults (CharacterController component): height 2, radius 0.5, step offset 0.3, slope limit 45, skin width 0.08.
+    public class CharacterController : Collider { public float height = 2f, radius = 0.5f, stepOffset = 0.3f, slopeLimit = 45f, skinWidth = 0.08f; public Vector3 center; }
     public class PhysicsMaterial : Object { public PhysicsMaterial(string n) { name = n; } public float dynamicFriction, staticFriction; public PhysicsMaterialCombine frictionCombine; }
     public enum PhysicsMaterialCombine { Average, Minimum }
     public enum RigidbodyInterpolation { None, Interpolate }
@@ -591,6 +593,14 @@ namespace UnityEngine
     /// <summary>Box-only physics queries (oriented boxes, separating axis test) for the sweep tests.</summary>
     public static class FakePhysics
     {
+        /// <summary>World AABB of a box collider (its centre and size through the transform, like Collider.bounds).</summary>
+        public static Bounds WorldBounds(BoxCollider b)
+        {
+            var o = Of(b, Vector3.zero);
+            Vector3 ext = Vector3.zero;
+            for (int i = 0; i < 3; i++) ext += new Vector3(Math.Abs(o.ax[i].x), Math.Abs(o.ax[i].y), Math.Abs(o.ax[i].z)) * o.e[i];
+            return new Bounds(o.c, ext * 2f);
+        }
         public struct Box { public Vector3 c; public Vector3[] ax; public float[] e; public BoxCollider col; }
         public static Box Of(BoxCollider b, Vector3 offset)
         {
@@ -652,6 +662,19 @@ namespace UnityEngine
             h.point = o + d * t; h.normal = Vector3.up; h.distance = t; return true;
         }
         public static bool Raycast(Ray r, out RaycastHit h, float dist, int mask) { h = default; return false; }
+        /// <summary>Like Unity: true if any enabled, non-trigger collider of the mask overlaps the capsule (box colliders only here).</summary>
+        public static bool CheckCapsule(Vector3 start, Vector3 end, float radius, int layerMask, QueryTriggerInteraction q)
+        {
+            Vector3 c = (start + end) * 0.5f, d = end - start; float len = d.magnitude;
+            var cap = new FakePhysics.Box { c = c, ax = new[] { Vector3.right, Vector3.up, Vector3.forward }, e = new[] { radius, len * 0.5f + radius, radius } };
+            foreach (var g in FakeEngine.Objects)
+            {
+                if (g.destroyed || !g.activeInHierarchy || (layerMask & (1 << g.layer)) == 0) continue;
+                foreach (var col in g.components.OfType<BoxCollider>())
+                    if (!col.destroyed && col.enabled && !col.isTrigger && FakePhysics.Overlap(cap, FakePhysics.Of(col, Vector3.zero))) return true;
+            }
+            return false;
+        }
         public static void IgnoreCollision(Collider a, Collider b, bool i) { }
     }
     // Terrain: only members that exist in Unity 6 with the same signatures (UnityEngine.TerrainModule).
@@ -684,6 +707,7 @@ namespace UnityEngine
         public void SetHeights(int xBase, int yBase, float[,] h) { for (int y = 0; y < h.GetLength(0); y++) for (int x = 0; x < h.GetLength(1); x++) heights[yBase + y, xBase + x] = h[y, x]; }
         public float[,] GetHeights(int xBase, int yBase, int w, int hgt) { var o = new float[hgt, w]; for (int y = 0; y < hgt; y++) for (int x = 0; x < w; x++) o[y, x] = heights[yBase + y, xBase + x]; return o; }
         public float GetInterpolatedHeight(float x, float y) => Sample(x, y);
+        internal TerrainData Copy() { var c = (TerrainData)MemberwiseClone(); c.heights = (float[,])heights.Clone(); if (c.alphamaps != null) c.alphamaps = (float[,,])c.alphamaps.Clone(); return c; }   // like Unity's Instantiate: every setting copied
         internal float Sample(float u, float v)
         {
             u = Mathf.Clamp01(u) * (res - 1); v = Mathf.Clamp01(v) * (res - 1);
