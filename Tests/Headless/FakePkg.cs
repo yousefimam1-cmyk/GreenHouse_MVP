@@ -5,7 +5,7 @@ namespace UnityEngine.UI
     public class Graphic : UnityEngine.EventSystems.UIBehaviour { public Color color; public bool raycastTarget; public RectTransform rectTransform => (RectTransform)transform; }
     public class Image : Graphic { public UnityEngine.Sprite sprite; public enum Type { Simple, Sliced, Tiled, Filled } public Type type; public bool fillCenter = true, preserveAspect; }
     public class Button : UnityEngine.EventSystems.UIBehaviour { public bool interactable; public UnityEngine.Events.UnityEvent onClick = new UnityEngine.Events.UnityEvent(); }
-    public class LayoutElement : UnityEngine.EventSystems.UIBehaviour { public float minHeight; public bool ignoreLayout; }
+    public class LayoutElement : UnityEngine.EventSystems.UIBehaviour { public float minHeight, preferredHeight = -1f, preferredWidth = -1f, flexibleWidth = -1f; public bool ignoreLayout; }
     public class GraphicRaycaster : UnityEngine.EventSystems.UIBehaviour { }
     public class CanvasScaler : UnityEngine.EventSystems.UIBehaviour { public enum ScaleMode { ScaleWithScreenSize } public ScaleMode uiScaleMode; public Vector2 referenceResolution; public float matchWidthOrHeight; }
     public class VerticalLayoutGroup : UnityEngine.EventSystems.UIBehaviour { public RectOffset padding; public float spacing; public bool childControlWidth, childControlHeight, childForceExpandWidth, childForceExpandHeight; }

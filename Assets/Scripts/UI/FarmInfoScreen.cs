@@ -9,15 +9,18 @@ using UnityEngine.UI;
 /// yield history). LB / RB or 1-3 switch pages; on the Fields page Left / Right sets the sowing density and Up / Down scrolls
 /// the fields. Prices / Contracts / Production / Finances = the economy pages (EconomyPages: market prices per good and
 /// selling point, contracts board, production lines, farm accounts); LB / RB or 1-7 switch pages, Up / Down picks a row,
-/// Left / Right changes its value and A / Enter acts. Esc / B or the same key closes. Also tracks "money earned" (every increase of the
+/// Left / Right changes its value and A / Enter acts. Esc / B or the same key closes.
+/// Farming-Simulator parity (MenuPages): one tabbed farm menu - also Map (fields), Calendar, Weather forecast, Vehicles
+/// (enter / locate / dealer paint and wheels / sell implements), Animals and Help; LB / RB or Q / E switch tabs like FS,
+/// 1-9 / 0 jump to the first ten tabs. Also tracks "money earned" (every increase of the
 /// balance), saved as "mazraa.ui.moneyEarned" in the save file, so a New Game resets it.
 /// </summary>
 [MazraaSystem(55)]
 public class FarmInfoScreen : MonoBehaviour
 {
     public const string EarnedKey = "mazraa.ui.moneyEarned";
-    public enum Page { None, Inventory, Stats, Fields, Prices, Contracts, Production, Finances }
-    public const int PageCount = 7;
+    public enum Page { None, Inventory, Stats, Fields, Prices, Contracts, Production, Finances, Map, Calendar, Weather, Vehicles, Animals, Help }
+    public const int PageCount = 13;
     public const int FieldsPerPage = 4;
 
     public static FarmInfoScreen Instance { get; private set; }
@@ -88,8 +91,8 @@ public class FarmInfoScreen : MonoBehaviour
             Page key = GameInput.Pressed(GameAction.Inventory) ? Page.Inventory : GameInput.Pressed(GameAction.Stats) ? Page.Stats : Page.None;
             int digit = MenuNav.Digit();
             if (digit >= 0 && digit < PageCount) key = (Page)(digit + 1);
-            else if (MenuNav.PageNext()) key = (Page)((int)Open % PageCount + 1);
-            else if (MenuNav.PagePrev()) key = (Page)(((int)Open + PageCount - 2) % PageCount + 1);
+            else if (MenuNav.PageNext() || KeyTab(1)) key = (Page)((int)Open % PageCount + 1);
+            else if (MenuNav.PagePrev() || KeyTab(-1)) key = (Page)(((int)Open + PageCount - 2) % PageCount + 1);
             if (MenuNav.Back() || (key == Open && digit < 0 && (key == Page.Inventory || key == Page.Stats))) Close();
             else if (key != Page.None && key != Open) Show(key);
             else if (Open == Page.Fields) FieldsInput();
@@ -100,6 +103,15 @@ public class FarmInfoScreen : MonoBehaviour
         if (blocked) return;
         if (GameInput.Pressed(GameAction.Inventory)) Show(Page.Inventory);
         else if (GameInput.Pressed(GameAction.Stats)) Show(Page.Stats);
+    }
+
+    /// <summary>Q / E (keyboard) switch tabs like Farming Simulator's menu.</summary>
+    private static bool KeyTab(int dir)
+    {
+        var kb = UnityEngine.InputSystem.Keyboard.current;
+        if (kb == null) return false;
+        var k = dir > 0 ? kb.eKey : kb.qKey;
+        return k != null && k.wasPressedThisFrame;
     }
 
     private void FieldsInput()
@@ -143,9 +155,10 @@ public class FarmInfoScreen : MonoBehaviour
     private void EconomyInput()
     {
         int v = MenuNav.Vertical(), h = MenuNav.Horizontal();
-        if (v != 0) MoveRow(v);
-        if (h != 0) { int a = EconAction; if (EconomyPages.Adjust(Open, Row, ref a, h)) { EconAction = a; Refresh(); } }
-        if (MenuNav.Confirm()) { EconomyPages.Confirm(Open, Row, EconAction); Refresh(); }
+        bool parity = MenuPages.Handles(Open);
+        if (v != 0) { MoveRow(v); if (parity && Open == Page.Vehicles) { EconAction = 0; Refresh(); } }
+        if (h != 0) { int a = EconAction; if (parity ? MenuPages.Adjust(Open, Row, ref a, h) : EconomyPages.Adjust(Open, Row, ref a, h)) { EconAction = a; Refresh(); } }
+        if (MenuNav.Confirm()) { if (parity) MenuPages.Confirm(Open, Row, EconAction); else EconomyPages.Confirm(Open, Row, EconAction); Refresh(); }
         refreshTimer -= Time.unscaledDeltaTime;
         if (refreshTimer <= 0f) { refreshTimer = 1f; Refresh(); }
     }
@@ -153,10 +166,12 @@ public class FarmInfoScreen : MonoBehaviour
     /// <summary>Move the selected row of an economy page.</summary>
     public void MoveRow(int dir)
     {
-        int n = EconomyPages.RowCount(Open);
+        int n = RowCountOf(Open);
         econRow[(int)Open] = Mathf.Clamp(Row + dir, 0, Mathf.Max(0, n - 1));
         Refresh();
     }
+
+    private static int RowCountOf(Page p) => MenuPages.Handles(p) ? MenuPages.RowCount(p) : EconomyPages.RowCount(p);
 
     public void Show(Page page)
     {
@@ -184,7 +199,7 @@ public class FarmInfoScreen : MonoBehaviour
         if (text == null || Open == Page.None) return;
         Loc.ApplyFont(text);
         text.alignment = Loc.IsArabic ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
-        econRow[(int)Open] = Mathf.Clamp(Row, 0, Mathf.Max(0, EconomyPages.RowCount(Open) - 1));
+        econRow[(int)Open] = Mathf.Clamp(Row, 0, Mathf.Max(0, RowCountOf(Open) - 1));
         string body;
         switch (Open)
         {
@@ -194,14 +209,32 @@ public class FarmInfoScreen : MonoBehaviour
             case Page.Prices: body = "<size=72%>" + EconomyPages.PricesText(Row) + "</size>"; break;
             case Page.Contracts: body = "<size=72%>" + EconomyPages.ContractsText(Row) + "</size>"; break;
             case Page.Production: body = "<size=72%>" + EconomyPages.ProductionText(Row, EconAction) + "</size>"; break;
+            case Page.Map: case Page.Calendar: case Page.Weather: case Page.Vehicles: case Page.Animals: case Page.Help:
+                body = "<size=72%>" + MenuPages.Text(Open, Row, EconAction) + "</size>"; break;
             default: body = "<size=80%>" + EconomyPages.FinancesText() + "</size>"; break;
         }
         string hint = Open == Page.Inventory ? "[I] or [Esc] close   [O] Farm stats" : Open == Page.Stats ? "[O] or [Esc] close   [I] Inventory"
             : Open == Page.Fields ? "Left / Right: sowing density   Up / Down: choose field   [Enter] irrigation   [Esc] close"
             : Open == Page.Prices ? "Up / Down: goods   Left / Right: where to sell   [Esc] close"
             : Open == Page.Contracts ? "Up / Down: contracts   [Enter] accept   [Esc] close"
-            : Open == Page.Production ? "Up / Down: buildings   Left / Right: action   [Enter] do it   [Esc] close" : "[Esc] close";
-        text.text = body + "\n\n<size=80%><color=#BBBBBB>" + Glyphs.Apply(UiText.T(hint)) + "\n" + Glyphs.Apply(UiText.T("[LB] [RB] or 1-7: Inventory / Stats / Fields / Prices / Contracts / Production / Finances")) + "</color></size>";
+            : Open == Page.Production ? "Up / Down: buildings   Left / Right: action   [Enter] do it   [Esc] close"
+            : MenuPages.Handles(Open) ? MenuPages.Hint(Open) : "[Esc] close";
+        text.text = TabStrip() + "\n" + body + "\n\n<size=80%><color=#BBBBBB>" + Glyphs.Apply(UiText.T(hint)) + "\n" + Glyphs.Apply(UiText.T("[LB] [RB] or Q / E: switch tabs   1-9, 0: jump to a tab")) + "</color></size>";
+    }
+
+    private static readonly string[] TabNames = { "Inventory", "Stats", "Fields", "Prices", "Contracts", "Production", "Finances", "Map", "Calendar", "Weather", "Vehicles", "Animals", "Help" };
+
+    /// <summary>Tab strip across the top (FS-style): the open tab highlighted.</summary>
+    public string TabStrip()
+    {
+        var sb = new StringBuilder("<size=60%>");
+        for (int i = 0; i < TabNames.Length; i++)
+        {
+            if (i > 0) sb.Append("  ");
+            string n = UiText.T(TabNames[i]);
+            sb.Append((int)Open == i + 1 ? "<color=#FF9A3C><b>" + n + "</b></color>" : "<color=#9A968C>" + n + "</color>");
+        }
+        return sb.Append("</size>").ToString();
     }
 
     private static string Line(string s) => "\n" + Loc.Display(s);
@@ -268,6 +301,8 @@ public class FarmInfoScreen : MonoBehaviour
         if (eco != null) sb.Append(Line(UiText.Raw("Money now") + ": " + eco.Money.ToString("N0") + " " + Loc.Raw("SAR")));
         if (gm != null) sb.Append(Line(UiText.Raw("Harvested") + ": " + gm.TotalHarvestKg.ToString("F0") + " kg (" + gm.HarvestCount + ")"));
         if (clock != null) sb.Append(Line(UiText.Raw("Days played") + ": " + clock.Day));
+        var sw = VehicleSwitcher.Instance;
+        if (sw != null) sb.Append(Line(UiText.Raw("Distance driven") + ": " + (sw.TotalDistance / 1000f).ToString("0.0") + " " + Loc.Raw("km")));
         if (mm != null) sb.Append(Line(UiText.Raw("Missions done") + ": " + Mathf.Min(mm.Index, mm.Missions.Length) + " / " + mm.Missions.Length));
         if (eco != null)
         {

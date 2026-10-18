@@ -41,6 +41,53 @@ public class WorldClock : MonoBehaviour
         Day = Mathf.Max(1, SaveData.GetInt("mazraa.day", 1));
         DayProgress = SaveData.GetFloat("mazraa.dayProgress", 0.25f);
         Weather = (Weather)SaveData.GetInt("mazraa.weather", 0);
+        LoadForecast();
+    }
+
+    // ---------------------------------------------------------------- forecast (FS parity: weather tab of the farm menu)
+    public const int ForecastDays = 5;
+    private readonly System.Collections.Generic.List<Weather> forecast = new System.Collections.Generic.List<Weather>();
+
+    /// <summary>Weather of the next days (index 0 = tomorrow). Pre-rolled, so the forecast is what will happen; saved.</summary>
+    public System.Collections.Generic.IReadOnlyList<Weather> Forecast { get { FillForecast(); return forecast; } }
+
+    /// <summary>Season of a future day.</summary>
+    public Season SeasonOf(int day) => (Season)(((Mathf.Max(1, day) - 1) / Mathf.Max(1, daysPerSeason)) % 4);
+
+    /// <summary>Day / night temperature (C) for a season and weather on this map (Najd: hot summers; milder regions cooler).</summary>
+    public static Vector2 Temperature(Season s, Weather w)
+    {
+        float hi = s == Season.Summer ? 43f : s == Season.Spring ? 32f : s == Season.Autumn ? 33f : 21f;
+        float lo = s == Season.Summer ? 28f : s == Season.Spring ? 18f : s == Season.Autumn ? 19f : 7f;
+        if (w == Weather.Heatwave) { hi += 5f; lo += 3f; }
+        else if (w == Weather.Rain) { hi -= 6f; lo -= 2f; }
+        else if (w == Weather.Cloudy) { hi -= 3f; }
+        var region = Regions.Current;
+        if (region != null && region.heat < 1f) { hi -= (1f - region.heat) * 8f; lo -= (1f - region.heat) * 4f; }
+        return new Vector2(Mathf.Round(hi), Mathf.Round(lo));
+    }
+
+    private void FillForecast()
+    {
+        while (forecast.Count < ForecastDays) forecast.Add(RollFor(SeasonOf(Day + forecast.Count + 1)));
+    }
+
+    private void LoadForecast()
+    {
+        forecast.Clear();
+        string s = SaveData.GetString("mazraa.forecast", "");
+        foreach (var part in s.Split(','))
+        {
+            int w;
+            if (int.TryParse(part, out w) && w >= 0 && w <= 3 && forecast.Count < ForecastDays) forecast.Add((Weather)w);
+        }
+    }
+
+    private string ForecastText()
+    {
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < forecast.Count; i++) { if (i > 0) sb.Append(','); sb.Append((int)forecast[i]); }
+        return sb.ToString();
     }
 
     private void Start()
@@ -83,23 +130,33 @@ public class WorldClock : MonoBehaviour
 
     private void RollWeather()
     {
+        FillForecast();
+        Weather = forecast[0];
+        forecast.RemoveAt(0);
+        FillForecast();
+        ApplyWeatherVisuals();
+        WeatherChanged?.Invoke(Weather);
+    }
+
+    private static Weather RollFor(Season season)
+    {
+        Weather weather;
         float r = Random.value;
-        switch (Season)
+        switch (season)
         {
-            case Season.Winter: Weather = r < 0.15f ? Weather.Rain : r < 0.35f ? Weather.Cloudy : Weather.Sunny; break;
-            case Season.Spring: Weather = r < 0.10f ? Weather.Rain : r < 0.25f ? Weather.Heatwave : r < 0.40f ? Weather.Cloudy : Weather.Sunny; break;
-            case Season.Summer: Weather = r < 0.55f ? Weather.Heatwave : r < 0.62f ? Weather.Cloudy : Weather.Sunny; break;
-            default: Weather = r < 0.05f ? Weather.Rain : r < 0.25f ? Weather.Heatwave : r < 0.40f ? Weather.Cloudy : Weather.Sunny; break;
+            case Season.Winter: weather = r < 0.15f ? Weather.Rain : r < 0.35f ? Weather.Cloudy : Weather.Sunny; break;
+            case Season.Spring: weather = r < 0.10f ? Weather.Rain : r < 0.25f ? Weather.Heatwave : r < 0.40f ? Weather.Cloudy : Weather.Sunny; break;
+            case Season.Summer: weather = r < 0.55f ? Weather.Heatwave : r < 0.62f ? Weather.Cloudy : Weather.Sunny; break;
+            default: weather = r < 0.05f ? Weather.Rain : r < 0.25f ? Weather.Heatwave : r < 0.40f ? Weather.Cloudy : Weather.Sunny; break;
         }
         // Region climate (Regions): fewer heatwaves in milder regions, a little extra rain in wetter ones.
         var region = Regions.Current;
         if (region != null)
         {
-            if (Weather == Weather.Heatwave && region.heat < 1f && Random.value > region.heat) Weather = Weather.Sunny;
-            else if (Weather != Weather.Rain && region.rain > 0f && Random.value < region.rain) Weather = Weather.Rain;
+            if (weather == Weather.Heatwave && region.heat < 1f && Random.value > region.heat) weather = Weather.Sunny;
+            else if (weather != Weather.Rain && region.rain > 0f && Random.value < region.rain) weather = Weather.Rain;
         }
-        ApplyWeatherVisuals();
-        WeatherChanged?.Invoke(Weather);
+        return weather;
     }
 
     private void BuildRain()
@@ -138,6 +195,7 @@ public class WorldClock : MonoBehaviour
         SaveData.SetInt("mazraa.day", Day);
         SaveData.SetFloat("mazraa.dayProgress", DayProgress);
         SaveData.SetInt("mazraa.weather", (int)Weather);
+        SaveData.SetString("mazraa.forecast", ForecastText());
         SaveData.Save();
     }
 
@@ -156,6 +214,7 @@ public class WorldClock : MonoBehaviour
     public void ResetCalendar()
     {
         Day = 1; DayProgress = 0.25f; Weather = Weather.Sunny;
+        forecast.Clear();
         ApplyWeatherVisuals();
         SaveState();
     }
