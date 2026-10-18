@@ -13,7 +13,8 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
 {
     public enum Mode { Closed, Main, Pause }
     private enum PageId { Root, Save, Load, Settings, Controls, ConfirmNew, Campaign, Map, Start, Economy, Credits, Achievements, SettingsPage,
-                          Title, Career, SlotActions, ConfirmDelete, GameModePick, FreeMoney, ChallengePick, FarmName, Multiplayer, MpJoin, MpSettings }
+                          Title, Career, SlotActions, ConfirmDelete, GameModePick, FreeMoney, ChallengePick, FarmName, Multiplayer, MpJoin, MpSettings,
+                          MpHost, MpCode, MpBrowse, MpPlayers, MpPlayer }
 
     /// <summary>Show the main menu when the game starts (headless tests turn this off).</summary>
     public static bool ShowOnStart = true;
@@ -132,6 +133,8 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
         if (page == PageId.Title) { if (TitleInput()) ShowPage(PageId.Root); return; }   // "Press any key / A to start"
         if (mode == Mode.Pause && page == PageId.Root && GameInput.Pressed(GameAction.Pause)) { Close(); return; }
         if (MenuNav.Back()) { Back(); return; }
+        MpWatch();
+        if (mode == Mode.Closed) return;
         if (SettingsTabInput() || IpPageInput()) return;
         list.HandleInput();
     }

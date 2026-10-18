@@ -1,0 +1,224 @@
+{
+ "entries": [
+  {
+   "en": "Please wait...",
+   "ar": "لحظة من فضلك..."
+  },
+  {
+   "en": "Join code",
+   "ar": "رمز الانضمام"
+  },
+  {
+   "en": "Friends choose Multiplayer > Join with a code",
+   "ar": "خويانك يختارون اللعب الجماعي > انضمام برمز"
+  },
+  {
+   "en": "Host an online game",
+   "ar": "استضافة لعبة عبر الإنترنت"
+  },
+  {
+   "en": "Join with a code",
+   "ar": "انضمام برمز"
+  },
+  {
+   "en": "Browse public games",
+   "ar": "تصفح الألعاب العامة"
+  },
+  {
+   "en": "Not in this version",
+   "ar": "غير متوفر في هذه النسخة"
+  },
+  {
+   "en": "Host on local network (LAN)",
+   "ar": "استضافة على الشبكة المحلية (LAN)"
+  },
+  {
+   "en": "Join on local network (LAN)",
+   "ar": "انضمام عبر الشبكة المحلية (LAN)"
+  },
+  {
+   "en": "Players",
+   "ar": "اللاعبون"
+  },
+  {
+   "en": "Continue farming",
+   "ar": "كمّل الزراعة"
+  },
+  {
+   "en": "Up to {0}",
+   "ar": "حتى {0}"
+  },
+  {
+   "en": "Start hosting",
+   "ar": "ابدأ الاستضافة"
+  },
+  {
+   "en": "Character",
+   "ar": "الحرف"
+  },
+  {
+   "en": "Looking for public farms...",
+   "ar": "نبحث عن مزارع عامة..."
+  },
+  {
+   "en": "No public farms right now - host one, or join a friend with a code",
+   "ar": "ما فيه مزارع عامة الحين - استضف وحدة، أو انضم لخويك برمز"
+  },
+  {
+   "en": "Refresh",
+   "ar": "تحديث"
+  },
+  {
+   "en": "Remove from the farm",
+   "ar": "إخراج من المزرعة"
+  },
+  {
+   "en": "Ban for this session",
+   "ar": "حظر لهذه الجلسة"
+  },
+  {
+   "en": "New random name",
+   "ar": "اسم عشوائي جديد"
+  },
+  {
+   "en": "[<- ->] Change   [Enter] Choose   [Esc] Back",
+   "ar": "[<- ->] تغيير   [Enter] اختيار   [Esc] رجوع"
+  },
+  {
+   "en": "Public games",
+   "ar": "الألعاب العامة"
+  },
+  {
+   "en": "Public (listed)",
+   "ar": "عامة (تظهر في القائمة)"
+  },
+  {
+   "en": "Anyone with the code",
+   "ar": "أي أحد معه الرمز"
+  },
+  {
+   "en": "Only share the code with people you know. You can remove or ban players under Players.",
+   "ar": "شارك الرمز مع ناس تعرفهم فقط. تقدر تخرج أو تحظر اللاعبين من قائمة اللاعبين."
+  },
+  {
+   "en": "Online: host your farm and give friends the 6-letter join code, or join with a friend's code. Public farms can be browsed.",
+   "ar": "عبر الإنترنت: استضف مزرعتك وأعط خويانك رمز الانضمام من 6 حروف، أو انضم برمز خويك. وتقدر تتصفح المزارع العامة."
+  },
+  {
+   "en": "Online: Main menu > Multiplayer",
+   "ar": "عبر الإنترنت: القائمة الرئيسية > اللعب الجماعي"
+  },
+  {
+   "en": "Remove",
+   "ar": "إخراج"
+  },
+  {
+   "en": "Ban",
+   "ar": "حظر"
+  },
+  {
+   "en": "Starting your online farm...",
+   "ar": "نجهز مزرعتك على الإنترنت..."
+  },
+  {
+   "en": "Hosting online - friends join with your code",
+   "ar": "تستضيف عبر الإنترنت - خويانك ينضمون برمزك"
+  },
+  {
+   "en": "Hosting online - the farm could not be listed, share your code instead",
+   "ar": "تستضيف عبر الإنترنت - ما قدرنا نعرض المزرعة في القائمة، شارك رمزك بدالها"
+  },
+  {
+   "en": "Your join code: {0}",
+   "ar": "رمز الانضمام حقك: {0}"
+  },
+  {
+   "en": "Finding your friend's farm...",
+   "ar": "ندور مزرعة خويك..."
+  },
+  {
+   "en": "Cancelled",
+   "ar": "تم الإلغاء"
+  },
+  {
+   "en": "{0} was removed from the farm",
+   "ar": "تم إخراج {0} من المزرعة"
+  },
+  {
+   "en": "{0} is banned from this session",
+   "ar": "{0} محظور في هذه الجلسة"
+  },
+  {
+   "en": "The host left the game",
+   "ar": "المضيف طلع من اللعبة"
+  },
+  {
+   "en": "Could not connect to the farm - the host may have left",
+   "ar": "ما قدرنا نتصل بالمزرعة - يمكن المضيف طلع"
+  },
+  {
+   "en": "{0} accepted a contract",
+   "ar": "{0} قبل عقد"
+  },
+  {
+   "en": "That contract is no longer available",
+   "ar": "هذا العقد ما عاد متوفر"
+  },
+  {
+   "en": "Online play is not available in this version",
+   "ar": "اللعب عبر الإنترنت غير متوفر في هذه النسخة"
+  },
+  {
+   "en": "No internet connection - check your network and try again",
+   "ar": "ما فيه اتصال بالإنترنت - تأكد من الشبكة وحاول مرة ثانية"
+  },
+  {
+   "en": "Could not reach the game servers - try again in a moment",
+   "ar": "ما قدرنا نوصل لخوادم اللعبة - حاول بعد شوي"
+  },
+  {
+   "en": "That code didn't work - check the 6 letters with your friend",
+   "ar": "الرمز ما زبط - تأكد من الحروف الستة مع خويك"
+  },
+  {
+   "en": "That farm is full",
+   "ar": "المزرعة ممتلئة"
+  },
+  {
+   "en": "Too many tries - wait a few seconds",
+   "ar": "محاولات كثيرة - انتظر كم ثانية"
+  },
+  {
+   "en": "The game servers had a problem - try again in a moment",
+   "ar": "صار خلل في خوادم اللعبة - حاول بعد شوي"
+  },
+  {
+   "en": "Different game version - update Mazraa so you both have the same version",
+   "ar": "نسخة لعبة مختلفة - حدّث مزرعة عشان يكون عندكم نفس النسخة"
+  },
+  {
+   "en": "The host removed you from this farm",
+   "ar": "المضيف أخرجك من هذه المزرعة"
+  },
+  {
+   "en": "The host removed you from the farm",
+   "ar": "المضيف أخرجك من المزرعة"
+  },
+  {
+   "en": "Only the host's friends can join this farm",
+   "ar": "أصدقاء المضيف فقط يقدرون يدخلون هذه المزرعة"
+  },
+  {
+   "en": "You can't join this farm",
+   "ar": "ما تقدر تدخل هذه المزرعة"
+  },
+  {
+   "en": "Pick a player name from the list to play online",
+   "ar": "اختر اسم لاعب من القائمة عشان تلعب عبر الإنترنت"
+  },
+  {
+   "en": "Players: {0}/{1}",
+   "ar": "اللاعبون: {0}/{1}"
+  }
+ ]
+}

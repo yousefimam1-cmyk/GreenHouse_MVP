@@ -798,6 +798,7 @@ namespace UnityEngine
     public static class GUI
     {
         public static GUISkin skin = new GUISkin();
+        public static bool enabled = true;   // real: UnityEngine.GUI.enabled
         public static void Box(Rect r, string t, GUIStyle s) { }
         public static void Label(Rect r, string t, GUIStyle s) { }
         public static bool Button(Rect r, string t, GUIStyle s) => false;
