@@ -36,6 +36,28 @@ static class ParityTests
         var hud = UnityEngine.Object.FindAnyObjectByType<GameHUD>();
         typeof(GameHUD).GetMethod("NewGame", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(hud, null);
         FakeEngine.Run(0.5f);
+        CloseIntro();
+    }
+
+    /// <summary>The fake model loader gives the tractor no paint materials or wheels (real Kenney models have both): add a
+    /// primitive livery part and a wheel like the primitive fallback body has, so paint / wheel configuration can be checked.</summary>
+    static void GiveTestLivery(Vehicle v)
+    {
+        if (v.transform.Find("Test livery") == null)
+            Build.Part(PrimitiveType.Cube, v.transform, new Vector3(0, 1f, 0), Vector3.one, VehicleVisuals.Paint(VehicleVisuals.TractorRed), "Test livery");
+        if (v.wheels == null || v.wheels.Length == 0 || v.wheels[0] == null)
+        {
+            var w = new GameObject("Test wheel").transform; w.SetParent(v.transform, false); w.localScale = new Vector3(0.4f, 1f, 1f);
+            v.wheels = new[] { w };
+        }
+        VehicleConfig.Apply(v);
+    }
+
+    static void CloseIntro()
+    {
+        var intro = UnityEngine.Object.FindAnyObjectByType<StoryIntro>();
+        if (intro != null && UIManager.Instance.IsUIOpened) typeof(StoryIntro).GetMethod("Close", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(intro, null);
+        FakeEngine.Run(0.2f);
     }
 
     /// <summary>Park the tractor so its hitch sits on a point (facing its current way).</summary>
@@ -63,7 +85,7 @@ static class ParityTests
             && hud.ContextText.Contains("On foot") && hud.ContextText.Contains("[Tab]") && hud.ContextText.Contains("[E]"), hud.ContextText);
         T.Check("HUD: minimap bottom-left", Minimap.Instance.MiniRoot.anchorMin.x == 0f && Minimap.Instance.MiniRoot.anchorMin.y == 0f);
         Minimap.Instance.ScanWorld();
-        T.Check("HUD: field plots carry their field number on the map", MinimapIcon.All.Count(i => i != null && i.kind == MinimapIconKind.Field && (i.letter == "1" || i.letter == "6")) == 2);
+        T.Check("HUD: field plots carry their field number on the map", FieldManager.Instance.Plots.All(p => p.GetComponent<MinimapIcon>() != null && p.GetComponent<MinimapIcon>().letter == (p.index + 1).ToString()));
         T.Check("HUD: gauge cluster hidden on foot", !hud.GaugesVisible);
         Loc.SetLanguage(Language.Arabic);
         FakeEngine.Run(0.3f);
@@ -77,7 +99,7 @@ static class ParityTests
         var player = GameObject.Find("PlayerCapsule").transform;
         player.position = tractor.transform.position + tractor.transform.right * 3f;
         Tap(kb.tabKey);
-        T.Check("Tab on foot: into the nearest vehicle (the tractor)", Vehicle.Current == tractor, Vehicle.Current == null ? "none" : Vehicle.Current.name);
+        T.Check("Tab on foot: into the nearest vehicle (the tractor)", Vehicle.Current == tractor, Vehicle.Current == null ? "none sw=" + (VehicleSwitcher.Instance != null) + " ui=" + UIManager.Instance?.IsUIOpened + " menu=" + GameMenu.IsOpen + " ts=" + Time.timeScale + " n=" + VehicleSwitcher.All().Count + " fis=" + FarmInfoScreen.Instance?.Open + " typing=" + NetSession.Typing : Vehicle.Current.name);
         FakeEngine.Run(0.3f);
         T.Check("HUD: gauge cluster bottom-right while driving, fuel bar = fuel", hud.GaugesVisible && hud.GaugePanel.anchorMin.x == 1f && hud.GaugePanel.anchorMin.y == 0f
             && Math.Abs(hud.FuelBar - GameHUD.FuelFraction(tractor)) < 0.01f, hud.FuelBar + " vs " + GameHUD.FuelFraction(tractor));
@@ -159,15 +181,18 @@ static class ParityTests
         // ---- dealer: paint and wheels at a workshop
         EconomyManager.Instance.AddMoney(20000);
         int money = EconomyManager.Instance.Money;
+        GiveTestLivery(tractor);
         Color factory = VehicleConfig.BodyColor(tractor);
         tractor.transform.position = DeliveryZone.LoadingBay.transform.position + new Vector3(60f, 0f, 0f);
         T.Check("Dealer: no configuration away from a workshop", !VehicleConfig.BuyPaint(tractor, 2) && EconomyManager.Instance.Money == money);
         tractor.transform.position = DeliveryZone.LoadingBay.transform.position;
+        T.SetProp(tractor, "Speed", 0f);
         T.Check("Dealer: repaint at the workshop (palm green), paid", VehicleConfig.BuyPaint(tractor, 2) && VehicleConfig.Paint("tractor") == 2 && EconomyManager.Instance.Money == money - VehicleConfig.PaintCost
             && Math.Abs(VehicleConfig.BodyColor(tractor).g - VehicleConfig.PaintColors[2].g) < 0.05f && !VehicleConfig.BodyColor(tractor).Equals(factory), VehicleConfig.BodyColor(tractor) + " vs " + factory);
         GameSettings.LowTyrePressure = false;
-        T.Check("Dealer: wide flotation tyres = low pressure always, wider wheels", VehicleConfig.BuyWheels(tractor, VehicleConfig.WheelType.Wide) && tractor.Drive.LowPressure
-            && Math.Abs(VehicleConfig.WheelWidthFactor(tractor) - 1.3f) < 0.01f, VehicleConfig.WheelWidthFactor(tractor) + "");
+        bool boughtWheels = VehicleConfig.BuyWheels(tractor, VehicleConfig.WheelType.Wide);
+        T.Check("Dealer: wide flotation tyres = low pressure always, wider wheels", boughtWheels && tractor.Drive.LowPressure
+            && Math.Abs(VehicleConfig.WheelWidthFactor(tractor) - 1.3f) < 0.01f, boughtWheels + " " + tractor.Drive.LowPressure + " " + VehicleConfig.WheelWidthFactor(tractor));
 
         // ---- farm menu tabs
         tractor.Exit();
@@ -225,8 +250,9 @@ static class ParityTests
         T.Check("Menu: RB wraps from Help to Inventory", fis.Open == FarmInfoScreen.Page.Inventory);
         Gamepad.current = null;
         fis.Close();
+        GameInput.ForceDevice(false, false);
         string help = MenuPages.HelpText(2);
-        T.Check("Help: encyclopedia topics with text (implements topic explains Q / V)", MenuPages.RowCount(FarmInfoScreen.Page.Help) == 9 && help.Contains("Implements") && help.Contains("[Q]") && help.Contains("[V]") && help.Length > 200, help);
+        T.Check("Help: encyclopedia topics with text (implements topic explains Q / V and the gamepad Y)", MenuPages.RowCount(FarmInfoScreen.Page.Help) == 9 && help.Contains("Implements") && help.Contains("press Q") && help.Contains("V lowers") && help.Contains("hold Y") && help.Length > 200, help);
         T.Check("Animals tab: herds, products, feed and pen state", MenuPages.AnimalsText(0).Contains("Feed") && MenuPages.AnimalsText(0).Contains("Water"), MenuPages.AnimalsText(0));
         GameMenu.Instance.Open(GameMenu.Mode.Pause);
         var labels = GameMenu.Instance.List.Rows.Select(r => r.label()).ToList();
@@ -293,6 +319,7 @@ static class ParityTests
         Boot();
         tractor = Tractor.Instance;
         FakeEngine.Run(1.5f);
+        GiveTestLivery(tractor);
         plowGo = tractor.Visual(Implement.Plow);
         T.Check("Restart: attached implement, its lowered state and parked poses restored", tractor.ActiveImplement == Implement.Seeder && tractor.ImplementLowered && plowGo.transform.parent == null
             && Flat(plowGo.transform.position - plowPos).magnitude < 0.5f, tractor.ActiveImplement + " " + plowGo.transform.position + " vs " + plowPos);

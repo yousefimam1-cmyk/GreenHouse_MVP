@@ -126,7 +126,7 @@ public static class VehicleConfig
                 mats[i] = Tint(orig[i], paint);
                 any = true;
             }
-            if (any || ours) r.sharedMaterials = mats;
+            if (any || ours) { r.sharedMaterials = mats; if (mats.Length == 1) r.sharedMaterial = mats[0]; }
         }
         float width = Wheels(v.Id) == WheelType.Wide ? 1.3f : Wheels(v.Id) == WheelType.Road ? 0.85f : 1f;
         if (v.wheels != null)

@@ -1148,6 +1148,12 @@ static class Program
         T.Check("2 shop stalls + crate + pen", UnityEngine.Object.FindObjectsByType<ShopStall>(FindObjectsSortMode.None).Length == 2 && AnimalPen.Instance != null);
         T.Check("Starting money 500 SAR", EconomyManager.Instance.Money == 500, "" + EconomyManager.Instance.Money);
         T.Check("Starts on mission 1 (well)", MissionManager.Instance.Current?.id == "well");
+        if (Environment.GetEnvironmentVariable("MAZRAA_ONLY") == "parity")   // quick loop on one section: MAZRAA_ONLY=parity
+        {
+            ParityTests.Run();
+            Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
+            Environment.Exit(T.Fail == 0 ? 0 : 1);
+        }
 
         Console.WriteLine("Animated life");
         var actors = UnityEngine.Object.FindObjectsByType<Actor>(FindObjectsSortMode.None);
@@ -1260,7 +1266,8 @@ static class Program
         T.Check("Chickens appear in the pen", UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length == 2);
         AnimalPen.Instance.FillWater();
         FakeEngine.Run(60f, 0.5f);
-        T.Check("Chickens lay eggs while fed", AnimalPen.Instance.Waiting.TryGetValue("chicken", out var eggs) && eggs > 0);
+        T.Check("Chickens lay eggs while fed", AnimalPen.Instance.Waiting.TryGetValue("chicken", out var eggs) && eggs > 0,
+            "weather " + WorldClock.Instance.Weather + " productivity " + AnimalPen.Instance.Productivity + " herd " + (HerdManager.Instance != null ? HerdManager.Instance.ProductionFactor("chicken") : 1f) + " feed " + EconomyManager.Instance.Feed);
         AnimalPen.Instance.Collect();
         T.Check("Collect moves eggs to storage", EconomyManager.Instance.Stored("eggs") > 0);
         int broke = EconomyManager.Instance.Money;

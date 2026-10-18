@@ -111,7 +111,7 @@ public static class MenuPages
     {
         { "Getting started", "Your farm starts with a truck, a tractor with a plow and a few fields. Plow, sow and harvest the fields, sell the crops at the market or the places around the map, and grow the farm with new land, animals and production. The top-right block shows the time, weather and your money; the box top-left shows the keys for what you are doing now." },
         { "Driving and vehicles", "[E] gets in and out, [Tab] jumps to the next vehicle. [F] starts the engine, [Y] cruise control, [Plus] / [Minus] its speed, [Z] 4WD and diff lock, [Slash] the GPS straight line. The gauges bottom-right show speed, gear, fuel, damage and load. Refuel and repair at the loading bay or the dealership workshop." },
-        { "Implements", "Implements stand in the yard next to the tractor. Reverse until the hitch is close and press [Q] to attach (hold Y on a gamepad). [V] lowers and raises it - only a lowered implement works the ground. Hold [V] to fold it for the road; a raised implement folds itself at road speed. Press [Q] again to leave it where you are." },
+        { "Implements", "Implements stand in the yard next to the tractor. Reverse until the hitch is close and press Q to attach (gamepad: hold Y). V lowers and raises it (gamepad: tap Y) - only a lowered implement works the ground. Hold V to fold it for the road; a raised implement folds itself at road speed. Press Q again (hold Y) to leave it where you are." },
         { "Fields and crops", "Each field has a number on the map. Plow, sow a crop that is in season, water it if it does not rain and harvest when it is ripe. The Calendar tab shows when each crop is sown (S) and harvested (H); the Fields tab shows soil, irrigation and expected yield." },
         { "Seasons and weather", "A season lasts a few days. Rain waters every field, heatwaves dry them twice as fast. The Weather tab shows today and the next five days with temperatures - plan sowing and harvest around it." },
         { "Animals", "Buy animals at the farm shop. They need feed, a full water trough and a clean pen. Collect their products from the crate and sell them. The Animals tab shows each herd, what it produces and how the pen is doing." },
@@ -271,7 +271,7 @@ public static class MenuPages
         for (int i = 0; i < src.Count; i++)
         {
             var f = src.Row(i);
-            string line = UiText.Raw("Field") + " " + f.number + ": " + UiText.Raw(f.state ?? "") + (string.IsNullOrEmpty(f.crop) ? "" : " - " + f.crop + " " + Mathf.RoundToInt(f.growth * 100f) + "%")
+            string line = UiText.Raw("Field") + " " + f.number + ": " + (string.IsNullOrEmpty(f.state) ? string.Empty : UiText.Raw(f.state)) + (string.IsNullOrEmpty(f.crop) ? "" : " - " + f.crop + " " + Mathf.RoundToInt(f.growth * 100f) + "%")
                 + "  (" + Mathf.RoundToInt(f.areaM2) + " m2)";
             sb.Append('\n').Append(Sel(i == sel, Loc.Display(line)));
         }

@@ -189,8 +189,8 @@
    "ar": "[E] للركوب والنزول، و[Tab] للانتقال إلى المركبة التالية. [F] لتشغيل المحرك، و[Y] لمثبت السرعة، و[Plus] / [Minus] لضبط سرعته، و[Z] للدفع الرباعي وقفل الفرق، و[Slash] لخط الملاحة المستقيم. العدادات أسفل الشاشة تعرض السرعة والغيار والوقود والأضرار والحمولة. تزوّد بالوقود وأصلح المركبة في منصة التحميل أو ورشة المعرض."
   },
   {
-   "en": "Implements stand in the yard next to the tractor. Reverse until the hitch is close and press [Q] to attach (hold Y on a gamepad). [V] lowers and raises it - only a lowered implement works the ground. Hold [V] to fold it for the road; a raised implement folds itself at road speed. Press [Q] again to leave it where you are.",
-   "ar": "المعدّات واقفة في الساحة بجانب الجرار. ارجع للخلف حتى تقترب الوصلة واضغط [Q] للتركيب (اضغط Y مطوّلاً في يد التحكم). [V] لإنزالها ورفعها - المعدّة المنزلة فقط تعمل في الأرض. اضغط [V] مطوّلاً لطيّها للطريق، والمعدّة المرفوعة تنطوي وحدها بسرعة الطريق. اضغط [Q] مرة أخرى لتركها مكانك."
+   "en": "Implements stand in the yard next to the tractor. Reverse until the hitch is close and press Q to attach (gamepad: hold Y). V lowers and raises it (gamepad: tap Y) - only a lowered implement works the ground. Hold V to fold it for the road; a raised implement folds itself at road speed. Press Q again (hold Y) to leave it where you are.",
+   "ar": "المعدّات واقفة في الساحة بجانب الجرار. ارجع للخلف حتى تقترب الوصلة واضغط Q للتركيب (يد التحكم: اضغط Y مطوّلاً). V لإنزالها ورفعها (يد التحكم: اضغط Y) - المعدّة المنزلة فقط تعمل في الأرض. اضغط V مطوّلاً لطيّها للطريق، والمعدّة المرفوعة تنطوي وحدها بسرعة الطريق. اضغط Q مرة أخرى (Y مطوّلاً) لتركها مكانك."
   },
   {
    "en": "Each field has a number on the map. Plow, sow a crop that is in season, water it if it does not rain and harvest when it is ripe. The Calendar tab shows when each crop is sown (S) and harvested (H); the Fields tab shows soil, irrigation and expected yield.",

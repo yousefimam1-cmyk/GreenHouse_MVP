@@ -244,7 +244,12 @@ public class Minimap : MonoBehaviour
         foreach (var v in FindObjectsByType<Vehicle>(FindObjectsSortMode.None)) Tag(v, MinimapIconKind.Vehicle, 16f);
         foreach (var g in FindObjectsByType<GreenhouseManager>(FindObjectsSortMode.None)) Tag(g, MinimapIconKind.Greenhouse, 22f);
         foreach (var p in FindObjectsByType<FieldPlot>(FindObjectsSortMode.None))   // field number on the icon (FS)
-            if (p != null && p.GetComponent<MinimapIcon>() == null) MinimapIcon.Add(p.gameObject, MinimapIconKind.Field, MinimapIcon.DefaultColor(MinimapIconKind.Field), (p.index + 1).ToString(), 18f);
+        {
+            if (p == null) continue;
+            var icon = p.GetComponent<MinimapIcon>();
+            if (icon == null) MinimapIcon.Add(p.gameObject, MinimapIconKind.Field, MinimapIcon.DefaultColor(MinimapIconKind.Field), (p.index + 1).ToString(), 18f);
+            else if (icon.kind == MinimapIconKind.Field && string.IsNullOrEmpty(icon.letter)) { icon.letter = (p.index + 1).ToString(); icon.size = Mathf.Max(icon.size, 18f); }
+        }
         foreach (var s in FindObjectsByType<ShopStall>(FindObjectsSortMode.None)) Tag(s, MinimapIconKind.Shop, 15f);
         if (AnimalPen.Instance != null) Tag(AnimalPen.Instance, MinimapIconKind.Pen, 20f);
         if (DeliveryZone.LoadingBay != null) Tag(DeliveryZone.LoadingBay, MinimapIconKind.LoadingBay, 20f);
