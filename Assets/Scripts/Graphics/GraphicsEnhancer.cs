@@ -10,6 +10,11 @@ using UnityEngine.Rendering.Universal;
 /// menu can call GraphicsEnhancer.SetPreset(0..3). Saved. Default: High on PC, Low on WebGL and phones.
 /// Ultra (graphics makeover): longest shadows, sharpest shadow map, more LOD detail, 256 px reflection probe and the
 /// longest grass distance (see AtmosphereLook / FoliageGrass).
+/// Exposure budget: the final post-exposure is set in one place (the Brightness volume, highest priority, weight 1)
+/// as the preset's small compensation plus Settings > Display > Brightness, clamped to MinExposure..MaxExposure, so
+/// presets, bloom, the grade and the heat haze can never stack into a washed-out, over-exposed image. The grade is
+/// gentle (contrast +6, bloom 0.4 above 1.1). Accessibility > High-contrast menus only changes menu panels (MenuKit),
+/// never anything here.
 /// </summary>
 public class GraphicsEnhancer : MonoBehaviour
 {
@@ -27,6 +32,26 @@ public class GraphicsEnhancer : MonoBehaviour
     };
     /// <summary>LOD bias per preset when Settings > Level of detail is Auto (multiplies the project's own bias).</summary>
     private static readonly float[] presetLodBias = { 0.7f, 1f, 1.3f, 1.8f };
+
+    /// <summary>Final post-exposure (EV) is always kept inside this range, whatever preset, brightness or weather.</summary>
+    public const float MinExposure = -0.5f, MaxExposure = 0.45f;
+    /// <summary>Per-preset exposure compensation (EV): High / Ultra grade in HDR and add the reflection probe, so a touch less.</summary>
+    private static readonly float[] presetExposure = { 0f, 0f, -0.05f, -0.1f };
+    public const float LookContrast = 6f, BloomIntensity = 0.4f, BloomThreshold = 1.1f;
+
+    /// <summary>Post-exposure (EV) for a preset and a Brightness setting (0.5..1.5): linear, +-0.45 EV at the ends, clamped.</summary>
+    public static float ExposureFor(int preset, float brightness)
+    {
+        float ev = presetExposure[Mathf.Clamp(preset, 0, PresetCount - 1)] + (Mathf.Clamp(brightness, 0.5f, 1.5f) - 1f) * 0.9f;
+        return Mathf.Clamp(ev, MinExposure, MaxExposure);
+    }
+
+    /// <summary>The post-exposure the game applies now (tests).</summary>
+    public float AppliedExposure => brightness != null ? brightness.postExposure.value : 0f;
+    /// <summary>Weight of the main look volume now (tests).</summary>
+    public float LookWeight => volume != null ? volume.weight : 0f;
+    public float AppliedContrast => grade != null ? grade.contrast.value : 0f;
+    public float AppliedBloom => bloom != null && bloom.active ? bloom.intensity.value : 0f;
 
     public static GraphicsEnhancer Instance { get; private set; }
     /// <summary>Current preset: 0 Low, 1 Medium, 2 High, 3 Ultra.</summary>
@@ -141,19 +166,19 @@ public class GraphicsEnhancer : MonoBehaviour
         var tone = profile.Add<Tonemapping>(true);
         tone.mode.Override(TonemappingMode.ACES);
         bloom = profile.Add<Bloom>(true);
-        bloom.intensity.Override(0.55f);
-        bloom.threshold.Override(1.05f);
-        bloom.scatter.Override(0.65f);
+        bloom.intensity.Override(BloomIntensity);
+        bloom.threshold.Override(BloomThreshold);
+        bloom.scatter.Override(0.6f);
         var color = profile.Add<ColorAdjustments>(true);
-        color.postExposure.Override(0.15f);
-        color.contrast.Override(14f);
+        // no exposure here: the Brightness volume owns the final exposure (ExposureFor); a gentle contrast
+        color.contrast.Override(LookContrast);
         color.saturation.Override(12f);
         var wb = profile.Add<WhiteBalance>(true);
         wb.temperature.Override(8f);
         grade = color; balance = wb;
         ApplyRegionGrade();
         var vig = profile.Add<Vignette>(true);
-        vig.intensity.Override(0.22f);
+        vig.intensity.Override(0.18f);
         vig.smoothness.Override(0.45f);
         volume.sharedProfile = profile;
     }
@@ -281,7 +306,7 @@ public class GraphicsEnhancer : MonoBehaviour
         if (bloom != null) bloom.active = BloomOn;
         if (motionBlur != null) motionBlur.active = MotionBlurOn;
         if (depthOfField != null) depthOfField.active = DepthOfFieldOn;
-        if (brightness != null) brightness.postExposure.Override((float)System.Math.Log(Mathf.Max(0.1f, GameSettings.Brightness), 2.0));
+        if (brightness != null) brightness.postExposure.Override(ExposureFor(Preset, GameSettings.Brightness));
         SetAmbientOcclusion(urpAsset, GameSettings.AmbientOcclusion);
     }
 

@@ -49,5 +49,6 @@ from the leaf textures listed below (cluster cards, grass tufts). The date palm 
 | Grass Medium 01 (grass_medium_01) diffuse, dry diffuse, alpha | Poly Haven | CC0 1.0 | grass_green_d.png, grass_dry_d.png (instanced grass tufts, dry shrubs) |
 | Island Tree 02 (island_tree_02) leaves | Poly Haven | CC0 1.0 | euc_leaves_d.png (eucalyptus clusters) |
 | Shrub 04 (shrub_04) leaves | Poly Haven | CC0 1.0 | sidr_leaves_d.png (sidr / desert shrub clusters) |
+| 2K versions (Ultra preset) of sandy_gravel_02, gravelly_sand, dry_riverbed_rock, brown_mud_02, grass_ground, aerial_mud_1, rough_plaster_brick_02, white_stucco, palm_bark | same authors as above | CC0 1.0 | Resources/Look/Textures2K/*_d.jpg / *_n.jpg (2K diffuse + OpenGL normal, re-encoded JPG q90) |
 | Date palm frond atlas | generated (project's own) | - | palm_frond_d.png |
 | Foliage shader Mazraa/Foliage | project's own | - | Resources/Look/Shaders/MazraaFoliage.shader |

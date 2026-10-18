@@ -2,7 +2,8 @@ import math, random
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 S=2048
 OUT=(43,27,14)          # dark outline (date brown-black)
-FONT='/home/claude/greenhouse_mvp/Assets/Resources/Fonts/Tajawal-Bold.ttf'
+import os
+FONT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','Assets','Resources','Fonts','Tajawal-Bold.ttf')
 def bez(p0,p1,p2,p3,n=60):
     return [((1-t)**3*p0[0]+3*(1-t)**2*t*p1[0]+3*(1-t)*t*t*p2[0]+t**3*p3[0],(1-t)**3*p0[1]+3*(1-t)**2*t*p1[1]+3*(1-t)*t*t*p2[1]+t**3*p3[1]) for t in [i/n for i in range(n+1)]]
 def grad(w,h,top,bot):
@@ -111,39 +112,40 @@ def tagline(text, size, rtl=False):
     d.text((45-b[0],25-b[1]),text,font=f,fill=(255,255,255),**kw)
     return im
 
-E=emblem(1024); E.save('mazraa_icon_1024.png')
-# app / store icon sizes
-import os
-os.makedirs('out/msix',exist_ok=True)
-E.resize((512,512),Image.LANCZOS).save('out/mazraa_icon_512.png')
-E.save('out/mazraa_icon_1024.png')
-E.save('out/mazraa.ico',sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])
-def sq(n,name): E.resize((n,n),Image.LANCZOS).save('out/msix/'+name)
-for base,n in (('Square44x44Logo',44),('Square150x150Logo',150),('Square310x310Logo',310),('StoreLogo',50),('Square71x71Logo',71)):
-    sq(n,base+'.png'); sq(n*2,base+'.scale-200.png')
-for t in (16,24,32,48,256): sq(t,'Square44x44Logo.targetsize-%d.png'%t)
-def wide(w,h,name,emb):
-    im=Image.new('RGBA',(w,h),(64,196,214,255)); g=grad(w,h,(64,196,214),(255,214,140)); im=g
-    e=emblem(emb); im.alpha_composite(e,((w-emb)//2,(h-emb)//2)); im.save('out/msix/'+name)
-wide(310,150,'Wide310x150Logo.png',130); wide(620,300,'Wide310x150Logo.scale-200.png',260)
-wide(620,300,'SplashScreen.png',260); wide(1240,600,'SplashScreen.scale-200.png',520)
-def lockup(lang,bg):
-    em=emblem(640)
-    if lang=='en': wd=word("MAZRAA",300); tg=tagline("FARMING SIMULATOR",64)
-    else: wd=word("مزرعة",320,True); tg=tagline("محاكي الزراعة",70,True)
-    tw=max(wd.width,tg.width); W=60+640+50+tw+60; H=760
-    im=Image.new('RGBA',(W,H),bg)
-    if lang=='en':
-        im.alpha_composite(em,(60,60)); x=750; top=(H-(wd.height+10+tg.height))//2
-        im.alpha_composite(wd,(x,top)); im.alpha_composite(tg,(x+10,top+wd.height+10))
-    else:
-        im.alpha_composite(em,(W-700,60)); right=W-750; top=(H-(wd.height+10+tg.height))//2
-        im.alpha_composite(wd,(right-wd.width,top)); im.alpha_composite(tg,(right-tg.width-10,top+wd.height+10))
-    return im
-for lang in ('en','ar'):
-    lockup(lang,(0,0,0,0)).save('mazraa_logo_%s.png'%lang)
-    lockup(lang,(22,58,32,255)).save('mazraa_logo_%s_dark.png'%lang)
-    lockup(lang,(255,248,232,255)).save('mazraa_logo_%s_light.png'%lang)
-    lk=lockup(lang,(0,0,0,0)); lk.save('out/mazraa_logo_%s.png'%lang)
-    r=512/lk.width; lk.resize((512,int(lk.height*r)),Image.LANCZOS).save('out/mazraa_logo_%s_512.png'%lang)
-print('ok')
+if __name__ == '__main__':   # legacy export (make_brand_kit.py now writes every size and tile)
+    E=emblem(1024); E.save('mazraa_icon_1024.png')
+    # app / store icon sizes
+    import os
+    os.makedirs('out/msix',exist_ok=True)
+    E.resize((512,512),Image.LANCZOS).save('out/mazraa_icon_512.png')
+    E.save('out/mazraa_icon_1024.png')
+    E.save('out/mazraa.ico',sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])
+    def sq(n,name): E.resize((n,n),Image.LANCZOS).save('out/msix/'+name)
+    for base,n in (('Square44x44Logo',44),('Square150x150Logo',150),('Square310x310Logo',310),('StoreLogo',50),('Square71x71Logo',71)):
+        sq(n,base+'.png'); sq(n*2,base+'.scale-200.png')
+    for t in (16,24,32,48,256): sq(t,'Square44x44Logo.targetsize-%d.png'%t)
+    def wide(w,h,name,emb):
+        im=Image.new('RGBA',(w,h),(64,196,214,255)); g=grad(w,h,(64,196,214),(255,214,140)); im=g
+        e=emblem(emb); im.alpha_composite(e,((w-emb)//2,(h-emb)//2)); im.save('out/msix/'+name)
+    wide(310,150,'Wide310x150Logo.png',130); wide(620,300,'Wide310x150Logo.scale-200.png',260)
+    wide(620,300,'SplashScreen.png',260); wide(1240,600,'SplashScreen.scale-200.png',520)
+    def lockup(lang,bg):
+        em=emblem(640)
+        if lang=='en': wd=word("MAZRAA",300); tg=tagline("FARMING SIMULATOR",64)
+        else: wd=word("مزرعة",320,True); tg=tagline("محاكي الزراعة",70,True)
+        tw=max(wd.width,tg.width); W=60+640+50+tw+60; H=760
+        im=Image.new('RGBA',(W,H),bg)
+        if lang=='en':
+            im.alpha_composite(em,(60,60)); x=750; top=(H-(wd.height+10+tg.height))//2
+            im.alpha_composite(wd,(x,top)); im.alpha_composite(tg,(x+10,top+wd.height+10))
+        else:
+            im.alpha_composite(em,(W-700,60)); right=W-750; top=(H-(wd.height+10+tg.height))//2
+            im.alpha_composite(wd,(right-wd.width,top)); im.alpha_composite(tg,(right-tg.width-10,top+wd.height+10))
+        return im
+    for lang in ('en','ar'):
+        lockup(lang,(0,0,0,0)).save('mazraa_logo_%s.png'%lang)
+        lockup(lang,(22,58,32,255)).save('mazraa_logo_%s_dark.png'%lang)
+        lockup(lang,(255,248,232,255)).save('mazraa_logo_%s_light.png'%lang)
+        lk=lockup(lang,(0,0,0,0)); lk.save('out/mazraa_logo_%s.png'%lang)
+        r=512/lk.width; lk.resize((512,int(lk.height*r)),Image.LANCZOS).save('out/mazraa_logo_%s_512.png'%lang)
+    print('ok')

@@ -19,6 +19,7 @@ public class AtmosphereLook : MonoBehaviour
 {
     public static AtmosphereLook Instance { get; private set; }
     public const string SkyMaterial = "Look/Materials/Sky";
+    public const float MaxSkyExposure = 1f, ProbeIntensity = 0.85f;
 
     public bool SkyInstalled { get; private set; }
     public bool ProbeActive => probe != null && probe.enabled;
@@ -107,6 +108,8 @@ public class AtmosphereLook : MonoBehaviour
         originalSky = RenderSettings.skybox;
         var sky = new Material(src);
         sky.name = "Mazraa Sky (runtime)";
+        // the sky also lights the farm (ambient re-baked from it): keep it from washing the image out
+        if (sky.HasProperty("_Exposure")) sky.SetFloat("_Exposure", Mathf.Min(sky.GetFloat("_Exposure"), MaxSkyExposure));
         RenderSettings.skybox = sky;
         SkyInstalled = true;
         TintSky();
@@ -120,7 +123,8 @@ public class AtmosphereLook : MonoBehaviour
         bool delta = Vegetation.Current == Biome.Delta;
         if (sky.HasProperty("_SkyTint")) sky.SetColor("_SkyTint", delta ? new Color(0.48f, 0.52f, 0.58f) : new Color(0.55f, 0.52f, 0.48f));
         if (sky.HasProperty("_AtmosphereThickness")) sky.SetFloat("_AtmosphereThickness", delta ? 1.05f : 1.3f);
-        if (sky.HasProperty("_GroundColor")) sky.SetColor("_GroundColor", delta ? new Color(0.36f, 0.38f, 0.3f) : new Color(0.62f, 0.52f, 0.4f));
+        // darker lower hemisphere: it is the ambient light from below (bright sand here washed every shadow out)
+        if (sky.HasProperty("_GroundColor")) sky.SetColor("_GroundColor", delta ? new Color(0.3f, 0.32f, 0.25f) : new Color(0.45f, 0.38f, 0.29f));
     }
 
     // ------------------------------------------------------------------ grade + probe + URP settings by preset
@@ -156,6 +160,8 @@ public class AtmosphereLook : MonoBehaviour
         SetupProbe(p >= 2);
         var sun = RenderSettings.sun;
         if (sun != null && GameSettings.ShadowQuality != 0) sun.shadows = p <= 0 ? LightShadows.Hard : LightShadows.Soft;
+
+        MaxLook.Apply();   // water / character shaders (High+), 2K textures and parallax (Ultra)
     }
 
     private void SetupProbe(bool on)
@@ -174,7 +180,7 @@ public class AtmosphereLook : MonoBehaviour
             probe.hdr = true;
             probe.shadowDistance = 60f;
             probe.importance = 1;
-            probe.intensity = 1f;
+            probe.intensity = ProbeIntensity;
         }
         probe.resolution = GraphicsEnhancer.Preset >= 3 ? 256 : 128;
         probe.farClipPlane = GraphicsEnhancer.Preset >= 3 ? 800f : 450f;

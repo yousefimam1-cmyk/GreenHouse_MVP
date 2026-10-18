@@ -52,6 +52,7 @@ public class WorldRoad
     public int a, b;
     public bool asphalt;
     public bool inCore;                     // inside the scene terrain: draped on the ground, terrain not flattened
+    public bool highway;                    // part of the ring highway
     public float width;
     public readonly List<Vector3> path = new List<Vector3>();
     public float[] profile;                 // road surface height per path point (relative to the core base)
@@ -80,6 +81,10 @@ public class WorldLayout
 {
     public const float MinHalfSize = 1200f;        // world half-size from the core centre (2.4 km x 2.4 km at least)
     public const float RoadStep = 8f;
+    /// <summary>Carriageway widths (m): ring highway and its exits, asphalt access roads, the farm road, dirt tracks.</summary>
+    public const float HighwayWidth = 8f, AsphaltWidth = 6f, FarmRoadWidth = 5f, DirtWidth = 3.5f;
+    /// <summary>Gravel shoulder beside the carriageway (m, each side): a shallow ramp down to the ground, no kerb.</summary>
+    public const float Shoulder = 0.8f;
 
     public string Region;
     public Vector3 CoreMin, CoreMax, Center;
@@ -98,7 +103,7 @@ public class WorldLayout
 
     public static readonly PoiDef[] NajdPois =
     {
-        new PoiDef("town", PoiKind.Town, "Town market", "سوق البلدة", "souq", 0.62f, 0.36f, 46f, true, "T"),
+        new PoiDef("town", PoiKind.Town, "Town market", "سوق البلدة", "souq", 0.78f, 0.42f, WorldTown.Radius, true, "T"),
         new PoiDef("fuel", PoiKind.Fuel, "Fuel station", "محطة الوقود", "", 0.42f, -0.40f, 22f, true, "F"),
         new PoiDef("dealer", PoiKind.Dealer, "Dealership & workshop", "معرض وورشة المعدات", "", 0.44f, 0.15f, 30f, true, "D"),
         new PoiDef("silo", PoiKind.Silo, "Grain silo", "صوامع الحبوب", "mill", -0.36f, 0.60f, 30f, false, "S"),
@@ -112,7 +117,7 @@ public class WorldLayout
 
     public static readonly PoiDef[] DeltaPois =
     {
-        new PoiDef("town", PoiKind.Town, "Town market", "سوق البندر", "souq", 0.66f, 0.40f, 46f, true, "T"),
+        new PoiDef("town", PoiKind.Town, "Town market", "سوق البندر", "souq", 0.66f, 0.40f, WorldTown.Radius, true, "T"),
         new PoiDef("village", PoiKind.VillageSouq, "Village souq", "سوق القرية", "village", -0.42f, 0.62f, 34f, false, "V"),
         new PoiDef("gin", PoiKind.Gin, "Cotton gin", "محلج القطن", "gin", 0.30f, -0.62f, 30f, false, "G"),
         new PoiDef("ricemill", PoiKind.RiceMill, "Rice mill", "مضرب الرز", "ricemill", -0.62f, -0.30f, 30f, false, "R"),
@@ -299,7 +304,7 @@ public class WorldLayout
             if (dir.sqrMagnitude < 1f) dir = Vector3.forward;
             dir.Normalize();
             p.yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;   // buildings face their road
-            p.gate = p.pos + dir * (p.kind == PoiKind.Land ? p.radius - 2f : p.radius * 0.45f);
+            p.gate = p.pos + dir * (p.kind == PoiKind.Land ? p.radius - 2f : p.kind == PoiKind.Town ? WorldTown.GateDistance : p.radius * 0.45f);
             p.arrival = p.pos + dir * (p.radius + 16f);
             if (p.parcel != null) p.parcel.rot = Quaternion.Euler(0f, p.yaw, 0f);
             attach.Add((ri, p.node, p.asphalt, p.gate));
@@ -324,7 +329,7 @@ public class WorldLayout
         var gateNode = new WorldNode { pos = gate, sign = true };
         Nodes.Add(gateNode);
         int gateIndex = Nodes.Count - 1;
-        var core = new WorldRoad { a = farm.node, b = gateIndex, asphalt = true, inCore = true, width = 6f };
+        var core = new WorldRoad { a = farm.node, b = gateIndex, asphalt = true, inCore = true, width = FarmRoadWidth };
         AddLine(core.path, farm.pos, gate);
         AddRoad(core);
         Vector3 outDir = OutwardFromCore(gate);
@@ -344,7 +349,8 @@ public class WorldLayout
                 jn = Nodes.Count - 1;
                 ringNodes.Add((at.ringIndex, jn));
             }
-            var road = new WorldRoad { a = jn, b = at.target, asphalt = at.asphalt, width = at.asphalt ? 7f : 5f };
+            float width = at.target == gateIndex ? FarmRoadWidth : exitNodes.Contains(at.target) ? HighwayWidth : at.asphalt ? AsphaltWidth : DirtWidth;
+            var road = new WorldRoad { a = jn, b = at.target, asphalt = at.asphalt, width = width };
             Vector3 from = Nodes[jn].pos, to = at.end;
             Branch(road.path, from, to, at.target);
             AddRoad(road);
@@ -354,7 +360,7 @@ public class WorldLayout
         for (int i = 0; i < ringNodes.Count; i++)
         {
             var a = ringNodes[i]; var b = ringNodes[(i + 1) % ringNodes.Count];
-            var road = new WorldRoad { a = a.node, b = b.node, asphalt = true, width = 9f };
+            var road = new WorldRoad { a = a.node, b = b.node, asphalt = true, width = HighwayWidth, highway = true };
             int k = a.ringIndex;
             road.path.Add(Ring[k]);
             do { k = (k + 1) % Ring.Count; road.path.Add(Ring[k]); } while (k != b.ringIndex);

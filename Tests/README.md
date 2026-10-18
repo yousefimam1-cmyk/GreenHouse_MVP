@@ -10,6 +10,12 @@ Run without Unity (Linux/macOS with mono, or WSL):
 
 - `Tests/Headless/run.sh` also covers crop stage models, desert dressing keep-outs, quality presets, weather FX,
   procedural sounds (engine pitch, footsteps, animal calls, crickets) and touch controls.
+- `Tests/Headless/run.sh` also runs FeelTests: on-foot movement (walk / run speeds, acceleration and braking times,
+  the same motion at 30 / 60 / 144 fps, jump height, ground snap, gamepad look curve, head bob, third-person boom),
+  pets (saluki and cat near the player after start, a teleport, a scene reload, on every preset and density) and the
+  image (exposure stays in range on every preset / brightness; High-contrast menus never touch post-processing).
+  The StarterAssets FirstPersonController itself is not compiled by the headless run: its maths lives in
+  Assets/Scripts/Input/MoveFeel.cs, which is.
 - `python3 Tests/unused_assets.py . > Tests/UNUSED_ASSETS.md` - assets nothing in the build uses (report only).
 
 On GitHub: `.github/workflows/tests.yml` runs the headless and static tests on every push/PR to mazraa-dev, and the

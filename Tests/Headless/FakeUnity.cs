@@ -122,6 +122,7 @@ namespace UnityEngine
         public static T Instantiate<T>(T original) where T : Object
         {
             if (original is ScriptableObject) return (T)typeof(object).GetMethod("MemberwiseClone", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(original, null);
+            if (original is TerrainData td) return td.Copy() as T;   // like Unity: a new TerrainData with the same heights
             return original;
         }
         public static T Instantiate<T>(T original, Transform parent, bool worldStays) where T : Object
@@ -550,8 +551,8 @@ namespace UnityEngine
     public enum MaterialGlobalIlluminationFlags { None }
     public partial class Material : Object
     {
-        public Material(Shader s) { shader = s; } public Material(Material m) { shader = m != null ? m.shader : null; } public Shader shader;
-        public Color color; public MaterialGlobalIlluminationFlags globalIlluminationFlags; public int renderQueue; public Texture mainTexture; public void SetTexture(string n, Texture t) { if (n == "_BaseMap" || n == "_MainTex") mainTexture = t; texs[n] = t; }   // per property like Unity
+        public Material(Shader s) { shader = s; } public Material(Material m) { shader = m != null ? m.shader : null; if (m != null) { mainTexture = m.mainTexture; renderQueue = m.renderQueue; enableInstancing = m.enableInstancing; foreach (var kv in m.texs) texs[kv.Key] = kv.Value; } } public Shader shader;
+        public Color color; public MaterialGlobalIlluminationFlags globalIlluminationFlags; public int renderQueue; public Texture mainTexture; public void SetTexture(string n, Texture t) { if (n != "_BumpMap" && n != "_OcclusionMap" && n != "_MetallicGlossMap" && n != "_ParallaxMap" && !n.StartsWith("_Detail")) mainTexture = t; texs[n] = t; }
         public void SetColor(string n, Color c) { } public void SetFloat(string n, float v) { } public float GetFloat(string n) => 1; public bool HasProperty(string n) => true; public void EnableKeyword(string k) { }
     }
     public partial class Mesh : Object { public int subMeshCount = 1; public Bounds bounds; public int vertexCount => vertices.Length; public void CombineMeshes(CombineInstance[] c, bool merge, bool useMatrices) { } public Vector3[] vertices = new Vector3[0]; public int[] triangles = new int[0]; public Rendering.IndexFormat indexFormat; public void RecalculateNormals() { } public void RecalculateBounds() { } }
@@ -568,10 +569,11 @@ namespace UnityEngine
         public Bounds bounds => new Bounds(transform.position, transform.lossyScale);
     }
     public class MeshRenderer : Renderer { }
-    public class SkinnedMeshRenderer : Renderer { }
-    public class Collider : Component { public bool enabled = true, isTrigger; public PhysicsMaterial material; public Bounds bounds => new Bounds(transform.position, Vector3.Scale(transform.lossyScale, this is BoxCollider b ? b.size : Vector3.one)); }
+    public class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen; }
+    public class Collider : Component { public bool enabled = true, isTrigger; public PhysicsMaterial material; public Bounds bounds => this is BoxCollider b ? FakePhysics.WorldBounds(b) : new Bounds(transform.position, transform.lossyScale); }
     public class BoxCollider : Collider { public Vector3 center, size; }
-    public class CharacterController : Collider { }
+    // Unity defaults (CharacterController component): height 2, radius 0.5, step offset 0.3, slope limit 45, skin width 0.08.
+    public class CharacterController : Collider { public float height = 2f, radius = 0.5f, stepOffset = 0.3f, slopeLimit = 45f, skinWidth = 0.08f; public Vector3 center; }
     public class PhysicsMaterial : Object { public PhysicsMaterial(string n) { name = n; } public float dynamicFriction, staticFriction; public PhysicsMaterialCombine frictionCombine; }
     public enum PhysicsMaterialCombine { Average, Minimum }
     public enum RigidbodyInterpolation { None, Interpolate }
@@ -591,6 +593,14 @@ namespace UnityEngine
     /// <summary>Box-only physics queries (oriented boxes, separating axis test) for the sweep tests.</summary>
     public static class FakePhysics
     {
+        /// <summary>World AABB of a box collider (its centre and size through the transform, like Collider.bounds).</summary>
+        public static Bounds WorldBounds(BoxCollider b)
+        {
+            var o = Of(b, Vector3.zero);
+            Vector3 ext = Vector3.zero;
+            for (int i = 0; i < 3; i++) ext += new Vector3(Math.Abs(o.ax[i].x), Math.Abs(o.ax[i].y), Math.Abs(o.ax[i].z)) * o.e[i];
+            return new Bounds(o.c, ext * 2f);
+        }
         public struct Box { public Vector3 c; public Vector3[] ax; public float[] e; public BoxCollider col; }
         public static Box Of(BoxCollider b, Vector3 offset)
         {
@@ -652,6 +662,27 @@ namespace UnityEngine
             h.point = o + d * t; h.normal = Vector3.up; h.distance = t; return true;
         }
         public static bool Raycast(Ray r, out RaycastHit h, float dist, int mask) { h = default; return false; }
+        /// <summary>Like Unity: true if any enabled, non-trigger collider of the mask overlaps the capsule (box colliders only here).</summary>
+        public static bool CheckCapsule(Vector3 start, Vector3 end, float radius, int layerMask, QueryTriggerInteraction q)
+        {
+            Vector3 c = (start + end) * 0.5f, d = end - start; float len = d.magnitude;
+            var cap = new FakePhysics.Box { c = c, ax = new[] { Vector3.right, Vector3.up, Vector3.forward }, e = new[] { radius, len * 0.5f + radius, radius } };
+            foreach (var g in FakeEngine.Objects)
+            {
+                if (g.destroyed || !g.activeInHierarchy || (layerMask & (1 << g.layer)) == 0) continue;
+                foreach (var col in g.components.OfType<BoxCollider>())
+                    if (!col.destroyed && col.enabled && !col.isTrigger && FakePhysics.Overlap(cap, FakePhysics.Of(col, Vector3.zero))) return true;
+            }
+            return false;
+        }
+        // Real Unity signature (Physics.SphereCast(origin, radius, direction, out hit, maxDistance, layerMask, queryTriggerInteraction)); flat ground at y = 0.
+        public static bool SphereCast(Vector3 o, float radius, Vector3 d, out RaycastHit h, float dist, int mask, QueryTriggerInteraction q)
+        {
+            h = default;
+            if (d.y >= 0 || o.y < radius) return false;
+            float t = (o.y - radius) / -d.y; if (t > dist) return false;
+            h.point = o + d * t - Vector3.up * radius; h.normal = Vector3.up; h.distance = t; return true;
+        }
         public static void IgnoreCollision(Collider a, Collider b, bool i) { }
     }
     // Terrain: only members that exist in Unity 6 with the same signatures (UnityEngine.TerrainModule).
@@ -684,6 +715,7 @@ namespace UnityEngine
         public void SetHeights(int xBase, int yBase, float[,] h) { for (int y = 0; y < h.GetLength(0); y++) for (int x = 0; x < h.GetLength(1); x++) heights[yBase + y, xBase + x] = h[y, x]; }
         public float[,] GetHeights(int xBase, int yBase, int w, int hgt) { var o = new float[hgt, w]; for (int y = 0; y < hgt; y++) for (int x = 0; x < w; x++) o[y, x] = heights[yBase + y, xBase + x]; return o; }
         public float GetInterpolatedHeight(float x, float y) => Sample(x, y);
+        internal TerrainData Copy() { var c = (TerrainData)MemberwiseClone(); c.heights = (float[,])heights.Clone(); if (c.alphamaps != null) c.alphamaps = (float[,,])c.alphamaps.Clone(); return c; }   // like Unity's Instantiate: every setting copied
         internal float Sample(float u, float v)
         {
             u = Mathf.Clamp01(u) * (res - 1); v = Mathf.Clamp01(v) * (res - 1);
@@ -738,7 +770,8 @@ namespace UnityEngine
     public class ParticleSystemRenderer : Renderer { public ParticleSystemRenderMode renderMode; public float lengthScale; }
 
     public enum TextureWrapMode { Repeat, Clamp }
-    public class Sprite : Object { public Texture2D texture; public static Sprite Create(Texture2D t, Rect r, Vector2 pivot, float ppu) => new Sprite { texture = t }; }
+    public enum SpriteMeshType { FullRect, Tight }
+    public class Sprite : Object { public Texture2D texture; public Vector4 border; public static Sprite Create(Texture2D t, Rect r, Vector2 pivot, float ppu) => new Sprite { texture = t }; public static Sprite Create(Texture2D t, Rect r, Vector2 pivot, float ppu, uint extrude, SpriteMeshType mesh, Vector4 border) => new Sprite { texture = t, border = border }; }
 
     // attributes
     public class SerializeField : Attribute { }

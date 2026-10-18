@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Places the animated ambient life once the farm is built: farm dog (follows you), barn cat, two horses,
+/// Places the animated ambient life once the farm is built: farm dog and cat (pets that follow you), two horses,
 /// eagles circling the farm, a shopkeeper at each stall, field workers, market buyers and vehicle drivers.
 /// Every piece is optional: if its model is missing from Resources/Models it is simply skipped.
 /// </summary>
@@ -16,16 +16,17 @@ public class AmbientLife : MonoBehaviour
         var inputs = FindAnyObjectByType<StarterAssets.StarterAssetsInputs>();
         Vector3 start = inputs != null ? inputs.transform.position : Vector3.zero;
 
-        // Farm dog
-        var dog = Actor.Spawn("dog", 0.9f, false, ActorMode.FollowPlayer, Build.OnGround(start + new Vector3(2f, 0, 1f)));
-        if (dog != null) dog.speed = 2.2f;
+        // Pets next to the player at the farmhouse: the dog (PetSystem makes it the saluki) and the farm cat, which
+        // follows at its own distance. PetSystem keeps them near you (spawns stand-ins if a model is missing).
+        var dog = Actor.Spawn("dog", 0.9f, false, ActorMode.FollowPlayer, Build.GroundNear(start + new Vector3(2f, 0, 1f)));
+        if (dog != null) { dog.speed = 2.2f; dog.IsPet = true; }
+        var cat = Actor.Spawn("cat", 0.55f, false, ActorMode.FollowPlayer, Build.GroundNear(start + new Vector3(-2f, 0, 1.5f)));
+        if (cat != null) { cat.speed = 1.4f; cat.followNear = 5.5f; cat.IsPet = true; }
 
-        // Barn cat and horses around the animal pen
+        // Horses around the animal pen
         var pen = AnimalPen.Instance;
         if (pen != null)
         {
-            var cat = Actor.Spawn("cat", 0.55f, false, ActorMode.Wander, Build.OnGround(pen.transform.position + pen.transform.right * 4f));
-            if (cat != null) { cat.radius = 5f; cat.speed = 0.9f; }
             for (int i = 0; i < 2; i++)
             {
                 var h = Actor.Spawn("horse", 2.3f, false, ActorMode.Wander, Build.OnGround(pen.transform.TransformPoint(new Vector3(-14f - i * 3f, 0, 4f + i * 4f))));

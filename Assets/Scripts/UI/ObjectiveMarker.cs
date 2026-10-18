@@ -11,6 +11,7 @@ public class ObjectiveMarker : MonoBehaviour
     private float retarget;
     private Transform target;
     private float height = 3f;
+    private int shownMeters = -1;
 
     /// <summary>Where the current mission wants the player to go (null if nowhere). Used by the minimap.</summary>
     public static Transform CurrentTarget { get; private set; }
@@ -56,7 +57,8 @@ public class ObjectiveMarker : MonoBehaviour
         if (cam != null)
         {
             float d = Vector3.Distance(cam.transform.position, target.position);
-            distanceText.text = d.ToString("F0") + " m";
+            int meters = Mathf.RoundToInt(d);
+            if (meters != shownMeters) { shownMeters = meters; distanceText.text = meters + " m"; }   // no new string (and text rebuild) every frame
             marker.localScale = Vector3.one * Mathf.Clamp(d / 18f, 1f, 6f);
         }
     }

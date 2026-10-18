@@ -8,8 +8,11 @@ using UnityEngine;
 /// (Resources/Models/Characters/character-male-a, legacy idle / walk / sprint clips). Movement is unchanged:
 /// the FirstPersonController still turns the capsule and pitches PlayerCameraRoot; this camera follows them.
 /// Interaction keeps using the eye ray of the first-person camera, so reach is the same in both views.
+/// The camera follows without lag in its angles (look stays direct), smooths only the height (steps, crouch) and
+/// the boom length: walls pull it in at once (sphere cast, never through a wall), it eases back out afterwards.
 /// </summary>
 [MazraaSystem(70)]
+[DefaultExecutionOrder(100)]   // after the FirstPersonController turned the capsule this frame (no one-frame lag / jitter)
 public class ThirdPersonView : MonoBehaviour
 {
     public const string ModelName = "Characters/character-male-a";
@@ -29,6 +32,8 @@ public class ThirdPersonView : MonoBehaviour
     private string playing;
     private Vector3 lastPos;
     private float speed;
+    private float boom = -1f, pivotY;
+    public const float CameraRadius = 0.22f, MinBoom = 0.35f;
 
     private bool pendingSwitch;
 
@@ -110,6 +115,7 @@ public class ThirdPersonView : MonoBehaviour
             cam.enabled = true;
             if (model != null) model.SetActive(true);
             lastPos = player.position;
+            boom = -1f;
             LateUpdate();
         }
         else
@@ -178,7 +184,7 @@ public class ThirdPersonView : MonoBehaviour
             if (c != playing) { anim.CrossFade(c, Actor.BlendTime); playing = c; }
             // graphics makeover: feet match the ground speed (no sliding)
             var st = anim[c];
-            if (st != null) st.speed = k == "idle" ? 1f : Mathf.Clamp(speed / (k == "walk" ? 1.4f : 4.2f), 0.6f, 1.7f);
+            if (st != null) st.speed = k == "idle" ? 1f : Mathf.Clamp(speed / (k == "walk" ? MoveFeel.WalkSpeed : MoveFeel.RunSpeed * 0.85f), 0.6f, 1.7f);
             return;
         }
     }
@@ -190,31 +196,48 @@ public class ThirdPersonView : MonoBehaviour
         return pivot + rot * new Vector3(shoulder, height, -distance);
     }
 
+    /// <summary>Boom length after a wall check: shorter at once, longer again smoothly (no popping).</summary>
+    public static float SmoothBoom(float current, float target, float dt)
+    {
+        if (current < 0f || target <= current) return target;
+        return Mathf.Lerp(current, target, MoveFeel.Ease(5f, dt));
+    }
+
+    /// <summary>Pivot height follows steps and crouching smoothly but never falls more than 0.35 m behind.</summary>
+    public static float SmoothPivotY(float current, float target, float dt)
+    {
+        float y = Mathf.Lerp(current, target, MoveFeel.Ease(16f, dt));
+        return Mathf.Clamp(y, target - 0.35f, target + 0.35f);
+    }
+
     private void LateUpdate()
     {
         if (!IsThirdPerson || cam == null || player == null) return;
-        if (!player.gameObject.activeInHierarchy) return;      // driving: the vehicle camera is in charge
+        if (!player.gameObject.activeInHierarchy) { boom = -1f; return; }      // driving: the vehicle camera is in charge
+        float dt = Mathf.Max(Time.deltaTime, 0.0001f);
         float yaw = player.eulerAngles.y;
         float pitch = cameraRoot != player ? cameraRoot.localEulerAngles.x : 0f;
         if (pitch > 180f) pitch -= 360f;
-        Vector3 pivot = cameraRoot.position;
+        Vector3 eye = cameraRoot.position;
+        pivotY = boom < 0f ? eye.y : SmoothPivotY(pivotY, eye.y, dt);
+        Vector3 pivot = new Vector3(eye.x, pivotY, eye.z);
         Vector3 desired = CameraPosition(pivot, yaw, pitch, distance, height, shoulder);
-        // Pull in when something is between the player and the camera.
+        // Pull in when something is between the player and the camera (a sphere, so the near plane never clips a wall).
         Vector3 dir = desired - pivot;
-        float len = dir.magnitude;
+        float len = dir.magnitude, target = len;
         RaycastHit hit;
-        if (len > 0.01f && Physics.Raycast(pivot, dir / len, out hit, len, Build.GroundMask, QueryTriggerInteraction.Ignore))
-            desired = pivot + dir / len * Mathf.Max(0.4f, hit.distance - 0.2f);
-        cam.transform.position = desired;
+        if (len > 0.01f && Physics.SphereCast(pivot, CameraRadius, dir / len, out hit, len, Build.GroundMask, QueryTriggerInteraction.Ignore))
+            target = Mathf.Max(MinBoom, hit.distance);
+        boom = SmoothBoom(boom, target, dt);
+        cam.transform.position = len > 0.01f ? pivot + dir / len * Mathf.Min(boom, len) : desired;
         cam.transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
 
         // Animation from the capsule's ground speed.
-        float dt = Mathf.Max(Time.deltaTime, 0.0001f);
         Vector3 d = player.position - lastPos; d.y = 0f;
         lastPos = player.position;
-        speed = Mathf.Lerp(speed, d.magnitude / dt, 0.25f);
-        if (speed > 5.2f) Play("sprint", "run", "walk");
-        else if (speed > 0.4f) Play("walk", "run");
+        speed = Mathf.Lerp(speed, d.magnitude / dt, MoveFeel.Ease(12f, dt));
+        if (speed > 3.2f) Play("sprint", "run", "walk");
+        else if (speed > 0.3f) Play("walk", "run");
         else Play("idle");
     }
 

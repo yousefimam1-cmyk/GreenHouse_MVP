@@ -105,7 +105,7 @@ public class DesertDressing : MonoBehaviour
             BuildSellPoints();
             BuildCooling();
             BuildSand();
-            if (look.dunes) BuildDunes(rnd, RegionLook.C(look.dune, DuneColor));
+            if (look.dunes && OpenWorld.Instance == null) BuildDunes(rnd, RegionLook.C(look.dune, DuneColor));   // the open world replaces the closed ring of edge dunes
             if (look.trees == "eucalyptus" && density > 0.01f) BuildWindbreaks(rnd, density);   // Settings > Foliage 0 = no trees
             BuildTrees(rnd, density, look);
             BuildUndergrowth(new System.Random(Seed + 7), density, look);
@@ -526,7 +526,7 @@ public class DesertDressing : MonoBehaviour
         Vector3 mid = (a + b) * 0.5f, dir = Flat(b - a);
         float len = dir.magnitude;
         if (len < 0.5f) return;
-        var water = Build.Mat(new Color(0.2f, 0.36f, 0.4f), 0.92f);
+        var water = MaxLook.WaterMaterial();   // Mazraa/Water on High / Ultra, flat colour below
         var bank = Build.Mat(new Color(0.33f, 0.27f, 0.19f), 0.05f);
         var go = new GameObject("Canal");
         go.transform.SetParent(root, false);

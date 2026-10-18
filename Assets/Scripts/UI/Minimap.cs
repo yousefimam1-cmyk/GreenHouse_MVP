@@ -257,9 +257,18 @@ public class Minimap : MonoBehaviour
 
     // ------------------------------------------------------------------ update
 
+    // Anchor() runs several times a frame (map, world map, open world): the minimap of this scene remembers the player
+    // instead of searching the whole scene on every call.
+    private StarterAssets.StarterAssetsInputs cachedInputs;
     private static Transform PlayerTransform()
     {
-        var inputs = FindAnyObjectByType<StarterAssets.StarterAssetsInputs>();
+        var mm = Instance;
+        StarterAssets.StarterAssetsInputs inputs = mm != null ? mm.cachedInputs : null;
+        if (inputs == null)
+        {
+            inputs = FindAnyObjectByType<StarterAssets.StarterAssetsInputs>();
+            if (mm != null) mm.cachedInputs = inputs;
+        }
         return inputs != null && inputs.gameObject.activeInHierarchy ? inputs.transform : null;
     }
 
