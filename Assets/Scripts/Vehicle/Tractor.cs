@@ -7,13 +7,15 @@ using UnityEngine.InputSystem;
 public enum Implement { None, Plow, Seeder, Harvester, Cultivator, Spreader, Sprayer, Roller, Mulcher, Mower, Baler }
 
 /// <summary>
-/// Tractor with swappable implements (Q cycles: none, plough, seeder, harvester, cultivator, spreader, sprayer, roller,
-/// mulcher, mower, baler). Drive the lowered implement over a field: FarmCore paints the cells under its working width
-/// (plough, sow the chosen seed, spread / spray the chosen product, harvest into the tank...). Slower than the truck.
+/// Tractor with a three-point hitch (TractorHitch.cs): implements (plow, seeder, harvester and the FarmCore cultivator,
+/// spreader, sprayer, roller, mulcher, mower, baler) are parked in the implement yard; reverse up to one and press Q
+/// (hold Y on a gamepad) to attach / detach it, V (tap Y) lowers / raises it, hold V folds it. A lowered, unfolded
+/// implement driven over a field paints the FarmCore cells under its working width (plough, sow the chosen seed,
+/// spread / spray the chosen product, harvest into the tank...). Slower than the truck.
 /// Heavy (4.5 t + implement + optional front weights); a working implement drags (plow most, seeder least) and
 /// has a maximum working speed. Front weights (shop, Upgrades) add grip in the field.
 /// </summary>
-public class Tractor : Vehicle
+public partial class Tractor : Vehicle
 {
     public static Tractor Instance;
     public Implement ActiveImplement { get; private set; }
@@ -59,8 +61,6 @@ public class Tractor : Vehicle
     public static float ImplementDraft(Implement i) => FarmTools.Draft(i);
     /// <summary>Highest speed the implement works at (m/s).</summary>
     public static float ImplementMaxSpeed(Implement i) => FarmTools.MaxSpeed(i);
-    /// <summary>Working width (m) of the implement.</summary>
-    public static float ImplementWidth(Implement i) => FarmTools.Width(i);
 
     protected override float LoadMass => ImplementMass(ActiveImplement) + BallastSteps[BallastLevel];
     protected override float BallastMass => BallastSteps[BallastLevel];
@@ -74,7 +74,7 @@ public class Tractor : Vehicle
     {
         get
         {
-            if (ActiveImplement == Implement.None || Mathf.Abs(Speed) < 0.5f) return false;
+            if (ActiveImplement == Implement.None || !InWorkPose || Mathf.Abs(Speed) < 0.5f) return false;
             if (Time.time - workCheckTime < 0.2f && workCheckTime >= 0f) return working;
             workCheckTime = Time.time;
             working = FarmTools.Lowered(this) && FarmTools.OverField(HitchPoint);
@@ -82,32 +82,23 @@ public class Tractor : Vehicle
         }
     }
 
-    /// <summary>Where the implement works the ground (the hitch, or behind the tractor).</summary>
-    public Vector3 HitchPoint => hitch != null ? hitch.position : transform.position - transform.forward * 2.5f;
-
-    protected override void OnNewGame() { base.OnNewGame(); SetBallast(0); }
+    protected override void OnNewGame() { base.OnNewGame(); SetBallast(0); ResetImplements(); }
 
     protected override void OnDestroy() { base.OnDestroy(); if (Instance == this) Instance = null; }
 
-    public void RegisterVisual(Implement i, GameObject go) { visuals[i] = go; ShowImplement(); if (i == Implement.Harvester) FarmTools.EnsureVisuals(this); }
+    public void RegisterVisual(Implement i, GameObject go) { visuals[i] = go; PlaceVisual(i, go); if (i == Implement.Harvester) FarmTools.EnsureVisuals(this); }   // FarmCore: + the other implements' models
 
-    private void ShowImplement() { foreach (var kv in visuals) if (kv.Value != null) kv.Value.SetActive(kv.Key == ActiveImplement); }
+    /// <summary>The implement's model (parented to the hitch while attached, standing in the yard while parked).</summary>
+    public GameObject Visual(Implement i) => visuals.TryGetValue(i, out var go) ? go : null;
 
     protected override void DrivingUpdate(Keyboard kb)
     {
-        if (GameInput.Pressed(GameAction.Implement))   // Q / Y / Triangle
-        {
-            ActiveImplement = (Implement)(((int)ActiveImplement + 1) % FarmTools.ImplementCount);
-            FarmTools.ResetPass(this);
-            workCheckTime = -1f;
-            SaveData.SetInt("mazraa.implement", (int)ActiveImplement);
-            ShowImplement();
-            if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.Display(Loc.Raw("Implement") + ": " + ImplementName(ActiveImplement)));
-        }
+        HitchInput();   // Q / hold Y attach-detach, V / tap Y lower-raise, hold V fold (TractorHitch.cs)
         Work();
+        if (Working) RaiseWorking();
     }
 
-    // FarmCore: the implement paints the field cells under its working width along the hitch's path (FarmTools.TractorWork).
+    // FarmCore: the attached, lowered, unfolded implement paints the field cells under its working width along the hitch's path.
     private void Work() => FarmTools.TractorWork(this, ActiveImplement, HitchPoint, Speed);
 
     public static string ImplementName(Implement i) => Loc.Raw(i == Implement.None ? "No implement" : i.ToString());

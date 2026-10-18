@@ -4,10 +4,12 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Round minimap at the top centre of the HUD: an orthographic camera looks straight down (UI layer culled) into a
+/// Round minimap at the bottom-left of the HUD (Farming Simulator layout; bottom-right in Arabic): an orthographic camera
+/// looks straight down (UI layer culled) into a
 /// RenderTexture, turning with the player's view; icons are drawn as UI on top (player arrow, vehicles, greenhouses,
 /// field plots, pen, shop stalls, loading bay, market, current objective, plus any MinimapIcon a feature adds).
-/// N (View / Share on a gamepad) opens a full-screen north-up map with a legend.
+/// N (View / Share on a gamepad) opens a full-screen north-up map with a legend. Field plots carry their field number;
+/// the GPS route to the waypoint (GpsRoute) is drawn as a dotted line on both maps.
 /// </summary>
 [MazraaSystem(50)]
 public class Minimap : MonoBehaviour
@@ -41,6 +43,8 @@ public class Minimap : MonoBehaviour
     private TextMeshProUGUI fullTitle, fullFooter, legendText;
     private readonly List<RectTransform> miniPool = new List<RectTransform>(), fullPool = new List<RectTransform>();
     private RectTransform miniObjective, fullObjective;
+    private readonly List<RectTransform> miniRoute = new List<RectTransform>(), fullRoute = new List<RectTransform>();
+    private static readonly Color RouteColor = new Color(1f, 0.62f, 0.12f, 0.95f);
     private Texture2D circleTex;
     private float scanTimer;
     private int openedFrame;
@@ -113,8 +117,7 @@ public class Minimap : MonoBehaviour
 
         // Minimap: frame disc, masked disc with the map, icons, arrow.
         miniRoot = MenuKit.Rect("Minimap", canvas.transform);
-        miniRoot.anchorMin = miniRoot.anchorMax = miniRoot.pivot = new Vector2(0.5f, 1f);
-        miniRoot.anchoredPosition = new Vector2(0, -18);
+        PlaceMini(false);
         miniRoot.sizeDelta = new Vector2(miniSize, miniSize);
         var frame = MenuKit.Rect("Frame", miniRoot, typeof(RawImage));
         MenuKit.Stretch(frame, -6f);
@@ -188,8 +191,19 @@ public class Minimap : MonoBehaviour
         return holder;
     }
 
+    /// <summary>Bottom-left corner (bottom-right for right-to-left reading), like Farming Simulator's minimap.</summary>
+    private void PlaceMini(bool rtl)
+    {
+        float x = rtl ? 1f : 0f;
+        miniRoot.anchorMin = miniRoot.anchorMax = miniRoot.pivot = new Vector2(x, 0f);
+        miniRoot.anchoredPosition = new Vector2(rtl ? -30f : 30f, 30f);
+    }
+
+    public RectTransform MiniRoot => miniRoot;
+
     private void RefreshTexts()
     {
+        if (miniRoot != null) PlaceMini(Loc.IsArabic);
         if (fullTitle == null) return;
         foreach (var t in new[] { fullTitle, fullFooter, legendText }) Loc.ApplyFont(t);
         fullTitle.alignment = TextAlignmentOptions.Center;
@@ -229,7 +243,7 @@ public class Minimap : MonoBehaviour
     {
         foreach (var v in FindObjectsByType<Vehicle>(FindObjectsSortMode.None)) Tag(v, MinimapIconKind.Vehicle, 16f);
         foreach (var g in FindObjectsByType<GreenhouseManager>(FindObjectsSortMode.None)) Tag(g, MinimapIconKind.Greenhouse, 22f);
-        // FarmCore fields tag themselves (FarmFieldObject: icon coloured by the map layer)
+        // FarmCore fields tag themselves (FarmFieldObject.RefreshIcon: field number, colour by the map layer)
         foreach (var s in FindObjectsByType<ShopStall>(FindObjectsSortMode.None)) Tag(s, MinimapIconKind.Shop, 15f);
         if (AnimalPen.Instance != null) Tag(AnimalPen.Instance, MinimapIconKind.Pen, 20f);
         if (DeliveryZone.LoadingBay != null) Tag(DeliveryZone.LoadingBay, MinimapIconKind.LoadingBay, 20f);
@@ -351,6 +365,7 @@ public class Minimap : MonoBehaviour
             float k = fullSize * 0.5f / FullRange;
             PlaceIcons(fullPool, fullIcons, Center, 0f, k, fullSize * 0.5f, false);
             PlaceObjective(fullObjective, Center, 0f, k, fullSize * 0.5f, false);
+            PlaceRoute(fullRoute, fullIcons, Center, 0f, k, fullSize * 0.5f, false);
             fullArrow.anchoredPosition = ToMap(anchor.position, Center, 0f, k);
             fullArrow.localRotation = Quaternion.Euler(0, 0, -yawAnchor);
             fullArrow.SetAsLastSibling();
@@ -366,6 +381,7 @@ public class Minimap : MonoBehaviour
         float radius = miniSize * 0.5f;
         PlaceIcons(miniPool, miniIcons, Center, ViewYaw, km, radius, true);
         PlaceObjective(miniObjective, Center, ViewYaw, km, radius, true);
+        PlaceRoute(miniRoute, miniIcons, Center, ViewYaw, km, radius, true);
         miniArrow.localRotation = Quaternion.Euler(0, 0, -(yawAnchor - ViewYaw));
         miniArrow.SetAsLastSibling();
         // "N" on the rim, pointing to world north.
@@ -404,6 +420,41 @@ public class Minimap : MonoBehaviour
         }
         for (int i = used; i < pool.Count; i++) if (pool[i].gameObject.activeSelf) pool[i].gameObject.SetActive(false);
     }
+
+    /// <summary>GPS route (GpsRoute) as dots every ~9 px along the polyline, clipped to the map.</summary>
+    private void PlaceRoute(List<RectTransform> pool, RectTransform parent, Vector3 center, float yaw, float k, float half, bool round)
+    {
+        int used = 0;
+        var gps = GpsRoute.Instance;
+        if (gps != null && gps.HasRoute && k > 0f)
+        {
+            var pts = gps.Points;
+            float stepM = 9f / k, carry = 0f;
+            float edge = half - 3f;
+            for (int i = 1; i < pts.Count && used < 400; i++)
+            {
+                Vector3 a = pts[i - 1], b = pts[i];
+                Vector3 d = b - a; d.y = 0f;
+                float len = d.magnitude;
+                for (float t = carry; t < len && used < 400; t += stepM)
+                {
+                    Vector2 p = ToMap(a + d * (t / Mathf.Max(1e-4f, len)), center, yaw, k);
+                    bool inside = round ? p.x * p.x + p.y * p.y <= edge * edge : Mathf.Abs(p.x) <= edge && Mathf.Abs(p.y) <= edge;
+                    if (!inside) continue;
+                    while (pool.Count <= used) pool.Add(MakeIcon(parent, RouteColor, 5f, false));
+                    var rt = pool[used++];
+                    if (!rt.gameObject.activeSelf) rt.gameObject.SetActive(true);
+                    rt.anchoredPosition = p;
+                }
+                carry = Mathf.Repeat(carry - len, stepM);
+            }
+        }
+        for (int i = used; i < pool.Count; i++) if (pool[i].gameObject.activeSelf) pool[i].gameObject.SetActive(false);
+    }
+
+    /// <summary>Route dots drawn on the minimap right now (for tests).</summary>
+    public int VisibleRouteDots { get { int n = 0; foreach (var p in miniRoute) if (p.gameObject.activeSelf) n++; return n; } }
+    public int VisibleFullRouteDots { get { int n = 0; foreach (var p in fullRoute) if (p.gameObject.activeSelf) n++; return n; } }
 
     /// <summary>Icons drawn on the minimap right now (for tests).</summary>
     public int VisibleMiniIcons { get { int n = 0; foreach (var p in miniPool) if (p.gameObject.activeSelf) n++; return n; } }

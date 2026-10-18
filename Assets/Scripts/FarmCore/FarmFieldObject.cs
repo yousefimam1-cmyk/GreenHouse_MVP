@@ -39,7 +39,8 @@ public class FarmFieldObject : Interactable
         mf.sharedMesh = Quad(f.width, f.depth);
         ground = go.AddComponent<MeshRenderer>();
         ground.sharedMaterial = GroundMaterial(f, GroundTexture);
-        icon = MinimapIcon.Add(gameObject, MinimapIconKind.Field, MinimapIcon.DefaultColor(MinimapIconKind.Field), "", Mathf.Clamp(Mathf.Sqrt(f.Area) * 0.6f, 12f, 40f));
+        icon = MinimapIcon.Add(gameObject, MinimapIconKind.Field, MinimapIcon.DefaultColor(MinimapIconKind.Field), "", Mathf.Clamp(Mathf.Sqrt(f.Area) * 0.6f, 18f, 40f));
+        RefreshIcon();
         Redraw(true);
     }
 
@@ -165,8 +166,8 @@ public class FarmFieldObject : Interactable
         var s = FarmSim.Summarize(Field);
         var layer = ff != null ? ff.MapLayer : FieldMapLayer.Crop;
         icon.color = LayerColor(s, layer);
-        string crop = s.Planted ? FcText.CropName(s.mainCrop) : "";
-        icon.letter = crop.Length > 0 ? crop.Substring(0, 1) : "";
+        icon.letter = FarmCoreFields.Number(Field, Field.id).ToString();   // field number on the map (FS); colour = layer
+        icon.size = Mathf.Max(icon.size, 18f);
     }
 
     public static Color LayerColor(FieldSummary s, FieldMapLayer layer)

@@ -565,13 +565,33 @@ static class FarmCoreTests
         T.Check("Tractor: driving the plough over the field ploughs the strips under it", pl >= fresh.Cells - 2, pl + " of " + fresh.Cells);
         T.Check("Missions: 'plow a field' counts one unit per 36 m2 (an old plot) and completes", units >= (int)(pl * 4f / 36f) && units <= (int)(pl * 4f / 36f) + 1 && mm.Index > idx, units + " units, mission " + mm.Current?.id);
         T.Check("Tractor: ploughing stops at walking speed and off the field", FarmTools.TractorWork(tractor, Implement.Plow, fresh.center, 0.2f) == 0 && FarmTools.TractorWork(tractor, Implement.Plow, fresh.center + new Vector3(0, 0, 60f), 3f) == 0);
-        bool lowered = false; FarmTools.Lowered = t => lowered;
-        FarmTools.ResetPass(tractor);
+        // hitch hooks (TractorHitch): only an attached, lowered, unfolded implement paints
+        if (tractor.ActiveImplement != Implement.Plow) tractor.Attach(Implement.Plow);
+        if (!tractor.ImplementLowered) tractor.ToggleLower();
+        T.Check("Tractor hitch: the plough is attached, lowered and unfolded (in work pose)", tractor.ActiveImplement == Implement.Plow && tractor.InWorkPose && FarmTools.Lowered(tractor) && tractor.WorkingWidth == FarmTools.Width(Implement.Plow));
         fresh.ResetSoil(FcData.CurrentRegion);
+        tractor.ToggleLower();   // raise
         FarmTools.TractorWork(tractor, Implement.Plow, fresh.center - new Vector3(0, 0, 4f), 3f);
         int raised = FarmTools.TractorWork(tractor, Implement.Plow, fresh.center + new Vector3(0, 0, 4f), 3f);
-        FarmTools.Lowered = t => true;
-        T.Check("Tractor: a raised implement doesn't touch the ground (vehicle hook)", raised == 0 && FC.AllUntilled(fresh));
+        T.Check("Tractor hitch: a raised implement doesn't touch the ground", raised == 0 && !FarmTools.Lowered(tractor) && FC.AllUntilled(fresh));
+        tractor.ToggleFold(); tractor.ToggleLower();   // fold, then lowering unfolds it
+        tractor.ToggleFold();                           // fold again (raises it first)
+        FarmTools.TractorWork(tractor, Implement.Plow, fresh.center - new Vector3(0, 0, 4f), 3f);
+        int folded = FarmTools.TractorWork(tractor, Implement.Plow, fresh.center + new Vector3(0, 0, 4f), 3f);
+        T.Check("Tractor hitch: a folded implement has no working width and paints nothing", tractor.ImplementFolded && tractor.WorkingWidth == 0f && folded == 0 && FC.AllUntilled(fresh));
+        tractor.ToggleLower();   // unfold + lower
+        var saved = tractor.ActiveImplement;
+        T.SetProp(tractor, "Speed", 0f);
+        tractor.Detach();
+        FarmTools.TractorWork(tractor, Implement.Plow, fresh.center - new Vector3(0, 0, 4f), 3f);
+        int detached = FarmTools.TractorWork(tractor, Implement.Plow, fresh.center + new Vector3(0, 0, 4f), 3f);
+        T.Check("Tractor hitch: nothing attached paints nothing", tractor.ActiveImplement == Implement.None && detached == 0 && FC.AllUntilled(fresh));
+        tractor.Attach(saved); tractor.ToggleLower();
+        T.Check("Tractor hitch: re-attached and lowered plough works again", tractor.InWorkPose && FarmTools.Lowered(tractor));
+        T.Check("Tractor hitch: the FarmCore implements stand in the yard as parked implements", ParkedImplement.All.Count(p => p.kind >= Implement.Cultivator) == 7 && ImplementYard.Price(Implement.Baler) > 0, ParkedImplement.All.Count + "");
+        T.Check("Menu data: the farm menu's Map / Calendar tabs read FarmCore", FarmMenuData.Fields is FarmCoreFields && FarmMenuData.Calendar is FarmCoreCalendar
+            && FarmMenuData.Fields.Count == ff.Fields.Count && FarmMenuData.Fields.Row(0).number == FarmCoreFields.Number(ff.Fields[0], 1) && FarmMenuData.Fields.Row(0).areaM2 == ff.Fields[0].Area
+            && FarmMenuData.Calendar.Rows().Count > 0 && FarmMenuData.Calendar.Rows().All(r => r.sow.Any(x => x) && r.harvest.Any(x => x)));
 
         // seeder -> plant missions; harvester -> tank -> loading bay; harvest missions
         int plantIdx = Array.FindIndex(mm.Missions, m => m.type == "plantField");

@@ -45,7 +45,8 @@ static class Program
 
     static void ResetStatics()
     {
-        foreach (var t in new[] { typeof(GameEvents), typeof(Loc), typeof(CropDatabase), typeof(SaveData), typeof(WorldClock), typeof(FarmTools), typeof(FieldEvents), typeof(FieldPests), typeof(FcData), typeof(FarmSim), typeof(FarmNet), typeof(FieldsPage), typeof(FarmModifiers), typeof(DesertWeatherFX), typeof(CozyFx), typeof(Appearance), typeof(SponsorManager), typeof(CozyAnalytics), typeof(LoadingScreen) })
+        foreach (var t in new[] { typeof(GameEvents), typeof(Loc), typeof(CropDatabase), typeof(SaveData), typeof(WorldClock), typeof(FarmTools), typeof(FieldEvents), typeof(FieldPests), typeof(FcData), typeof(FarmSim), typeof(FarmNet), typeof(FieldsPage), typeof(FarmModifiers), typeof(DesertWeatherFX), typeof(CozyFx), typeof(Appearance), typeof(SponsorManager), typeof(CozyAnalytics), typeof(LoadingScreen),
+                                 typeof(ParkedImplement), typeof(ImplementYard), typeof(VehicleConfig), typeof(FarmMenuData), typeof(Tractor) })
         {
             var m = t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
                 .FirstOrDefault(x => x.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false).Length > 0);
@@ -835,6 +836,12 @@ static class Program
         T.Check("2 shop stalls + crate + pen", UnityEngine.Object.FindObjectsByType<ShopStall>(FindObjectsSortMode.None).Length == 2 && AnimalPen.Instance != null);
         T.Check("Starting money 500 SAR", EconomyManager.Instance.Money == 500, "" + EconomyManager.Instance.Money);
         T.Check("Starts on mission 1 (well)", MissionManager.Instance.Current?.id == "well");
+        if (Environment.GetEnvironmentVariable("MAZRAA_ONLY") == "parity")   // quick loop on one section: MAZRAA_ONLY=parity
+        {
+            ParityTests.Run();
+            Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
+            Environment.Exit(T.Fail == 0 ? 0 : 1);
+        }
 
         Console.WriteLine("Animated life");
         var actors = UnityEngine.Object.FindObjectsByType<Actor>(FindObjectsSortMode.None);
@@ -958,8 +965,12 @@ static class Program
         FakeEngine.Run(0.5f);
         T.Check("Chickens appear in the pen", UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length == 2);
         AnimalPen.Instance.FillWater();
+        // Weather comes from the pre-rolled forecast: a heatwave would stress the hens (herd factor ~0.1), so lay in mild weather.
+        T.SetProp(WorldClock.Instance, "Weather", Weather.Sunny);
+        if (HerdManager.Instance != null) foreach (var hen in HerdManager.Instance.Animals) hen.heatStress = 0f;
         FakeEngine.Run(60f, 0.5f);
-        T.Check("Chickens lay eggs while fed", AnimalPen.Instance.Waiting.TryGetValue("chicken", out var eggs) && eggs > 0);
+        T.Check("Chickens lay eggs while fed", AnimalPen.Instance.Waiting.TryGetValue("chicken", out var eggs) && eggs > 0,
+            "weather " + WorldClock.Instance.Weather + " productivity " + AnimalPen.Instance.Productivity + " herd " + (HerdManager.Instance != null ? HerdManager.Instance.ProductionFactor("chicken") : 1f) + " feed " + EconomyManager.Instance.Feed);
         AnimalPen.Instance.Collect();
         T.Check("Collect moves eggs to storage", EconomyManager.Instance.Stored("eggs") > 0);
         int broke = EconomyManager.Instance.Money;
@@ -1152,6 +1163,7 @@ static class Program
         WorldTests.Run();      // open world: terrain tiles, roads, places, selling at a place, land, map, waypoint, fast travel, Delta layout
         FeelTests.Run();       // on-foot movement feel, pets near the player, exposure budget / High-contrast menus (Tests/Headless/FeelTests.cs)
         QaTests.Run();         // QA pass: save robustness, damaged slots, vehicle removed while driving (Tests/Headless/QaTests.cs)
+        ParityTests.Run();     // Farming Simulator parity: HUD layout, Tab switching, implements, farm menu tabs, GPS route, dealer
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
@@ -3727,7 +3739,7 @@ static class MarketTests
         var pad = new UnityEngine.InputSystem.Gamepad();
         UnityEngine.InputSystem.Gamepad.current = pad;
         Pad(pad.rightShoulder);
-        T.Check("Pages: RB wraps from Finances to Inventory", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Inventory);
+        T.Check("Pages: RB goes from Finances to the Map tab (FS-style farm menu)", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Map);
         Pad(pad.leftShoulder); Pad(pad.leftShoulder); Pad(pad.leftShoulder); Pad(pad.leftShoulder);
         T.Check("Pages: LB back to Prices", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Prices, FarmInfoScreen.Instance.Open.ToString());
         Pad(pad.dpad.down); Pad(pad.dpad.down);

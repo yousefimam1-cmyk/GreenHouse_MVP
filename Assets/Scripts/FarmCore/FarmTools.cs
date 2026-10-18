@@ -6,12 +6,14 @@ using UnityEngine;
 /// What a tractor implement does to the ground. The vehicle side (attaching, lowering, switching implements, HUD) belongs to
 /// Tractor / the vehicle code; FarmCore owns the field effect: Tractor.Work calls TractorWork every frame and the implement paints
 /// the cells under its working width along the path the hitch travelled (FieldWork). Implement mass, draft and work speed come
-/// from Data/FarmCore tools. Lowered is a hook for the vehicle code's attach / lower state (default: always lowered).
+/// from Data/FarmCore tools. Lowered is the hook for the hitch's attach / lower / fold state (default: TractorHitch InWorkPose).
 /// </summary>
 public static class FarmTools
 {
     /// <summary>Is the implement on this tractor lowered into the ground? Set by the vehicle code (attach / lower state).</summary>
-    public static Func<Tractor, bool> Lowered = t => true;
+    public static Func<Tractor, bool> Lowered = DefaultLowered;
+    /// <summary>The hitch (TractorHitch): an implement attached, lowered and unfolded.</summary>
+    public static bool DefaultLowered(Tractor t) => t != null && t.ActiveImplement != Implement.None && t.InWorkPose;
 
     /// <summary>Number of Implement values (Tractor cycles through them).</summary>
     public static int ImplementCount => Enum.GetValues(typeof(Implement)).Length;
@@ -23,7 +25,7 @@ public static class FarmTools
     public static int CellsWorked { get; private set; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStatics() { Lowered = t => true; lastHitch.Clear(); visualsBuilt.Clear(); lastBlockedAlert = -10f; LastBlocked = null; CellsWorked = 0; }
+    private static void ResetStatics() { Lowered = DefaultLowered; lastHitch.Clear(); visualsBuilt.Clear(); lastBlockedAlert = -10f; LastBlocked = null; CellsWorked = 0; }
 
     public static FieldTool ToolOf(Implement i)
     {
@@ -73,8 +75,10 @@ public static class FarmTools
         if (step.magnitude < 0.25f) return 0;            // paint in ~25 cm steps
         lastHitch[key] = hitch;
         if (step.magnitude > 8f) return 0;               // teleported (reset, fast travel)
-        if (ff.FieldAt(hitch, Width(imp)) == null && ff.FieldAt(last, Width(imp)) == null) return 0;
-        var ctx = ff.Work(ToolOf(imp), last, hitch, Width(imp), false, true);
+        float width = imp == t.ActiveImplement ? t.WorkingWidth : Width(imp);   // hitch: 0 when folded
+        if (width <= 0f) return 0;
+        if (ff.FieldAt(hitch, width) == null && ff.FieldAt(last, width) == null) return 0;
+        var ctx = ff.Work(ToolOf(imp), last, hitch, width, false, true);
         CellsWorked += ctx.cells;
         LastBlocked = ctx.blocked;
         if (ctx.blocked != null && ctx.cells == 0 && Time.time - lastBlockedAlert > 4f)

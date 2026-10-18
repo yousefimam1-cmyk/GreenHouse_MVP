@@ -219,6 +219,8 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
         var rows = new List<MenuRow>();   // pause menu
         rows.Add(MenuRow.Button(() => UiText.T("Resume"), Close));
         rows.Add(MenuRow.Button(() => UiText.T("Map"), () => { Close(); if (Minimap.Instance != null) Minimap.Instance.SetFull(true); }));
+        // FS parity: the tabbed farm menu (Map, Calendar, Weather, Vehicles, Animals, Help + the pages below; Q / E or LB / RB switch tabs)
+        rows.Add(MenuRow.Button(() => UiText.T("Farm menu (all tabs)"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Map); }));
         rows.Add(MenuRow.Button(() => UiText.T("Farm overview"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Stats); }));
         rows.Add(MenuRow.Button(() => UiText.T("Inventory"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Inventory); }));
         rows.Add(MenuRow.Button(() => UiText.T("Fields (precision farming)"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Fields); }));
