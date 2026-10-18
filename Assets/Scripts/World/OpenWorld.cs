@@ -306,7 +306,7 @@ public class OpenWorld : MonoBehaviour
     private void BuildRoads()
     {
         var look = Regions.Look;
-        var asphalt = LookLibrary.Tinted(LookMat.Concrete, new Color(0.34f, 0.34f, 0.36f), 0.2f);
+        var asphalt = LookLibrary.Tinted(LookMat.Asphalt, Color.white, 0.2f);
         var dirt = WorldMesh.Mat(RegionLook.C(look.track, DesertDressing.TrackColor), 0.05f);
         var gravel = LookLibrary.Tinted(LookMat.Gravel, Color.white);
         var paint = WorldMesh.Mat(new Color(0.92f, 0.9f, 0.82f), 0.3f);

@@ -16,6 +16,8 @@ public enum LookMat
     LeavesAcacia, LeavesEucalyptus, LeavesSidr, PalmFrond, GrassGreen, GrassDry,
     // transparent
     Glass,
+    // roads (Poly Haven asphalt_02; appended so saved enum values keep their meaning)
+    Asphalt,
 }
 
 /// <summary>
@@ -82,6 +84,7 @@ public static class LookLibrary
             case LookMat.MudBrick: return 1.5f;
             case LookMat.Plaster: return 2f;
             case LookMat.Concrete: return 2.7f;
+            case LookMat.Asphalt: return 3.2f;
             case LookMat.Corrugated: return 1.1f;
             case LookMat.Metal: return 2f;
             case LookMat.Wood: return 1.8f;
@@ -108,6 +111,7 @@ public static class LookLibrary
             case LookMat.MudBrick: return new Color(0.66f, 0.52f, 0.38f);
             case LookMat.Plaster: return new Color(0.88f, 0.86f, 0.82f);
             case LookMat.Concrete: return new Color(0.62f, 0.6f, 0.57f);
+            case LookMat.Asphalt: return new Color(0.3f, 0.3f, 0.31f);
             case LookMat.Corrugated: return new Color(0.62f, 0.64f, 0.66f);
             case LookMat.Metal: return new Color(0.5f, 0.45f, 0.4f);
             case LookMat.Wood: return new Color(0.4f, 0.3f, 0.22f);

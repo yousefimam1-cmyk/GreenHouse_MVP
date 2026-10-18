@@ -52,3 +52,12 @@ from the leaf textures listed below (cluster cards, grass tufts). The date palm 
 | 2K versions (Ultra preset) of sandy_gravel_02, gravelly_sand, dry_riverbed_rock, brown_mud_02, grass_ground, aerial_mud_1, rough_plaster_brick_02, white_stucco, palm_bark | same authors as above | CC0 1.0 | Resources/Look/Textures2K/*_d.jpg / *_n.jpg (2K diffuse + OpenGL normal, re-encoded JPG q90) |
 | Date palm frond atlas | generated (project's own) | - | palm_frond_d.png |
 | Foliage shader Mazraa/Foliage | project's own | - | Resources/Look/Shaders/MazraaFoliage.shader |
+
+## Placeholder pass (model catalog: Resources/Models/catalog.json, see PLACEHOLDERS.md)
+
+| Asset | Author | License | Used as |
+|---|---|---|---|
+| City Kit Industrial 2.0 (building-h, detail-tank, detail-tank-large, solar-panel-landscape-group, water-tower, shipping-container-a/b + colormap) | Kenney (kenney.nl) | CC0 1.0 | ThirdParty/KenneyCityKitIndustrial: Barn, Utilities/SolarPanel, WaterTank, Biogas |
+| Car Kit (sedan, suv, van, hatchback-sports, delivery + colormap) | Kenney (kenney.nl) | CC0 1.0 | ThirdParty/KenneyCarKitTown: town traffic / parked cars |
+| Kloofendal 48d Partly Cloudy (Pure Sky) HDRI, 2K (kloofendal_48d_partly_cloudy_puresky) | Greg Zaal, Poly Haven | CC0 1.0 | ThirdParty/PolyHavenSky: Look/Materials/SkyHDRI (Ultra sky) |
+| Asphalt 02 (asphalt_02) | Poly Haven | CC0 1.0 | Resources/Look/Textures/asphalt_d/_n/_m (albedo, normal, packed mask; 1K / 512): LookMat.Asphalt roads |

@@ -1,0 +1,16 @@
+{
+  "models": [
+    { "id": "Barn", "path": "TP_KenneyCityKitIndustrial/building-h", "fit": 5.2, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "Utilities/SolarPanel", "path": "TP_KenneyCityKitIndustrial/solar-panel-landscape-group", "fit": 4.4, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "Utilities/WaterTank", "path": "TP_KenneyCityKitIndustrial/detail-tank", "fit": 3, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "Utilities/Biogas", "path": "TP_KenneyCityKitIndustrial/detail-tank-large", "fit": 3.6, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "FarmWaterTower", "path": "TP_KenneyCityKitIndustrial/water-tower", "fit": 4, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "StorageContainerA", "path": "TP_KenneyCityKitIndustrial/shipping-container-a", "fit": 6.1, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "StorageContainerB", "path": "TP_KenneyCityKitIndustrial/shipping-container-b", "fit": 6.1, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "TownSedan", "path": "TP_KenneyCarKitTown/sedan", "fit": 4.6, "yaw": 0, "fallback": "Truck", "group": "town_car", "pack": "KenneyCarKitTown" },
+    { "id": "TownSuv", "path": "TP_KenneyCarKitTown/suv", "fit": 4.8, "yaw": 0, "fallback": "Truck", "group": "town_car", "pack": "KenneyCarKitTown" },
+    { "id": "TownVan", "path": "TP_KenneyCarKitTown/van", "fit": 5.0, "yaw": 0, "fallback": "Truck", "group": "town_car", "pack": "KenneyCarKitTown" },
+    { "id": "TownHatchback", "path": "TP_KenneyCarKitTown/hatchback-sports", "fit": 4.2, "yaw": 0, "fallback": "Truck", "group": "town_car", "pack": "KenneyCarKitTown" },
+    { "id": "TownDelivery", "path": "TP_KenneyCarKitTown/delivery", "fit": 5.4, "yaw": 0, "fallback": "Truck", "group": "town_car", "pack": "KenneyCarKitTown" }
+  ]
+}
