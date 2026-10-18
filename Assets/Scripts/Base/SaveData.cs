@@ -13,6 +13,19 @@ public static class SaveData
     [Serializable] private class Entry { public string k; public string v; public int t; } // t: 0 int, 1 float, 2 string
     [Serializable] private class FileData { public int version = 1; public string savedAt; public List<Entry> entries = new List<Entry>(); }
 
+    // [Core] schema versioning hook (Assets/Scripts/Core/SaveMigrations.cs): bump when a key is renamed/changed and add a step there.
+    public const int SchemaVersion = 2;
+    /// <summary>Version of the file that was read (before migration); 0 when no file existed.</summary>
+    public static int LoadedVersion { get; private set; }
+    private sealed class Store : ISaveStore
+    {
+        public bool Has(string key) => map.ContainsKey(key);
+        public string Get(string key) { Entry e; return map.TryGetValue(key, out e) ? e.v : null; }
+        public void Set(string key, string value, int type) { map[key] = new Entry { k = key, v = value, t = type }; }
+        public void Remove(string key) => map.Remove(key);
+        public IEnumerable<string> Keys => new List<string>(map.Keys);
+    }
+
     private static Dictionary<string, Entry> map;
     private static Dictionary<string, Entry> homeMap;   // the player's own save while a co-op session uses a throwaway map
     private static bool dirty;
@@ -41,6 +54,7 @@ public static class SaveData
             var f = JsonUtility.FromJson<FileData>(text);
             if (f == null || f.entries == null) return false;
             foreach (var e in f.entries) if (e != null && e.k != null) into[e.k] = e;
+            if (ReferenceEquals(into, map)) LoadedVersion = f.version;   // [Core] schema version of the file that was read
             return true;
         }
         catch (Exception ex) { Debug.LogWarning("[SaveData] Could not read " + System.IO.Path.GetFileName(file) + ": " + ex.Message); return false; }
@@ -53,7 +67,7 @@ public static class SaveData
     {
         if (map != null) return;
         map = new Dictionary<string, Entry>();
-        LoadedFromBackup = false;
+        LoadedFromBackup = false; LoadedVersion = 0;
         mainGood = TryRead(Path, map);
         if (!mainGood)
         {
@@ -67,8 +81,10 @@ public static class SaveData
                 LoadedFromBackup = true; dirty = true;
                 Debug.LogWarning("[SaveData] Save file was " + (damaged ? "damaged" : "missing") + "; recovered the last good save.");
             }
-            else if (damaged) { map.Clear(); Debug.LogWarning("[SaveData] Save file was damaged and no backup could be read; starting fresh (kept " + CorruptPath + ")."); }
+            else if (damaged) { map.Clear(); LoadedVersion = 0; Debug.LogWarning("[SaveData] Save file was damaged and no backup could be read; starting fresh (kept " + CorruptPath + ")."); }
         }
+        // [Core] migrate older files (Assets/Scripts/Core/SaveMigrations.cs), then write them back at the current version
+        if (LoadedVersion > 0 && LoadedVersion < SchemaVersion && SaveMigrations.Apply(LoadedVersion, SchemaVersion, new Store()) == SchemaVersion) dirty = true;
         if (flusher != null) return;
         flusher = new GameObject("SaveData Flusher") { hideFlags = HideFlags.HideAndDontSave };
         UnityEngine.Object.DontDestroyOnLoad(flusher);
@@ -76,7 +92,7 @@ public static class SaveData
     }
 
     /// <summary>Forget the in-memory values and read the file again (after a save slot was copied over it).</summary>
-    public static void Reload() { map = null; dirty = false; }
+    public static void Reload() { map = null; dirty = false; LoadedVersion = 0; }
 
     private static readonly System.Globalization.CultureInfo Inv = System.Globalization.CultureInfo.InvariantCulture;
 
@@ -142,7 +158,7 @@ public static class SaveData
         if (map == null || (!dirty && !force)) return;
         try
         {
-            var f = new FileData { savedAt = DateTime.UtcNow.ToString("o") };
+            var f = new FileData { version = SchemaVersion, savedAt = DateTime.UtcNow.ToString("o") };   // [Core] schema version
             f.entries.AddRange((homeMap ?? map).Values);   // during a co-op session only the player's own farm is written
             WriteAtomic(Path, JsonUtility.ToJson(f, true));
             dirty = false;

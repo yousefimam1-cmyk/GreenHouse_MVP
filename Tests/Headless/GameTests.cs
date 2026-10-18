@@ -1164,6 +1164,7 @@ static class Program
         FeelTests.Run();       // on-foot movement feel, pets near the player, exposure budget / High-contrast menus (Tests/Headless/FeelTests.cs)
         QaTests.Run();         // QA pass: save robustness, damaged slots, vehicle removed while driving (Tests/Headless/QaTests.cs)
         ParityTests.Run();     // Farming Simulator parity: HUD layout, Tab switching, implements, farm menu tabs, GPS route, dealer
+        CoreTests.Run();       // [Core] tick scheduler, signals, save migrations, content packs (Tests/Headless/CoreTests.cs)
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
