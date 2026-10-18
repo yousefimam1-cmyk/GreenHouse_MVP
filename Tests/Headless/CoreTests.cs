@@ -155,7 +155,8 @@ static class CoreTests
         var written = File.ReadAllText(path);
         T.Check("Save: migrated file is written back at schema v2", written.Contains("\"version\": 2") || written.Contains("\"version\":2"), written.Substring(0, Math.Min(60, written.Length)));
         SaveData.Reload();
-        T.Check("Save: reloading the v2 file runs no migration", SaveData.GetInt("mazraa.day", 0) == 42 && SaveData.LoadedVersion == 2 && SaveMigrations.LastApplied.Count == 0);
+        SaveMigrations.LastApplied.Clear(); SaveData.Reload();
+        T.Check("Save: reloading the v2 file runs no migration", SaveData.GetInt("mazraa.day", 0) == 42 && SaveData.LoadedVersion == 2 && SaveMigrations.LastApplied.Count == 0, SaveData.LoadedVersion + " " + SaveMigrations.LastApplied.Count);
         // no file at all
         File.Delete(path); SaveData.Reload(); SaveData.GetInt("x", 0);
         T.Check("Save: no file -> version 0, nothing to migrate", SaveData.LoadedVersion == 0);
@@ -213,8 +214,8 @@ static class CoreTests
         using (var s = Ticks.EverySecond(dt => secs++, driver, "test.sec"))
         using (var d = Ticks.EveryDay(day => days = day, driver, "test.day"))
         {
-            FakeEngine.Run(3f, 0.1f);
-            T.Check("Core: scheduler advances with the engine (30 frames, ~3 s, 2-3 second ticks)", frames == 30 && Math.Abs(dtSum - 3f) < 0.01f && secs >= 2 && secs <= 3, frames + " " + dtSum + " " + secs);
+            int f0 = Time.frameCount; FakeEngine.Run(3f, 0.1f); int ran = Time.frameCount - f0;
+            T.Check("Core: scheduler advances with the engine (one call per frame, dt summed, 2-3 second ticks)", frames == ran && Math.Abs(dtSum - ran * 0.1f) < 0.01f && secs >= 2 && secs <= 3, frames + "/" + ran + " " + dtSum + " " + secs);
             var clock = WorldClock.Instance; int before = clock.Day;
             clock.NextDay();
             T.Check("Core: WorldClock.DayStarted drives the Daily tick", days == before + 1, days + " vs " + (before + 1));

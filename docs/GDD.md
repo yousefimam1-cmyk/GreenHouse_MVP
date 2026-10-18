@@ -106,7 +106,7 @@ Farm level 1 → 30 (section 11), land expansion (0.5 ha greenhouse plot → 60 
 ## 6. Farming systems
 
 ### 6.1 Field model (FarmCore)
-Fields are polygons on the terrain (not grid tiles) with a state machine per field: `Fallow → Plowed → Cultivated → Sown → Growing(stage 1..n) → Ready → Harvested(stubble) → Fallow`, plus overlays: `Weeds (0..1)`, `Moisture (0..1)`, `Salinity EC (dS/m)`, `N/P/K (kg/ha)`, `pH`, `Organic matter %`, `Compaction`, `Pest/Disease`. Fields can be subdivided or merged at the land office. The soil model that already exists (`SoilModel`, `soil.json`) is the reference and FarmCore should wrap it, not replace it.
+Fields are regions of a fine cell grid painted by implements (FarmCore; a field is the connected cells you worked, so shapes are free, not rectangles) with a state machine per cell aggregated per field: `Fallow → Plowed → Cultivated → Sown → Growing(stage 1..n) → Ready → Harvested(stubble) → Fallow`, plus overlays: `Weeds (0..1)`, `Moisture (0..1)`, `Salinity EC (dS/m)`, `N/P/K (kg/ha)`, `pH`, `Organic matter %`, `Compaction`, `Pest/Disease`. Fields can be subdivided or merged at the land office. The soil model that already exists (`SoilModel`, `soil.json`) is the reference and FarmCore should wrap it, not replace it.
 
 ### 6.2 Crop catalogue — Najd (Saudi Arabia)
 

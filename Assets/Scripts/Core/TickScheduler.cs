@@ -117,6 +117,7 @@ public sealed class TickScheduler
             Pump(frame, dt, 0f);
             Pump(quarter, dt, QuarterInterval);
             Pump(second, dt, SecondInterval);
+            for (int i = 0; i < daily.Count; i++) if (!daily[i].Active || !daily[i].OwnerAlive) { daily[i].Cancel(); daily.RemoveAt(i--); }   // cancelled daily handles go now, not on the next day
         }
         finally { ticking = false; Flush(); }
     }

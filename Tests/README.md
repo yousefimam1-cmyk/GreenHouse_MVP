@@ -16,6 +16,8 @@ Run without Unity (Linux/macOS with mono, or WSL):
   image (exposure stays in range on every preset / brightness; High-contrast menus never touch post-processing).
   The StarterAssets FirstPersonController itself is not compiled by the headless run: its maths lives in
   Assets/Scripts/Input/MoveFeel.cs, which is.
+- `Tests/Headless/CoreTests.cs` covers the Core architecture pieces (Assets/Scripts/Core: tick scheduler + driver, typed signals, save
+  schema migrations, content-pack registry) - see docs/ARCHITECTURE.md.
 - `python3 Tests/unused_assets.py . > Tests/UNUSED_ASSETS.md` - assets nothing in the build uses (report only).
 
 On GitHub: `.github/workflows/tests.yml` runs the headless and static tests on every push/PR to mazraa-dev, and the
