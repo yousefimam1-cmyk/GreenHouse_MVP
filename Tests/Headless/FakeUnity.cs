@@ -569,7 +569,7 @@ namespace UnityEngine
         public Bounds bounds => new Bounds(transform.position, transform.lossyScale);
     }
     public class MeshRenderer : Renderer { }
-    public class SkinnedMeshRenderer : Renderer { }
+    public class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen; }
     public class Collider : Component { public bool enabled = true, isTrigger; public PhysicsMaterial material; public Bounds bounds => this is BoxCollider b ? FakePhysics.WorldBounds(b) : new Bounds(transform.position, transform.lossyScale); }
     public class BoxCollider : Collider { public Vector3 center, size; }
     // Unity defaults (CharacterController component): height 2, radius 0.5, step offset 0.3, slope limit 45, skin width 0.08.
@@ -674,6 +674,14 @@ namespace UnityEngine
                     if (!col.destroyed && col.enabled && !col.isTrigger && FakePhysics.Overlap(cap, FakePhysics.Of(col, Vector3.zero))) return true;
             }
             return false;
+        }
+        // Real Unity signature (Physics.SphereCast(origin, radius, direction, out hit, maxDistance, layerMask, queryTriggerInteraction)); flat ground at y = 0.
+        public static bool SphereCast(Vector3 o, float radius, Vector3 d, out RaycastHit h, float dist, int mask, QueryTriggerInteraction q)
+        {
+            h = default;
+            if (d.y >= 0 || o.y < radius) return false;
+            float t = (o.y - radius) / -d.y; if (t > dist) return false;
+            h.point = o + d * t - Vector3.up * radius; h.normal = Vector3.up; h.distance = t; return true;
         }
         public static void IgnoreCollision(Collider a, Collider b, bool i) { }
     }
@@ -821,6 +829,7 @@ namespace UnityEngine
     public static class GUI
     {
         public static GUISkin skin = new GUISkin();
+        public static bool enabled = true;   // real: UnityEngine.GUI.enabled
         public static void Box(Rect r, string t, GUIStyle s) { }
         public static void Label(Rect r, string t, GUIStyle s) { }
         public static bool Button(Rect r, string t, GUIStyle s) => false;

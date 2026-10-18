@@ -57,7 +57,7 @@ public class SettingsApplier : MonoBehaviour
         int level = GameSettings.AmbientDensity;
         if (level >= 3) return;
         var list = new List<Actor>(FindObjectsByType<Actor>(FindObjectsInactive.Include, FindObjectsSortMode.None));
-        list.RemoveAll(a => a == null || (a.mode != ActorMode.Wander && a.mode != ActorMode.Fly) || !a.gameObject.activeSelf);
+        list.RemoveAll(a => a == null || a.IsPet || (a.mode != ActorMode.Wander && a.mode != ActorMode.Fly) || !a.gameObject.activeSelf);   // pets always stay
         list.Sort((x, y) => { int c = string.CompareOrdinal(x.name, y.name); return c != 0 ? c : x.transform.GetSiblingIndex().CompareTo(y.transform.GetSiblingIndex()); });
         for (int i = 0; i < list.Count; i++)
             if (i % 3 >= level) { list[i].gameObject.SetActive(false); hidden.Add(list[i]); }

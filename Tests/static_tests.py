@@ -313,6 +313,35 @@ def _():
             'palm_bark', 'bark_brown_02', 'palm_tree_bark', 'jacaranda_tree', 'grass_medium_01', 'island_tree_02', 'shrub_04']
     miss = [x for x in srcs if x not in c]
     return 'Poly Haven' in c and not miss, miss
+# ---------------------------------------------------------------- online co-op
+@test('Netcode / Unity Gaming Services code only in define-guarded files; Windows defines and packages agree')
+def _():
+    bad = []
+    for p, s in src.items():
+        uses_ngo = re.search(r'^using Unity\.(Netcode|Networking\.Transport)', s, re.M)
+        uses_ugs = re.search(r'^using Unity\.Services\.', s, re.M)
+        first = s.lstrip('\ufeff').split('\n', 1)[0].strip()
+        if uses_ugs and not first.startswith('#if MAZRAA_ONLINE && MAZRAA_NETCODE'): bad.append('UGS outside MAZRAA_ONLINE: ' + os.path.relpath(p, A))
+        elif uses_ngo and not uses_ugs and not first.startswith('#if MAZRAA_NETCODE'): bad.append('Netcode outside MAZRAA_NETCODE: ' + os.path.relpath(p, A))
+    ps = open(os.path.join(root, 'ProjectSettings', 'ProjectSettings.asset'), encoding='utf-8', errors='ignore').read()
+    m = re.search(r'^    Standalone: (.*)$', ps[ps.index('scriptingDefineSymbols:'):], re.M)
+    defs = m.group(1).split(';') if m else []
+    man = json.load(open(os.path.join(root, 'Packages', 'manifest.json')))['dependencies']
+    if 'MAZRAA_NETCODE' in defs and not ('com.unity.netcode.gameobjects' in man and 'com.unity.transport' in man): bad.append('MAZRAA_NETCODE without the Netcode packages')
+    if 'MAZRAA_ONLINE' in defs and 'com.unity.services.multiplayer' not in man: bad.append('MAZRAA_ONLINE without com.unity.services.multiplayer')
+    if 'MAZRAA_ONLINE' in defs and 'MAZRAA_NETCODE' not in defs: bad.append('MAZRAA_ONLINE needs MAZRAA_NETCODE')
+    return not bad, bad + ['Standalone defines: ' + ';'.join(defs)]
+
+
+@test('No leftover merge-conflict markers in project files')
+def _():
+    bad = []
+    for base in (A, os.path.join(A, '..', 'ProjectSettings'), os.path.join(A, '..', 'Packages')):
+        for p in walk(base, ('.meta', '.cs', '.json', '.asset', '.unity', '.prefab', '.mat', '.shader')):
+            try: t = open(p, encoding='utf-8', errors='ignore').read()
+            except Exception: continue
+            if re.search(r'^(<<<<<<< |>>>>>>> )', t, re.M): bad.append(os.path.relpath(p, A))
+    return not bad, bad
 
 # ---------------------------------------------------------------- report
 ok = sum(1 for r in results if r[1])

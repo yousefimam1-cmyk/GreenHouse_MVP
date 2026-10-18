@@ -1,17 +1,38 @@
 Mazraa - Privacy Policy
-Last updated: 16 October 2026
+Last updated: 17 October 2026
 
-Mazraa is a single-player farming game by Almadarek Games (publisher account: Sladewilsontv).
+Mazraa is a farming game by Almadarek Games (publisher account: Sladewilsontv). You can play alone, or farm together
+with up to 3 other players over the internet or on your local network (co-op).
 
-What we collect: nothing. The game does not ask for your name, e-mail, location, contacts or any other personal
-information, does not show third-party ads and does not sell or share data.
+What we collect: no personal information. The game does not ask for your real name, e-mail, phone number, location,
+contacts or photos, has no accounts or passwords, does not show third-party ads and does not sell or share data.
 
-What stays on your PC: your save games, settings and a small local gameplay statistics file are stored only in your
-Windows user folder (AppData). They never leave your computer. Uninstalling the game removes them (Microsoft Store
-version) or you can delete the "Almadarek Games\Mazraa" folder under AppData\LocalLow.
+What stays on your PC: your save games, settings, friends / blocked lists and a small local gameplay statistics file
+are stored only in your Windows user folder (AppData). They never leave your computer. Uninstalling the game removes
+them (Microsoft Store version) or you can delete the "Almadarek Games\Mazraa" folder under AppData\LocalLow.
+
+Online co-op (only when you choose Multiplayer > Host an online game, Join with a code or Browse public games):
+the game uses Unity Gaming Services by Unity Technologies (Authentication, Relay and Lobby) to connect players.
+- Anonymous player ID: Unity creates a random anonymous player ID for your device. It is not linked to your name,
+  e-mail or any account, and it is used only to connect you and to let a host keep a removed player out of the session.
+- IP address: Unity's Relay and Lobby servers process your IP address to connect you to the other players, as any
+  internet connection does. Other players never see your IP address in online games.
+- Your player name is picked from a list of farm names (for example "Golden Palm 42"); you never type your real name.
+- Public farms: if a host makes a farm public, its farm name, map, game version, number of players and join code are
+  listed so other players can find it. Code-only and friends-only farms are not listed.
+- Chat: messages you type in co-op are sent to the other players in that session through the host. A bad-word filter
+  removes rude words, and you can turn chat off, allow friends only, block or report a player. The game does not keep
+  chat on any server.
+- Reports: when you report a player, the report (their player name and last few messages) is saved on your PC and an
+  e-mail to us is prepared in your mail app. Nothing is sent unless you press Send yourself.
+Unity's privacy policy: https://unity.com/legal/game-player-and-app-user-privacy-policy
+
+Local network (LAN) co-op connects directly to a friend's PC by its IP address on your own network; nothing goes
+through our servers or Unity's.
 
 Crash reports: the Unity engine may write a local crash log; it is not sent anywhere by the game.
 
-Children: the game collects no data from anyone, including children.
+Children: the game asks no one, including children, for personal information. Online chat can be turned off in
+Multiplayer settings, and "Friends only" keeps strangers out of your farm and your chat.
 
 Contact: moimam@gmail.com
