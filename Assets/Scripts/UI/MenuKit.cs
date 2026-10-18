@@ -61,7 +61,8 @@ public static class MenuKit
         var rt = Rect(name, parent, typeof(Image), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
         rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
         rt.sizeDelta = new Vector2(width, 0);
-        rt.GetComponent<Image>().color = PanelColor;
+        var pimg = rt.GetComponent<Image>();
+        if (!UiKit.Sliced(pimg, "panel")) pimg.color = PanelColor;   // kit frame (Resources/UI/Kit) or the flat colour
         var vl = rt.GetComponent<VerticalLayoutGroup>();
         vl.padding = new RectOffset(28, 28, 22, 22); vl.spacing = 8;
         vl.childControlWidth = vl.childControlHeight = true; vl.childForceExpandWidth = true; vl.childForceExpandHeight = false;
@@ -85,11 +86,20 @@ public static class MenuKit
     {
         var rt = Rect(name, parent, typeof(Image), typeof(MenuClick));
         bg = rt.GetComponent<Image>();
-        bg.color = RowColor;
+        if (!UiKit.Sliced(bg, "button")) bg.color = RowColor;
         bg.raycastTarget = true;
         var click = rt.GetComponent<MenuClick>();
         click.onClick = onClick;
         return click;
+    }
+
+    /// <summary>Kit sprite for a menu row (plain / selected / high-contrast). False when the kit is not available.</summary>
+    public static bool RowStyle(Image bg, bool selected, bool highContrast)
+    {
+        if (bg == null || !UiKit.Enabled) return false;
+        if (!UiKit.Sliced(bg, highContrast ? (selected ? "button_hc" : "button") : selected ? "button_selected" : "button")) return false;
+        if (highContrast && !selected) bg.color = new Color(1f, 1f, 1f, 2f);   // brighter rows under the black panel
+        return true;
     }
 
     public static string Title(string s) => "<color=#FF9A3C><b>" + s + "</b></color>";
@@ -197,7 +207,7 @@ public class MenuList
         bool rtl = Loc.IsArabic;
         bool hc = GameSettings.HighContrast;   // Settings > Accessibility > High-contrast menus
         var panelImg = Panel.GetComponent<Image>();
-        if (panelImg != null) panelImg.color = hc ? MenuKit.PanelHighContrast : MenuKit.PanelColor;
+        if (panelImg != null) panelImg.color = hc ? MenuKit.PanelHighContrast : UiKit.PanelTint(MenuKit.PanelColor);
         Loc.ApplyFont(title); Loc.ApplyFont(footer);
         title.text = titleText != null ? titleText() : "";
         title.alignment = rtl ? TextAlignmentOptions.Right : TextAlignmentOptions.Left;
@@ -218,7 +228,7 @@ public class MenuList
             r.text.text = num == "" ? lbl : rtl ? lbl + "   " + num : num + "   " + lbl;
             bool sel = i == Selected;
             r.text.color = hc && sel ? Color.black : on ? Color.white : new Color(1f, 1f, 1f, hc ? 0.6f : 0.4f);
-            r.bg.color = hc ? (sel ? MenuKit.RowSelectedHighContrast : MenuKit.RowHighContrast) : sel ? MenuKit.RowSelected : MenuKit.RowColor;
+            if (!MenuKit.RowStyle(r.bg, sel, hc)) r.bg.color = hc ? (sel ? MenuKit.RowSelectedHighContrast : MenuKit.RowHighContrast) : sel ? MenuKit.RowSelected : MenuKit.RowColor;
             if (r.valueText != null) r.valueText.color = hc ? (sel ? Color.black : Color.white) : new Color(1f, 0.85f, 0.6f);
             var lrt = r.text.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
