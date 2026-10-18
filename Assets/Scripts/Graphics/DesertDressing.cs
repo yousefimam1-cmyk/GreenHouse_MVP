@@ -525,7 +525,7 @@ public class DesertDressing : MonoBehaviour
         Vector3 mid = (a + b) * 0.5f, dir = Flat(b - a);
         float len = dir.magnitude;
         if (len < 0.5f) return;
-        var water = Build.Mat(new Color(0.2f, 0.36f, 0.4f), 0.92f);
+        var water = MaxLook.WaterMaterial();   // Mazraa/Water on High / Ultra, flat colour below
         var bank = Build.Mat(new Color(0.33f, 0.27f, 0.19f), 0.05f);
         var go = new GameObject("Canal");
         go.transform.SetParent(root, false);

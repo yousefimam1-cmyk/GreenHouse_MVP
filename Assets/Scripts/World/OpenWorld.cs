@@ -602,7 +602,7 @@ public class OpenWorld : MonoBehaviour
         // Delta canals: water strips (no colliders) in the canal beds
         if (L.Delta)
         {
-            var water = WorldMesh.Mat(new Color(0.2f, 0.36f, 0.4f), 0.92f);
+            var water = MaxLook.WaterMaterial();   // Mazraa/Water on High / Ultra, flat colour below
             foreach (var line in S.Canals)
             {
                 var pts = new List<Vector3>(); var hs = new List<float>();
