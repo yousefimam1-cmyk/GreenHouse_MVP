@@ -5,12 +5,14 @@ using UnityEngine.InputSystem;
 public enum Implement { None, Plow, Seeder, Harvester }
 
 /// <summary>
-/// Tractor with swappable implements (Q cycles: none, plow, seeder, harvester). Drive the implement over a field
-/// plot (above walking speed) to plow, sow the best seed you own, or harvest it. Slower than the truck.
+/// Tractor with a three-point hitch (TractorHitch.cs): implements (plow, seeder, harvester) are parked in the implement
+/// yard; reverse up to one and press Q (hold Y on a gamepad) to attach / detach it, V (tap Y) lowers / raises it,
+/// hold V folds it. A lowered, unfolded implement driven over a field plot (above walking speed) plows, sows the best
+/// seed you own, or harvests it. Slower than the truck.
 /// Heavy (4.5 t + implement + optional front weights); a working implement drags (plow most, seeder least) and
 /// has a maximum working speed. Front weights (shop, Upgrades) add grip in the field.
 /// </summary>
-public class Tractor : Vehicle
+public partial class Tractor : Vehicle
 {
     public static Tractor Instance;
     public Implement ActiveImplement { get; private set; }
@@ -70,7 +72,7 @@ public class Tractor : Vehicle
     {
         get
         {
-            if (ActiveImplement == Implement.None || Mathf.Abs(Speed) < 0.5f) return false;
+            if (ActiveImplement == Implement.None || !InWorkPose || Mathf.Abs(Speed) < 0.5f) return false;
             if (Time.time - workCheckTime < 0.2f && workCheckTime >= 0f) return working;
             workCheckTime = Time.time;
             working = HitchOnPlot();
@@ -86,31 +88,26 @@ public class Tractor : Vehicle
         return false;
     }
 
-    protected override void OnNewGame() { base.OnNewGame(); SetBallast(0); }
+    protected override void OnNewGame() { base.OnNewGame(); SetBallast(0); ResetImplements(); }
 
     protected override void OnDestroy() { base.OnDestroy(); if (Instance == this) Instance = null; }
 
-    public void RegisterVisual(Implement i, GameObject go) { visuals[i] = go; ShowImplement(); }
+    public void RegisterVisual(Implement i, GameObject go) { visuals[i] = go; PlaceVisual(i, go); }
 
-    private void ShowImplement() { foreach (var kv in visuals) if (kv.Value != null) kv.Value.SetActive(kv.Key == ActiveImplement); }
+    /// <summary>The implement's model (parented to the hitch while attached, standing in the yard while parked).</summary>
+    public GameObject Visual(Implement i) => visuals.TryGetValue(i, out var go) ? go : null;
 
     protected override void DrivingUpdate(Keyboard kb)
     {
-        if (GameInput.Pressed(GameAction.Implement))   // Q / Y / Triangle
-        {
-            ActiveImplement = (Implement)(((int)ActiveImplement + 1) % 4);
-            workCheckTime = -1f;
-            SaveData.SetInt("mazraa.implement", (int)ActiveImplement);
-            ShowImplement();
-            if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(Loc.Display(Loc.Raw("Implement") + ": " + ImplementName(ActiveImplement)));
-        }
+        HitchInput();   // Q / hold Y attach-detach, V / tap Y lower-raise, hold V fold (TractorHitch.cs)
         Work();
+        if (Working) RaiseWorking();
     }
 
     private void Work()
     {
         workCooldown -= Time.deltaTime;
-        if (ActiveImplement == Implement.None || Mathf.Abs(Speed) < 1f || workCooldown > 0f || FieldManager.Instance == null) return;
+        if (ActiveImplement == Implement.None || !InWorkPose || Mathf.Abs(Speed) < 1f || workCooldown > 0f || FieldManager.Instance == null) return;
         Vector3 point = hitch != null ? hitch.position : transform.position - transform.forward * 2.5f;
         foreach (var plot in FieldManager.Instance.Plots)
         {

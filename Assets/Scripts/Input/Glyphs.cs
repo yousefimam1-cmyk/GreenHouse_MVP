@@ -64,6 +64,7 @@ public static class Glyphs
             case GameAction.UseTool: return PadLabel(Pad.RT, ps);
             case GameAction.ToolPrev: return PadLabel(Pad.LB, ps);
             case GameAction.ToolNext: return PadLabel(Pad.RB, ps);
+            case GameAction.ImplementLower: return PadLabel(Pad.North, ps);   // tap Y (TractorHitch)
             default: return null;
         }
     }
@@ -71,7 +72,7 @@ public static class Glyphs
     // Bracketed keyboard tokens used in texts -> action (or a fixed gamepad button for non-rebindable keys).
     // F, Ctrl and Z are shared: in a vehicle they mean engine / gear down / 4WD, on foot pick up / crouch / hand tool.
     private static readonly string[] Tokens = { "E", "R", "Q", "Space", "P", "N", "I", "O", "V", "Esc", "Enter", "Backspace", "LB", "RB",
-        "F", "Shift", "Ctrl", "Y", "Plus", "Minus", "Z", "Slash", ",", "." };
+        "F", "Shift", "Ctrl", "Y", "Plus", "Minus", "Z", "Slash", ",", ".", "Tab" };
 
     private static string Replacement(string token)
     {
@@ -86,7 +87,8 @@ public static class Glyphs
             case "N": return For(GameAction.Map);
             case "I": return For(GameAction.Inventory);
             case "O": return For(GameAction.Stats);
-            case "V": return For(GameAction.View);
+            case "V": return For(Vehicle.Current != null ? GameAction.ImplementLower : GameAction.View);   // in a vehicle V lowers / raises the implement
+            case "Tab": return For(GameAction.SwitchVehicle);
             case "F": return For(Vehicle.Current != null ? GameAction.EngineToggle : GameAction.Carry);
             case "Shift": return For(GameAction.GearUp);
             case "Ctrl": return For(Vehicle.Current != null ? GameAction.GearDown : GameAction.Crouch);

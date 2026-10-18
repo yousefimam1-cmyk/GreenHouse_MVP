@@ -4,7 +4,8 @@ using UnityEngine.InputSystem;
 
 /// <summary>Game actions that can be pressed on keyboard or gamepad (keyboard keys can be rebound in Settings).</summary>
 public enum GameAction { Interact, VehicleAction, Implement, Brake, Pause, Map, Inventory, Stats, View, Crouch, Carry, UseTool, ToolPrev, ToolNext,
-    EngineToggle, GearUp, GearDown, Cruise, CruiseFaster, CruiseSlower, Traction, LaneAssist }
+    EngineToggle, GearUp, GearDown, Cruise, CruiseFaster, CruiseSlower, Traction, LaneAssist,
+    SwitchVehicle, ImplementLower }   // FS parity: Tab next vehicle (also from on foot), V lower / raise the implement (driving only)
 
 /// <summary>
 /// One Input System action map built in code for the farm actions (E, R, Q, Space, P, N, I, O, V), the on-foot actions
@@ -52,6 +53,9 @@ public static class GameInput
         new Def("Cruise speed -", "<Keyboard>/comma", "<Gamepad>/dpad/left"),
         new Def("4WD / diff lock", "<Keyboard>/z", "<Gamepad>/dpad/down"),
         new Def("GPS straight line", "<Keyboard>/slash", "<Gamepad>/rightStickPress"),
+        // FS parity (VehicleSwitcher, TractorHitch): gamepad switches vehicles from the menu's Vehicles tab; Y tap lowers in code
+        new Def("Switch vehicle", "<Keyboard>/tab", null),
+        new Def("Lower / raise implement", "<Keyboard>/v", null),
     };
 
     private static InputActionAsset asset;

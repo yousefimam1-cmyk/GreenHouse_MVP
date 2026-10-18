@@ -6,9 +6,12 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
-/// On-screen HUD built entirely from code (no scene edits needed):
-/// farm status (top), crop reference info (while a crop bed panel is open), key hints and a help overlay.
-/// Mirrors to the right side when Arabic is active. Key hints follow the device in use (Glyphs).
+/// On-screen HUD built entirely from code (no scene edits needed), laid out like Farming Simulator's HUD:
+/// top-right clock block (time, day / season, weather + temperature, money) with the farm status / mission and training
+/// panels stacked under it; top-left context help box (the keys for what you are doing now - ContextHelp); bottom-right
+/// vehicle gauge cluster (speed, gear / RPM, fuel / damage / load bars, cruise, implement state); the minimap with field
+/// numbers sits bottom-left (Minimap). Crop reference info shows while a crop bed panel is open; H toggles the help overlay.
+/// Everything mirrors left / right when Arabic is active. Key hints follow the device in use (Glyphs).
 /// Pausing is done by GameMenu (P / Start); NewGame() is called from its menus.
 /// </summary>
 public class GameHUD : MonoBehaviour
@@ -21,8 +24,11 @@ public class GameHUD : MonoBehaviour
     private Canvas canvas;
     private RectTransform statusPanel, infoPanel, hintPanel, helpPanel, trainingPanel, partnerPanel, truckPanel;
     private TextMeshProUGUI statusText, infoText, hintText, helpText, trainingText, partnerText, truckText;
-    private RectTransform arrow, pricePanel;
-    private TextMeshProUGUI priceText;
+    private RectTransform arrow, pricePanel, clockPanel;
+    private TextMeshProUGUI priceText, clockText, gaugeDetail;
+    private RectTransform fuelFill, damageFill, loadFill, rpmFill;
+    private TextMeshProUGUI fuelLabel, damageLabel, loadLabel, rpmLabel;
+    private GameObject loadRow;
     private int glyphVersion = -1;
     private GreenhouseManager partnerGreenhouse;
     private SponsorFile sponsors;
@@ -66,6 +72,8 @@ public class GameHUD : MonoBehaviour
             refreshTimer = 0.25f;
             RefreshTraining();
             RefreshStatus();
+            RefreshClock();
+            RefreshContext();
             RefreshTruck();
             RefreshPrices();
             if (infoBed != null) ShowCropInfo(infoBed);
@@ -83,6 +91,20 @@ public class GameHUD : MonoBehaviour
         if (NetSession.Typing) kb = null;   // typing a co-op chat line / name
         if (kb != null && kb.mKey.wasPressedThisFrame && pricePanel != null && Time.timeScale > 0f) { pricePanel.gameObject.SetActive(!pricePanel.gameObject.activeSelf); RefreshPrices(); }
         UpdateArrow();
+        StackRightColumn();
+    }
+
+    /// <summary>Clock block, status and training panels stacked down the right edge (left edge in Arabic).</summary>
+    private void StackRightColumn()
+    {
+        if (clockPanel == null) return;
+        float y = -24f;
+        foreach (var rt in new[] { clockPanel, statusPanel, trainingPanel })
+        {
+            if (rt == null || !rt.gameObject.activeSelf) continue;
+            rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, y);
+            y -= rt.rect.height + 10f;
+        }
     }
 
     /// <summary>Wipe the save and reset every system in place (main menu / pause menu "New game").</summary>
@@ -200,15 +222,17 @@ public class GameHUD : MonoBehaviour
         if (truckPanel == null) return;
         truckPanel.gameObject.SetActive(v != null);
         if (v == null) return;
+        RefreshGauges(v);
         if (v is Tractor tractor)
         {
             var tb = new StringBuilder();
-            tb.Append(Title(Loc.T("{0} km/h", Mathf.Abs(tractor.Speed * 3.6f).ToString("F0"))));
-            tb.Append('\n').Append(Loc.Display(Loc.Raw("Implement") + ": " + Tractor.ImplementName(tractor.ActiveImplement)));
+            tb.Append(SpeedLine(tractor));
+            tb.Append('\n').Append(Loc.Display(Loc.Raw("Implement") + ": " + Tractor.ImplementName(tractor.ActiveImplement) + ImplementState(tractor)));
             tb.Append('\n').Append(FuelLine(tractor));
-            DriveLines(tractor, tb);
-            tb.Append("\n<size=80%>").Append(Glyphs.Apply(Loc.T("[Q] Change implement   [E] Exit   [R] Reset"))).Append("</size>");
             truckText.text = tb.ToString();
+            var db = new StringBuilder();
+            DriveLines(tractor, db);
+            gaugeDetail.text = db.ToString().TrimStart('\n');
             return;
         }
         var truck = (FarmTruck)v;
@@ -217,13 +241,138 @@ public class GameHUD : MonoBehaviour
         float dist = target != null ? Vector3.Distance(target.transform.position, truck.transform.position) : 0f;
         string where = target == DeliveryZone.Market ? Loc.Raw("Market") : Loc.Raw("Loading bay");
         var sb = new StringBuilder();
-        sb.Append(Title(Loc.T("{0} km/h", Mathf.Abs(truck.Speed * 3.6f).ToString("F0"))));
+        sb.Append(SpeedLine(truck));
         sb.Append('\n').Append(Loc.T("Cargo {0}/{1} kg", truck.CargoWeight.ToString("F0"), (eco != null ? eco.TruckCapacity : 0f).ToString("F0")));
         if (target != null) sb.Append('\n').Append(Loc.Display(where + ": " + dist.ToString("F0") + " m"));
         sb.Append('\n').Append(FuelLine(truck));
-        DriveLines(truck, sb);
-        sb.Append("\n<size=80%>").Append(Glyphs.Apply(Loc.T("[E] Exit   [Space] Brake   [R] Reset truck"))).Append("</size>");
         truckText.text = sb.ToString();
+        var detail = new StringBuilder();
+        DriveLines(truck, detail);
+        gaugeDetail.text = detail.ToString().TrimStart('\n');
+    }
+
+    // ---------------------------------------------------------------- FS-style gauge cluster + clock block + context help
+
+    /// <summary>Big speed readout with the cruise / limiter setting beside it.</summary>
+    public static string SpeedLine(Vehicle v)
+    {
+        string kmh = "<size=170%><b>" + Vehicle.Kmh(v.Speed) + "</b></size> " + Loc.T("km/h");
+        if (v.Assist.Cruise == CruiseMode.Cruise) kmh += "   <color=#8CD95A>" + Loc.T("Cruise {0} km/h", Vehicle.Kmh(v.Assist.CruiseSpeed)) + "</color>";
+        else if (v.Assist.Cruise == CruiseMode.Limiter) kmh += "   <color=#8CD95A>" + Loc.T("Limiter {0} km/h", Vehicle.Kmh(v.Assist.CruiseSpeed)) + "</color>";
+        return kmh;
+    }
+
+    /// <summary>" (lowered)", " (raised, folded)" ... for the attached implement (translated, unshaped).</summary>
+    public static string ImplementState(Tractor t)
+    {
+        if (t == null || t.ActiveImplement == Implement.None) return "";
+        string s = Loc.Raw(t.ImplementLowered ? "lowered" : "raised");
+        if (t.ImplementFolded) s += ", " + Loc.Raw("folded");
+        if (t.Working) s += ", " + Loc.Raw("working");
+        return " (" + s + ")";
+    }
+
+    /// <summary>Gauge values 0..1 shown by the bars (tests read them too).</summary>
+    public static float FuelFraction(Vehicle v) => v == null ? 0f : Mathf.Clamp01(v.Fuel / Mathf.Max(1f, v.fuelCapacity));
+    public static float DamageFraction(Vehicle v) => v == null ? 0f : Mathf.Clamp01(1f - Mathf.Min(v.EngineCondition, v.TyreCondition));
+    public static float RpmFraction(Vehicle v) => v == null || !v.Drive.EngineOn ? 0f : Mathf.Clamp01(v.Drive.Rpm / 2400f);
+
+    private void RefreshGauges(Vehicle v)
+    {
+        if (fuelFill == null) return;
+        float fuel = FuelFraction(v), dmg = DamageFraction(v), rpm = RpmFraction(v);
+        SetBar(fuelFill, fuel, fuel < 0.15f ? new Color(1f, 0.42f, 0.36f) : fuel < 0.35f ? new Color(0.95f, 0.72f, 0.3f) : new Color(0.55f, 0.85f, 0.35f));
+        SetBar(damageFill, dmg, dmg > 0.5f ? new Color(1f, 0.42f, 0.36f) : dmg > 0.2f ? new Color(0.95f, 0.72f, 0.3f) : new Color(0.6f, 0.6f, 0.6f));
+        SetBar(rpmFill, rpm, rpm > 0.9f ? new Color(1f, 0.42f, 0.36f) : new Color(0.62f, 0.83f, 1f));
+        fuelLabel.text = Loc.T("Fuel {0}%", Mathf.RoundToInt(fuel * 100f));
+        damageLabel.text = Loc.Display(Loc.Raw("Damage") + " " + Mathf.RoundToInt(dmg * 100f) + "%");
+        rpmLabel.text = v.Drive.EngineOn ? Loc.Display(Loc.Raw("Gear") + " " + v.Drive.GearLabel + "   " + Mathf.RoundToInt(v.Drive.Rpm / 10f) * 10 + " rpm") : Loc.T("Engine off");
+        var truck = v as FarmTruck; var eco = EconomyManager.Instance;
+        bool showLoad = truck != null && eco != null && eco.TruckCapacity > 0f;
+        if (loadRow.activeSelf != showLoad) loadRow.SetActive(showLoad);
+        if (showLoad)
+        {
+            float load = Mathf.Clamp01(truck.CargoWeight / eco.TruckCapacity);
+            SetBar(loadFill, load, new Color(1f, 0.76f, 0.3f));
+            loadLabel.text = Loc.Display(Loc.Raw("Load") + " " + Mathf.RoundToInt(load * 100f) + "%");
+        }
+        foreach (var l in new[] { fuelLabel, damageLabel, rpmLabel, loadLabel })
+        {
+            Loc.ApplyFont(l);
+            l.alignment = Loc.IsArabic ? TextAlignmentOptions.Right : TextAlignmentOptions.Left;
+        }
+    }
+
+    private static void SetBar(RectTransform fill, float frac, Color c)
+    {
+        fill.anchorMax = new Vector2(Mathf.Clamp01(frac), 1f);
+        var img = fill.GetComponent<Image>();
+        if (img != null) img.color = c;
+    }
+
+    /// <summary>Clock block: 24 h time, day and season, weather with temperature, money.</summary>
+    public static string ClockText()
+    {
+        var sb = new StringBuilder();
+        var clock = WorldClock.Instance;
+        if (clock != null)
+        {
+            var t = WorldClock.Temperature(clock.Season, clock.Weather);
+            sb.Append("<size=150%><b>").Append(clock.TimeText()).Append("</b></size>");
+            sb.Append('\n').Append(Loc.Display(Loc.Raw("Day") + " " + clock.Day + " - " + clock.SeasonName() + " " + clock.DayOfSeason + "/" + clock.daysPerSeason));
+            sb.Append('\n').Append("<color=#9FD3FF>").Append(Loc.Display(clock.WeatherName() + "  " + t.x + " C")).Append("</color>");
+        }
+        var eco = EconomyManager.Instance;
+        if (eco != null) sb.Append('\n').Append("<color=#FFC24D><b>").Append(Loc.Display(eco.Money.ToString("N0") + " " + Loc.Raw("SAR"))).Append("</b></color>");
+        return sb.ToString();
+    }
+
+    private void RefreshClock()
+    {
+        if (clockText == null) return;
+        Loc.ApplyFont(clockText);
+        clockText.alignment = Loc.IsArabic ? TextAlignmentOptions.TopLeft : TextAlignmentOptions.TopRight;
+        clockText.text = ClockText();
+    }
+
+    private void RefreshContext()
+    {
+        if (hintText == null || !hintPanel.gameObject.activeSelf) return;
+        Loc.ApplyFont(hintText);
+        hintText.text = ContextHelp.Text();
+    }
+
+    /// <summary>Context help text shown now (tests).</summary>
+    public string ContextText => hintText != null ? hintText.text : "";
+    /// <summary>The gauge cluster is showing (in a vehicle).</summary>
+    public bool GaugesVisible => truckPanel != null && truckPanel.gameObject.activeSelf;
+    /// <summary>Fuel bar fill now (0..1).</summary>
+    public float FuelBar => fuelFill != null ? fuelFill.anchorMax.x : 0f;
+    public RectTransform ClockPanel => clockPanel;
+    public RectTransform ContextPanel => hintPanel;
+    public RectTransform GaugePanel => truckPanel;
+
+    /// <summary>A labelled bar row of the gauge cluster; returns the fill (its anchorMax.x is the value).</summary>
+    private RectTransform MakeBar(Transform parent, string name, out TextMeshProUGUI label, out GameObject row)
+    {
+        var r = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+        r.transform.SetParent(parent, false);
+        r.GetComponent<LayoutElement>().preferredHeight = 24f;
+        var bg = r.GetComponent<Image>(); bg.color = new Color(1f, 1f, 1f, 0.12f); bg.raycastTarget = false;
+        var f = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+        f.transform.SetParent(r.transform, false);
+        var frt = (RectTransform)f.transform;
+        frt.anchorMin = Vector2.zero; frt.anchorMax = new Vector2(1f, 1f); frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero; frt.pivot = new Vector2(0f, 0.5f);
+        var fi = f.GetComponent<Image>(); fi.color = Accent; fi.raycastTarget = false;
+        var lgo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        lgo.transform.SetParent(r.transform, false);
+        var lrt = (RectTransform)lgo.transform;
+        lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one; lrt.offsetMin = new Vector2(8f, 0f); lrt.offsetMax = new Vector2(-8f, 0f);
+        label = lgo.GetComponent<TextMeshProUGUI>();
+        label.fontSize = 17; label.color = Color.white; label.raycastTarget = false; label.alignment = TextAlignmentOptions.Left;
+        Loc.ExcludeFromScene(label);
+        row = r;
+        return frt;
     }
 
     public void ToggleHelp()
@@ -246,15 +395,27 @@ public class GameHUD : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920, 1080);
         scaler.matchWidthOrHeight = 0.5f;
 
-        statusPanel = MakePanel("Status", new Vector2(0, 1), new Vector2(24, -24), new Vector2(520, 0), out statusText, 23);
+        clockPanel = MakePanel("Clock", new Vector2(1, 1), new Vector2(-24, -24), new Vector2(330, 0), out clockText, 24);
+        statusPanel = MakePanel("Status", new Vector2(1, 1), new Vector2(-24, -170), new Vector2(460, 0), out statusText, 21);
         infoPanel = MakePanel("CropInfo", new Vector2(0, 0.5f), new Vector2(24, 0), new Vector2(480, 0), out infoText, 22);
-        hintPanel = MakePanel("Hints", new Vector2(0, 0), new Vector2(24, 24), new Vector2(430, 0), out hintText, 20);
+        hintPanel = MakePanel("Context help", new Vector2(0, 1), new Vector2(24, -24), new Vector2(430, 0), out hintText, 19);   // FS: top-left key help
         helpPanel = MakePanel("Help", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 0), out helpText, 26);
         // Below the minimap (top centre).
         trainingPanel = MakePanel("Training", new Vector2(1, 1), new Vector2(-24, -84), new Vector2(400, 0), out trainingText, 18);   // top-right, under Co-op: keeps the view clear
         partnerPanel = MakePanel("Partners", new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(460, 0), out partnerText, 20);
-        truckPanel = MakePanel("Truck", new Vector2(0.5f, 0), new Vector2(0, 24), new Vector2(420, 0), out truckText, 22);
-        truckText.alignment = TextAlignmentOptions.Top;
+        truckPanel = MakePanel("Gauges", new Vector2(1, 0), new Vector2(-24, 24), new Vector2(420, 0), out truckText, 21);   // FS: bottom-right gauge cluster
+        truckText.alignment = TextAlignmentOptions.TopLeft;
+        truckPanel.GetComponent<VerticalLayoutGroup>().spacing = 6f;
+        rpmFill = MakeBar(truckPanel, "Rpm", out rpmLabel, out _);
+        fuelFill = MakeBar(truckPanel, "Fuel", out fuelLabel, out _);
+        damageFill = MakeBar(truckPanel, "Damage", out damageLabel, out _);
+        loadFill = MakeBar(truckPanel, "Load", out loadLabel, out loadRow);
+        var dgo = new GameObject("Detail", typeof(RectTransform), typeof(TextMeshProUGUI));
+        dgo.transform.SetParent(truckPanel, false);
+        gaugeDetail = dgo.GetComponent<TextMeshProUGUI>();
+        gaugeDetail.fontSize = 16; gaugeDetail.color = new Color(0.86f, 0.86f, 0.86f); gaugeDetail.raycastTarget = false; gaugeDetail.richText = true;
+        gaugeDetail.textWrappingMode = TextWrappingModes.Normal;
+        Loc.ExcludeFromScene(gaugeDetail);
         // Direction arrow (two bars forming a chevron) above the truck panel.
         var holder = new GameObject("Arrow", typeof(RectTransform));
         holder.transform.SetParent(canvas.transform, false);
@@ -270,9 +431,10 @@ public class GameHUD : MonoBehaviour
             rt.localRotation = Quaternion.Euler(0, 0, a);
             var img = bar.GetComponent<Image>(); img.color = new Color(1f, 0.6f, 0.15f, 0.95f); img.raycastTarget = false;
         }
-        arrow.SetParent(truckPanel, true);
+        arrow.SetParent(truckPanel, false);
+        arrow.anchorMin = arrow.anchorMax = new Vector2(0.5f, 1f); arrow.anchoredPosition = new Vector2(0, 56);
         holder.AddComponent<LayoutElement>().ignoreLayout = true;
-        pricePanel = MakePanel("Prices", new Vector2(1, 1), new Vector2(-24, -24), new Vector2(440, 0), out priceText, 20);
+        pricePanel = MakePanel("Prices", new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(440, 0), out priceText, 20);
         pricePanel.gameObject.SetActive(false);
         truckPanel.gameObject.SetActive(false);
         infoPanel.gameObject.SetActive(false);
@@ -316,21 +478,26 @@ public class GameHUD : MonoBehaviour
     {
         if (canvas == null) return;
         bool rtl = Loc.IsArabic;
-        Mirror(statusPanel, rtl);
+        Mirror(statusPanel, !rtl);
+        Mirror(clockPanel, !rtl);
+        Mirror(trainingPanel, !rtl);
+        Mirror(pricePanel, !rtl);
+        Mirror(truckPanel, !rtl);
         Mirror(infoPanel, rtl);
         Mirror(hintPanel, rtl);
         Mirror(partnerPanel, !rtl);
-        foreach (var t in new[] { statusText, infoText, hintText, helpText, partnerText })
+        foreach (var t in new[] { statusText, infoText, hintText, helpText, partnerText, gaugeDetail })
         {
             Loc.ApplyFont(t);
             t.alignment = rtl ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
         }
         Loc.ApplyFont(trainingText);
         Loc.ApplyFont(truckText);
+        truckText.alignment = rtl ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
         trainingText.alignment = TextAlignmentOptions.Top;
         glyphVersion = GameInput.Version;
-        hintText.text = Loc.T("[H] Help   [L] Arabic   [T] Training") + "\n" + Glyphs.Apply(UiText.T("[G] Graphics   [P] Menu   [M] Prices")) +
-                        "\n" + Glyphs.Apply(UiText.T("[N] Map   [I] Inventory   [O] Stats   [V] View"));
+        hintText.text = ContextHelp.Text();
+        RefreshClock();
         helpText.text = Title(Loc.T("HELP")) + "\n" + Loc.T("HELP_BODY");
         RefreshStatus();
         RefreshTraining();
@@ -414,16 +581,13 @@ public class GameHUD : MonoBehaviour
         var gm = GameManager.Instance;
         var sb = new StringBuilder();
         sb.Append(Title(Loc.T("Mazraa Greenhouse")));
-        var clock = WorldClock.Instance;
-        if (clock != null)
-            sb.Append('\n').Append("<color=#9FD3FF>").Append(Loc.Display(Loc.Raw("Day") + " " + clock.Day + " " + clock.TimeText() + " - " + clock.SeasonName() + " " + clock.DayOfSeason + "/" + clock.daysPerSeason + " - " + clock.WeatherName())).Append("</color>");
+        // day, time, weather and money: the clock block above (FS layout)
         if (gm != null)
         {
             sb.Append('\n').Append(Loc.T("Harvested: {0} kg", gm.TotalHarvestKg.ToString("F0")));
             var eco = EconomyManager.Instance;
             if (eco != null)
             {
-                sb.Append('\n').Append("<color=#FFC24D>").Append(Loc.T("Money: {0} SAR", eco.Money.ToString("N0"))).Append("</color>");
                 sb.Append('\n').Append(Loc.T("Storage: {0} kg   Feed: {1}", eco.StorageWeight.ToString("F0"), eco.Feed.ToString("F1")));
                 var pen = AnimalPen.Instance;
                 if (pen != null && pen.AnimalCount > 0) sb.Append('\n').Append("<size=85%>").Append(pen.StatusLine()).Append("</size>");
