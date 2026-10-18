@@ -1728,6 +1728,7 @@ static class EventsFinTests
         // extreme heat
         var plot = ff.Fields[0];
         eco.AddSeeds("wheat", 4); FC.Prepare(plot); FC.Sow(plot, "wheat");
+        T.SetProp(WorldClock.Instance, "Weather", Weather.Sunny);   // rain would keep the soil at field capacity
         FC.Wet(plot, 1f); ff.Simulate(6f); float normalLoss = 1f - FarmSim.Summarize(plot).moisture;
         ed.StartNow("heat"); FakeEngine.Run(0.1f);
         T.Check("Heat: fields dry and animals drink twice as fast", FarmModifiers.FieldDry == 2f && FarmModifiers.PenWaterUse == 2f);
@@ -2168,6 +2169,7 @@ static class CozyTests
 
         // --- falcon
         T.Check("Falcon perch near the farmhouse", pets.Perch != null && Vector3.Distance(pets.Perch.transform.position, new Vector3(0, 0, -57.4f)) < 12f);
+        T.SetProp(WorldClock.Instance, "DayProgress", 0.3f);   // no day roll (daily bills) during the flight
         int m0 = Money;
         T.Check("Fly the falcon", pets.FlyFalcon() && pets.FalconFlying);
         T.Check("Falcon can't fly twice a day", !pets.FlyFalcon());
