@@ -3,7 +3,7 @@ using System;
 namespace UnityEngine.UI
 {
     public class Graphic : UnityEngine.EventSystems.UIBehaviour { public Color color; public bool raycastTarget; public RectTransform rectTransform => (RectTransform)transform; }
-    public class Image : Graphic { public UnityEngine.Sprite sprite; }
+    public class Image : Graphic { public UnityEngine.Sprite sprite; public enum Type { Simple, Sliced, Tiled, Filled } public Type type; public bool fillCenter = true, preserveAspect; }
     public class Button : UnityEngine.EventSystems.UIBehaviour { public bool interactable; public UnityEngine.Events.UnityEvent onClick = new UnityEngine.Events.UnityEvent(); }
     public class LayoutElement : UnityEngine.EventSystems.UIBehaviour { public float minHeight; public bool ignoreLayout; }
     public class GraphicRaycaster : UnityEngine.EventSystems.UIBehaviour { }

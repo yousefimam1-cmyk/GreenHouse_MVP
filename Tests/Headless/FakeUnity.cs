@@ -770,7 +770,8 @@ namespace UnityEngine
     public class ParticleSystemRenderer : Renderer { public ParticleSystemRenderMode renderMode; public float lengthScale; }
 
     public enum TextureWrapMode { Repeat, Clamp }
-    public class Sprite : Object { public Texture2D texture; public static Sprite Create(Texture2D t, Rect r, Vector2 pivot, float ppu) => new Sprite { texture = t }; }
+    public enum SpriteMeshType { FullRect, Tight }
+    public class Sprite : Object { public Texture2D texture; public Vector4 border; public static Sprite Create(Texture2D t, Rect r, Vector2 pivot, float ppu) => new Sprite { texture = t }; public static Sprite Create(Texture2D t, Rect r, Vector2 pivot, float ppu, uint extrude, SpriteMeshType mesh, Vector4 border) => new Sprite { texture = t, border = border }; }
 
     // attributes
     public class SerializeField : Attribute { }
