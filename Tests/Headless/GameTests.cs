@@ -1443,6 +1443,7 @@ static class Program
         FrontEndTests.Run();   // title screen, main menu, Career slots + new-farm wizard, play modes, multiplayer screen
         LookTests.Run();   // graphics makeover (Tests/Headless/LookTests.cs)
         WorldTests.Run();      // open world: terrain tiles, roads, places, selling at a place, land, map, waypoint, fast travel, Delta layout
+        FeelTests.Run();       // on-foot movement feel, pets near the player, exposure budget / High-contrast menus (Tests/Headless/FeelTests.cs)
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
@@ -3426,7 +3427,7 @@ static class LifeTests
         float free = PlayerLife.SpeedFactor;
         Hold(kb.fKey);
         T.Check("Life: F picks up the nearest hay bale (25 kg)", life.Carried == bale && bale.Carried && life.CarryKg == 25f, life.LastMessage);
-        T.Check("Life: carrying a heavy bale slows you and stops sprinting", PlayerLife.SpeedFactor < free * 0.8f && !PlayerLife.SprintAllowed && PlayerLife.AccelerationFactor < 0.6f, free + " -> " + PlayerLife.SpeedFactor);
+        T.Check("Life: carrying a heavy bale slows you (mildly) and stops sprinting", PlayerLife.SpeedFactor < free * 0.9f && PlayerLife.SpeedFactor > free * 0.75f && !PlayerLife.SprintAllowed && PlayerLife.AccelerationFactor < 1f && PlayerLife.AccelerationFactor > 0.7f, free + " -> " + PlayerLife.SpeedFactor + ", accel " + PlayerLife.AccelerationFactor);
         T.Check("Life: a light crate slows you less", MoveRules.CarryFactor(8f) > MoveRules.CarryFactor(25f) && MoveRules.CanSprint(8f, false, false));
         FakeEngine.Run(0.3f, 0.1f);
         T.Check("Life: HUD shows the load and the stamina bar", life.Hud.LastText.Contains("25 kg") && life.Hud.LastText.Contains("Stamina"), life.Hud.LastText);

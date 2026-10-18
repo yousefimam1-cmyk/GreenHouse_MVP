@@ -184,6 +184,18 @@ public static class Build
 
     public static Vector3 OnGround(Vector3 pos, float lift = 0f) => new Vector3(pos.x, GroundY(pos) + lift, pos.z);
 
+    /// <summary>
+    /// Ground right around pos (a ray from up metres above it, down to down metres below): walking actors stay on the
+    /// floor they are on instead of popping onto a roof above them. Falls back to GroundY when nothing is that close.
+    /// </summary>
+    public static Vector3 GroundNear(Vector3 pos, float up = 1.2f, float down = 6f)
+    {
+        RaycastHit hit;
+        if (Physics.Raycast(new Vector3(pos.x, pos.y + up, pos.z), Vector3.down, out hit, up + down, GroundMask, QueryTriggerInteraction.Ignore))
+            return new Vector3(pos.x, hit.point.y, pos.z);
+        return OnGround(pos);
+    }
+
     /// <summary>A world-space label that always faces the camera.</summary>
     public static TMPro.TextMeshPro Label(Transform parent, Vector3 localPos, string englishKey, float size, Color color)
     {

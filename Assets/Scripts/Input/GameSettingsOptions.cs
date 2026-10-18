@@ -138,7 +138,7 @@ public static partial class GameSettings
     public static readonly int[] Fovs = { 0, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 };
     public static int CameraFov { get => Pick(Fovs, GetI("fov", 0), 0); set => SetI("fov", Pick(Fovs, value, 0)); }
 
-    public static void ResetControlsDefaults() => Delete("mouseSens", "stickSens", "invertY", "deadZone", "vibration", "steerSens", "fov");
+    public static void ResetControlsDefaults() => Delete("mouseSens", "stickSens", "invertY", "deadZone", "vibration", "steerSens", "fov", "headBob");
 
     /// <summary>Radial dead zone then rescale, so small stick drift is ignored and full tilt stays full.</summary>
     public static Vector2 ApplyDeadZone(Vector2 v)
@@ -187,6 +187,8 @@ public static partial class GameSettings
     /// <summary>No camera shake / bob, no motion blur or depth of field.</summary>
     public static bool ReduceMotion { get => GetB("reduceMotion", false); set => SetB("reduceMotion", value); }
     public static bool HighContrast { get => GetB("highContrast", false); set => SetB("highContrast", value); }
+    /// <summary>Slight head bob while walking on foot (Settings > Controls); always off with Reduce motion.</summary>
+    public static bool HeadBob { get => GetB("headBob", true); set => SetB("headBob", value); }
 
     public static void ResetAccessibilityDefaults() => Delete("uiScale", "colorBlind", "notify", "reduceMotion", "highContrast");
 

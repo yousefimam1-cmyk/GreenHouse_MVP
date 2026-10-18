@@ -568,7 +568,7 @@ namespace UnityEngine
         public Bounds bounds => new Bounds(transform.position, transform.lossyScale);
     }
     public class MeshRenderer : Renderer { }
-    public class SkinnedMeshRenderer : Renderer { }
+    public class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen; }
     public class Collider : Component { public bool enabled = true, isTrigger; public PhysicsMaterial material; public Bounds bounds => new Bounds(transform.position, Vector3.Scale(transform.lossyScale, this is BoxCollider b ? b.size : Vector3.one)); }
     public class BoxCollider : Collider { public Vector3 center, size; }
     public class CharacterController : Collider { }
@@ -652,6 +652,14 @@ namespace UnityEngine
             h.point = o + d * t; h.normal = Vector3.up; h.distance = t; return true;
         }
         public static bool Raycast(Ray r, out RaycastHit h, float dist, int mask) { h = default; return false; }
+        // Real Unity signature (Physics.SphereCast(origin, radius, direction, out hit, maxDistance, layerMask, queryTriggerInteraction)); flat ground at y = 0.
+        public static bool SphereCast(Vector3 o, float radius, Vector3 d, out RaycastHit h, float dist, int mask, QueryTriggerInteraction q)
+        {
+            h = default;
+            if (d.y >= 0 || o.y < radius) return false;
+            float t = (o.y - radius) / -d.y; if (t > dist) return false;
+            h.point = o + d * t - Vector3.up * radius; h.normal = Vector3.up; h.distance = t; return true;
+        }
         public static void IgnoreCollision(Collider a, Collider b, bool i) { }
     }
     // Terrain: only members that exist in Unity 6 with the same signatures (UnityEngine.TerrainModule).

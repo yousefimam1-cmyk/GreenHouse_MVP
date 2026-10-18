@@ -111,12 +111,12 @@ public class DesertWeatherFX : MonoBehaviour
         haze.weight = 0f;
         var profile = ScriptableObject.CreateInstance<VolumeProfile>();
         profile.name = "Heat haze (runtime)";
+        // (no exposure: GraphicsEnhancer's Brightness volume owns the final exposure, so heat never over-exposes the image)
         var color = profile.Add<ColorAdjustments>(true);
-        color.postExposure.Override(0.12f);
         color.contrast.Override(-6f);
-        color.colorFilter.Override(new Color(1f, 0.95f, 0.86f));
+        color.colorFilter.Override(new Color(1f, 0.96f, 0.9f));
         var wb = profile.Add<WhiteBalance>(true);
-        wb.temperature.Override(14f);
+        wb.temperature.Override(9f);
         var ca = profile.Add<ChromaticAberration>(true);
         ca.intensity.Override(0.08f);
         wobble = profile.Add<LensDistortion>(true);
