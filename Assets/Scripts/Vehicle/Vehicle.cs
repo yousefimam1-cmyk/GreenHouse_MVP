@@ -370,8 +370,10 @@ public abstract class Vehicle : Interactable
         Vector3 pos = rb.position;
         Vector3 n = Vector3.zero; float groundY = 0f; int hits = 0;
         Vector3 f = Quaternion.Euler(0, yaw, 0) * Vector3.forward, r = Quaternion.Euler(0, yaw, 0) * Vector3.right;
-        foreach (var o in new[] { f * footprint.y + r * footprint.x, f * footprint.y - r * footprint.x, -f * footprint.y + r * footprint.x, -f * footprint.y - r * footprint.x })
+        // four ground probes at the corners (no array: this runs every physics step)
+        for (int c = 0; c < 4; c++)
         {
+            Vector3 o = f * (c < 2 ? footprint.y : -footprint.y) + r * ((c & 1) == 0 ? footprint.x : -footprint.x);
             if (Physics.Raycast(pos + o + Vector3.up * 2f, Vector3.down, out var h, 4f + rideHeight, Build.GroundMask, QueryTriggerInteraction.Ignore))
             { n += h.normal; groundY += h.point.y; hits++; }
         }
@@ -587,5 +589,26 @@ public abstract class Vehicle : Interactable
         rb.position = p; rb.rotation = r;
     }
 
-    protected virtual void OnDestroy() { GameEvents.NewGameStarted -= OnNewGame; if (Current == this) Current = null; }
+    private static bool quitting;
+    private void OnApplicationQuit() => quitting = true;
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetQuitting() => quitting = false;   // play mode without domain reload
+
+    protected virtual void OnDestroy()
+    {
+        GameEvents.NewGameStarted -= OnNewGame;
+        // Removed while driving (sold, replaced, despawned): give the player back their body, camera and interactions,
+        // otherwise they are left hidden with no active camera. Not while quitting (everything is going away);
+        // a save-slot reload exits the vehicle first (SaveSlots.Load).
+        if (IsDriving && !quitting)
+        {
+            if (mainCam != null) mainCam.enabled = true;
+            if (mainListener != null) mainListener.enabled = true;
+            if (player != null) player.SetActive(true);
+            if (interaction != null) interaction.enabled = true;
+            IsDriving = false;
+        }
+        if (chaseCam != null) Destroy(chaseCam.gameObject);
+        if (Current == this) Current = null;
+    }
 }

@@ -314,6 +314,193 @@ def _():
     miss = [x for x in srcs if x not in c]
     return 'Poly Haven' in c and not miss, miss
 
+# ---------------------------------------------------------------- real-Unity compile / runtime risks (QA pass, docs/BUG_AUDIT.md)
+# The headless fakes (Tests/Headless/Fake*.cs) are more lenient than Unity 6: these tests catch what they let through.
+def strip_comments(s):
+    s = re.sub(r'/\*.*?\*/', '', s, flags=re.S)
+    return re.sub(r'//[^\n]*', '', s)
+
+code = {p: strip_comments(s) for p, s in src.items()}
+starter = {p: open(p, encoding='utf-8').read() for p in walk(os.path.join(A, 'StarterAssets'), ('.cs',))}
+editor = {p: open(p, encoding='utf-8').read() for p in walk(os.path.join(A, 'Editor'), ('.cs',))}
+
+@test('Game code uses no fake-only members (they exist only in Tests/Headless fakes, not in Unity)')
+def _():
+    # Members the fakes add for test bookkeeping; real Unity / packages don't have them, so using one breaks the build.
+    fake_only = [r'\bFakeEngine\b', r'\bFakePhysics\b', r'\bObjectCloner\b', r'\.AddConfigured\b', r'Application\.LastUrl', r'\.oneShots\b',
+                 r'Screen\.SetResolutionCalls', r'ScreenCapture\.(LastPath|Count)\b', r'PlayerPrefs\.Clear\(', r'\.description_product\b',
+                 r'\.(lowMotor|highMotor)\b', r'\.FakeComplete\(', r'RebindingOperation\.Current\b', r'SceneManager\.LoadCount\b', r'\.released\b',
+                 r'Shader\.Globals\b', r'Graphics\.(InstancedCalls|InstancesDrawn)\b', r'DynamicGI\.Updates\b', r'\.TextureProperties\b',
+                 r'\.alphamaps\b', r'Resources\.(LoadMaterial|LoadTexture|ImageSize|LoadLook)\b', r'Random\.R\b']
+    bad = []
+    for p, s in list(code.items()) + [(p, strip_comments(s)) for p, s in starter.items()]:
+        for pat in fake_only:
+            for m in re.finditer(pat, s):
+                bad.append(f'{os.path.relpath(p, A)}:{s[:m.start()].count(chr(10)) + 1}: {m.group(0)}')
+    return not bad, bad
+
+@test('No writes to read-only Unity properties (fakes let Screen.width, Time.time, Camera.main, *.current... be assigned)')
+def _():
+    pat = r'\b(Screen\.(width|height|currentResolution)|Terrain\.activeTerrain|Camera\.(main|allCameras)|Time\.(time|deltaTime|frameCount|unscaledTime|unscaledDeltaTime|realtimeSinceStartup)|(Keyboard|Gamepad|Mouse|Touchscreen)\.current|\.currentControlScheme|Debug\.isDebugBuild|\.isActiveAndEnabled|\.activeInHierarchy|\.activeSelf|\.(wasPressedThisFrame|wasReleasedThisFrame|isPressed))\s*=(?!=)'
+    bad = [f'{os.path.relpath(p, A)}:{s[:m.start()].count(chr(10)) + 1}: {m.group(0)}' for p, s in code.items() for m in re.finditer(pat, s)]
+    return not bad, bad
+
+@test('Input System control types (Vector2Control, AxisControl, AnyKeyControl...) have their using (fakes keep them in UnityEngine.InputSystem)')
+def _():
+    bad = [os.path.relpath(p, A) for p, s in list(code.items()) + list(starter.items())
+           if re.search(r'\b(Vector2Control|Vector3Control|AnyKeyControl|DeltaControl|IntegerControl|TouchControl|QuaternionControl|DoubleControl|TouchPressControl)\b', strip_comments(s))
+           and 'UnityEngine.InputSystem.Controls' not in s]
+    return not bad, bad
+
+@test('Runtime scripts use no editor-only API outside #if UNITY_EDITOR (the player build has no UnityEditor)')
+def _():
+    bad = []
+    for p, s in list(src.items()) + list(starter.items()):
+        depth = 0; editor_depth = []
+        for i, line in enumerate(s.split('\n'), 1):
+            t = line.strip()
+            if t.startswith('#if'):
+                depth += 1
+                if 'UNITY_EDITOR' in t and '!UNITY_EDITOR' not in t: editor_depth.append(depth)
+            elif t.startswith('#endif'):
+                if editor_depth and editor_depth[-1] == depth: editor_depth.pop()
+                depth -= 1
+            elif t.startswith('#else') and editor_depth and editor_depth[-1] == depth:
+                editor_depth.pop()
+            if editor_depth or t.startswith('//'): continue
+            if re.search(r'\bUnityEditor\b|\bAssetDatabase\.|\bEditorApplication\.|\bEditorUtility\.|\bPrefabUtility\.|\[MenuItem\(|\bHandles\.|\bEditorGUI(Layout)?\.', t):
+                bad.append(f'{os.path.relpath(p, A)}:{i}: {t[:100]}')
+    return not bad, bad
+
+@test('Every MonoBehaviour (direct or via a game base class) lives in a file of the same name, incl. StarterAssets')
+def _():
+    decl = {}
+    allfiles = list(src.items()) + list(starter.items())
+    for p, s in allfiles:
+        for m in re.finditer(r'\bclass\s+(\w+)\s*(?:<[^>]*>)?\s*:\s*([\w.]+)', strip_comments(s)):
+            decl.setdefault(m.group(1), []).append((p, m.group(2).split('.')[-1], s[max(0, m.start() - 60):m.start()]))
+    mb = {'MonoBehaviour', 'NetworkBehaviour', 'UIBehaviour'}
+    changed = True
+    while changed:
+        changed = False
+        for cls, ds in decl.items():
+            if cls not in mb and any(b in mb for _, b, _ in ds): mb.add(cls); changed = True
+    bad = []
+    for cls, ds in decl.items():
+        for p, b, pre in ds:
+            if b in mb and cls not in ('MonoBehaviour',) and os.path.basename(p)[:-3] != cls and 'abstract' not in pre.split('\n')[-1]:
+                bad.append(f'{cls} in {os.path.relpath(p, A)}')
+    return not bad, bad
+
+@test('StarterAssets scripts (not compiled by the headless tests) only use game members that exist')
+def _():
+    # FirstPersonController reads PlayerLife.* etc.: if a game class renames a member the real build breaks, the fakes don't notice.
+    game_classes = {}
+    for p, s in src.items():
+        for m in re.finditer(r'\b(?:class|struct|enum)\s+(\w+)', s): game_classes.setdefault(m.group(1), []).append(s)
+    bad = []
+    for p, s in starter.items():
+        for m in re.finditer(r'\b([A-Z]\w+)\.([A-Z]\w*)\b', strip_comments(s)):
+            cls, mem = m.group(1), m.group(2)
+            if cls not in game_classes: continue
+            if not any(re.search(r'\b' + mem + r'\b', g) for g in game_classes[cls]):
+                bad.append(f'{os.path.relpath(p, A)}: {cls}.{mem}')
+    return not bad, sorted(set(bad))
+
+@test('Types saved with JsonUtility serialize in real Unity ([Serializable] nested types; no Dictionary/HashSet/readonly/auto-property data)')
+def _():
+    # The fake JsonUtility is Newtonsoft, which saves all of these; Unity's JsonUtility silently drops them (lost saves).
+    classes = {}
+    for p, s in src.items():
+        for m in re.finditer(r'((?:\[[^\]]*\]\s*)*)(?:public |internal |private |protected |sealed |static |partial )*(class|struct)\s+(\w+)[^{;=]*\{', s):
+            i = m.end(); d = 1
+            while d and i < len(s):
+                d += {'{': 1, '}': -1}.get(s[i], 0); i += 1
+            classes.setdefault(m.group(3), []).append((p, 'Serializable' in m.group(1), s[m.end():i - 1]))
+    enums = set(re.findall(r'\benum\s+(\w+)', allsrc))
+    builtin = {'int', 'float', 'double', 'bool', 'string', 'long', 'byte', 'short', 'char', 'uint', 'Vector2', 'Vector3', 'Vector4', 'Color', 'Quaternion', 'Color32', 'Rect', 'Bounds', 'Vector2Int', 'Vector3Int'}
+    def top(body):
+        out, d = [], 0
+        for ch in body:
+            if ch == '{': d += 1
+            if d == 0: out.append(ch)
+            if ch == '}': d -= 1
+        return ''.join(out)
+    def resolve(n, prefer):
+        lst = classes[n]
+        return next((c for c in lst if c[0] == prefer), lst[0])
+    problems, seen = [], set()
+    def check(n, path, prefer):
+        if n not in classes: return
+        p, ser, body = resolve(n, prefer)
+        if (p, n) in seen: return
+        seen.add((p, n)); rel = os.path.relpath(p, A)
+        if path and not ser: problems.append(f'{n} (field {path}) is not [Serializable] ({rel})')
+        for pm in re.finditer(r'public\s+(?!static|override|abstract|virtual)[\w.<>,\[\]]+\s+(\w+)\s*\{\s*get;\s*(?:private\s+|protected\s+|internal\s+)?set;', body):
+            problems.append(f'{n}.{pm.group(1)}: auto-property ({rel})')
+        for stmt in top(body).split(';'):
+            stmt = re.sub(r'^.*?\b(class|struct|enum)\s+\w+[^\[]*', '', stmt, flags=re.S)
+            mm = re.match(r'^\s*((?:\[[^\]]*\]\s*)*)(public|private|protected|internal)?\s*((?:static|const|readonly|new|volatile)\s+)*([\w.<>,\[\] ?]+?)\s+(\w+(?:\s*,\s*\w+)*)\s*(=.*)?$', stmt, re.S)
+            if not mm: continue
+            attrs, acc, typ, names = mm.group(1), mm.group(2) or 'private', mm.group(4).strip(), mm.group(5)
+            head = stmt.split('=')[0]
+            if re.search(r'\b(static|const)\b', head) or '(' in head or '=>' in stmt or 'NonSerialized' in attrs: continue
+            if typ in ('return', 'using', 'var', 'throw', 'new', 'else', 'goto', 'yield', 'get', 'set'): continue
+            if not (acc == 'public' or 'SerializeField' in attrs): continue
+            if re.search(r'\breadonly\b', head): problems.append(f'{n}.{names}: readonly ({rel})'); continue
+            t = typ.replace(' ', '')
+            if re.search(r'(^|[.<])(Dictionary|HashSet|Queue|Stack|IList|IEnumerable|IDictionary|SortedList|LinkedList)<', t) or '?' in t or ',]' in t or '[][]' in t or 'List<List<' in t:
+                problems.append(f'{n}.{names}: {typ} ({rel})'); continue
+            inner = re.sub(r'^(List<(.+)>|(.+)\[\])$', lambda x: x.group(2) or x.group(3), t).split('.')[-1]
+            if inner not in builtin and inner not in enums: check(inner, n + '.' + names.split(',')[0].strip(), p)
+    roots = set()
+    for p, s in src.items():
+        for m in re.finditer(r'JsonUtility\.FromJson<([\w.]+)>', s): roots.add((m.group(1).split('.')[-1], p))
+        for m in re.finditer(r'JsonUtility\.ToJson\(\s*new\s+(\w+)', s): roots.add((m.group(1), p))
+        for m in re.finditer(r'\b(?:LoadAs|\.Load)<(\w+)>', s):
+            if m.group(1) not in ('T', 'TextAsset', 'GameObject', 'Material', 'Texture2D', 'Font', 'Sprite', 'AudioClip', 'Shader', 'Mesh'): roots.add((m.group(1), p))
+    for r, rp in sorted(roots): check(r, '', rp)
+    return not problems and len(seen) > 30, problems + [f'{len(seen)} types checked']
+
+@test('Static events: every handler a script adds to a static event is removed again (no calls into destroyed objects after a reload)')
+def _():
+    bad = []
+    for p, s in code.items():
+        for m in re.finditer(r'\b((?:GameEvents|SceneManager|Loc|Application|GameInput|NetSession|Regions|GameModes|SaveSlots)\.\w+)\s*\+=\s*([^;]+);', s):
+            ev, h = m.group(1), m.group(2).strip()
+            if '=>' in h or 'delegate' in h:
+                if 'RuntimeInitializeOnLoadMethod' not in s and 'static class' not in s[:m.start()]:
+                    bad.append(f'{os.path.relpath(p, A)}: lambda on {ev} can never be removed')
+                continue
+            if not re.search(re.escape(ev) + r'\s*-=\s*' + re.escape(h) + r'\s*;', s):
+                bad.append(f'{os.path.relpath(p, A)}: {ev} += {h} without -=')
+    return not bad, bad
+
+@test('FixedUpdate reads no one-frame input (presses are missed between physics steps) and allocates no arrays / LINQ')
+def _():
+    bad = []
+    for p, s in code.items():
+        for m in re.finditer(r'void\s+FixedUpdate\s*\(\s*\)\s*\{', s):
+            i, d = m.end(), 1
+            while d and i < len(s):
+                d += {'{': 1, '}': -1}.get(s[i], 0); i += 1
+            body = s[m.end():i]
+            for pat in [r'wasPressedThisFrame|wasReleasedThisFrame|WasPressedThisFrame|WasReleasedThisFrame|GameInput\.Pressed|GetKeyDown|GetButtonDown|MenuNav\.',
+                        r'new\s+\w+\s*\[\s*\]\s*\{|new\s*\[\s*\]|new\s+(List|Dictionary|HashSet)<|\.(Where|Select|ToList|ToArray|OrderBy|Any|First)\(']:
+                for x in re.finditer(pat, body):
+                    bad.append(f'{os.path.relpath(p, A)}:{s[:m.end() + x.start()].count(chr(10)) + 1}: {x.group(0)}')
+    return not bad, bad
+
+@test('Save file is written atomically with a backup, and a damaged slot is never copied over the save')
+def _():
+    sd = src[os.path.join(A, 'Scripts', 'Base', 'SaveData.cs')]
+    ss = src[os.path.join(A, 'Scripts', 'UI', 'SaveSlots.cs')]
+    bad = []
+    if 'File.WriteAllText(Path,' in sd: bad.append('SaveData writes the save file in place')
+    if 'BackupPath' not in sd or '.tmp' not in sd: bad.append('SaveData has no temp file / backup')
+    if 'IsReadable(SlotPath(slot))' not in ss: bad.append('SaveSlots copies a slot without checking it')
+    return not bad, bad
+
 # ---------------------------------------------------------------- report
 ok = sum(1 for r in results if r[1])
 for name, passed, details in results:

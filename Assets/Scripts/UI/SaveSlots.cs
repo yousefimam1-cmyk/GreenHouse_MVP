@@ -140,6 +140,8 @@ public static class SaveSlots
     public static bool CopySlotToSave(int slot)
     {
         if (!HasSlot(slot)) return false;
+        // A damaged slot file must not be copied over the current save (that used to lose both farms).
+        if (!SaveData.IsReadable(SlotPath(slot))) { Debug.LogWarning("[SaveSlots] Slot " + slot + " is damaged; not loaded."); return false; }
         try { File.Copy(SlotPath(slot), SaveData.Path, true); }
         catch (Exception e) { Debug.LogWarning("[SaveSlots] Could not load slot " + slot + ": " + e.Message); return false; }
         SaveData.Reload();
@@ -150,11 +152,12 @@ public static class SaveSlots
     /// <summary>Load a slot: reload the scene, swapping the save file once the old scene is gone (so it can't write over it).</summary>
     public static bool Load(int slot)
     {
-        if (!HasSlot(slot)) return false;
+        if (!HasSlot(slot) || !SaveData.IsReadable(SlotPath(slot))) return false;   // damaged slot: stay in the current game
         pendingSlot = slot;
         pendingBootstrap = true;
         JustLoaded = true;
         Time.timeScale = 1f;
+        if (Vehicle.Current != null) Vehicle.Current.Exit();   // fuel and wear are saved; the old scene's player is not left hidden
         // Feature registries are refilled by the systems of the new scene.
         HudLines.Status.Clear();
         ShopCatalog.Entries.Clear();
