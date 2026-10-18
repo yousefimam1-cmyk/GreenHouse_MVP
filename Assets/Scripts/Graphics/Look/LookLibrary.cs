@@ -33,7 +33,18 @@ public static class LookLibrary
     public const string TextureFolder = "Look/Textures/";
     /// <summary>Upper bound for the look's textures in GPU memory (bytes, compressed estimate).</summary>
     public const long TextureBudgetBytes = 96L * 1024 * 1024;
+    /// <summary>Budget on Ultra, where the main ground / wall / palm sets use their 2K albedo + normal (Textures2K).</summary>
+    public const long TextureBudgetBytesUltra = 192L * 1024 * 1024;
     public const int MaxTextureSize = 2048;
+    public const string HiResFolder = "Look/Textures2K/";
+    public const string ParallaxMaterial = "Look/Materials/GroundParallax";
+    /// <summary>Sets with a 2K albedo + normal in Resources/Look/Textures2K (the surfaces seen up close most).</summary>
+    public static readonly LookMat[] HiResSets = { LookMat.Sand, LookMat.Gravel, LookMat.Rock, LookMat.Soil, LookMat.Grass, LookMat.Tilled, LookMat.MudBrick, LookMat.Plaster, LookMat.PalmBark };
+    /// <summary>True while the 2K textures are applied (Ultra, MaxLook).</summary>
+    public static bool HighRes { get; private set; }
+    private static readonly Dictionary<LookMat, Texture[]> lowTex = new Dictionary<LookMat, Texture[]>();
+    private static Material parallax;
+    private static bool parallaxTried;
 
     private static readonly Dictionary<LookMat, Material> cache = new Dictionary<LookMat, Material>();
     private static readonly Dictionary<string, Material> tinted = new Dictionary<string, Material>();
@@ -50,8 +61,8 @@ public static class LookLibrary
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics()
     {
-        cache.Clear(); tinted.Clear(); baseColors.Clear(); baseSmooth.Clear(); missing.Clear();
-        LoadedCount = FallbackCount = 0; Wetness = 0f;
+        cache.Clear(); tinted.Clear(); baseColors.Clear(); baseSmooth.Clear(); missing.Clear(); lowTex.Clear();
+        LoadedCount = FallbackCount = 0; Wetness = 0f; HighRes = false; parallax = null; parallaxTried = false;
     }
 
     public static bool IsFoliage(LookMat m) => m >= LookMat.LeavesAcacia && m <= LookMat.GrassDry;
@@ -126,6 +137,13 @@ public static class LookLibrary
         if (mat != null && mat.shader != null && mat.shader.isSupported)
         {
             if (IsFoliage(m)) mat = PrepareFoliage(m, mat);
+            if (System.Array.IndexOf(HiResSets, m) >= 0)
+            {
+                if (Application.isEditor) { var src = mat; mat = new Material(src); mat.name = src.name; }   // Play mode never edits the .mat asset
+                lowTex[m] = new[] { mat.GetTexture("_BaseMap"), mat.GetTexture("_BumpMap") };
+            }
+            cache[m] = mat;
+            ApplyRes(m, mat);
             LoadedCount++;
         }
         else
@@ -167,6 +185,7 @@ public static class LookLibrary
         if (smoothness >= 0f && mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", smoothness);
         if (tiling.x > 0f && tiling.y > 0f && !missing.Contains(m))
             foreach (var t in new[] { "_BaseMap", "_BumpMap", "_OcclusionMap", "_MetallicGlossMap" }) if (mat.HasProperty(t)) mat.SetTextureScale(t, tiling);
+        if (!missing.Contains(m)) ApplyRes(m, mat);
         tinted[key] = mat;
         if (IsGround(m)) Remember(mat);
         return mat;
@@ -233,6 +252,52 @@ public static class LookLibrary
 
     // ------------------------------------------------------------------ textures
     public static Texture2D Texture(string name) => Resources.Load<Texture2D>(TextureFolder + name);
+
+    /// <summary>The 2K version of a texture ("sand_d", "rock_n"...), or null when the set has none.</summary>
+    public static Texture2D HiResTexture(string name) => Resources.Load<Texture2D>(HiResFolder + name);
+
+    /// <summary>Swap the 2K albedo + normal in (Ultra) or back to the 1K ones, on every loaded and tinted material.</summary>
+    public static void SetHighRes(bool on)
+    {
+        if (on == HighRes) return;
+        HighRes = on;
+        foreach (var kv in cache) ApplyRes(kv.Key, kv.Value);
+        foreach (var kv in tinted)
+        {
+            int id;
+            if (int.TryParse(kv.Key.Split(':')[0], out id) && !missing.Contains((LookMat)id)) ApplyRes((LookMat)id, kv.Value);
+        }
+        if (parallax != null) ApplyRes(LookMat.Sand, parallax);
+    }
+
+    private static void ApplyRes(LookMat m, Material mat)
+    {
+        Texture[] low;
+        if (mat == null || !lowTex.TryGetValue(m, out low)) return;
+        string f = m.ToString().ToLowerInvariant();
+        Texture d = HighRes ? HiResTexture(f + "_d") : null, n = HighRes ? HiResTexture(f + "_n") : null;
+        if (d == null || n == null) { d = low[0]; n = low[1]; }   // 1K (or 2K files missing: stay 1K)
+        if (d != null) { mat.SetTexture("_BaseMap", d); if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", d); }
+        if (n != null) mat.SetTexture("_BumpMap", n);
+    }
+
+    /// <summary>
+    /// Sand with parallax occlusion (URP/Lit _PARALLAXMAP, height from the mask) for the open ground and dunes on Ultra;
+    /// null when the asset or the sand textures are missing (the plain sand material is used then).
+    /// </summary>
+    public static Material GroundParallax()
+    {
+        if (parallaxTried) return parallax;
+        parallaxTried = true;
+        if (!IsTextured(LookMat.Sand)) return null;
+        var mat = Resources.Load<Material>(ParallaxMaterial);
+        if (mat == null || mat.shader == null || !mat.shader.isSupported) return null;
+        if (Application.isEditor) { var src = mat; mat = new Material(src); mat.name = src.name; }
+        parallax = mat;
+        ApplyRes(LookMat.Sand, parallax);
+        Remember(parallax);   // wet after rain like the rest of the ground
+        return parallax;
+    }
 
     /// <summary>Estimated GPU bytes of every texture used by the loaded look materials (BC-compressed, with mips).</summary>
     public static long TextureBytes()

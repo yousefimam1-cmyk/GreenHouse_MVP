@@ -160,6 +160,8 @@ public class AtmosphereLook : MonoBehaviour
         SetupProbe(p >= 2);
         var sun = RenderSettings.sun;
         if (sun != null && GameSettings.ShadowQuality != 0) sun.shadows = p <= 0 ? LightShadows.Hard : LightShadows.Soft;
+
+        MaxLook.Apply();   // water / character shaders (High+), 2K textures and parallax (Ultra)
     }
 
     private void SetupProbe(bool on)
