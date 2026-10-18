@@ -20,15 +20,20 @@ public class AtmosphereLook : MonoBehaviour
     public static AtmosphereLook Instance { get; private set; }
     public const string SkyMaterial = "Look/Materials/Sky";
     public const float MaxSkyExposure = 1f, ProbeIntensity = 0.85f;
+    /// <summary>Photographic sky on Ultra: Poly Haven CC0 HDRI (Assets/ThirdParty/PolyHavenSky) on Skybox/Panoramic.</summary>
+    public const string SkyHdriMaterial = "Look/Materials/SkyHDRI";
+    /// <summary>Longitude of the sun in the HDRI (u = 0.5947 of the equirect, 48 degrees up): the sky turns to keep it at the real sun's bearing.</summary>
+    public const float HdriSunLongitude = 34.1f, HdriExposure = 0.9f;
 
     public bool SkyInstalled { get; private set; }
+    public bool HdriActive { get; private set; }
     public bool ProbeActive => probe != null && probe.enabled;
     public float Wetness { get; private set; }
     public int EnvironmentUpdates { get; private set; }
     public Volume GradeVolume => grade;
     public int Cascades { get; private set; }
 
-    private Material originalSky;
+    private Material originalSky, proceduralSky, hdriSky;
     private ReflectionProbe probe;
     private Volume grade;
     private ShadowsMidtonesHighlights smh;
@@ -162,6 +167,44 @@ public class AtmosphereLook : MonoBehaviour
         if (sun != null && GameSettings.ShadowQuality != 0) sun.shadows = p <= 0 ? LightShadows.Hard : LightShadows.Soft;
 
         MaxLook.Apply();   // water / character shaders (High+), 2K textures and parallax (Ultra)
+        SetHdriSky(p >= 3);
+    }
+
+    /// <summary>Ultra: swap the procedural sky for the HDRI photo sky (real clouds); other presets keep the procedural one.</summary>
+    private void SetHdriSky(bool on)
+    {
+        if (on == HdriActive) return;
+        if (on)
+        {
+            if (hdriSky == null)
+            {
+                var src = Resources.Load<Material>(SkyHdriMaterial);
+                if (src == null || src.shader == null || !src.shader.isSupported || !src.HasProperty("_MainTex") || src.GetTexture("_MainTex") == null) return;
+                hdriSky = new Material(src) { name = "Mazraa HDRI Sky (runtime)" };
+            }
+            proceduralSky = RenderSettings.skybox;
+            RenderSettings.skybox = hdriSky;
+            HdriActive = true;
+            UpdateHdriSky();
+        }
+        else
+        {
+            if (proceduralSky != null) RenderSettings.skybox = proceduralSky;
+            HdriActive = false;
+        }
+        envTimer = 0f;
+    }
+
+    /// <summary>Turn the HDRI so its sun sits at the real sun's bearing, and dim it with the day (DayNightCycle only drives the procedural sky).</summary>
+    private void UpdateHdriSky()
+    {
+        var sun = RenderSettings.sun;
+        if (!HdriActive || hdriSky == null || sun == null) return;
+        Vector3 to = -sun.transform.forward;
+        float bearing = Mathf.Atan2(to.z, to.x) * Mathf.Rad2Deg;
+        hdriSky.SetFloat("_Rotation", Mathf.Repeat(HdriSunLongitude - bearing, 360f));
+        float day = Mathf.Clamp01(to.y * 4f + 0.15f);
+        hdriSky.SetFloat("_Exposure", HdriExposure * Mathf.Lerp(0.08f, 1f, day));
     }
 
     private void SetupProbe(bool on)
@@ -212,6 +255,8 @@ public class AtmosphereLook : MonoBehaviour
             bool night = DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight;
             sun.shadowStrength = Mathf.MoveTowards(sun.shadowStrength, (night ? 0.55f : 0.9f) * (1f - 0.35f * DesertWeatherFX.Wind01), dt * 0.5f);
         }
+
+        UpdateHdriSky();
 
         // ambient / reflections from the sky as the sun moves (cost: one small cubemap bake)
         int p = GraphicsEnhancer.Preset;

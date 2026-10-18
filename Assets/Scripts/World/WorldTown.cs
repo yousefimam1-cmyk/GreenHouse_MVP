@@ -238,9 +238,9 @@ public static class WorldTown
         pl.carLoops.Add(new List<Vector3> { new Vector3(SideX[0] - o, 0f, CrossZ[0] - o), new Vector3(SideX[0] - o, 0f, CrossZ[1] + o), new Vector3(SideX[1] + o, 0f, CrossZ[1] + o), new Vector3(SideX[1] + o, 0f, CrossZ[0] - o) });
         // cars parked at the kerb of the main street (one side each, the street stays two lanes wide)
         pl.props.Add(new Prop { s = new Spot(new Vector3(StreetHalf - 1.1f, 0f, -16f), 0f), model = "Truck", length = 4.6f, solid = true });
-        pl.props.Add(new Prop { s = new Spot(new Vector3(StreetHalf - 1.1f, 0f, -21.5f), 0f), model = "Truck", length = 4.6f, solid = true });
+        pl.props.Add(new Prop { s = new Spot(new Vector3(StreetHalf - 1.1f, 0f, -21.5f), 0f), model = "TownSedan", length = 4.6f, solid = true });
         pl.props.Add(new Prop { s = new Spot(new Vector3(-StreetHalf + 1.1f, 0f, 16f), 180f), model = "Truck", length = 4.6f, solid = true });
-        pl.props.Add(new Prop { s = new Spot(new Vector3(-StreetHalf + 1.1f, 0f, 21.5f), 180f), model = "Truck", length = 4.6f, solid = true });
+        pl.props.Add(new Prop { s = new Spot(new Vector3(-StreetHalf + 1.1f, 0f, 21.5f), 180f), model = "TownSuv", length = 4.8f, solid = true });
         return pl;
     }
 

@@ -20,7 +20,10 @@ public class TownCar : MonoBehaviour
         if (pts == null || pts.Count < 2) return null;
         var go = new GameObject("Town car " + index);
         go.transform.SetParent(parent, false);
-        if (Build.TryModel("Truck", go.transform, 4.5f, 0f) == null) { Destroy(go); return null; }
+        // mixed town traffic from the model catalog (sedans, SUVs, vans); falls back to the pickup model
+        string id = ModelCatalog.Variant("town_car", index) ?? "Truck";
+        var e = ModelCatalog.Find(id);
+        if (Build.TryModel(id, go.transform, e != null && e.fit > 0f ? e.fit : 4.5f, 0f) == null) { Destroy(go); return null; }
         var car = go.AddComponent<TownCar>();
         car.loop.AddRange(pts);
         car.cruise = speed;

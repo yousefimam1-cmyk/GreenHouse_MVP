@@ -112,10 +112,16 @@ public static class Build
 
     public static GameObject TryModel(string name, Transform parent, float fitSize, float bottomY, bool fitByHeight)
     {
-        var prefab = Resources.Load<GameObject>("Models/" + name);
+        // our model catalog (Resources/Models/catalog.json: CC0 placeholder packs in Assets/ThirdParty), then Resources/Models
+        var prefab = ModelCatalog.Load(name, out var entry);
         if (prefab == null) return null;
         var go = Object.Instantiate(prefab, parent, false);
         go.name = name;
+        if (entry != null)
+        {
+            if (Mathf.Abs(entry.yaw) > 0.01f) go.transform.localRotation = Quaternion.Euler(0f, entry.yaw, 0f) * go.transform.localRotation;
+            if (fitSize <= 0f && entry.fit > 0f) fitSize = entry.fit;   // the pack's own units: scale to real-world size
+        }
         FixPinkMaterials(go);
         // ---- graphics makeover: matte fur / wool / skin materials and shadows for animals and characters (ModelLook)
         ModelLook.Upgrade(go, name);
