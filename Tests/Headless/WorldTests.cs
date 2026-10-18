@@ -148,8 +148,8 @@ static class WorldTests
         // ---- expansion land
         var land = WorldLand.Instance;
         var parcel = L.Parcels[0];
-        var fm = FieldManager.Instance;
-        int plots0 = fm.Plots.Count;
+        var ff = FarmFields.Instance;
+        int plots0 = ff.Fields.Count;
         eco.AddMoney(20000);
         int m3 = eco.Money;
         var sign = UnityEngine.Object.FindObjectsByType<WorldLandSign>(FindObjectsSortMode.None).First(s => s.Parcel == parcel);
@@ -157,21 +157,22 @@ static class WorldTests
         var targetLand = (Transform)target.Invoke(null, new object[] { 0f });
         T.Check("Missions: the land mission points at a for-sale sign", targetLand != null && targetLand.GetComponent<WorldLandSign>() != null);
         sign.Interact();
-        T.Check("Land: buying adds the parcel's fields (FieldPlots, own save keys)", fm.Plots.Count == plots0 + parcel.Plots && eco.Money == m3 - parcel.price + mm.Missions.First(m => m.id == "w_land").reward
-            && land.PlotsOf(parcel).All(pl => pl.index >= FieldManager.WorldPlotBase && L.InWorld(pl.transform.position)), fm.Plots.Count + " " + eco.Money);
+        var bought = land.FieldOf(parcel);
+        T.Check("Land: buying adds one FarmCore field over the parcel (own id / saved cells)", ff.Fields.Count == plots0 + 1 && eco.Money == m3 - parcel.price + mm.Missions.First(m => m.id == "w_land").reward
+            && bought != null && bought.id >= FarmFields.WorldFieldBase && L.InWorld(bought.center) && bought.Area >= parcel.Plots * parcel.plotSize * parcel.plotSize, ff.Fields.Count + " " + eco.Money);
         T.Check("Land: owned, sign gone, map icon turns green, mission done", land.Owned(parcel) && sign == null && mm.Current?.id == "w_travel"
             && w.Places[L.Pois.First(x => x.parcel == parcel).id].GetComponent<MinimapIcon>().color.g > 0.8f, mm.Current?.id);
-        var newPlot = land.PlotsOf(parcel).First();
-        newPlot.ResetPlot(); eco.AddSeeds("wheat", 2); FieldPlot.PreferredSeed = "wheat";
-        newPlot.TryPlow(false); newPlot.TrySeed(false);
-        T.Check("Land: the new fields work like the farm's", newPlot.State == PlotState.Growing);
+        var newPlot = bought;
+        eco.AddSeeds("wheat", (int)(newPlot.Area / 100f) + 2); ff.SetSowCrop("wheat");
+        FC.Prepare(newPlot); FC.Sow(newPlot, "wheat");
+        T.Check("Land: the new field works like the farm's (cultivate + sow by tractor)", FC.Sown(newPlot) == newPlot.Cells, FC.Sown(newPlot) + " / " + newPlot.Cells);
         T.Check("Land: can't buy twice", !land.Buy(parcel));
         w.BuildWorld();
         FakeEngine.Run(0.2f);
-        T.Check("Land: owned fields come back once after a rebuild (no duplicates)", fm.Plots.Count == plots0 + parcel.Plots && fm.Plots.Count(pl => pl.index >= FieldManager.WorldPlotBase) == parcel.Plots, fm.Plots.Count + "");
+        T.Check("Land: owned field comes back once after a rebuild (no duplicates, its crop kept)", ff.Fields.Count == plots0 + 1 && ff.Fields.Count(f => f.id >= FarmFields.WorldFieldBase) == 1
+            && FC.Sown(ff.Fields.First(f => f.id >= FarmFields.WorldFieldBase)) == newPlot.Cells, ff.Fields.Count + "");
         L = w.Layout;
-        T.Check("Land: the farm grid keeps its own save keys", fm.AddPlot(9, 0).index < FieldManager.WorldPlotBase);
-        fm.Plots.RemoveAt(fm.Plots.Count - 1);
+        T.Check("Land: the farm and land office fields keep their own ids", ff.Fields.Where(f => f.source != "farm" && !f.source.StartsWith("world")).All(f => f.id < FarmFields.WorldFieldBase) && ff.Fields.Where(f => f.source == "farm").All(f => f.id < 10));
 
         // ---- map, waypoint, fast travel
         var map = WorldMap.Instance; var mini = Minimap.Instance;
@@ -231,7 +232,7 @@ static class WorldTests
         T.Check("Delta: canals and fields (off-road is field, not sand)", w.Shape.Canals.Count >= 3 && DriveSurfaces.At(new Vector3(L.Center.x - L.Half * 0.85f, 0f, L.Center.z + L.Half * 0.3f)) == DriveSurface.Field);
         T.Check("Delta: all places reachable from the farm", L.Pois.All(x => L.Reachable().Contains(x.node)));
         T.Check("Delta: own open-world missions and chapter 6", mm.Missions.Length == 25 && mm.Missions.Skip(20).All(m => m.id.StartsWith("eg_w_")) && camp.Chapters.Length == 6 && camp.Chapters[5].fromMission == 21);
-        T.Check("Delta: land bought in Najd stays in Najd", WorldLand.Instance.OwnedCount == 0 && fm.Plots.Count(pl => pl.index >= FieldManager.WorldPlotBase) == 0);
+        T.Check("Delta: land bought in Najd stays in Najd", WorldLand.Instance.OwnedCount == 0 && ff.Fields.Count(f => f.id >= FarmFields.WorldFieldBase) == 0);
         GameMenu.Instance.StartCareer("najd", Career.Start.NewFarmer, Career.Economy.Normal);
         FakeEngine.Run(0.5f);
         T.Check("New game: land sold back, places undiscovered", w.BuiltRegion == "najd" && WorldLand.Instance.OwnedCount == 0 && !w.Seen(w.Layout.Poi("town")));

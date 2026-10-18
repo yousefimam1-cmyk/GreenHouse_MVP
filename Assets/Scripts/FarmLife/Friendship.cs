@@ -300,7 +300,7 @@ public class Friendship : MonoBehaviour
     {
         Vector3 start = CozyFx.FarmStart;
         if (spot == "pen" && AnimalPen.Instance != null) return AnimalPen.Instance.transform.position + new Vector3(-3f, 0, -8f);
-        if (spot == "fields" && FieldManager.Instance != null && FieldManager.Instance.Plots.Count > 2) return FieldManager.Instance.Plots[2].transform.position + new Vector3(6f, 0, -4f);
+        if (spot == "fields" && FarmFields.Instance != null && FarmFields.Instance.Fields.Count > 1) return FarmFields.Instance.Fields[1].center + FarmFields.Instance.GridRotation * new Vector3(FarmFields.FarmFieldWidth * 0.5f + 3f, 0, -4f);
         return start + new Vector3(-4f, 0, 5f);
     }
 

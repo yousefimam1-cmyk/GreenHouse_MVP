@@ -63,7 +63,7 @@ public class DesertDressing : MonoBehaviour
     {
         GraphicsEnhancer.PresetChanged += OnPreset;
         GameEvents.RegionChanged += OnRegion;
-        Invoke(nameof(BuildAll), 1.6f); // after VehicleSpawner, FieldManager and AmbientLife have placed the farm
+        Invoke(nameof(BuildAll), 1.6f); // after VehicleSpawner, FarmFields and AmbientLife have placed the farm
     }
 
     private void OnDestroy()
@@ -157,11 +157,12 @@ public class DesertDressing : MonoBehaviour
         keep.Clear();
         Keep(start, 8f);
         var pts = new List<Vector3> { start };
-        foreach (var plot in FindObjectsByType<FieldPlot>(FindObjectsSortMode.None))
-        {
-            Keep(plot.transform.position, Mathf.Max(plot.size.x, plot.size.y) * 0.75f + 2.5f);
-            pts.Add(plot.transform.position);
-        }
+        if (FarmFields.Instance != null)
+            foreach (var f in FarmFields.Instance.Fields)
+            {
+                Keep(f.center, Mathf.Max(f.width, f.depth) * 0.75f + 2.5f);
+                pts.Add(f.center);
+            }
         foreach (var z in FindObjectsByType<DeliveryZone>(FindObjectsSortMode.None))
         {
             Keep(z.transform.position, 11f);
@@ -499,17 +500,17 @@ public class DesertDressing : MonoBehaviour
     private static bool FieldGrid(out Vector3 center, out Quaternion rot, out float minX, out float maxX, out float minZ, out float maxZ, out List<float> colGaps)
     {
         center = Vector3.zero; rot = Quaternion.identity; minX = minZ = float.MaxValue; maxX = maxZ = float.MinValue; colGaps = new List<float>();
-        var fm = FieldManager.Instance;
-        if (fm == null || fm.Plots.Count == 0) return false;
-        center = fm.GridCenter; rot = fm.GridRotation;
+        var ff = FarmFields.Instance;
+        if (ff == null || ff.Fields.Count == 0) return false;
+        center = ff.GridCenter; rot = ff.GridRotation;
         var inv = Quaternion.Inverse(rot);
         var xs = new List<float>();
-        foreach (var p in fm.Plots)
+        foreach (var p in ff.Fields)
         {
-            if (p == null) continue;
-            Vector3 l = inv * (p.transform.position - center);
-            minX = Mathf.Min(minX, l.x - p.size.x * 0.5f); maxX = Mathf.Max(maxX, l.x + p.size.x * 0.5f);
-            minZ = Mathf.Min(minZ, l.z - p.size.y * 0.5f); maxZ = Mathf.Max(maxZ, l.z + p.size.y * 0.5f);
+            if (p == null || p.source.StartsWith("world")) continue;
+            Vector3 l = inv * (p.center - center);
+            minX = Mathf.Min(minX, l.x - p.width * 0.5f); maxX = Mathf.Max(maxX, l.x + p.width * 0.5f);
+            minZ = Mathf.Min(minZ, l.z - p.depth * 0.5f); maxZ = Mathf.Max(maxZ, l.z + p.depth * 0.5f);
             float x = Mathf.Round(l.x * 10f) / 10f;
             if (!xs.Contains(x)) xs.Add(x);
         }

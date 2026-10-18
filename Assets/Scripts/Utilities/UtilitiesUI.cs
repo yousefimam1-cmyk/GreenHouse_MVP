@@ -122,9 +122,8 @@ public class UtilitiesUI : MonoBehaviour
         sb.Append("\n\n").Append(Head(m.WaterShort ? Bad(wLine) : Ok(wLine)));
         sb.Append('\n').Append(m.WellOut > 0f ? "  " + Loc.T("Farm well: {0} m3/day", F(m.WellOut)) : Bad("  " + Loc.T("Farm well: stopped - start the well")));
         if (m.DeepWell) sb.Append('\n').Append("  " + Loc.T("Deep aquifer well: {0} m3/day (needs power)", F(m.DeepOut)));
-        if (m.Tse) sb.Append('\n').Append("  " + Loc.T("Treated wastewater: {0} m3/day (fodder fields only)", F(m.TseOut)));
-        sb.Append('\n').Append("  " + Loc.Display(Loc.Raw("Field irrigation:") + " " + Loc.Raw(IrrigationName(m.Irrigation)) + (m.FieldsAutoWatered ? " - " + Loc.Raw("fields watered automatically") : "")));
-        sb.Append('\n').Append("  " + Loc.T("Uses: greenhouse beds {0}, fields {1}, animals {2} m3/day", F(m.GhWater), F(m.FieldWater), F(m.AnimalWater)));
+        if (m.Tse) sb.Append('\n').Append("  " + Loc.T("Treated wastewater: {0} m3/day (fodder fields only)", F(UtilityModel.TseM3)));
+        sb.Append('\n').Append("  " + Loc.T("Uses: greenhouse beds {0}, fields {1}, animals {2} m3/day", F(m.GhWater), F(IrrigationSystem.Instance != null ? IrrigationSystem.Instance.WaterM3Today : 0f), F(m.AnimalWater)));
 
         // Today + cost
         float limit = UtilityModel.DailyWaterLimit;
@@ -142,17 +141,6 @@ public class UtilitiesUI : MonoBehaviour
 
         sb.Append("\n\n<color=#BBBBBB>").Append(Loc.T("Buy equipment at a Farm Shop (Power and Water pages)   [U] / [Esc] close")).Append("</color>");
         return sb.ToString();
-    }
-
-    public static string IrrigationName(IrrigationKind k)
-    {
-        switch (k)
-        {
-            case IrrigationKind.Sprinklers: return "Sprinklers";
-            case IrrigationKind.Drip: return "Drip lines";
-            case IrrigationKind.CenterPivot: return "Center pivot";
-            default: return "By hand";
-        }
     }
 
     private void Refresh()

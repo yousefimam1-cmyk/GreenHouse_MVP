@@ -75,7 +75,7 @@ public class MissionManager : MonoBehaviour
         GameEvents.Delivered += OnDelivered;
         GameEvents.UpgradeBought += OnBought;
         GameEvents.ProductsCollected += OnCollected;
-        FieldPlot.FieldPlanted += OnPlanted;
+        FieldEvents.Planted += OnPlanted;
         GameEvents.AnimalBorn += OnBorn;
         GameEvents.TractorWorked += OnTractor;
         GameEvents.ContractCompleted += OnContract;
@@ -83,7 +83,7 @@ public class MissionManager : MonoBehaviour
         GameEvents.RegionChanged += OnRegion;
         GameEvents.MoneyChanged += OnMoney;
         GameEvents.PenCleaned += OnCleaned;
-        FieldPlot.FieldHarvested += OnFieldHarvest;
+        FieldEvents.Harvested += OnFieldHarvest;
     }
 
     private void OnDisable()
@@ -96,7 +96,7 @@ public class MissionManager : MonoBehaviour
         GameEvents.Delivered -= OnDelivered;
         GameEvents.UpgradeBought -= OnBought;
         GameEvents.ProductsCollected -= OnCollected;
-        FieldPlot.FieldPlanted -= OnPlanted;
+        FieldEvents.Planted -= OnPlanted;
         GameEvents.AnimalBorn -= OnBorn;
         GameEvents.TractorWorked -= OnTractor;
         GameEvents.ContractCompleted -= OnContract;
@@ -104,7 +104,7 @@ public class MissionManager : MonoBehaviour
         GameEvents.RegionChanged -= OnRegion;
         GameEvents.MoneyChanged -= OnMoney;
         GameEvents.PenCleaned -= OnCleaned;
-        FieldPlot.FieldHarvested -= OnFieldHarvest;
+        FieldEvents.Harvested -= OnFieldHarvest;
     }
 
     private void OnDestroy() { if (Instance == this) Instance = null; }
@@ -132,13 +132,13 @@ public class MissionManager : MonoBehaviour
     private void OnLoaded(float kg) => Add("loadKg", kg);
     private void OnDelivered(float kg, int money) { Add("deliverKg", kg); Add("earnMoney", money); }
     private void OnCollected() => Add("collectProducts", 1f);
-    private void OnPlanted(FieldPlot p) => Add("plantField", 1f);
+    private void OnPlanted(FarmField p, string crop) => Add("plantField", 1f);
     private void OnBorn(string id) => Add("animalBorn", 1f);
     private void OnCleaned() => Add("cleanPen", 1f);
     private void OnTractor(Implement i) { Add("tractorWork", 1f); if (i == Implement.Plow) Add("tractorPlow", 1f); if (i == Implement.Harvester) Add("tractorHarvest", 1f); }
     private void OnContract() => Add("completeContract", 1f);
     private void OnMoney(int balance) { if (Is("haveMoney")) { Progress = balance; CheckDone(); } }
-    private void OnFieldHarvest(FieldPlot p, string crop, float kg) => Add("harvestField", kg);
+    private void OnFieldHarvest(FarmField p, string crop, float kg) => Add("harvestField", kg);
     private void OnBought(string id)
     {
         if (id == "feed") Add("buyFeed", 1f);

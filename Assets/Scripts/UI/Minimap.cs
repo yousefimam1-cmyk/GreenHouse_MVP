@@ -229,7 +229,7 @@ public class Minimap : MonoBehaviour
     {
         foreach (var v in FindObjectsByType<Vehicle>(FindObjectsSortMode.None)) Tag(v, MinimapIconKind.Vehicle, 16f);
         foreach (var g in FindObjectsByType<GreenhouseManager>(FindObjectsSortMode.None)) Tag(g, MinimapIconKind.Greenhouse, 22f);
-        foreach (var p in FindObjectsByType<FieldPlot>(FindObjectsSortMode.None)) Tag(p, MinimapIconKind.Field, 13f);
+        // FarmCore fields tag themselves (FarmFieldObject: icon coloured by the map layer)
         foreach (var s in FindObjectsByType<ShopStall>(FindObjectsSortMode.None)) Tag(s, MinimapIconKind.Shop, 15f);
         if (AnimalPen.Instance != null) Tag(AnimalPen.Instance, MinimapIconKind.Pen, 20f);
         if (DeliveryZone.LoadingBay != null) Tag(DeliveryZone.LoadingBay, MinimapIconKind.LoadingBay, 20f);

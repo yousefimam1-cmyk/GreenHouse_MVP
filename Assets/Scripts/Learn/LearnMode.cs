@@ -45,8 +45,8 @@ public class LearnMode : MonoBehaviour
     {
         Panel = new CozyPanel(transform, "Learn UI", 900f);
         GameEvents.WellStarted += OnWell;
-        FieldPlot.FieldPlanted += OnPlanted;
-        FieldPlot.FieldHarvested += OnFieldHarvest;
+        FieldEvents.Planted += OnPlanted;
+        FieldEvents.Harvested += OnFieldHarvest;
         GameEvents.Harvested += OnHarvest;
         GameEvents.UpgradeBought += OnBought;
         GameEvents.AnimalBorn += OnBorn;
@@ -61,8 +61,8 @@ public class LearnMode : MonoBehaviour
     private void OnDestroy()
     {
         GameEvents.WellStarted -= OnWell;
-        FieldPlot.FieldPlanted -= OnPlanted;
-        FieldPlot.FieldHarvested -= OnFieldHarvest;
+        FieldEvents.Planted -= OnPlanted;
+        FieldEvents.Harvested -= OnFieldHarvest;
         GameEvents.Harvested -= OnHarvest;
         GameEvents.UpgradeBought -= OnBought;
         GameEvents.AnimalBorn -= OnBorn;
@@ -77,8 +77,8 @@ public class LearnMode : MonoBehaviour
     private void OnNewGame() { quizCard = null; selected = 0; LoadState(); CozyAnalytics.WriteOptIn(); Refresh(); }
 
     private void OnWell(WellController w) => Trigger("wellStarted");
-    private void OnPlanted(FieldPlot p) => Trigger("fieldPlanted");
-    private void OnFieldHarvest(FieldPlot p, string crop, float kg) => Trigger("harvestField");
+    private void OnPlanted(FarmField p, string crop) => Trigger("fieldPlanted");
+    private void OnFieldHarvest(FarmField p, string crop, float kg) => Trigger("harvestField");
     private void OnHarvest(Cropbed b, float kg) { if (b != null) Trigger("harvestGreenhouse"); }
     private void OnBorn(string id) { Trigger("animal"); Trigger("animal:" + id); }
     private void OnSponsor(string id) => Trigger("sponsor");

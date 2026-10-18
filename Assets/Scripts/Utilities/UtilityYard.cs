@@ -5,17 +5,16 @@ using UnityEngine;
 /// <summary>
 /// Builds the bought utility equipment in the world (placeholder geometry, or Resources/Models/&lt;name&gt; when present):
 /// SEC pole + transformer, diesel generator, biogas dome, solar rows (dusty colour), wind turbines (spinning),
-/// deep well pump, water tanks, treated-wastewater valve, and the field irrigation (drip lines, sprinklers or a
-/// rotating center pivot over the plots). Yard position: an object named "UtilitiesSpot", else beside the player start.
+/// deep well pump, water tanks and the treated-wastewater valve (field irrigation is FarmCore's IrrigationSystem). Yard position: an object named "UtilitiesSpot", else beside the player start.
 /// </summary>
 public class UtilityYard : MonoBehaviour
 {
-    private Transform yard, irrigation;
+    private Transform yard;
     private readonly List<Transform> blades = new List<Transform>();
     private readonly List<MeshRenderer> panels = new List<MeshRenderer>();
-    private Transform pivotArm, tankWater;
+    private Transform tankWater;
     private int shownDust = -1;
-    private bool built, irrigationBuilt;
+    private bool built;
 
     private static readonly Color PanelBlue = new Color(0.08f, 0.14f, 0.32f), Sand = new Color(0.78f, 0.66f, 0.45f);
 
@@ -31,7 +30,6 @@ public class UtilityYard : MonoBehaviour
         var spot = GameObject.Find("UtilitiesSpot");
         Vector3 pos = spot != null ? spot.transform.position : start.position - fwd * 14f + right * 14f;
         yard.SetPositionAndRotation(Build.OnGround(pos), Quaternion.LookRotation(fwd));
-        irrigation = new GameObject("Field Irrigation").transform;
         built = true;
         Rebuild();
     }
@@ -39,7 +37,6 @@ public class UtilityYard : MonoBehaviour
     private void OnDestroy()
     {
         if (yard != null) Destroy(yard.gameObject);
-        if (irrigation != null) Destroy(irrigation.gameObject);
     }
 
     private UtilityModel M => UtilityGrid.Instance != null ? UtilityGrid.Instance.Model : null;
@@ -50,10 +47,6 @@ public class UtilityYard : MonoBehaviour
         if (m == null) return;
         float windSpin = m.Wind > 0 ? m.WindOut / Mathf.Max(0.1f, UtilityModel.WindKw * m.Wind) : 0f;
         foreach (var b in blades) if (b != null) b.localRotation = b.localRotation * Quaternion.Euler(0f, 0f, (60f + 360f * windSpin) * Time.deltaTime);
-        // Field plots are laid out by FieldManager.Start, which may run after this; build the irrigation once they exist.
-        if (!irrigationBuilt && m.Irrigation != IrrigationKind.None && FieldManager.Instance != null && FieldManager.Instance.Plots.Count > 0)
-            BuildIrrigation(m.Irrigation, Build.Mat(new Color(0.55f, 0.56f, 0.58f), 0.6f, 0.6f), Build.Mat(new Color(0.1f, 0.1f, 0.11f), 0.3f));
-        if (pivotArm != null && m.FieldsAutoWatered && m.IrrigationKw > 0f) pivotArm.localRotation = Quaternion.Euler(0f, 6f * Time.deltaTime, 0f) * pivotArm.localRotation;
     }
 
     /// <summary>Update the parts that change with state (dust colour, tank level).</summary>
@@ -81,8 +74,8 @@ public class UtilityYard : MonoBehaviour
     {
         var m = M;
         if (m == null || !built) return;
-        Clear(yard); Clear(irrigation);
-        blades.Clear(); panels.Clear(); pivotArm = null; tankWater = null; shownDust = -1; irrigationBuilt = false;
+        Clear(yard);
+        blades.Clear(); panels.Clear(); tankWater = null; shownDust = -1;
 
         var steel = Build.Mat(new Color(0.55f, 0.56f, 0.58f), 0.6f, 0.6f);
         var white = Build.Mat(new Color(0.93f, 0.93f, 0.9f), 0.4f);
@@ -197,7 +190,6 @@ public class UtilityYard : MonoBehaviour
             Build.Label(tse, new Vector3(0, 2.2f, 0), "Treated wastewater line", 2f, Color.white);
         }
 
-        BuildIrrigation(m.Irrigation, steel, dark);
         foreach (var r in yard.GetComponentsInChildren<Renderer>(true)) r.gameObject.layer = 7;
         Refresh();
     }
@@ -214,52 +206,6 @@ public class UtilityYard : MonoBehaviour
         var part = go.AddComponent<UtilityPart>();
         part.kind = kind; part.label = label;
         return go.transform;
-    }
-
-    private void BuildIrrigation(IrrigationKind kind, Material steel, Material dark)
-    {
-        if (kind == IrrigationKind.None || FieldManager.Instance == null || FieldManager.Instance.Plots.Count == 0) return;
-        irrigationBuilt = true;
-        var plots = FieldManager.Instance.Plots;
-        if (kind == IrrigationKind.CenterPivot)
-        {
-            Vector3 c = Vector3.zero; float reach = 0f;
-            foreach (var p in plots) c += p.transform.position;
-            c /= plots.Count;
-            foreach (var p in plots) reach = Mathf.Max(reach, Vector3.Distance(new Vector3(c.x, 0, c.z), new Vector3(p.transform.position.x, 0, p.transform.position.z)) + 4f);
-            irrigation.position = Build.OnGround(c);
-            irrigation.rotation = plots[0].transform.rotation;
-            Build.Part(PrimitiveType.Cylinder, irrigation, new Vector3(0, 1.8f, 0), new Vector3(0.6f, 1.8f, 0.6f), steel, "Pivot tower");
-            pivotArm = new GameObject("Pivot Arm").transform; pivotArm.SetParent(irrigation, false);
-            Build.Part(PrimitiveType.Cube, pivotArm, new Vector3(reach * 0.5f, 3.4f, 0), new Vector3(reach, 0.18f, 0.18f), steel, "Span");
-            int towers = Mathf.Max(2, Mathf.RoundToInt(reach / 6f));
-            for (int i = 1; i <= towers; i++)
-            {
-                float x = reach * i / towers;
-                Build.Part(PrimitiveType.Cube, pivotArm, new Vector3(x, 1.7f, 0), new Vector3(0.12f, 3.4f, 0.12f), steel, "Tower");
-                Build.Part(PrimitiveType.Cylinder, pivotArm, new Vector3(x, 0.45f, 0), new Vector3(0.9f, 0.12f, 0.9f), dark, "Wheel", new Vector3(0, 0, 90));
-                Build.Part(PrimitiveType.Cube, pivotArm, new Vector3(x - reach / towers * 0.5f, 2.6f, 0), new Vector3(reach / towers, 0.06f, 0.06f), steel, "Truss");
-            }
-            Build.Label(irrigation, new Vector3(0, 4.6f, 0), "Center pivot", 2.5f, Color.white);
-            return;
-        }
-        var hose = Build.Mat(new Color(0.08f, 0.08f, 0.08f), 0.3f);
-        foreach (var p in plots)
-        {
-            var root = new GameObject(kind == IrrigationKind.Drip ? "Drip Lines" : "Sprinklers").transform;
-            root.SetParent(irrigation, false);
-            root.SetPositionAndRotation(p.transform.position, p.transform.rotation);
-            if (kind == IrrigationKind.Drip)
-                for (int i = 0; i < 5; i++)
-                    Build.Part(PrimitiveType.Cube, root, new Vector3(-p.size.x * 0.4f + i * p.size.x * 0.2f + 0.15f, 0.14f, 0), new Vector3(0.04f, 0.04f, p.size.y * 0.96f), hose, "Drip line");
-            else
-                foreach (var sx in new[] { -1f, 1f })
-                    foreach (var sz in new[] { -1f, 1f })
-                    {
-                        Build.Part(PrimitiveType.Cylinder, root, new Vector3(sx * p.size.x * 0.45f, 0.5f, sz * p.size.y * 0.45f), new Vector3(0.06f, 0.5f, 0.06f), steel, "Riser");
-                        Build.Part(PrimitiveType.Cube, root, new Vector3(sx * p.size.x * 0.45f, 1.02f, sz * p.size.y * 0.45f), new Vector3(0.2f, 0.06f, 0.06f), dark, "Sprinkler head");
-                    }
-        }
     }
 
     private static void Clear(Transform t)

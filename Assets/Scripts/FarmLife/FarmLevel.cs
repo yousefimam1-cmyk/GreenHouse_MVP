@@ -48,8 +48,8 @@ public class FarmLevel : MonoBehaviour
         GameEvents.WellStarted += OnWell;
         GameEvents.Custom += OnCustom;
         GameEvents.NewGameStarted += OnNewGame;
-        FieldPlot.FieldHarvested += OnFieldHarvested;
-        FieldPlot.FieldPlanted += OnPlanted;
+        FieldEvents.Harvested += OnFieldHarvested;
+        FieldEvents.Planted += OnPlanted;
     }
 
     private void OnDisable()
@@ -65,8 +65,8 @@ public class FarmLevel : MonoBehaviour
         GameEvents.WellStarted -= OnWell;
         GameEvents.Custom -= OnCustom;
         GameEvents.NewGameStarted -= OnNewGame;
-        FieldPlot.FieldHarvested -= OnFieldHarvested;
-        FieldPlot.FieldPlanted -= OnPlanted;
+        FieldEvents.Harvested -= OnFieldHarvested;
+        FieldEvents.Planted -= OnPlanted;
     }
 
     private void OnDestroy()
@@ -83,8 +83,8 @@ public class FarmLevel : MonoBehaviour
     private void Give(string id, float units) { float r = Rate(id); if (r > 0f && units > 0f) AddXp(r * units); }
 
     private void OnHarvested(Cropbed b, float kg) => Give("harvestKg", kg);
-    private void OnFieldHarvested(FieldPlot p, string crop, float kg) { Give("fieldHarvest", 1f); Give("fieldKg", kg); }
-    private void OnPlanted(FieldPlot p) => Give("plant", 1f);
+    private void OnFieldHarvested(FarmField p, string crop, float kg) { Give("fieldHarvest", 1f); Give("fieldKg", kg); }
+    private void OnPlanted(FarmField p, string crop) => Give("plant", 1f);
     private void OnDelivered(float kg, int money) => Give("deliverMoney", money);
     private void OnProducts() => Give("products", 1f);
     private void OnBorn(string id) => Give("animalBorn", 1f);

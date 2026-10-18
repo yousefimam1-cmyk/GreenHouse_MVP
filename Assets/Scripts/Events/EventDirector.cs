@@ -32,7 +32,7 @@ public class FarmEventDef
 /// Random farm events from Resources/Data/events.json, rolled per season and announced a day ahead
 /// (alert + HUD line): extreme heat, haboob dust storm, flash flood in the wadi, frost night, desert locusts,
 /// water restriction day, Ramadan demand boom, big buyer visit. Effects go through FarmModifiers (read by
-/// FieldPlot / AnimalPen / MarketManager) or existing public methods (FieldPlot.ResetPlot/AddWater,
+/// FarmCore fields / AnimalPen / MarketManager) or existing public methods (FarmCore EventFields helpers,
 /// Cropbed.ResetGrowth, MarketManager.Contracts). Greenhouse vents (E at the switch by each control station)
 /// protect the beds from dust storms. Saved under mazraa.events.*.
 /// </summary>
@@ -113,7 +113,7 @@ public class EventDirector : MonoBehaviour
         WorldClock.DayStarted += OnNewDay;
         GameEvents.NewGameStarted += OnNewGame;
         GameEvents.RegionChanged += OnRegion;
-        FieldPlot.FieldHarvested += OnFieldHarvested;
+        FieldEvents.Harvested += OnFieldHarvested;
     }
 
     private void OnDisable()
@@ -121,7 +121,7 @@ public class EventDirector : MonoBehaviour
         WorldClock.DayStarted -= OnNewDay;
         GameEvents.NewGameStarted -= OnNewGame;
         GameEvents.RegionChanged -= OnRegion;
-        FieldPlot.FieldHarvested -= OnFieldHarvested;
+        FieldEvents.Harvested -= OnFieldHarvested;
         RestoreFog();
         FarmModifiers.Reset();
     }
@@ -282,10 +282,7 @@ public class EventDirector : MonoBehaviour
     // Canal turn: the field ditches fill from the canal; every growing field gets water (and dries slower all day).
     private string Canal()
     {
-        int n = 0;
-        if (FieldManager.Instance != null)
-            foreach (var p in FieldManager.Instance.Plots)
-                if (p != null && (p.State == PlotState.Growing || p.State == PlotState.Plowed)) { p.AddWater(1f); n++; }
+        int n = EventFields.WaterAll(1f, true);
         return FinText.T("Canal water reached {0} fields", n);
     }
 
@@ -326,8 +323,7 @@ public class EventDirector : MonoBehaviour
                 if (gh != null && exposed.Contains(gh.name))
                     foreach (var b in gh.Cropbeds) if (b != null && b.IsActive && b.Growth > 0.01f) { b.ResetGrowth(); beds++; }
         // Sand dries the open fields.
-        if (FieldManager.Instance != null)
-            foreach (var p in FieldManager.Instance.Plots) if (p != null && p.State == PlotState.Growing) p.AddWater(-1f);
+        EventFields.WaterAll(-1f, false);
         bool safe = exposed.Count == 0;
         exposed.Clear();
         if (safe)
@@ -341,20 +337,10 @@ public class EventDirector : MonoBehaviour
 
     private string Flood(FarmEventDef e)
     {
-        var fm = FieldManager.Instance;
-        if (fm == null || fm.Plots.Count == 0) return "";
-        var list = new List<FieldPlot>();
-        foreach (var p in fm.Plots) if (p != null) list.Add(p);
-        // Lowest plots flood first: prefer ones with a crop on them (that's what hurts), then random.
-        list.Sort((a, b) => (b.State != PlotState.Untilled ? 1 : 0).CompareTo(a.State != PlotState.Untilled ? 1 : 0));
-        int n = Mathf.Min(e.plots, list.Count), lost = 0;
-        for (int i = 0; i < n; i++)
-        {
-            var p = list[i];
-            if (p.State == PlotState.Growing || p.State == PlotState.Ripe) lost++;
-            p.ResetPlot();
-            fertile[p.index] = e.fertility;
-        }
+        int n, lost;
+        var flooded = EventFields.Flood(e.plots, out n, out lost);
+        if (flooded.Count == 0) return "";
+        foreach (var id in flooded) fertile[id] = e.fertility;
         Save();
         return FinText.T("{0} plots flooded ({1} crops lost). The silt will make their next harvest bigger.", n, lost);
     }
@@ -366,10 +352,7 @@ public class EventDirector : MonoBehaviour
             Pesticide--; Save();
             return FinText.T("You sprayed pesticide - the crops are safe");
         }
-        int lost = 0;
-        if (FieldManager.Instance != null)
-            foreach (var p in FieldManager.Instance.Plots)
-                if (p != null && (p.State == PlotState.Growing || p.State == PlotState.Ripe) && UnityEngine.Random.value < e.lossChance) { p.ResetPlot(); lost++; }
+        int lost = EventFields.Destroy(e.lossChance);
         return FinText.T("Locusts ate {0} field crops. Keep pesticide in stock!", lost);
     }
 
@@ -396,11 +379,11 @@ public class EventDirector : MonoBehaviour
         return Loc.Display(FinText.R("Wants") + " " + amount.ToString("F0") + " " + EconomyManager.Unit(best) + " " + EconomyManager.GoodName(best) + " x" + e.bonus.ToString("F1") + " - " + FinText.R("today only"));
     }
 
-    private void OnFieldHarvested(FieldPlot plot, string crop, float kg)
+    private void OnFieldHarvested(FarmField plot, string crop, float kg)
     {
         float bonus;
-        if (plot == null || !fertile.TryGetValue(plot.index, out bonus)) return;
-        fertile.Remove(plot.index);
+        if (plot == null || !fertile.TryGetValue(plot.id, out bonus)) return;
+        fertile.Remove(plot.id);
         Save();
         float extra = kg * (bonus - 1f);
         if (extra <= 0f || EconomyManager.Instance == null) return;

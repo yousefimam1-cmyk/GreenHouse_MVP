@@ -108,7 +108,7 @@ public static class NetSession
     public static bool Typing;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStatics() { backend = null; online = null; Typing = false; lastJob.Clear(); }
+    private static void ResetStatics() { backend = null; online = null; Typing = false; }
 
     /// <summary>Called by a network implementation (e.g. NetcodeBackend) at startup. null = back to single player.</summary>
     public static void Register(INetBackend b) { backend = b; }
@@ -138,7 +138,8 @@ public static class NetSession
     /// <summary>State-changing interactions that the host must perform for clients.</summary>
     public static bool ForwardsToHost(IInteractable t)
     {
-        if (t is FieldPlot || t is WellController || t is PenCrate || t is PenTask) return true;
+        // FarmCore fields: E runs locally and FarmFieldObject sends the hand job at the point you look at (FarmNet)
+        if (t is WellController || t is PenCrate || t is PenTask) return true;
         var bed = t as Cropbed;
         return bed != null && bed.IsReadyToHarvest;   // otherwise E opens the local inspection panel
     }
@@ -172,23 +173,6 @@ public static class NetSession
             estimate += kv.Value * (MarketManager.Instance != null ? MarketManager.Instance.Price(kv.Key) : 0f);
         Backend.SendToHost(NetProtocol.Make(NetProtocol.Sell, NetProtocol.EncodeGoods(cargo)), true);
         return Mathf.RoundToInt(estimate);
-    }
-
-    private static readonly Dictionary<string, float> lastJob = new Dictionary<string, float>();
-
-    /// <summary>
-    /// FieldPlot.TryPlow/TrySeed/TryHarvest on a client (tractor implements): send the job to the host.
-    /// Returns true when forwarded (the caller must not change the plot locally; the host's state syncs back).
-    /// </summary>
-    public static bool ForwardPlotJob(FieldPlot plot, Implement job)
-    {
-        if (!IsClient || plot == null) return false;
-        string key = plot.index + ":" + (int)job;
-        float now = Time.unscaledTime;
-        if (lastJob.TryGetValue(key, out var t) && now - t < 1f) return true;   // already asked, waiting for the sync
-        lastJob[key] = now;
-        Backend.SendToHost(NetProtocol.Make(NetProtocol.PlotJob, plot.index.ToString(), ((int)job).ToString()), true);
-        return true;
     }
 
     /// <summary>MarketManager.Accept on a client: the host accepts the contract offer (the board comes back with the sync).</summary>

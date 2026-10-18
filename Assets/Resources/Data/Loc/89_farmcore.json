@@ -1,0 +1,393 @@
+{
+ "notes": "FarmCore (field farming and irrigation) texts. English keys as used in Assets/Scripts/FarmCore (FcText.R / FcText.T), part, mode and power names; older packs (91_soil, 30_crops, 40_eventsfin) already cover the soil and crop words.",
+ "entries": [
+  {
+   "en": "Aim",
+   "ar": "الهدف"
+  },
+  {
+   "en": "Aim at a part to change it",
+   "ar": "صوّب نحو قطعة لتعديلها"
+  },
+  {
+   "en": "Aim at a part to join",
+   "ar": "صوّب نحو قطعة لتوصيلها"
+  },
+  {
+   "en": "Baler",
+   "ar": "مكبس البالات"
+  },
+  {
+   "en": "Best seed you own",
+   "ar": "أفضل بذور عندك"
+  },
+  {
+   "en": "Canal",
+   "ar": "مأخذ القناة"
+  },
+  {
+   "en": "Choose a product on the Fields page",
+   "ar": "اختر منتجاً من صفحة الحقول"
+  },
+  {
+   "en": "Choose two different parts",
+   "ar": "اختر قطعتين مختلفتين"
+  },
+  {
+   "en": "Covers",
+   "ar": "يغطي"
+  },
+  {
+   "en": "Crop",
+   "ar": "المحصول"
+  },
+  {
+   "en": "Cultivator",
+   "ar": "المحراث الحفار"
+  },
+  {
+   "en": "Cut this crop with the mower",
+   "ar": "احصد هذا المحصول بالمحشة"
+  },
+  {
+   "en": "DeepWell",
+   "ar": "بئر عميقة"
+  },
+  {
+   "en": "Diesel",
+   "ar": "ديزل"
+  },
+  {
+   "en": "Drip",
+   "ar": "خطوط التنقيط"
+  },
+  {
+   "en": "Dry",
+   "ar": "جاف"
+  },
+  {
+   "en": "Edit",
+   "ar": "تعديل"
+  },
+  {
+   "en": "Expected",
+   "ar": "المتوقع"
+  },
+  {
+   "en": "Flood",
+   "ar": "ري بالغمر"
+  },
+  {
+   "en": "From",
+   "ar": "من"
+  },
+  {
+   "en": "Grid",
+   "ar": "شبكة الكهرباء"
+  },
+  {
+   "en": "Ground",
+   "ar": "الأرض"
+  },
+  {
+   "en": "Harvester tank",
+   "ar": "خزان الحصادة"
+  },
+  {
+   "en": "Harvester tank unloaded",
+   "ar": "تم تفريغ خزان الحصادة"
+  },
+  {
+   "en": "Harvests",
+   "ar": "مرات الحصاد"
+  },
+  {
+   "en": "Hours",
+   "ar": "الساعات"
+  },
+  {
+   "en": "Irrigation planner",
+   "ar": "مخطط الري"
+  },
+  {
+   "en": "Irrigation stopped",
+   "ar": "الري متوقف"
+  },
+  {
+   "en": "Irrigation today",
+   "ar": "الري اليوم"
+  },
+  {
+   "en": "Irrigation yesterday",
+   "ar": "الري أمس"
+  },
+  {
+   "en": "Junction",
+   "ar": "وصلة"
+  },
+  {
+   "en": "Last harvest",
+   "ar": "آخر حصاد"
+  },
+  {
+   "en": "Linear",
+   "ar": "ري خطي متحرك"
+  },
+  {
+   "en": "Map layer",
+   "ar": "طبقة الخريطة"
+  },
+  {
+   "en": "Mode",
+   "ar": "الوضع"
+  },
+  {
+   "en": "Mower",
+   "ar": "المحشة"
+  },
+  {
+   "en": "Mulcher",
+   "ar": "مفرمة القش"
+  },
+  {
+   "en": "Network",
+   "ar": "الشبكة"
+  },
+  {
+   "en": "Networks",
+   "ar": "الشبكات"
+  },
+  {
+   "en": "No irrigation yet: place a well, then pipes and an emitter",
+   "ar": "لا يوجد ري بعد: ضع بئراً ثم أنابيب ثم وسيلة ري"
+  },
+  {
+   "en": "No soil test this season - buy a sample kit (Soil) and press E on the field",
+   "ar": "لا يوجد تحليل تربة هذا الموسم - اشترِ عدة عينات (التربة) واضغط E على الحقل"
+  },
+  {
+   "en": "Not connected to a water source",
+   "ar": "غير متصل بمصدر ماء"
+  },
+  {
+   "en": "Not enough water",
+   "ar": "الماء غير كافٍ"
+  },
+  {
+   "en": "Nothing to do here",
+   "ar": "لا يوجد عمل هنا"
+  },
+  {
+   "en": "Part",
+   "ar": "القطعة"
+  },
+  {
+   "en": "Pipe",
+   "ar": "أنبوب"
+  },
+  {
+   "en": "Pipe from",
+   "ar": "أنبوب من"
+  },
+  {
+   "en": "Pipe laid",
+   "ar": "تم مد الأنبوب"
+  },
+  {
+   "en": "Pipe too small",
+   "ar": "الأنبوب صغير جداً"
+  },
+  {
+   "en": "Pivot",
+   "ar": "رشاش محوري"
+  },
+  {
+   "en": "Place it on a field",
+   "ar": "ضعها على حقل"
+  },
+  {
+   "en": "Placed",
+   "ar": "تم الوضع"
+  },
+  {
+   "en": "Plow the field with the tractor",
+   "ar": "احرث الحقل بالجرار"
+  },
+  {
+   "en": "Removed",
+   "ar": "تمت الإزالة"
+  },
+  {
+   "en": "Revolution",
+   "ar": "مدة الدورة"
+  },
+  {
+   "en": "Roll the field to press the stones",
+   "ar": "ادحل الحقل لكبس الحجارة"
+  },
+  {
+   "en": "Roller",
+   "ar": "الدحّالة"
+  },
+  {
+   "en": "Schedule",
+   "ar": "جدول"
+  },
+  {
+   "en": "Sensor",
+   "ar": "حساس رطوبة التربة"
+  },
+  {
+   "en": "Sent to the host",
+   "ar": "أُرسل إلى المضيف"
+  },
+  {
+   "en": "Soil water",
+   "ar": "ماء التربة"
+  },
+  {
+   "en": "Solar",
+   "ar": "طاقة شمسية"
+  },
+  {
+   "en": "Sown",
+   "ar": "مزروع"
+  },
+  {
+   "en": "Sprayer",
+   "ar": "الرشاشة"
+  },
+  {
+   "en": "Spreader",
+   "ar": "الناثرة"
+  },
+  {
+   "en": "Sprinkler",
+   "ar": "رشاش"
+  },
+  {
+   "en": "Stones",
+   "ar": "الحجارة"
+  },
+  {
+   "en": "Stubble",
+   "ar": "بقايا الحصاد"
+  },
+  {
+   "en": "Tank",
+   "ar": "خزان"
+  },
+  {
+   "en": "The harvester tank is full - unload it at the loading bay",
+   "ar": "خزان الحصادة ممتلئ - فرّغه في منطقة التحميل"
+  },
+  {
+   "en": "The machine is empty - buy more at the Farm Shop",
+   "ar": "الآلة فارغة - اشترِ المزيد من متجر المزرعة"
+  },
+  {
+   "en": "There is no canal on this map",
+   "ar": "لا توجد قناة في هذه الخريطة"
+  },
+  {
+   "en": "This crop",
+   "ar": "هذا المحصول"
+  },
+  {
+   "en": "This field already has one",
+   "ar": "هذا الحقل فيه واحدة بالفعل"
+  },
+  {
+   "en": "This product doesn't fit this machine",
+   "ar": "هذا المنتج لا يناسب هذه الآلة"
+  },
+  {
+   "en": "Unload the tank first: it holds another crop",
+   "ar": "فرّغ الخزان أولاً: فيه محصول آخر"
+  },
+  {
+   "en": "Up / Down: choose   Left / Right: change   [Enter] irrigation planner   [Esc] close",
+   "ar": "أعلى / أسفل: اختيار   يسار / يمين: تغيير   [Enter] مخطط الري   [Esc] إغلاق"
+  },
+  {
+   "en": "Up / Down: part   Left / Right: size / value   [Enter] place   [Delete] remove   1-5: edit row   [Esc] close",
+   "ar": "أعلى / أسفل: القطعة   يسار / يمين: الحجم / القيمة   [Enter] وضع   [Delete] إزالة   1-5: سطر التعديل   [Esc] إغلاق"
+  },
+  {
+   "en": "Water restriction today",
+   "ar": "تقييد المياه اليوم"
+  },
+  {
+   "en": "Well",
+   "ar": "بئر"
+  },
+  {
+   "en": "Withered",
+   "ar": "ذابل"
+  },
+  {
+   "en": "Worked",
+   "ar": "محروث"
+  },
+  {
+   "en": "Yield",
+   "ar": "الإنتاج"
+  },
+  {
+   "en": "[E] Hoe the soil",
+   "ar": "[E] عزق التربة"
+  },
+  {
+   "en": "[Q] Field details",
+   "ar": "[Q] تفاصيل الحقل"
+  },
+  {
+   "en": "bags",
+   "ar": "أكياس"
+  },
+  {
+   "en": "demand",
+   "ar": "الطلب"
+  },
+  {
+   "en": "each",
+   "ar": "لكل كيس"
+  },
+  {
+   "en": "emitters",
+   "ar": "وسائل ري"
+  },
+  {
+   "en": "needs",
+   "ar": "يحتاج"
+  },
+  {
+   "en": "now aim at the other end",
+   "ar": "صوّب الآن نحو الطرف الآخر"
+  },
+  {
+   "en": "radius",
+   "ar": "نصف القطر"
+  },
+  {
+   "en": "running",
+   "ar": "يعمل"
+  },
+  {
+   "en": "sources",
+   "ar": "مصادر"
+  },
+  {
+   "en": "stopped",
+   "ar": "متوقف"
+  },
+  {
+   "en": "supply",
+   "ar": "الإمداد"
+  },
+  {
+   "en": "well limit",
+   "ar": "حد البئر"
+  }
+ ]
+}

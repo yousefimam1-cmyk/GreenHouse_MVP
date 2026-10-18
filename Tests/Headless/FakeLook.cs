@@ -89,6 +89,7 @@ namespace UnityEngine
         public bool enableInstancing;
         internal readonly Dictionary<string, Texture> texs = new Dictionary<string, Texture>();
         public void SetTextureScale(string n, Vector2 s) { }
+        public void DisableKeyword(string k) { }
         public Texture GetTexture(string n) => texs.TryGetValue(n, out var t) ? t : (n == "_BaseMap" ? mainTexture : null);
         public Color GetColor(string n) => color;
         public IEnumerable<string> TextureProperties => texs.Keys;

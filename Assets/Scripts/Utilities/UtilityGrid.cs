@@ -3,8 +3,8 @@ using UnityEngine;
 /// <summary>
 /// Farm power and water utilities (Al-Qassim). Tracks supply vs demand every in-game hour (WorldClock),
 /// pays the SEC bill each morning, sells the equipment in the shop (pages "Power" and "Water"),
-/// builds the equipment in the world (UtilityYard), feeds UtilityHooks (greenhouse growth, field drying,
-/// auto irrigation), shows HUD warnings and the daily water-saving limit, and registers 3 missions.
+/// builds the equipment in the world (UtilityYard), feeds UtilityHooks (greenhouse growth, power for the
+/// FarmCore irrigation pumps), shows HUD warnings and the daily water-saving limit, and registers 2 missions.
 /// Saved under "mazraa.util.*".
 /// </summary>
 [MazraaSystem(40)]
@@ -88,19 +88,7 @@ public class UtilityGrid : MonoBehaviour
         if (GameManager.Instance != null)
             foreach (var g in GameManager.Instance.Greenhouses)
                 if (g != null) { e.greenhouses++; e.beds += g.Cropbeds.Count; }
-        e.plots = 0; e.growingPlots = 0;
-        var soil = SoilManager.Instance;
-        if (soil != null) { if (e.plotKinds == null) e.plotKinds = new int[4]; System.Array.Clear(e.plotKinds, 0, 4); }
-        else e.plotKinds = null;
-        if (FieldManager.Instance != null)
-            foreach (var p in FieldManager.Instance.Plots)
-                if (p != null)
-                {
-                    e.plots++;
-                    if (p.State != PlotState.Growing) continue;
-                    e.growingPlots++;
-                    if (soil != null) e.plotKinds[Mathf.Clamp((int)soil.EffectiveKind(p), 0, 3)]++;   // each field's own irrigation method
-                }
+        e.irrigationKw = UtilityHooks.IrrigationKw;   // FarmCore irrigation pumps on grid power
         e.animalWater = 0f;
         var eco = EconomyManager.Instance;
         if (eco != null) foreach (var a in eco.Data.animals) e.animalWater += eco.Owned(a.id) * AnimalWater(a.id);
@@ -149,8 +137,7 @@ public class UtilityGrid : MonoBehaviour
     private void ApplyHooks()
     {
         UtilityHooks.GreenhouseGrowth = Model.GreenhouseFactor;
-        UtilityHooks.FieldDryFactor = Model.FieldDryFactor;
-        UtilityHooks.FieldsAutoWatered = Model.FieldsAutoWatered;
+        UtilityHooks.PowerRatio = Model.PowerRatio;
     }
 
     private void CheckWaterLimit()
@@ -298,15 +285,6 @@ public class UtilityGrid : MonoBehaviour
             () => { Instance.OrderTanker(tankerM3); });
         Reg("util_tse", "Water", "Treated wastewater line (fodder fields)", null,
             () => M.Tse ? -1 : 2000, null, () => { M.Tse = true; Instance.Installed("installTse"); });
-        Reg("util_sprinklers", "Water", "Sprinklers for the fields",
-            () => M.Irrigation == IrrigationKind.Sprinklers ? "(" + Loc.Raw("active") + ")" : "",
-            () => M.Irrigation == IrrigationKind.Sprinklers ? -1 : 1500, null, () => { M.Irrigation = IrrigationKind.Sprinklers; M.MarkOwned(IrrigationKind.Sprinklers); Instance.Installed("installSprinklers"); });
-        Reg("util_drip", "Water", "Drip irrigation lines",
-            () => M.Irrigation == IrrigationKind.Drip ? "(" + Loc.Raw("active") + ")" : "",
-            () => M.Irrigation == IrrigationKind.Drip ? -1 : 2500, null, () => { M.Irrigation = IrrigationKind.Drip; M.MarkOwned(IrrigationKind.Drip); Instance.Installed("installDrip"); });
-        Reg("util_pivot", "Water", "Center pivot",
-            () => M.Irrigation == IrrigationKind.CenterPivot ? "(" + Loc.Raw("active") + ")" : "",
-            () => M.Irrigation == IrrigationKind.CenterPivot ? -1 : 12000, null, () => { M.Irrigation = IrrigationKind.CenterPivot; M.MarkOwned(IrrigationKind.CenterPivot); Instance.Installed("installPivot"); });
     }
 
     // ---------------- HUD + missions ----------------
@@ -336,7 +314,6 @@ public class UtilityGrid : MonoBehaviour
     {
         MissionManager.StateMissions["installSolar"] = () => M != null && M.Solar > 0 ? 1f : 0f;
         MissionManager.StateMissions["powerPositiveDays"] = () => M != null ? M.PowerOkDays : 0f;
-        MissionManager.StateMissions["installEfficientIrrigation"] = () => M != null && (M.Irrigation == IrrigationKind.Drip || M.Irrigation == IrrigationKind.CenterPivot) ? 1f : 0f;
     }
 
     // ---------------- save ----------------
@@ -352,9 +329,6 @@ public class UtilityGrid : MonoBehaviour
         m.Biogas = SaveData.GetInt(Pfx + "biogas", 0) == 1;
         m.DeepWell = SaveData.GetInt(Pfx + "deepwell", 0) == 1;
         m.Tse = SaveData.GetInt(Pfx + "tse", 0) == 1;
-        m.Irrigation = (IrrigationKind)Mathf.Clamp(SaveData.GetInt(Pfx + "irrigation", 0), 0, 3);
-        m.OwnedIrrigation = SaveData.GetInt(Pfx + "irrigationOwned", 0);
-        m.MarkOwned(m.Irrigation);   // saves from before per-field irrigation
         m.DieselL = SaveData.GetFloat(Pfx + "diesel", 0f);
         m.Dust = SaveData.GetFloat(Pfx + "dust", 0f);
         m.Stored = Mathf.Clamp(SaveData.GetFloat(Pfx + "stored", UtilityModel.BaseReservoir), 0f, m.StorageCapacity);
@@ -377,8 +351,6 @@ public class UtilityGrid : MonoBehaviour
         SaveData.SetInt(Pfx + "biogas", m.Biogas ? 1 : 0);
         SaveData.SetInt(Pfx + "deepwell", m.DeepWell ? 1 : 0);
         SaveData.SetInt(Pfx + "tse", m.Tse ? 1 : 0);
-        SaveData.SetInt(Pfx + "irrigation", (int)m.Irrigation);
-        SaveData.SetInt(Pfx + "irrigationOwned", m.OwnedIrrigation);
         SaveData.SetFloat(Pfx + "diesel", m.DieselL);
         SaveData.SetFloat(Pfx + "dust", m.Dust);
         SaveData.SetFloat(Pfx + "stored", m.Stored);

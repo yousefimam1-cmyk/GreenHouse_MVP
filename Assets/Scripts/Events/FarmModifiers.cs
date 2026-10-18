@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Small static modifiers that random events (EventDirector) set and the existing farm code reads.
 /// Neutral values (1 / false / empty) mean "no event". EventDirector recomputes them every frame.
-/// Hooks: FieldPlot.Update (FieldDry, FieldGrowth), FieldPlot.Interact (IrrigationBanned),
+/// Hooks: FarmCore FarmSim (FieldDry, FieldGrowth), FarmCore irrigation and hand watering (IrrigationBanned),
 /// AnimalPen.Update (PenWaterUse), MarketManager.Price (Price).
 /// </summary>
 public static class FarmModifiers

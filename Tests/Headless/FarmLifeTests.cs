@@ -137,8 +137,9 @@ static class FarmLifeTests
             && GameObject.Find("Decor fl_fountain").GetComponent<CozyProp>() != null);
         fb.Compute();
         T.Check("Beauty: the fountain adds 8 (decor part capped at 60)", Math.Abs(fb.DecorPart - Math.Min(60f, decor0 + 8f)) < 0.01f && fb.Score >= score0, decor0 + " -> " + fb.DecorPart);
-        int plots = FieldManager.Instance.Plots.Count, tidy = FieldManager.Instance.Plots.Count(p => p.State != PlotState.Untilled);
-        T.Check("Beauty: tidy fields part = 20 x worked plots / plots", Math.Abs(fb.FieldPart - 20f * tidy / plots) < 0.01f, fb.FieldPart + " " + tidy + "/" + plots);
+        var fields = FarmFields.Instance.Fields;
+        float tidy = fields.Sum(f => 1f - FC.Untilled(f) / (float)f.Cells);
+        T.Check("Beauty: tidy fields part = 20 x worked share of the fields", Math.Abs(fb.FieldPart - 20f * tidy / fields.Count) < 0.01f, fb.FieldPart + " " + tidy + "/" + fields.Count);
         T.Check("Beauty: stars follow the thresholds", fb.StarCount == data.beauty.stars.Count(t => fb.Score >= t), fb.Score + " -> " + fb.StarCount);
         T.Check("Beauty bonus: +1% market prices and +5% stand pay per star (passive)", Math.Abs(FarmBeauty.PriceFor("wheat") - (1f + fb.StarCount * 0.01f)) < 0.0001f
             && Math.Abs(FarmBeauty.OrdersBonus - fb.StarCount * 0.05f) < 0.0001f);

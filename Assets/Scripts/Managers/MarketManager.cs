@@ -445,7 +445,7 @@ public class MarketManager : MonoBehaviour
         var cfg = Cfg.contracts;
         int today = WorldClock.Instance != null ? WorldClock.Instance.Day : 1;
         Contract c;
-        if (FieldManager.Instance != null && FieldManager.Instance.Plots.Count > 0 && UnityEngine.Random.value < cfg.fieldChance)
+        if (FarmFields.Instance != null && FarmFields.Instance.Fields.Count > 0 && UnityEngine.Random.value < cfg.fieldChance)
         {
             var cl = PickClient(cfg.fieldClients);
             string[] tasks = { "Plow", "Seeder", "Harvester" };

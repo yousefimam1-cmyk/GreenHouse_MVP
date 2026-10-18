@@ -90,12 +90,15 @@ public class ObjectiveMarker : MonoBehaviour
             case "cleanPen": h = 4f; foreach (var t in FindObjectsByType<PenTask>(FindObjectsSortMode.None)) if (t.kind == PenTaskKind.Clean) return t.transform; return null;
             case "plantField": case "harvestField":
                 h = 2.5f;
-                if (FieldManager.Instance != null) foreach (var p in FieldManager.Instance.Plots)
-                    if (p != null && (m.type == "plantField" ? p.State != PlotState.Growing : p.State == PlotState.Ripe)) return p.transform;
+                if (FarmFields.Instance != null) foreach (var f in FarmFields.Instance.Fields)
+                {
+                    var s = FarmSim.Summarize(f);
+                    if (f.View != null && (m.type == "plantField" ? s.sown < s.cells : s.ripe > 0)) return f.View.transform;
+                }
                 return null;
             case "tractorWork": case "tractorPlow": case "tractorHarvest":
                 h = 4f;
-                if (Vehicle.Current is Tractor && FieldManager.Instance != null && FieldManager.Instance.Plots.Count > 0) return FieldManager.Instance.Plots[0].transform;
+                if (Vehicle.Current is Tractor && FarmFields.Instance != null && FarmFields.Instance.Fields.Count > 0 && FarmFields.Instance.Fields[0].View != null) return FarmFields.Instance.Fields[0].View.transform;
                 return Tractor.Instance != null ? Tractor.Instance.transform : null;
             default:
                 foreach (var hook in TargetHooks) { var t = hook(m, out h); if (t != null) return t; }

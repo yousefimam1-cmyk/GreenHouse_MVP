@@ -16,9 +16,10 @@ public static class NetProtocol
     public const string Interact = "I";    // object id
     public const string Buy = "B";         // shop item id
     public const string Sell = "S";        // goods
-    public const string PlotJob = "J";     // plot index, Implement
+    public const string FieldWork = FarmNet.FieldWork;   // "J" field work (FarmNet): tool, from, to, width, by hand, tractor, crop, product, density, mm
     public const string Gift = "G";        // to player id, good id, amount
-    public const string SoilSet = "F";     // "d", sowing density | "i", plot index, irrigation method (SoilManager)
+    public const string FieldSet = FarmNet.FieldSet;     // "F" "d", sowing density (FarmNet)
+    public const string IrrEdit = FarmNet.IrrEdit;       // "X" irrigation planner edit: add / pipe / del / set (FarmNet)
     public const string ContractAccept = "Q";   // contract offer id (MarketManager)
     // both ways (client -> host, host relays with the sender id first)
     public const string Pose = "P";        // [id] x, y, z, yaw, vehicle id, speed
@@ -32,7 +33,8 @@ public static class NetProtocol
     public const string Echo = "U";        // object id used on the host (well started, bed harvested)
     public const string Alert = "A";       // English Loc key, args...
     public const string GiftIn = "K";      // from name, good id, amount
-    public const string SoilSync = "L";    // soil per field + farm soil settings (SoilManager.EncodeSync), sent with Sync
+    public const string FieldCells = FarmNet.FieldCells; // "L" FarmCore cells: "d" deltas / "s" one field's snapshot (FarmNet)
+    public const string IrrSync = FarmNet.IrrSync;       // "N" irrigation network, groundwater, combine tank, density (FarmNet)
     public const string MarketSync = "M";  // market prices, supply, demand events, contracts (MarketManager.EncodeSync)
 
     public static string Make(string type, params string[] fields)
@@ -117,13 +119,11 @@ public struct NetPose
 }
 
 /// <summary>
-/// The farm state the host sends every second: money, storage, calendar, weather, mission, well and field plots.
+/// The farm state the host sends every second: money, storage, calendar, weather, mission and well (fields: FarmNet).
 /// Capture() reads the running systems, Apply() writes them on a client (nothing is saved there).
 /// </summary>
 public class NetSyncState
 {
-    public struct Plot { public int state; public string crop; public float growth, water; }
-
     public int money;
     public int day = 1;
     public float dayProgress;
@@ -132,7 +132,6 @@ public class NetSyncState
     public float missionProgress;
     public bool wellRunning;
     public Dictionary<string, float> goods = new Dictionary<string, float>();
-    public List<Plot> plots = new List<Plot>();
 
     public static NetSyncState Capture()
     {
@@ -148,9 +147,6 @@ public class NetSyncState
         var mm = MissionManager.Instance;
         if (mm != null) { s.mission = mm.Index; s.missionProgress = mm.Progress; }
         foreach (var w in Object.FindObjectsByType<WellController>(FindObjectsSortMode.None)) if (w.IsRunning) s.wellRunning = true;
-        if (FieldManager.Instance != null)
-            foreach (var p in FieldManager.Instance.Plots)
-                s.plots.Add(p == null ? new Plot { crop = "" } : new Plot { state = (int)p.State, crop = p.CropId, growth = p.Growth, water = p.Water });
         return s;
     }
 
@@ -165,25 +161,12 @@ public class NetSyncState
         if (wellRunning)
             foreach (var w in Object.FindObjectsByType<WellController>(FindObjectsSortMode.None))
                 if (!w.IsRunning) w.StartWell();
-        if (FieldManager.Instance != null)
-        {
-            var list = FieldManager.Instance.Plots;
-            for (int i = 0; i < list.Count && i < plots.Count; i++)
-                if (list[i] != null) list[i].ApplyRemote((PlotState)Mathf.Clamp(plots[i].state, 0, 3), plots[i].crop, plots[i].growth, plots[i].water);
-        }
     }
 
     public string Encode()
     {
-        var sb = new StringBuilder();
-        foreach (var p in plots)
-        {
-            if (sb.Length > 0) sb.Append(NetProtocol.Item);
-            sb.Append(p.state).Append(NetProtocol.Pair).Append(NetProtocol.Clean(p.crop, 40)).Append(NetProtocol.Pair)
-              .Append(NetProtocol.F(p.growth)).Append(NetProtocol.Pair).Append(NetProtocol.F(p.water));
-        }
         return NetProtocol.Make(NetProtocol.Sync, NetProtocol.I(money), NetProtocol.I(day), NetProtocol.F(dayProgress), NetProtocol.I(weather),
-            NetProtocol.I(mission), NetProtocol.F(missionProgress), wellRunning ? "1" : "0", NetProtocol.EncodeGoods(goods), sb.ToString());
+            NetProtocol.I(mission), NetProtocol.F(missionProgress), wellRunning ? "1" : "0", NetProtocol.EncodeGoods(goods));
     }
 
     /// <summary>Returns null if the message is not a sync message.</summary>
@@ -202,19 +185,6 @@ public class NetSyncState
             wellRunning = NetProtocol.Field(p, 7) == "1",
             goods = NetProtocol.DecodeGoods(NetProtocol.Field(p, 8)),
         };
-        string plotField = NetProtocol.Field(p, 9);
-        if (plotField.Length > 0)
-            foreach (var item in plotField.Split(NetProtocol.Item))
-            {
-                var f = item.Split(NetProtocol.Pair);
-                s.plots.Add(new Plot
-                {
-                    state = NetProtocol.PI(NetProtocol.Field(f, 0)),
-                    crop = NetProtocol.Field(f, 1),
-                    growth = NetProtocol.PF(NetProtocol.Field(f, 2)),
-                    water = NetProtocol.PF(NetProtocol.Field(f, 3)),
-                });
-            }
         return s;
     }
 }

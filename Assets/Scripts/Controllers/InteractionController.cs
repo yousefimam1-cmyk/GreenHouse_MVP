@@ -26,7 +26,7 @@ public class InteractionController : MonoBehaviour
     private void Update()
     {
         // Don't look for or trigger interactions while a panel is open (E used to re-trigger behind the UI).
-        if ((UIManager.Instance != null && UIManager.Instance.IsUIOpened) || UIManager.PanelClosedFrame == Time.frameCount || Time.timeScale == 0f)
+        if ((UIManager.Instance != null && UIManager.Instance.IsUIOpened) || UIManager.PanelClosedFrame == Time.frameCount || Time.timeScale == 0f || IrrigationPlanner.IsOpen)
         {
             ClearCurrent();
             HasTarget = false;
@@ -89,8 +89,8 @@ public class InteractionController : MonoBehaviour
             if (!target.CanInteract) ClearCurrent();
             else shownPrompt = null; // force prompt refresh
         }
-        // Q on keyboard (rebindable) or Y / Triangle: second action on a field (e.g. its irrigation). The tractor uses it while driving.
-        else if (Vehicle.Current == null && GameInput.Pressed(GameAction.Implement) && currentInteractable is FieldPlot plot)
+        // Q on keyboard (rebindable) or Y / Triangle: second action on a field (FarmCore: its Fields page). The tractor uses it while driving.
+        else if (Vehicle.Current == null && GameInput.Pressed(GameAction.Implement) && currentInteractable is FarmFieldObject plot)
         {
             if (plot.SecondaryInteract()) shownPrompt = null;
         }

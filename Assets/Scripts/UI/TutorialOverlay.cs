@@ -44,8 +44,8 @@ public class TutorialOverlay : MonoBehaviour
         GameEvents.WellStarted += OnWell;
         GameEvents.ModuleOptimized += OnOptimized;
         GameEvents.Harvested += OnHarvested;
-        FieldPlot.FieldPlanted += OnPlanted;
-        FieldPlot.FieldHarvested += OnFieldHarvested;
+        FieldEvents.Planted += OnPlanted;
+        FieldEvents.Harvested += OnFieldHarvested;
         Loc.OnLanguageChanged += Refresh;
     }
 
@@ -54,8 +54,8 @@ public class TutorialOverlay : MonoBehaviour
         GameEvents.WellStarted -= OnWell;
         GameEvents.ModuleOptimized -= OnOptimized;
         GameEvents.Harvested -= OnHarvested;
-        FieldPlot.FieldPlanted -= OnPlanted;
-        FieldPlot.FieldHarvested -= OnFieldHarvested;
+        FieldEvents.Planted -= OnPlanted;
+        FieldEvents.Harvested -= OnFieldHarvested;
         Loc.OnLanguageChanged -= Refresh;
     }
 
@@ -115,8 +115,8 @@ public class TutorialOverlay : MonoBehaviour
     private void OnWell(WellController w) => Complete(0);
     private void OnOptimized(GreenhouseManager g, ModuleType t) { if (Running && Step == 1 && ++optimizedThisStep >= 2) Complete(1); }
     private void OnHarvested(Cropbed b, float kg) { if (b != null) Complete(3); }
-    private void OnPlanted(FieldPlot p) => Complete(4);
-    private void OnFieldHarvested(FieldPlot p, string crop, float kg) => Complete(5);
+    private void OnPlanted(FarmField p, string crop) => Complete(4);
+    private void OnFieldHarvested(FarmField p, string crop, float kg) => Complete(5);
 
     private void Update()
     {

@@ -91,7 +91,9 @@ public class MultiplayerManager : MonoBehaviour
     private readonly Dictionary<ulong, float> lastGift = new Dictionary<ulong, float>();
     private INetBackend backend;
     private bool inClientSession;
-    private float poseTimer, syncTimer;
+    private float poseTimer, syncTimer, fieldTimer;
+    /// <summary>Host: send every FarmCore field in full on the next frame (a player joined).</summary>
+    public bool FieldsForce;
     private bool syncDirty;
     private Transform player;
     private Vector3 lastPlayerPos;
@@ -397,6 +399,7 @@ public class MultiplayerManager : MonoBehaviour
         if (!string.IsNullOrEmpty(n)) Say(Mp.Tr("{0} joined the farm", Mp.Name(n)));
         syncDirty = true;
         marketDirty = true;
+        FieldsForce = true;   // the new player gets every field and the irrigation network
         LobbyCount();
         Changed();
     }
@@ -507,14 +510,8 @@ public class MultiplayerManager : MonoBehaviour
             mm.ApplyRemote(SaveData.GetInt("mazraa.mission", 0), SaveData.GetFloat("mazraa.missionProgress", 0f), false);
             mm.enabled = true;
         }
-        if (FieldManager.Instance != null)
-            foreach (var p in FieldManager.Instance.Plots)
-            {
-                if (p == null) continue;
-                string k = "mazraa.plot." + p.index + ".";
-                p.ApplyRemote((PlotState)Mathf.Clamp(SaveData.GetInt(k + "state", 0), 0, 3), SaveData.GetString(k + "crop", ""), SaveData.GetFloat(k + "growth", 0f), SaveData.GetFloat(k + "water", 0f));
-            }
-        if (SoilManager.Instance != null) SoilManager.Instance.ReloadLocal();
+        if (FarmFields.Instance != null) FarmFields.Instance.ReloadLocal();
+        if (IrrigationSystem.Instance != null) IrrigationSystem.Instance.Load();
         if (MarketManager.Instance != null) MarketManager.Instance.ReloadLocal();
         SaveData.Flush(true);
     }
@@ -533,11 +530,16 @@ public class MultiplayerManager : MonoBehaviour
         if (NetSession.IsHost)
         {
             syncTimer -= Time.unscaledDeltaTime;
+            fieldTimer -= Time.unscaledDeltaTime;
             if (syncTimer <= 0f || syncDirty)
             {
                 syncTimer = 1f; syncDirty = false;
                 backend.SendToClients(NetSyncState.Capture().Encode(), true);
-                if (SoilManager.Instance != null) backend.SendToClients(SoilManager.Instance.EncodeSync(), true);
+            }
+            if (fieldTimer <= 0f || FieldsForce)
+            {   // FarmCore cells: deltas 4 times a second while someone works a field, a snapshot of one field every few seconds
+                foreach (var m in FarmNet.HostMessages(0.25f, FieldsForce)) backend.SendToClients(m, true);
+                fieldTimer = 0.25f; FieldsForce = false;
             }
             marketTimer -= Time.unscaledDeltaTime;
             if ((marketTimer <= 0f || marketDirty) && MarketManager.Instance != null)
@@ -725,9 +727,8 @@ public class MultiplayerManager : MonoBehaviour
         else if (type == NetProtocol.Interact) HostInteract(sender, NetProtocol.Field(p, 1));
         else if (type == NetProtocol.Buy) HostBuy(sender, who, NetProtocol.Field(p, 1));
         else if (type == NetProtocol.Sell) HostSell(sender, who, NetProtocol.DecodeGoods(NetProtocol.Field(p, 1)));
-        else if (type == NetProtocol.PlotJob) HostPlotJob(NetProtocol.PI(NetProtocol.Field(p, 1)), NetProtocol.PI(NetProtocol.Field(p, 2)));
         else if (type == NetProtocol.Gift) HostGift(sender, msg);
-        else if (type == NetProtocol.SoilSet) { if (SoilManager.Instance != null && SoilManager.Instance.HostSetting(p)) syncDirty = true; }
+        else if (FarmNet.HostReceive(p)) syncDirty = true;
         else if (type == NetProtocol.ContractAccept)
         {
             if (MarketManager.Instance != null && MarketManager.Instance.HostAccept(NetProtocol.Field(p, 1))) { marketDirty = true; Say(Mp.Tr("{0} accepted a contract", Mp.Name(who))); }
@@ -758,7 +759,7 @@ public class MultiplayerManager : MonoBehaviour
     {
         string type = p[0];
         if (type == NetProtocol.Sync) { var s = NetSyncState.Decode(msg); if (s != null) s.Apply(); }
-        else if (type == NetProtocol.SoilSync) { if (SoilManager.Instance != null) SoilManager.Instance.ApplySync(p); }
+        else if (FarmNet.ClientReceive(p)) { }
         else if (type == NetProtocol.MarketSync) { if (MarketManager.Instance != null) MarketManager.Instance.ApplySync(p); }
         else if (type == NetProtocol.Pose)
         {
@@ -873,17 +874,6 @@ public class MultiplayerManager : MonoBehaviour
 
     /// <summary>Host: send the farm state to clients on the next frame (something changed).</summary>
     public void MarkSyncDirty() => syncDirty = true;
-
-    private void HostPlotJob(int index, int job)
-    {
-        if (FieldManager.Instance == null || index < 0) return;
-        var plot = FieldManager.Instance.Plots.Find(x => x != null && x.index == index);   // plot save index (open-world plots are 200+)
-        if (plot == null) return;
-        bool done = job == (int)Implement.Plow ? plot.TryPlow(false)
-                  : job == (int)Implement.Seeder ? plot.TrySeed(false)
-                  : job == (int)Implement.Harvester && plot.TryHarvest(false);
-        if (done) { GameEvents.RaiseTractorWorked((Implement)job); syncDirty = true; }
-    }
 
     private void HostGift(ulong sender, string msg)
     {

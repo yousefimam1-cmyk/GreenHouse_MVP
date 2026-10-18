@@ -156,8 +156,7 @@ public class PlayerLife : MonoBehaviour
     {
         var pen = AnimalPen.Instance;
         if (pen != null && pen.Contains(p)) return "straw";
-        if (FieldManager.Instance != null)
-            foreach (var plot in FieldManager.Instance.Plots) if (plot != null && plot.Contains(p)) return "soil";
+        if (FarmFields.Instance != null && FarmFields.Instance.OnField(p)) return "soil";
         return "sand";
     }
 
@@ -185,11 +184,15 @@ public class PlayerLife : MonoBehaviour
         }
     }
 
-    private FieldPlot PlotHere()
+    /// <summary>The FarmCore field in front of (or under) the player, and the point there the hand tool works.</summary>
+    private FarmField PlotHere(out Vector3 at)
     {
-        if (FieldManager.Instance == null) return null;
-        foreach (var p in FieldManager.Instance.Plots) if (p != null && (p.Contains(Front) || p.Contains(Pos))) return p;
-        return null;
+        at = Front;
+        var ff = FarmFields.Instance;
+        if (ff == null) return null;
+        var f = ff.FieldAt(Front);
+        if (f == null) { f = ff.FieldAt(Pos); at = Pos; }
+        return f;
     }
 
     /// <summary>"well", "trough" or null: a water source within reach that has water.</summary>
@@ -219,9 +222,11 @@ public class PlayerLife : MonoBehaviour
         {
             case HandTool.Hoe:
             {
-                var plot = PlotHere();
-                if (plot == null || plot.State != PlotState.Untilled) return Loc.T("Nothing to hoe here - stand on an untilled field");
-                plot.TryPlow(false);
+                Vector3 at;
+                var plot = PlotHere(out at);
+                if (plot == null) return Loc.T("Nothing to hoe here - stand on an untilled field");
+                var ctx = FarmFields.Instance.HandTool(FieldTool.Hoe, at);
+                if (ctx.cells <= 0) return Loc.T("Nothing to hoe here - stand on an untilled field");
                 Model.Spend(cost, heat);
                 return Loc.T("Field plowed by hand");
             }
@@ -233,13 +238,17 @@ public class PlayerLife : MonoBehaviour
                     return Loc.T("Watering can filled");
                 }
                 if (CanWater < 0.24f) return Loc.T("The watering can is empty - fill it at the well");
-                var plot = PlotHere();
-                if (plot != null && (plot.State == PlotState.Growing || plot.State == PlotState.Plowed))
+                Vector3 at;
+                var plot = PlotHere(out at);
+                if (plot != null)
                 {
                     if (FarmModifiers.IrrigationBanned) return FarmModifiers.BanText();
-                    plot.AddWater(0.5f);
-                    CanWater -= 0.25f; Model.Spend(cost, heat); Save();
-                    return Loc.T("Field watered by hand");
+                    var ctx = FarmFields.Instance.HandTool(FieldTool.WateringCan, at, 10f);   // ~10 L/m2 around you from a full can's quarter
+                    if (ctx.cells > 0)
+                    {
+                        CanWater -= 0.25f; Model.Spend(cost, heat); Save();
+                        return Loc.T("Field watered by hand");
+                    }
                 }
                 if (inPen)
                 {

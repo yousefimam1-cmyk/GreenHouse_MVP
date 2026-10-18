@@ -33,7 +33,7 @@ public class CropMastery : MonoBehaviour
         GameEvents.Harvested += OnHarvested;
         GameEvents.Custom += OnCustom;
         GameEvents.NewGameStarted += OnNewGame;
-        FieldPlot.FieldHarvested += OnFieldHarvested;
+        FieldEvents.Harvested += OnFieldHarvested;
     }
 
     private void OnDisable()
@@ -41,7 +41,7 @@ public class CropMastery : MonoBehaviour
         GameEvents.Harvested -= OnHarvested;
         GameEvents.Custom -= OnCustom;
         GameEvents.NewGameStarted -= OnNewGame;
-        FieldPlot.FieldHarvested -= OnFieldHarvested;
+        FieldEvents.Harvested -= OnFieldHarvested;
     }
 
     private void OnDestroy() { if (Instance == this) Instance = null; }
@@ -96,7 +96,7 @@ public class CropMastery : MonoBehaviour
         Bonus("crops", id, kg);
     }
 
-    private void OnFieldHarvested(FieldPlot p, string crop, float kg)
+    private void OnFieldHarvested(FarmField p, string crop, float kg)
     {
         if (granting || string.IsNullOrEmpty(crop)) return;
         Count(crop, kg);

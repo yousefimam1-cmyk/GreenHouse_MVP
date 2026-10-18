@@ -23,15 +23,11 @@ public class RegionContent : MonoBehaviour
 
     private void OnEnable()
     {
-        FieldPlot.FieldPlanted += OnPlanted;
-        FieldPlot.FieldHarvested += OnHarvested;
         GameEvents.RegionChanged += OnRegion;
     }
 
     private void OnDisable()
     {
-        FieldPlot.FieldPlanted -= OnPlanted;
-        FieldPlot.FieldHarvested -= OnHarvested;
         GameEvents.RegionChanged -= OnRegion;
     }
 
@@ -39,8 +35,7 @@ public class RegionContent : MonoBehaviour
 
     private void OnRegion(string id) => ApplyNames();
 
-    private static void OnPlanted(FieldPlot p) { if (p != null && !string.IsNullOrEmpty(p.CropId)) GameEvents.RaiseCustom("plant_" + p.CropId, 1f); }
-    private static void OnHarvested(FieldPlot p, string crop, float kg) { if (!string.IsNullOrEmpty(crop)) GameEvents.RaiseCustom("harvest_" + crop, kg); }
+    // "plant_<crop>" / "harvest_<crop>" custom events come from FarmCore (FieldEvents.RaisePlanted / RaiseHarvested).
 
     /// <summary>English Loc key of the market pad on the current map.</summary>
     public static string MarketName => Regions.Current != null && !string.IsNullOrEmpty(Regions.Current.marketName) ? Regions.Current.marketName : MarketKey;

@@ -60,12 +60,12 @@ public class FarmBeauty : MonoBehaviour
         DecorPart = Mathf.Min(b.decorCap, decor);
 
         float fields = 0f;
-        var fm = FieldManager.Instance;
-        if (fm != null && fm.Plots.Count > 0)
+        var ff = FarmFields.Instance;
+        if (ff != null && ff.Fields.Count > 0)
         {
-            int tidy = 0;
-            foreach (var p in fm.Plots) if (p != null && p.State != PlotState.Untilled) tidy++;
-            fields = b.fields * tidy / fm.Plots.Count;
+            float tidy = 0f;
+            foreach (var f in ff.Fields) { var s = FarmSim.Summarize(f); tidy += 1f - s.untilled / (float)Mathf.Max(1, s.cells); }   // worked land looks tidy
+            fields = b.fields * tidy / ff.Fields.Count;
         }
         FieldPart = fields;
 

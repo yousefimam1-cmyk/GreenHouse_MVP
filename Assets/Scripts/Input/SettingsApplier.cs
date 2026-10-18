@@ -21,7 +21,7 @@ public class SettingsApplier : MonoBehaviour
     public int HelperSeedsBought { get; private set; }
 
     private float autosaveTimer, slowTimer, rescanTimer;
-    private readonly Dictionary<FieldPlot, float> dry = new Dictionary<FieldPlot, float>();
+    private readonly Dictionary<int, int> withered = new Dictionary<int, int>();   // FarmCore field id -> withered cells seen
     private readonly List<Actor> hidden = new List<Actor>();
 
     private void Awake() => Instance = this;
@@ -100,27 +100,27 @@ public class SettingsApplier : MonoBehaviour
         if (UIManager.Instance != null && !GameMenu.IsOpen) UIManager.Instance.ShowAlertMessage(UiText.T("Autosaved"));
     }
 
-    /// <summary>Crops left with no water at all for a whole in-game day die (Settings > Game > Withering).</summary>
+    /// <summary>
+    /// Crops left bone dry for a whole in-game day (or ripe too long) wither (Settings > Game > Withering). FarmCore's
+    /// growth model withers the cells (FarmSim); this counts fields where new cells withered and tells the player.
+    /// </summary>
     public void TickWithering(float seconds)
     {
-        var fm = FieldManager.Instance;
-        if (fm == null) return;
-        if (!GameSettings.Withering) { dry.Clear(); return; }
-        float day = WorldClock.Instance != null ? WorldClock.Instance.secondsPerDay : GameSettings.SecondsPerDay;
-        foreach (var p in fm.Plots)
+        var ff = FarmFields.Instance;
+        if (ff == null) return;
+        if (!GameSettings.Withering) { withered.Clear(); return; }
+        foreach (var f in ff.Fields)
         {
-            if (p == null) continue;
-            float t;
-            dry.TryGetValue(p, out t);
-            if (p.State == PlotState.Growing && p.Water <= 0.001f) t += seconds; else t = 0f;
-            if (t >= day)
+            int n = 0;
+            for (int i = 0; i < f.Cells; i++) if (f.ground[i] == (byte)Ground.Sown && f.Has(i, CellFlags.Withered)) n++;
+            int seen;
+            withered.TryGetValue(f.id, out seen);
+            if (n > seen)
             {
-                t = 0f;
-                p.ResetPlot();
                 Withered++;
                 if (UIManager.Instance != null) UIManager.Instance.ShowAlertMessage(UiText.T("A crop withered: the field was dry for a whole day"));
             }
-            dry[p] = t;
+            withered[f.id] = n;
         }
     }
 
@@ -128,16 +128,16 @@ public class SettingsApplier : MonoBehaviour
     public void TickHelpers()
     {
         if (!GameSettings.HelperRefill) return;
-        var wm = WorkerManager.Instance; var eco = EconomyManager.Instance; var fm = FieldManager.Instance;
-        if (wm == null || eco == null || fm == null || !wm.IsHired(WorkerRole.FieldHand) || eco.Data == null) return;
+        var wm = WorkerManager.Instance; var eco = EconomyManager.Instance; var ff = FarmFields.Instance;
+        if (wm == null || eco == null || ff == null || !wm.IsHired(WorkerRole.FieldHand) || eco.Data == null) return;
         bool needSeeds = false;
-        foreach (var p in fm.Plots) if (p != null && (p.State == PlotState.Untilled || p.State == PlotState.Plowed)) needSeeds = true;
+        foreach (var f in ff.Fields) { var s = FarmSim.Summarize(f); if (s.sown < s.cells) needSeeds = true; }
         if (!needSeeds) return;
         FieldCropDef pick = null;
         foreach (var c in eco.Data.fieldCrops)
         {
             if (eco.Seeds(c.id) > 0) return;   // still has seeds
-            if (FieldPlot.InSeason(c) && (pick == null || c.seedPrice < pick.seedPrice)) pick = c;
+            if (EconomyManager.Available(c) && FarmFields.InSeasonNow(c.id) && (pick == null || c.seedPrice < pick.seedPrice)) pick = c;
         }
         if (pick == null || !eco.Spend(pick.seedPrice * 2)) return;
         eco.AddSeeds(pick.id, 2);

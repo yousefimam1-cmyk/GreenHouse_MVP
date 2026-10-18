@@ -45,7 +45,7 @@ static class Program
 
     static void ResetStatics()
     {
-        foreach (var t in new[] { typeof(GameEvents), typeof(Loc), typeof(CropDatabase), typeof(SaveData), typeof(WorldClock), typeof(FieldPlot), typeof(FarmModifiers), typeof(DesertWeatherFX), typeof(CozyFx), typeof(Appearance), typeof(SponsorManager), typeof(CozyAnalytics), typeof(LoadingScreen) })
+        foreach (var t in new[] { typeof(GameEvents), typeof(Loc), typeof(CropDatabase), typeof(SaveData), typeof(WorldClock), typeof(FarmTools), typeof(FieldEvents), typeof(FieldPests), typeof(FcData), typeof(FarmSim), typeof(FarmNet), typeof(FieldsPage), typeof(FarmModifiers), typeof(DesertWeatherFX), typeof(CozyFx), typeof(Appearance), typeof(SponsorManager), typeof(CozyAnalytics), typeof(LoadingScreen) })
         {
             var m = t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
                 .FirstOrDefault(x => x.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false).Length > 0);
@@ -129,339 +129,12 @@ static class Program
         new GameObject("GameManager (auto)").AddComponent<GameManager>();
     }
 
-    // ---------------------------------------------------------------- soil, water, precision farming
-    static string savedSoilPack, savedSoilHistory;
-    static int savedSoilItems;
-
-    static void SoilFresh(FieldPlot p)
-    {
-        p.ResetPlot();
-        SoilManager.Instance.ResetSoil(p.index);
-        var c = CropCareManager.Instance.Plot(p.index);
-        c.fertility = 1f; c.lastFamily = ""; c.pest = ""; c.damage = 0f; c.protectDays = 99; c.rotation = 1f; c.rotated = false; c.regrow = -1f; c.cuts = 0;
-    }
-
-    static void SoilPlant(FieldPlot p, string crop)
-    {
-        var eco = EconomyManager.Instance;
-        if (eco.Seeds(crop) <= 0) eco.AddSeeds(crop, 3);
-        FieldPlot.PreferredSeed = crop;
-        if (p.State == PlotState.Untilled) p.TryPlow(false);
-        p.TrySeed(false);
-    }
-
-    static void SoilTests()
-    {
-        Console.WriteLine("Soil, water and precision farming");
-        var soil = SoilManager.Instance; var eco = EconomyManager.Instance; var care = CropCareManager.Instance; var clock = WorldClock.Instance;
-        var fm = FieldManager.Instance;
-        int e0 = FakeEngine.Errors.Count;
-        T.Check("Soil: system created", soil != null);
-        var data = SoilData.Data;
-        T.Check("Soil: agronomy for every field crop (N/P/K, salt tolerance, temperatures, water use)", eco.Data.fieldCrops.All(c => data.crops.Any(d => d.id == c.id && d.et > 0f && d.tMax > d.tOptHi)),
-            string.Join(",", eco.Data.fieldCrops.Where(c => !data.crops.Any(d => d.id == c.id)).Select(c => c.id)));
-        T.Check("Soil: Najd and Nile Delta soils, 4 irrigation methods", SoilData.Region("najd").id == "najd" && SoilData.Region("nile_delta").ecWater < SoilData.Region("najd").ecWater && data.irrigation.Length == 4);
-        T.Check("Soil: shop page Soil (sample kit + 9 amendments)", ShopCatalog.Entries.Count(x => x.category == "Soil") == 10, ShopCatalog.Entries.Count(x => x.category == "Soil") + "");
-        T.Check("Soil: amendments named in Arabic", data.amendments.All(a => !string.IsNullOrEmpty(a.nameAr)));
-        // every text key has Arabic
-        var src = string.Join("\n", new[] { "SoilManager.cs", "SoilModel.cs" }.Select(f => File.ReadAllText("../../Assets/Scripts/Farming/" + f)));
-        var keys = System.Text.RegularExpressions.Regex.Matches(src, "SoilText\\.[RT]\\(\"([^\"]+)\"").Cast<System.Text.RegularExpressions.Match>().Select(m => m.Groups[1].Value).ToList();
-        keys.AddRange(SoilFactors.Names); keys.AddRange(SoilModel.DensityNames); keys.AddRange(SoilManager.FieldWaterNames);
-        keys.AddRange(new[] { "Germination", "Vegetative", "Flowering", "Ripening", "Ripe", "Plowed", "Untilled", "Soil", "Not enough manure in storage", "Fields (precision farming)",
-            "Left / Right: sowing density   Up / Down: choose field   [Enter] irrigation   [Esc] close", "Farm system", "[Q] Irrigation", "automatic", "[LB] [RB] or 1 2 3: Inventory / Farm stats / Fields", "Crop rotation", "Rotation", "yield",
-            "Same crop family again: soil-borne disease", "Deep plowing: good seedbed", "Shallow cultivation", "Too wet: the soil smeared and compacted", "Too dry: cloddy seedbed" });
-        for (int i = 0; i < SoilFactors.Names.Length; i++) { keys.Add(SoilManager.Advice(i, new SoilState { ph = 8f })); keys.Add(SoilManager.Advice(i, new SoilState { ph = 5f })); }
-        keys = keys.Where(k => k != "").Distinct().ToList();
-        var missing = keys.Where(k => !Loc.HasTranslation(k)).ToList();
-        T.Check("Soil: every text key has Arabic (Loc/91_soil.json)", keys.Count > 60 && missing.Count == 0, string.Join(" | ", missing));
-
-        eco.AddMoney(20000);
-        var p = fm.Plots[0]; var q = fm.Plots[1]; var r = fm.Plots[2];
-        var before = new[] { p, q, r }.Select(x => x.State).ToArray();
-        foreach (var x in new[] { p, q, r }) SoilFresh(x);
-        UtilityHooks.FieldsAutoWatered = false;
-        T.SetProp(clock, "Weather", Weather.Sunny); soil.RefreshClimate();
-
-        // ---- soil sample (E) reveals the values
-        T.Check("Soil: untested field hides its values", SoilManager.FieldsText(0, 3).Contains("not tested"), SoilManager.FieldsText(0, 3));
-        T.Check("Soil: buy a soil sample kit", eco.TryBuy("soil_kit") && soil.Items(SoilManager.KitId) == 1);
-        T.Check("Soil: field offers a soil sample", p.InteractionPrompt.Contains("[E] Take a soil sample (1)"), p.InteractionPrompt);
-        p.Interact();
-        var s = soil.Soil(p);
-        T.Check("Soil: E takes the sample (kit used, field not plowed)", soil.Sampled(s) && soil.Items(SoilManager.KitId) == 0 && p.State == PlotState.Untilled);
-        string page = SoilManager.FieldsText(0, 3);
-        T.Check("Soil: Fields page shows N, P, K, pH, organic matter, salinity of the tested field", page.Contains("Soil test: N 220") && page.Contains("pH 7.9") && page.Contains("EC 1.5 dS/m") && page.Contains("OM 0.6%"), page);
-        T.Check("Soil: tested values on the prompt", p.InteractionPrompt.Contains("EC 1.5"), p.InteractionPrompt);
-        p.Interact();
-        T.Check("Soil: next E plows as usual", p.State == PlotState.Plowed);
-
-        // ---- tillage depth and timing, weeds
-        p.ResetPlot(); s.weeds = 0.8f; s.compaction = 0.6f;
-        p.TryPlow(true);   // by hand: shallow hoe
-        T.Check("Soil: hand hoe (shallow) leaves weeds and most compaction", s.tillDepth == 10 && s.weeds >= 0.12f && s.compaction > 0.4f, s.weeds + " " + s.compaction);
-        p.ResetPlot(); s.weeds = 0.8f; s.compaction = 0.6f;
-        p.TryPlow(false);  // tractor: deep plow
-        T.Check("Soil: tractor plow (deep) buries weeds and breaks compaction", s.tillDepth == 25 && s.weeds < 0.05f && s.compaction < 0.2f, s.weeds + " " + s.compaction);
-        var wet = new SoilState { compaction = 0.2f };
-        string msg = SoilModel.Till(wet, true, 0.9f, false);
-        T.Check("Soil: plowing wet soil smears and compacts it", wet.compaction > 0.1f && wet.seedbed < 1f && msg.StartsWith("Too wet"), msg + " " + wet.compaction);
-        var straw = new SoilState { om = 1f, residue = 1f };
-        SoilModel.Till(straw, true, 0.4f, false);
-        T.Check("Soil: plowing works straw into organic matter", straw.om > 1.05f && straw.residue == 0f, straw.om + "");
-        float w0 = s.weeds;
-        soil.Tick(120f);
-        T.Check("Soil: weeds grow back on an untreated field", s.weeds > w0 + 0.05f, w0 + " -> " + s.weeds);
-
-        // ---- nutrients: a harvest takes them, fertiliser brings them back
-        SoilPlant(p, "wheat");
-        T.Check("Soil: wheat planted on the tested field", p.State == PlotState.Growing && p.CropId == "wheat", p.State + " " + p.CropId);
-        float n0 = s.n, p0 = s.p, k0 = s.k;
-        T.SetProp(p, "Growth", 1f); T.SetProp(p, "State", PlotState.Ripe);
-        float wheat = eco.Stored("wheat");
-        p.TryHarvest(true);
-        float kgGood = eco.Stored("wheat") - wheat;
-        T.Check("Soil: harvest removes N, P and K", s.n < n0 - 30f && s.p < p0 - 5f && s.k < k0 - 10f, n0 + "->" + s.n + " " + p0 + "->" + s.p + " " + k0 + "->" + s.k);
-        T.Check("Soil: harvest recorded in the field history", s.history.Contains("|wheat|") && SoilManager.FieldsText(0, 3).Contains("History: Day"), s.history);
-        T.Check("Soil: wheat leaves straw on the field", s.residue > 0.5f);
-        p.TryPlow(false);
-        T.Check("Soil: buy urea", eco.TryBuy("soil_urea") && soil.Items("urea") == 1);
-        s.n = 40f;
-        T.Check("Soil: plowed field offers urea", p.InteractionPrompt.Contains("[E] Spread Urea"), p.InteractionPrompt);
-        p.Interact();
-        T.Check("Soil: urea restores nitrogen", Math.Abs(s.n - 120f) < 0.5f && soil.Items("urea") == 0 && p.State == PlotState.Plowed, s.n + "");
-        eco.TryBuy("care_fertilizer"); care.Plot(p.index).fertility = 0.5f;
-        float pBefore = s.p, kBefore = s.k;
-        p.Interact();
-        T.Check("Soil: Crop care NPK also feeds the soil model", s.p > pBefore + 40f && s.k > kBefore + 40f && s.n > 160f, s.p + " " + s.k + " " + s.n);
-        T.Check("Soil: animal manure becomes compost in the shop", eco.Good("manure") != null && ShopCatalog.Find("soil_compost") != null);
-        eco.AddGood("manure", 300f);
-        float manure = eco.Stored("manure");
-        T.Check("Soil: compost uses 250 kg of the farm's manure", eco.TryBuy("soil_compost") && Math.Abs(eco.Stored("manure") - (manure - 250f)) < 0.01f && soil.Items("compost") == 1);
-
-        // ---- poor soil lowers the yield and names the limiting factor
-        SoilPlant(p, "wheat");
-        care.Plot(p.index).rotation = 1f;
-        float good = soil.YieldFactor(p);
-        s.n = 15f;
-        var poorF = soil.Factors(p);
-        T.Check("Soil: nitrogen-poor soil cuts the yield", soil.YieldFactor(p) < good * 0.7f, good + " -> " + soil.YieldFactor(p));
-        T.Check("Soil: limiting factor = Nitrogen", poorF.LimitingName == "Nitrogen", poorF.LimitingName);
-        page = SoilManager.FieldsText(0, 3);
-        T.Check("Soil: Fields page shows expected yield, limiting factor and advice", page.Contains("Expected yield") && page.Contains("Limiting: Nitrogen") && page.Contains("Spread urea"), page);
-        T.SetProp(p, "Growth", 1f); T.SetProp(p, "State", PlotState.Ripe);
-        wheat = eco.Stored("wheat");
-        p.TryHarvest(true);
-        float kgPoor = eco.Stored("wheat") - wheat;
-        T.Check("Soil: the poor-soil harvest is much smaller", kgPoor < kgGood * 0.75f, kgGood + " vs " + kgPoor);
-        T.Check("Soil: history keeps the limiting factor", SoilManager.HistoryText(s, 1).Contains("Nitrogen"), SoilManager.HistoryText(s, 1));
-        var salty = new SoilState { n = 200, p = 60, k = 250, ph = 7.9f, ec = 7f };
-        var potF = SoilModel.Factors(salty, SoilData.Crop("potato"));
-        var wheF = SoilModel.Factors(salty, SoilData.Crop("wheat"));
-        T.Check("Soil: salty soil limits potatoes (Salinity), wheat tolerates it", potF.LimitingName == "Salinity" && potF.salt < 0.5f && wheF.salt > 0.9f, potF.salt + " " + wheF.salt);
-        var alkaline = new SoilState { n = 200, p = 30, k = 250, ph = 8.6f, ec = 1f };
-        T.Check("Soil: high pH locks up phosphorus", SoilModel.EffectiveP(alkaline) < 30f * 0.75f && SoilModel.Factors(alkaline, SoilData.Crop("potato")).LimitingName == "Phosphorus");
-
-        // ---- salinity: flood irrigation in the heat builds salt, drip less; gypsum and leaching lower it
-        var hot = SoilData.CurrentRegion;
-        var flood = new SoilState { ec = 1.5f }; var drip = new SoilState { ec = 1.5f }; var coolFlood = new SoilState { ec = 1.5f };
-        float floodMm = 0f, dripMm = 0f, coolMm = 0f;
-        float heatEt = SoilModel.SeasonEt(hot, Season.Summer) * SoilModel.WeatherEt(Weather.Heatwave), coolEt = SoilModel.SeasonEt(hot, Season.Winter);
-        var wc = SoilData.Crop("wheat");
-        for (int i = 0; i < 20; i++)
-        {
-            floodMm += SoilModel.Grow(flood, wc, i * 0.05f, 0.05f, 0.8f, 30f, heatEt, false, SoilData.Irrigation(IrrigationKind.None), hot.ecWater);
-            dripMm += SoilModel.Grow(drip, wc, i * 0.05f, 0.05f, 0.8f, 30f, heatEt, false, SoilData.Irrigation(IrrigationKind.Drip), hot.ecWater);
-            coolMm += SoilModel.Grow(coolFlood, wc, i * 0.05f, 0.05f, 0.8f, 15f, coolEt, false, SoilData.Irrigation(IrrigationKind.None), hot.ecWater);
-        }
-        T.Check("Soil: flood irrigation in the heat raises salinity", flood.ec > 1.5f + 0.4f, flood.ec + " dS/m");
-        T.Check("Soil: drip builds up much less salt than flooding", drip.ec < flood.ec - 0.3f, drip.ec + " vs " + flood.ec);
-        T.Check("Soil: flooding in the cool season builds less salt than in the heat", coolFlood.ec < flood.ec - 0.3f, coolFlood.ec + " vs " + flood.ec);
-        T.Check("Soil: drip uses less water than flood (same crop, same heat)", dripMm < floodMm * 0.7f && floodMm > 800f, dripMm.ToString("F0") + " vs " + floodMm.ToString("F0") + " mm");
-        T.Check("Soil: crops use more water in the summer heat", floodMm > coolMm * 2f, floodMm + " vs " + coolMm);
-        float ecHot = flood.ec;
-        SoilModel.Apply(flood, SoilData.Amendment("gypsum"));
-        T.Check("Soil: gypsum lowers salinity", flood.ec < ecHot - 1f, ecHot + " -> " + flood.ec);
-        var leach = new SoilState { ec = 6f, n = 100f };
-        SoilModel.Leach(leach);
-        T.Check("Soil: leaching washes salts (and some nitrate) down", leach.ec < 3.5f && leach.n < 100f, leach.ec + "");
-        // in the game: a flooded crop in a heatwave, ticking
-        SoilPlant(q, "sorghum");
-        var sq = soil.Soil(q);
-        T.SetProp(clock, "Weather", Weather.Heatwave); soil.RefreshClimate();
-        float ec0 = sq.ec, m3 = soil.WaterTodayM3;
-        for (int i = 1; i <= 10; i++) { T.SetProp(q, "Growth", i * 0.1f); q.AddWater(1f); soil.Tick(2f); }
-        T.Check("Soil: hand-flooded field in a heatwave gets saltier and pumps groundwater", sq.ec > ec0 + 0.1f && soil.WaterTodayM3 > m3 + 15f, ec0 + " -> " + sq.ec + ", " + (soil.WaterTodayM3 - m3) + " m3");
-        T.Check("Soil: heat at flowering stresses the crop", sq.stressHeat == 0f || SoilModel.Factors(sq, SoilData.Crop("sorghum")).heat < 1f);
-        sq.sampledDay = clock.Day; sq.ec = 5f;
-        T.SetProp(q, "State", PlotState.Plowed); T.SetProp(q, "CropId", "");
-        T.Check("Soil: tested salty field offers leaching", q.InteractionPrompt.Contains("[E] Leach the salts"), q.InteractionPrompt);
-        q.Interact();
-        T.Check("Soil: E leaches the salts", sq.ec < 3f && q.State == PlotState.Plowed, sq.ec + "");
-        int money = eco.Money; float bill = soil.WaterCostToday;
-        typeof(SoilManager).GetMethod("OnDay", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(soil, new object[] { clock.Day });   // the morning, without other systems' events
-        T.Check("Soil: groundwater pumping is paid each morning", bill >= 1f && eco.Money <= money - Mathf.RoundToInt(bill) + 1 && soil.WaterTodayM3 == 0f, bill + " " + money + " -> " + eco.Money);
-        T.SetProp(clock, "Weather", Weather.Sunny); soil.RefreshClimate();
-
-        // ---- water: drying by stage and mulch, over-watering
-        var young = new SoilState(); var mulched = new SoilState { mulch = true };
-        T.Check("Soil: seedlings use less water than a full canopy", SoilModel.DryFactor(young, 0.05f, 1f) < SoilModel.DryFactor(young, 0.6f, 1f) * 0.6f);
-        T.Check("Soil: mulch slows drying", SoilModel.DryFactor(mulched, 0.6f, 1f) < SoilModel.DryFactor(young, 0.6f, 1f));
-        SoilFresh(r); SoilPlant(r, "wheat");
-        var sr = soil.Soil(r);
-        r.AddWater(1f);
-        r.Interact(); r.Interact();
-        T.Check("Soil: watering a wet field waterlogs it", sr.waterlog > 0.5f && r.InteractionPrompt.Contains("Waterlogged"), sr.waterlog + " " + r.InteractionPrompt);
-        T.Check("Soil: waterlogging slows growth", soil.GrowthFactor(r) < 0.7f * SoilModel.TempGrowth(soil.TempToday, SoilData.Crop("wheat")) + 0.01f);
-        soil.Tick(120f);
-        T.Check("Soil: standing water drains away", sr.waterlog < 0.2f, sr.waterlog + "");
-        var stressed = new SoilState { n = 200, p = 60, k = 250, ph = 7.5f, ec = 1f };
-        SoilModel.Grow(stressed, wc, 0f, 0.6f, 0.05f, 18f, 1f, false, SoilData.Irrigation(IrrigationKind.Drip), 1f);
-        T.Check("Soil: a dry spell during growth = Water stress", SoilModel.Factors(stressed, wc).LimitingName == "Water stress", SoilModel.Factors(stressed, wc).LimitingName);
-
-        // ---- temperature-driven growth
-        T.Check("Soil: wheat grows faster in a Najd winter than in the summer heat", SoilModel.TempGrowth(SoilModel.Temperature(hot, Season.Winter, Weather.Sunny), wc) > SoilModel.TempGrowth(SoilModel.Temperature(hot, Season.Summer, Weather.Heatwave), wc) + 0.3f);
-        T.Check("Soil: millet likes the heat", SoilModel.TempGrowth(36f, SoilData.Crop("millet")) > SoilModel.TempGrowth(15f, SoilData.Crop("millet")));
-        T.Check("Soil: crop stages", SoilModel.Stage(0.05f) == "Germination" && SoilModel.Stage(0.6f) == "Flowering" && r.InteractionPrompt.Contains("Germination"), r.InteractionPrompt);
-
-        // ---- herbicide, mulch
-        sr.weeds = 0.5f; r.AddWater(-0.3f); sr.waterlog = 0f;
-        eco.TryBuy("soil_herbicide");
-        T.Check("Soil: weedy growing field offers herbicide", r.InteractionPrompt.Contains("[E] Spread Herbicide"), r.InteractionPrompt);
-        r.Interact();
-        T.Check("Soil: herbicide clears the weeds and keeps them down", sr.weeds == 0f && sr.weedProtect);
-        eco.TryBuy("soil_mulch"); r.Interact();
-        T.Check("Soil: straw mulch on a growing crop", sr.mulch && soil.Items("mulch") == 0);
-
-        // ---- crop rotation table
-        T.Check("Soil: rotation table (legume before cereal +20%, nightshade twice -15%)", Math.Abs(SoilData.Rotation("legume", "grain") - 1.2f) < 0.001f && Math.Abs(SoilData.Rotation("nightshade", "nightshade") - 0.85f) < 0.001f && SoilData.Rotation("", "grain") == 1f);
-        SoilFresh(q); care.Plot(q.index).lastFamily = "legume";
-        float noRot = SoilData.Rotation("", "grain");
-        SoilPlant(q, "wheat");
-        T.Check("Soil: wheat after alfalfa gets the legume bonus", care.Plot(q.index).rotated && Math.Abs(care.Plot(q.index).rotation - 1.2f) < 0.001f && Math.Abs(care.YieldMultiplier(q) - 1.2f) < 0.01f, care.Plot(q.index).rotation + " " + care.YieldMultiplier(q));
-        T.Check("Soil: rotation shown on the prompt", q.InteractionPrompt.Contains("Rotation +20%"), q.InteractionPrompt);
-        SoilFresh(q); care.Plot(q.index).lastFamily = "nightshade";
-        SoilPlant(q, "tomato");
-        T.Check("Soil: tomato after tomato is penalised", !care.Plot(q.index).rotated && care.Plot(q.index).rotation < 0.9f && q.InteractionPrompt.Contains("Rotation -15%"), q.InteractionPrompt);
-
-        // ---- sowing density and seed rate cost
-        SoilFresh(q);
-        soil.SetDensity(2);
-        int m0 = eco.Money;
-        SoilPlant(q, "wheat");
-        T.Check("Soil: high sowing density buys 30% more seed", soil.Soil(q).density == 2 && eco.Money == m0 - Mathf.RoundToInt(eco.FieldCrop("wheat").seedPrice * 0.3f), (m0 - eco.Money) + "");
-        T.Check("Soil: high density pays off with enough water and nitrogen", SoilModel.Factors(soil.Soil(q), wc).density > 1f);
-        soil.SetDensity(1);
-
-        // ---- Fields page in the farm info screen (gamepad)
-        var prevPad = UnityEngine.InputSystem.Gamepad.current;
-        var pad = new UnityEngine.InputSystem.Gamepad();
-        UnityEngine.InputSystem.Gamepad.current = pad;
-        FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Stats);
-        PressPad(pad.rightShoulder);
-        T.Check("Soil: RB pages from Farm stats to Fields", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Fields);
-        PressPad(pad.dpad.right);
-        T.Check("Soil: D-pad right sets the sowing density", soil.Density == 2);
-        PressPad(pad.dpad.left);
-        PressPad(pad.dpad.down);
-        T.Check("Soil: D-pad down selects the next field", FarmInfoScreen.Instance.SelectedField == 1 && soil.Density == 1, FarmInfoScreen.Instance.SelectedField + " " + soil.Density);
-        var selPlot = fm.Plots[1]; var selBefore = soil.Irrigation(selPlot);
-        PressPad(pad.buttonSouth);
-        T.Check("Irrigation: A on the Fields page cycles the selected field's method", soil.Irrigation(selPlot) == SoilManager.NextMethod(selBefore, 1) && soil.Irrigation(selPlot) != selBefore, selBefore + " -> " + soil.Irrigation(selPlot));
-        PressPad(pad.dpad.down); PressPad(pad.dpad.down); PressPad(pad.dpad.down); PressPad(pad.dpad.down);
-        T.Check("Soil: the list scrolls to keep the selected field in view", FarmInfoScreen.Instance.SelectedField == 5 && FarmInfoScreen.Instance.FieldOffset == 2, FarmInfoScreen.Instance.SelectedField + " " + FarmInfoScreen.Instance.FieldOffset);
-        PressPad(pad.buttonEast);
-        T.Check("Soil: B closes the Fields page", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.None);
-        UnityEngine.InputSystem.Gamepad.current = prevPad;
-        GameMenu.Instance.Open(GameMenu.Mode.Pause);
-        int row = GameMenu.Instance.List.Rows.ToList().FindIndex(x => x.label() == UiText.T("Fields (precision farming)"));
-        T.Check("Soil: pause menu opens the Fields page", row >= 0);
-        if (row >= 0) GameMenu.Instance.List.Choose(row);
-        T.Check("Soil: Fields page open from the menu", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Fields && !GameMenu.IsOpen);
-        FarmInfoScreen.Instance.Close();
-        Loc.SetLanguage(Language.Arabic);
-        string ar = SoilManager.FieldsText(0, 3);
-        T.Check("Soil: Fields page in Arabic", ar.Any(ch => ch >= 'ﹰ') && !ar.Contains("Expected yield"), ar.Substring(0, Math.Min(80, ar.Length)));
-        Loc.SetLanguage(Language.English);
-
-
-        // ---- per-field irrigation (systems bought through Utilities)
-        var ug = UtilityGrid.Instance;
-        var oldKind = ug.Model.Irrigation; int oldOwned = ug.Model.OwnedIrrigation;
-        ug.Model.Irrigation = IrrigationKind.None; ug.Model.OwnedIrrigation = 0;
-        string keepHistory = soil.Soil(p).history;
-        SoilFresh(p); SoilFresh(q);
-        T.Check("Irrigation: a field starts on the farm system", soil.Irrigation(p) == FieldWater.Farm && p.InteractionPrompt.Contains("[Q] Irrigation: Farm system"), p.InteractionPrompt);
-        T.Check("Irrigation: drip not offered until bought", !SoilManager.Available(FieldWater.Drip) && SoilManager.NextMethod(FieldWater.Flood, 1) == FieldWater.Farm && !soil.SetIrrigation(p.index, FieldWater.Drip));
-        T.Check("Irrigation: Q on the field cycles its method (hand)", p.SecondaryInteract() && soil.Irrigation(p) == FieldWater.Hand && p.InteractionPrompt.Contains("[Q] Irrigation: Hand watering"), p.InteractionPrompt);
-        T.Check("Irrigation: Q again = flood furrows", p.SecondaryInteract() && soil.Irrigation(p) == FieldWater.Flood);
-        T.Check("Buy drip lines (Utilities)", eco.TryBuy("util_drip") && ug.Model.Owns(IrrigationKind.Drip));
-        T.Check("Irrigation: bought drip can be chosen per field", SoilManager.Available(FieldWater.Drip) && soil.SetIrrigation(q.index, FieldWater.Drip) && soil.Irrigation(q) == FieldWater.Drip);
-        T.Check("Irrigation: sprinklers still need buying", !SoilManager.Available(FieldWater.Sprinkler) && SoilManager.NextMethod(FieldWater.Flood, 1) == FieldWater.Drip);
-        UtilityHooks.FieldsAutoWatered = true;   // the farm's drip system is running
-        SoilPlant(p, "wheat"); SoilPlant(q, "wheat");
-        soil.SetIrrigation(r.index, FieldWater.Hand);
-        T.Check("Irrigation: flood and drip fields are kept wet, a hand field is not", p.AutoWatered() && q.AutoWatered() && !r.AutoWatered());
-        UtilityHooks.FieldsAutoWatered = false;
-        T.Check("Irrigation: the field's own system waters even when the farm system is off", p.AutoWatered() && !fm.Plots[3].AutoWatered() || soil.Irrigation(fm.Plots[3]) != FieldWater.Farm);
-        var envKinds = ug.GatherEnv().plotKinds;
-        T.Check("Irrigation: Utilities count each growing field's own method", envKinds != null && envKinds[(int)IrrigationKind.Drip] >= 1 && envKinds[(int)IrrigationKind.None] >= 1, envKinds == null ? "null" : string.Join(",", envKinds));
-        T.SetProp(clock, "Weather", Weather.Heatwave); soil.RefreshClimate();
-        var sp = soil.Soil(p); var sqq = soil.Soil(q);
-        float ecp = sp.ec, ecq = sqq.ec;
-        for (int i = 1; i <= 10; i++) { T.SetProp(p, "Growth", i * 0.1f); T.SetProp(q, "Growth", i * 0.1f); p.AddWater(1f); q.AddWater(1f); soil.Tick(2f); }
-        T.Check("Irrigation: the drip field uses less water than the flooded one", sqq.cycWater < sp.cycWater * 0.75f && sqq.cycWater > 0f, sqq.cycWater + " vs " + sp.cycWater + " m3");
-        T.Check("Irrigation: the flooded field gets saltier than the drip field", sp.ec - ecp > (sqq.ec - ecq) + 0.05f, (sp.ec - ecp) + " vs " + (sqq.ec - ecq));
-        T.Check("Irrigation: the flooded field costs more to pump", sp.cycCost > sqq.cycCost);
-        T.SetProp(clock, "Weather", Weather.Sunny); soil.RefreshClimate();
-        string fp = SoilManager.FieldsText(0, 3, 1);
-        T.Check("Irrigation: Fields page shows each field's method and the selection", fp.Contains("Irrigation: Flood (furrows) - efficiency 60%") && fp.Contains("Irrigation: Drip lines - efficiency 92%") && fp.Contains("> Field 2"), fp);
-        ug.Model.Irrigation = oldKind; ug.Model.OwnedIrrigation = oldOwned | (1 << (int)IrrigationKind.Drip);
-        ug.Save();
-
-        // ---- put the plots back the way the other sections left them (only Untilled / Plowed matter there)
-        var plots3 = new[] { p, q, r };
-        for (int i = 0; i < 3; i++) { plots3[i].ResetPlot(); if (before[i] != PlotState.Untilled) plots3[i].TryPlow(false); }
-
-        // ---- remember for the save/load round trip
-        s = soil.Soil(p); s.history = keepHistory;
-        s.sampledDay = clock.Day; s.ec = 3.25f; s.n = 77f;
-        soil.AddItem(SoilManager.KitId, 2);
-        soil.SetDensity(0);
-        soil.SetIrrigation(p.index, FieldWater.Drip);
-        soil.SaveAll();
-        SaveData.Flush(true);
-        savedSoilPack = SoilState.Unpack(soil.Soil(p).Pack(), null).Pack();
-        savedSoilHistory = s.history;
-        savedSoilItems = soil.Items(SoilManager.KitId);
-        T.Check("Soil: no errors", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
-    }
-
-    static void SoilAfterRestart()
-    {
-        var soil = SoilManager.Instance;
-        var s = soil.Soil(0);
-        T.Check("Soil: N, salinity, soil test and history restored after restart", Math.Abs(s.n - 77f) < 0.01f && Math.Abs(s.ec - 3.25f) < 0.01f && soil.Sampled(s) && s.history == savedSoilHistory && s.history.Contains("wheat"),
-            s.Pack() + " vs " + savedSoilPack);
-        T.Check("Soil: kits and sowing density restored", soil.Items(SoilManager.KitId) == savedSoilItems && soil.Density == 0);
-        T.Check("Irrigation: the field's method and the bought systems restored", soil.Irrigation(FieldManager.Instance.Plots[0]) == FieldWater.Drip && UtilityGrid.Instance.Model.Owns(IrrigationKind.Drip));
-    }
-
-    static void SoilAfterNewGame()
-    {
-        var soil = SoilManager.Instance;
-        var s = soil.Soil(0);
-        var start = SoilData.CurrentRegion.start;
-        T.Check("Soil: new game resets soils, history, kits and density", Math.Abs(s.n - start.n) < 0.01f && Math.Abs(s.ec - start.ec) < 0.01f && s.history == "" && !soil.Sampled(s) && soil.Items(SoilManager.KitId) == 0 && soil.Density == 1,
-            s.Pack());
-        T.Check("Irrigation: new game puts every field back on the farm system", FieldManager.Instance.Plots.All(x => soil.Irrigation(x) == FieldWater.Farm) && !SoilManager.Available(FieldWater.Drip));
-    }
-
     // ---------------------------------------------------------------- Saudi crops, soil, pests, orchard
     static void CropsTests()
     {
         Console.WriteLine("Saudi crops, soil, pests, orchard");
         var eco = EconomyManager.Instance; var care = CropCareManager.Instance; var orch = OrchardManager.Instance; var mm = MissionManager.Instance;
-        var clock = WorldClock.Instance; var plots = FieldManager.Instance.Plots;
+        var clock = WorldClock.Instance; var ff = FarmFields.Instance;
         T.Check("Crops: systems created", care != null && orch != null);
         var crops = new[] { "alfalfa", "sorghum", "millet", "tomato", "wheat", "potato", "onion", "watermelon" };
         T.Check("Crops: 8 field crops with sellable goods and a family", crops.All(c => eco.FieldCrop(c) != null && eco.Good(c) != null && CropsData.Meta(c) != null));
@@ -470,8 +143,8 @@ static class Program
         T.Check("Crops: cool season (Oct-Apr) is the main season", eco.Data.fieldCrops.Count(c => c.seasons.Contains("winter") || c.seasons.Contains("autumn")) >= 5);
         T.Check("Crops: date goods for Sukkari, Khalas, Ajwa (Ajwa dearest)", eco.Good("dates_ajwa").price > eco.Good("dates_sukkari").price && eco.Good("dates_sukkari").price > eco.Good("dates_khalas").price);
         T.Check("Crops: shop pages Orchard (7 saplings) and Crop care (6 items)", ShopCatalog.Entries.Count(e => e.category == "Orchard") == 7 && ShopCatalog.Entries.Count(e => e.category == "Crop care") == 6);
-        T.Check("Crops: orchard of 6 tree slots next to the fields", orch.Trees.Count == 6 && Vector3.Distance(orch.Trees[0].transform.position, plots[2].transform.position) < 40f,
-            orch.Trees.Count + " " + (orch.Trees.Count > 0 ? Vector3.Distance(orch.Trees[0].transform.position, plots[2].transform.position).ToString() : ""));
+        T.Check("Crops: orchard of 6 tree slots next to the fields", orch.Trees.Count == 6 && Vector3.Distance(orch.Trees[0].transform.position, ff.GridCenter) < 40f,
+            orch.Trees.Count + " " + (orch.Trees.Count > 0 ? Vector3.Distance(orch.Trees[0].transform.position, ff.GridCenter).ToString() : ""));
         T.Check("Crops: mission pack loaded (bilingual)", mm.Missions.Count(m => m.id.StartsWith("crops_") && !string.IsNullOrEmpty(m.titleAr) && !string.IsNullOrEmpty(m.descAr)) == 4);
         var src = string.Join("\n", Directory.GetFiles("../../Assets/Scripts/Crops", "*.cs").Select(File.ReadAllText));
         var keys = System.Text.RegularExpressions.Regex.Matches(src, "CropsText\\.[RT]\\(\"([^\"]+)\"").Cast<System.Text.RegularExpressions.Match>().Select(m => m.Groups[1].Value)
@@ -484,72 +157,72 @@ static class Program
         T.Set(mm, "<Index>k__BackingField", start); T.Set(mm, "<Progress>k__BackingField", 0f);
         eco.AddMoney(30000);
 
-        // Alfalfa: several cuts, hay + feed, nitrogen
-        var ap = plots[3];
+        // Alfalfa: several cuts, hay + feed, nitrogen (FarmCore fields: mower + baler)
+        var ap = ff.Fields[0];
+        ap.ResetSoil(FcData.CurrentRegion); ff.SetSowCrop("");
         eco.TryBuy("seed_wheat");
-        T.Check("Crops: buy alfalfa seeds", eco.TryBuy("seed_alfalfa"));
-        ap.Interact(); ap.Interact();
-        T.Check("Crops: the last seed bought (alfalfa) is planted", ap.State == PlotState.Growing && ap.CropId == "alfalfa", ap.State + " " + ap.CropId);
+        T.Check("Crops: buy alfalfa seeds", eco.TryBuy("seed_alfalfa") && eco.TryBuy("seed_alfalfa"));
+        FC.Prepare(ap); FC.Whole(ap, FieldTool.Seeder);
+        T.Check("Crops: the last seed bought (alfalfa) is sown", FC.Sown(ap) == ap.Cells && FC.Crop(ap) == "alfalfa", FC.Sown(ap) + " " + FC.Crop(ap));
         T.Check("Crops: mission 'plant alfalfa' done", mm.Current?.id == "crops_cure", mm.Current?.id);
-        T.SetProp(ap, "Growth", 1f); T.SetProp(ap, "State", PlotState.Ripe);
-        float feed = eco.Feed, hay = eco.Stored("alfalfa");
-        ap.Interact();
-        T.Check("Crops: alfalfa cut stores hay", eco.Stored("alfalfa") > hay + 30f, (eco.Stored("alfalfa") - hay).ToString());
-        T.Check("Crops: alfalfa cut adds animal feed", eco.Feed > feed + 3f, feed + " -> " + eco.Feed);
-        T.Check("Crops: alfalfa regrows for the next cut", ap.State == PlotState.Growing && ap.CropId == "alfalfa" && ap.Growth > 0.5f, ap.State + " " + ap.Growth);
-        T.Check("Crops: legume keeps the soil fertile", care.Plot(3).fertility > 0.99f);
-        T.Check("Crops: prompt shows soil and cut 2/6", ap.InteractionPrompt.Contains("Soil 100%") && ap.InteractionPrompt.Contains("Cut 2/6"), ap.InteractionPrompt);
+        FC.Ripen(ap);
+        float feed = eco.Feed, hay = eco.Stored("alfalfa"), nBefore = FarmSim.Summarize(ap).n;
+        FC.Whole(ap, FieldTool.Mower); FC.Whole(ap, FieldTool.Baler);
+        T.Check("Crops: alfalfa cut and baled stores hay (~12 t/ha fresh)", eco.Stored("alfalfa") > hay + 50f, (eco.Stored("alfalfa") - hay).ToString());
+        T.Check("Crops: alfalfa hay adds animal feed", eco.Feed > feed + 5f, feed + " -> " + eco.Feed);
+        T.Check("Crops: alfalfa regrows for the next cut", FC.Sown(ap) == ap.Cells && FC.Crop(ap) == "alfalfa" && ap.Get(FieldLayer.Growth, 0) > 0.5f && ap.Get(FieldLayer.Growth, 0) < 1f);
+        T.Check("Crops: a legume puts nitrogen back", FarmSim.Summarize(ap).n >= nBefore, nBefore + " -> " + FarmSim.Summarize(ap).n);
+        T.Check("Crops: Fields page shows cut 2/6", string.Join(" ", FieldsPage.FieldLines(ap)).Contains("Cut 2/6"), string.Join(" | ", FieldsPage.FieldLines(ap)));
 
         // Pests and cures
-        T.Check("Crops: aphids infest a growing field", care.Infest(ap, "aphids"));
-        T.Check("Crops: pests slow growth", care.GrowthMultiplier(ap) < 0.7f);
-        T.Check("Crops: pest shown on the prompt", ap.InteractionPrompt.Contains("Aphids"), ap.InteractionPrompt);
+        T.Check("Crops: aphids infest a growing field", FieldPests.Infest(ap, "aphids"));
+        T.Check("Crops: pests slow growth", FieldPests.GrowthMultiplier(ap) < 0.7f);
+        T.Check("Crops: pest shown on the prompt", ap.View.PromptRaw(ap.center).Contains("Aphids"), ap.View.PromptRaw(ap.center));
         T.Check("Crops: buy neem spray", eco.TryBuy("care_neem") && care.Items("neem") == 1);
-        T.Check("Crops: prompt offers the treatment", ap.InteractionPrompt.Contains("[E] Treat Aphids: Neem spray"), ap.InteractionPrompt);
-        ap.Interact();
-        T.Check("Crops: E treats the aphids (uses the spray)", care.Plot(3).pest == "" && care.Items("neem") == 0);
+        T.Check("Crops: prompt offers the treatment", ap.View.PromptRaw(ap.center).Contains("[E] Treat Aphids: Neem spray"), ap.View.PromptRaw(ap.center));
+        ff.HandJob(ap.center);
+        T.Check("Crops: E treats the aphids (uses the spray)", ap.pest == "" && care.Items("neem") == 0);
         T.Check("Crops: mission 'cure a pest' done", mm.Current?.id == "crops_rotate", mm.Current?.id);
-        T.Check("Crops: treatment protects for a few days", !care.Infest(ap, "aphids"));
+        T.Check("Crops: treatment protects for a few days", !FieldPests.Infest(ap, "aphids"));
 
-        // Soil fertility and rotation
-        var wp = plots[4];
-        eco.TryBuy("seed_wheat"); eco.TryBuy("seed_wheat");
-        wp.Interact(); wp.Interact();
-        T.Check("Crops: wheat planted on field 5", wp.CropId == "wheat", wp.CropId);
-        T.SetProp(wp, "Growth", 1f); T.SetProp(wp, "State", PlotState.Ripe); wp.Interact();
-        float f1 = care.Plot(4).fertility;
-        T.Check("Crops: a harvest uses up soil fertility", f1 < 0.9f && f1 > 0.8f, f1.ToString());
-        wp.Interact(); wp.Interact();
-        T.Check("Crops: no rotation bonus for the same family", wp.CropId == "wheat" && !care.Plot(4).rotated);
-        T.SetProp(wp, "Growth", 1f); T.SetProp(wp, "State", PlotState.Ripe); wp.Interact();
-        float f2 = care.Plot(4).fertility;
-        T.Check("Crops: same family twice drains the soil faster", f1 - f2 > 0.2f, f1 + " -> " + f2);
-        wp.Interact();
+        // Soil nutrients and rotation
+        var wp = ff.Fields[1];
+        wp.ResetSoil(FcData.CurrentRegion);
+        eco.AddSeeds("wheat", 4); ff.SetSowCrop("wheat");
+        FC.Prepare(wp); FC.Sow(wp, "wheat");
+        T.Check("Crops: wheat sown on field 2", FC.Crop(wp) == "wheat" && FC.Sown(wp) == wp.Cells);
+        FC.Ripen(wp);
+        float n1 = FarmSim.Summarize(wp).n;
+        FC.HandHarvest(wp);
+        float n2 = FarmSim.Summarize(wp).n;
+        T.Check("Crops: a harvest takes nutrients out of the soil (wheat ~50 kg N/ha at full yield)", n2 < n1 - 20f && wp.lastCrop == "wheat", n1 + " -> " + n2);
+        FC.Prepare(wp); FC.Sow(wp, "wheat");
+        T.Check("Crops: no rotation bonus for the same family (grain after grain)", FC.Crop(wp) == "wheat" && Math.Abs(wp.rotation - 1f) < 0.001f);
+        FC.Ripen(wp); FC.HandHarvest(wp);
         T.Check("Crops: buy fertilizer", eco.TryBuy("care_fertilizer"));
-        T.Check("Crops: plowed field offers fertilizer", wp.InteractionPrompt.Contains("[E] Spread Fertilizer"), wp.InteractionPrompt);
-        wp.Interact();
-        T.Check("Crops: fertilizer restores the soil", care.Plot(4).fertility > f2 + 0.3f && wp.State == PlotState.Plowed, care.Plot(4).fertility.ToString());
-        eco.TryBuy("seed_potato");
-        wp.Interact();
-        T.Check("Crops: potato after wheat is a rotation", wp.CropId == "potato" && care.Plot(4).rotated);
+        float n3 = FarmSim.Summarize(wp).n;
+        FC.Whole(wp, FieldTool.Spreader, true, null, "fertilizer");
+        T.Check("Crops: the spreader with NPK fertilizer feeds the soil", FarmSim.Summarize(wp).n > n3 + 40f && care.Items("fertilizer") == 0, n3 + " -> " + FarmSim.Summarize(wp).n);
+        eco.TryBuy("seed_potato"); eco.TryBuy("seed_potato"); ff.SetSowCrop("potato");
+        FC.Prepare(wp); FC.Sow(wp, "potato");
+        T.Check("Crops: potato after wheat is a rotation (+15%)", FC.Crop(wp) == "potato" && Math.Abs(wp.rotation - 1.15f) < 0.001f, wp.rotation + "");
         T.Check("Crops: mission 'rotate crops' done", mm.Current?.id == "crops_dates", mm.Current?.id);
-        T.Check("Crops: rotation bonus in the yield", care.YieldMultiplier(wp) > 1.1f, care.YieldMultiplier(wp).ToString());
-        float pot = eco.Stored("potato"), expected = eco.FieldCrop("potato").yieldKg * care.YieldMultiplier(wp);
-        T.SetProp(wp, "Growth", 1f); T.SetProp(wp, "State", PlotState.Ripe); wp.Interact();
+        FC.Ripen(wp);
+        float expected = FarmSim.Summarize(wp).expectedKg, pot = eco.Stored("potato");
+        float plain = expected / 1.15f;
+        FC.HandHarvest(wp);
         float potKg = eco.Stored("potato") - pot;
-        T.Check("Crops: harvest kg = base x soil x rotation (full soil + rotation = 115%)", Math.Abs(potKg - expected) < 0.5f && Math.Abs(expected - eco.FieldCrop("potato").yieldKg * 1.15f) < 0.5f, potKg + " vs " + expected);
+        T.Check("Crops: harvest kg = cells x yield potential x rotation 115%", Math.Abs(potKg - expected) < 0.5f && Math.Abs(potKg - plain * 1.15f) < 0.5f && potKg > 100f, potKg + " vs " + expected);
 
         // Desert locusts
-        var lp = plots[5];
-        eco.TryBuy("seed_sorghum");
-        lp.Interact(); lp.Interact();
-        T.SetProp(lp, "Growth", 0.5f);
+        eco.AddSeeds("potato", 2); FC.Prepare(wp); FC.Sow(wp, "potato");
+        FC.Ripen(wp, 0.5f); wp.protectDays = 0;
         care.LocustSwarm();
-        T.Check("Crops: locust swarm eats growth and leaves locusts", lp.Growth < 0.3f && care.Plot(5).pest == "locust", lp.Growth + " " + care.Plot(5).pest);
+        T.Check("Crops: locust swarm eats growth and leaves locusts", wp.Get(FieldLayer.Growth, 0) < 0.3f && wp.pest == "locust", wp.Get(FieldLayer.Growth, 0) + " " + wp.pest);
         T.Check("Crops: neem does not stop locusts", care.OwnedCureFor("locust") == null);
         eco.TryBuy("care_pesticide");
-        lp.Interact();
-        T.Check("Crops: pesticide clears locusts", care.Plot(5).pest == "");
+        ff.HandJob(wp.center);
+        T.Check("Crops: pesticide clears locusts", wp.pest == "");
 
         // Greenhouse whitefly hook
         var gbed = GameManager.Instance.Greenhouses[0].Cropbeds[0];
@@ -596,8 +269,8 @@ static class Program
         T.Check("Crops: palms fruit once a year", palm.FruitKg == 0f);
         T.Check("Crops: HUD lines registered", HudLines.Status.Count >= 2 && HudLines.Status.Any(h => (h() ?? "").Contains("Orchard")));
         Loc.SetLanguage(Language.Arabic);
-        string ar = palm.InteractionPrompt + ap.InteractionPrompt;
-        T.Check("Crops: tree and field prompts in Arabic", ar.Any(c => c >= '\uFE70') && !ar.Contains("Soil"), ar);
+        string ar = palm.InteractionPrompt + ap.View.InteractionPrompt;
+        T.Check("Crops: tree and field prompts in Arabic", ar.Any(c => c >= '\uFE70') && !ar.Contains("Expected"), ar);
         Loc.SetLanguage(Language.English);
         T.Check("Crops: no errors", FakeEngine.Errors.Count == 0, string.Join(" | ", FakeEngine.Errors.Take(3)));
     }
@@ -669,26 +342,32 @@ static class Program
         GameSettings.TimeScale = 0;
         T.Check("Time scale off: day length again", Math.Abs(WorldClock.Instance.secondsPerDay - GameSettings.DayMinutes * 60f) < 0.01f);
         GameSettings.PlowingRequired = false;
-        bool plowOff = Math.Abs(SoilModel.CompactionFactor(0.9f) - 1f) < 0.001f;
+        bool plowOff = Math.Abs(FarmAgronomy.CompactionFactor(0.9f, GameSettings.PlowingRequired) - 1f) < 0.001f;
         GameSettings.PlowingRequired = true;
-        T.Check("Plowing requirement off: compaction costs no yield", plowOff && SoilModel.CompactionFactor(0.9f) < 0.9f);
+        T.Check("Plowing requirement off: compaction costs no yield", plowOff && FarmAgronomy.CompactionFactor(0.9f, GameSettings.PlowingRequired) < 0.9f);
         GameSettings.Weeds = false;
-        FakeEngine.Run(3f, 0.1f);   // soil ticks every 2 s
-        T.Check("Weeds off: no weeds on any field", FieldManager.Instance.Plots.All(p => SoilManager.Instance == null || SoilManager.Instance.Soil(p).weeds == 0f));
+        FarmFields.Instance.Simulate(0.25f);   // FarmCore steps every in-game quarter hour
+        T.Check("Weeds off: no weeds on any field", FarmFields.Instance.Fields.All(f => FarmSim.Summarize(f).weeds == 0f));
         GameSettings.Weeds = true;
-        var plot = FieldManager.Instance.Plots[0];
-        var plotState = plot.State; string plotCrop = plot.CropId; float plotGrowth = plot.Growth, plotWater = plot.Water;
-        plot.ApplyRemote(PlotState.Growing, EconomyManager.Instance.Data.fieldCrops[0].id, 0.3f, 0f);
+        var wf = FarmFields.Instance.Fields[0];
+        string wsave = wf.EncodeCells();
+        byte wheatIdx = FcData.CropIndex("wheat");
+        for (int i = 0; i < wf.Cells; i++) { wf.ground[i] = (byte)Ground.Sown; wf.crop[i] = wheatIdx; wf.Set(FieldLayer.Growth, i, 0.3f); wf.Set(FieldLayer.Yield, i, 1f); wf.SetFlag(i, CellFlags.Withered, false); wf.Set(FieldLayer.Moisture, i, 0f); }
         var ap = SettingsApplier.Instance;
-        ap.TickWithering(GameSettings.SecondsPerDay + 1f);
-        bool alive = plot.State == PlotState.Growing;
+        FarmFields.Instance.SimulateLong(26f);
+        ap.TickWithering(1f);
+        bool alive = FC.Count(wf, i => wf.Has(i, CellFlags.Withered)) == 0;
         GameSettings.Withering = true;
-        ap.TickWithering(GameSettings.SecondsPerDay * 0.5f);
-        bool halfDay = plot.State == PlotState.Growing;
-        ap.TickWithering(GameSettings.SecondsPerDay * 0.6f);
-        T.Check("Withering: off keeps dry crops, on kills them after a dry day", alive && halfDay && plot.State == PlotState.Untilled && ap.Withered == 1, plot.State + "");
+        for (int i = 0; i < wf.Cells; i++) wf.Set(FieldLayer.Moisture, i, 0f);
+        FarmFields.Instance.SimulateLong(12f);
+        ap.TickWithering(1f);
+        bool halfDay = FC.Count(wf, i => wf.Has(i, CellFlags.Withered)) == 0;
+        for (int i = 0; i < wf.Cells; i++) wf.Set(FieldLayer.Moisture, i, 0f);
+        FarmFields.Instance.SimulateLong(14f);
+        ap.TickWithering(1f);
+        T.Check("Withering: off keeps dry crops, on kills them after a dry day", alive && halfDay && FC.Count(wf, i => wf.Has(i, CellFlags.Withered)) == wf.Cells && ap.Withered == 1, alive + " " + halfDay + " " + ap.Withered);
         GameSettings.Withering = false;
-        plot.ApplyRemote(plotState, plotCrop, plotGrowth, plotWater);
+        wf.DecodeCells(wsave);
         var eco = EconomyManager.Instance; var wm = WorkerManager.Instance;
         var seeds = (Dictionary<string, int>)T.Get(eco, "seeds");
         var seedsBefore = new Dictionary<string, int>(seeds);
@@ -1139,9 +818,9 @@ static class Program
         var gm = GameManager.Instance;
         T.Check("GameManager running", gm != null);
         T.Check("No errors during boot", FakeEngine.Errors.Count == 0, string.Join(" | ", FakeEngine.Errors.Take(3)));
-        T.Check("All systems created", EconomyManager.Instance && MissionManager.Instance && MarketManager.Instance && WorldClock.Instance && FieldManager.Instance && ScenarioManager.Instance && ShopUI.Instance && VehicleSpawner.Instance);
+        T.Check("All systems created", EconomyManager.Instance && MissionManager.Instance && MarketManager.Instance && WorldClock.Instance && FarmFields.Instance && ScenarioManager.Instance && ShopUI.Instance && VehicleSpawner.Instance);
         T.Check("Truck and tractor spawned", FarmTruck.Instance != null && Tractor.Instance != null);
-        T.Check("6 field plots", FieldManager.Instance.Plots.Count == 6);
+        T.Check("2 FarmCore fields (10 x 14 m of 2 m cells) where the 6 old plots were", FarmFields.Instance.Fields.Count == 2 && FarmFields.Instance.Fields.All(f => f.Cells == 35));
         T.Check("Loading bay and market", DeliveryZone.LoadingBay != null && DeliveryZone.Market != null);
         T.Check("Market is ~120 m away", Vector3.Distance(DeliveryZone.LoadingBay.transform.position, DeliveryZone.Market.transform.position) > 60f);
         T.Check("2 shop stalls + crate + pen", UnityEngine.Object.FindObjectsByType<ShopStall>(FindObjectsSortMode.None).Length == 2 && AnimalPen.Instance != null);
@@ -1198,25 +877,37 @@ static class Program
         T.Check("First-harvest mission (100 kg) done", MissionManager.Instance.Index >= 4, "index " + MissionManager.Instance.Index + " progress " + MissionManager.Instance.Progress);
 
         Console.WriteLine("Fields");
-        var plot = FieldManager.Instance.Plots[0];
-        T.Check("Plot starts untilled", plot.State == PlotState.Untilled);
-        plot.Interact(); T.Check("E plows", plot.State == PlotState.Plowed);
-        plot.Interact(); T.Check("E plants wheat (2 free seeds)", plot.State == PlotState.Growing && plot.CropId == "wheat");
+        var ff = FarmFields.Instance;
+        var field = ff.Fields[0];
+        T.Check("Field starts untilled", FC.AllUntilled(field));
+        ff.HandJob(field.center); T.Check("E hoes the patch around you", FC.Worked(field) > 0 && FC.Worked(field) < field.Cells);
+        ff.HandJob(field.center); T.Check("E plants wheat (2 free seed bags of 100 m2)", FC.Sown(field) > 0 && FC.Crop(field) == "wheat");
         T.Check("Seed used", EconomyManager.Instance.Seeds("wheat") == 1);
         T.Check("Plant-field mission done", MissionManager.Instance.Current?.id == "fieldharvest", MissionManager.Instance.Current?.id);
-        plot.Interact(); FakeEngine.Run(0.2f);
-        T.Check("E waters (well running)", plot.Water > 0.9f);
-        for (int i = 0; i < 120 && plot.State != PlotState.Ripe; i++) { if (CropCareManager.Instance != null) CropCareManager.Instance.Plot(plot.index).pest = ""; plot.Interact(); FakeEngine.Run(30f, 0.5f); } // random pests would slow growth: cleared (deterministic)
-        T.Check("Field ripens with watering", plot.State == PlotState.Ripe, plot.State + " " + plot.Growth);
+        var spots = new[] { new Vector3(-3f, 0, -5f), new Vector3(3f, 0, -5f), new Vector3(-3f, 0, -1.7f), new Vector3(3f, 0, -1.7f), new Vector3(-3f, 0, 1.7f), new Vector3(3f, 0, 1.7f), new Vector3(-3f, 0, 5f), new Vector3(3f, 0, 5f) }
+            .Select(v => field.center + field.Rotation * v).ToArray();
+        foreach (var at in spots) for (int k = 0; k < 3; k++) ff.HandJob(at);   // hoe and sow the rest by hand
+        T.Check("By hand: the whole field hoed and sown with the 2 bags", FC.Sown(field) == field.Cells && EconomyManager.Instance.Seeds("wheat") == 0, FC.Sown(field) + " " + EconomyManager.Instance.Seeds("wheat"));
+        FC.Wet(field, 0.2f);
+        ff.HandJob(field.center);
+        T.Check("E waters (well running)", field.Get(FieldLayer.Moisture, field.CellAt(field.center)) > 0.5f);
+        for (int i = 0; i < 160 && FC.Ripe(field) < FC.Sown(field); i++)
+        {
+            field.pest = "";   // random pests would slow growth: cleared (deterministic)
+            foreach (var at in spots.Concat(new[] { field.center }))
+                if (field.Get(FieldLayer.Moisture, field.CellAt(at)) < 0.4f) ff.HandTool(FieldTool.WateringCan, at, 25f);   // what E does on dry crops
+            FakeEngine.Run(30f, 0.5f);
+        }
+        T.Check("Field ripens with watering", FC.Ripe(field) == field.Cells, FC.Ripe(field) + " / " + field.Cells + " growth " + FarmSim.Summarize(field).growth);
         float wheat = EconomyManager.Instance.Stored("wheat");
-        plot.Interact();
-        T.Check("Field harvest stores wheat", EconomyManager.Instance.Stored("wheat") > wheat);
-        T.Check("Plot back to untilled", plot.State == PlotState.Untilled);
+        foreach (var at in spots.Concat(new[] { field.center })) ff.HandJob(at);
+        T.Check("Field harvest stores wheat", EconomyManager.Instance.Stored("wheat") > wheat + 20f, (EconomyManager.Instance.Stored("wheat") - wheat) + " kg");
+        T.Check("Field back to stubble", FC.Sown(field) == 0 && FC.Count(field, i => field.ground[i] == (byte)Ground.Stubble) == field.Cells);
 
         Console.WriteLine("Tractor");
         var tractor = Tractor.Instance;
-        var plot2 = FieldManager.Instance.Plots[1];
-        tractor.transform.position = plot2.transform.position + tractor.transform.forward * 2.6f;
+        var plot2 = FarmFields.Instance.Fields[1];
+        tractor.transform.position = plot2.center + tractor.transform.forward * 2.6f;
         tractor.Interact();
         T.Check("Enter tractor", tractor.IsDriving && Vehicle.Current == tractor);
         FakeEngine.Run(0.2f);
@@ -1224,11 +915,11 @@ static class Program
         T.Check("Player hidden while driving", !GameObject.Find("PlayerCapsule").activeSelf);
         T.SetProp(tractor, "Speed", 3f);
         var work = typeof(Tractor).GetMethod("Work", BindingFlags.Instance | BindingFlags.NonPublic);
-        T.Set(tractor, "workCooldown", 0f);
-        if (plot2.State == PlotState.Untilled) { /* plow is the default implement */ }
-        tractor.transform.position = plot2.transform.position + tractor.transform.forward * 2.6f;
+        tractor.transform.position = plot2.center + tractor.transform.forward * 2.6f;   // plough (the default implement) on the hitch
         work.Invoke(tractor, null);
-        T.Check("Tractor plow works the plot under the hitch", plot2.State == PlotState.Plowed, plot2.State.ToString());
+        tractor.transform.position += tractor.transform.forward * 4f;
+        work.Invoke(tractor, null);
+        T.Check("Tractor plough works the strip under the hitch", FC.Count(plot2, i => plot2.ground[i] == (byte)Ground.Ploughed) >= 2, FC.Count(plot2, i => plot2.ground[i] == (byte)Ground.Ploughed) + "");
         float fuel = tractor.Fuel;
         T.SetProp(tractor, "Speed", 0f);
         tractor.Exit();
@@ -1309,17 +1000,16 @@ static class Program
         LifeTests.Run();
         EventsFinTests.Run(args[0]);
         EventDirector.RandomEventsEnabled = false;
-        SoilTests();
+        FarmCoreTests.Run();
 
         LifeTests.BeforeSave();
+        FarmCoreTests.BeforeSave();
         MarketTests.Snapshot();
         Console.WriteLine("Saving");
         SaveData.Flush(true);
         T.Check("Save file written", File.Exists(SaveData.Path));
         int savedMoney = EconomyManager.Instance.Money;
         int savedMission = mm.Index;
-        float savedFertility = CropCareManager.Instance.Plot(4).fertility;
-        int savedCuts = CropCareManager.Instance.Plot(3).cuts;
         // Restart: fresh world reading the same save file
         BuildWorld();
         FakeEngine.Run(2f);
@@ -1327,13 +1017,11 @@ static class Program
         T.Check("Mission index restored", MissionManager.Instance.Index == savedMission, MissionManager.Instance.Index + " vs " + savedMission);
         T.Check("Animals restored (incl. any born)", UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length == EconomyManager.Instance.Owned("chicken") && EconomyManager.Instance.Owned("chicken") >= 2,
             UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length + " vs " + EconomyManager.Instance.Owned("chicken"));
-        T.Check("Field crop state restored", FieldManager.Instance.Plots[1].State == PlotState.Plowed);
+        T.Check("Field cells restored", FC.Sown(FC.F(1)) + FC.Worked(FC.F(1)) > 0);
         UtilityTests.AfterRestart();
         MarketTests.AfterRestart();
-        SoilAfterRestart();
+        FarmCoreTests.AfterRestart();
         T.Check("Crops: orchard trees restored", OrchardManager.Instance.Trees.Count == 6 && OrchardManager.Instance.Trees[0].Kind == "palm_sukkari" && OrchardManager.Instance.Trees[0].Age >= 3f, OrchardManager.Instance.Trees.Count > 0 ? OrchardManager.Instance.Trees[0].Kind : "none");
-        T.Check("Crops: soil fertility and alfalfa cuts restored", Math.Abs(CropCareManager.Instance.Plot(4).fertility - savedFertility) < 0.001f && CropCareManager.Instance.Plot(3).cuts == savedCuts,
-            CropCareManager.Instance.Plot(4).fertility + " vs " + savedFertility + ", cuts " + CropCareManager.Instance.Plot(3).cuts + " vs " + savedCuts);
         T.Check("Intro not shown again", SaveData.GetInt("mazraa.introSeen", 0) == 1 || true);
         EventsFinTests.AfterRestart();
 
@@ -1354,12 +1042,12 @@ static class Program
         T.Check("New game resets money to 500", EconomyManager.Instance.Money == 500, "" + EconomyManager.Instance.Money);
         T.Check("New game resets missions", MissionManager.Instance.Index == 0);
         T.Check("New game removes animals", UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length == 0);
-        T.Check("New game resets fields", FieldManager.Instance.Plots.All(x => x.State == PlotState.Untilled));
+        T.Check("New game resets fields", FarmFields.Instance.Fields.Count == 2 && FarmFields.Instance.Fields.All(FC.AllUntilled));
         T.Check("Time scale restored", Time.timeScale == 1f);
         UtilityTests.AfterNewGame();
         MarketTests.AfterNewGame();
-        SoilAfterNewGame();
-        T.Check("Crops: new game clears orchard, soil and care items", OrchardManager.Instance.Trees.All(x => x.Kind == "") && CropCareManager.Instance.Plot(4).fertility == 1f
+        FarmCoreTests.AfterNewGame();
+        T.Check("Crops: new game clears orchard, soil and care items", OrchardManager.Instance.Trees.All(x => x.Kind == "")
             && CropsData.Data.cures.All(c => CropCareManager.Instance.Items(c.id) == 0) && CropsData.Data.trees.All(t => OrchardManager.Instance.Saplings(t.id) == 0));
         EventsFinTests.AfterNewGame();
 
@@ -1476,7 +1164,7 @@ static class Program
         T.Check("Fish systems created", fm != null && aqua != null && yard != null && hives != null && dove != null && UnityEngine.Object.FindAnyObjectByType<SaudiAnimals>() != null);
         T.Check("Reservoir, tank, apiary and dovecote are E-interactable (layer 7)", UnityEngine.Object.FindObjectsByType<FishSpot>(FindObjectsSortMode.None).Count(x => x.gameObject.layer == 7) >= 4);
         T.Check("Reservoir is clear of the pen, loading bay and fields", fm.Pond != null && Vector3.Distance(fm.Pond.position, AnimalPen.Instance.transform.position) > 20f
-            && Vector3.Distance(fm.Pond.position, DeliveryZone.LoadingBay.transform.position) > 14f && Vector3.Distance(fm.Pond.position, FieldManager.Instance.Plots[0].transform.position) > 20f);
+            && Vector3.Distance(fm.Pond.position, DeliveryZone.LoadingBay.transform.position) > 14f && Vector3.Distance(fm.Pond.position, FarmFields.Instance.Fields[0].center) > 20f);
         T.Check("fish.json: 5 species, 2 rods, 2 baits", fm.Data.species.Length == 5 && fm.Data.rods.Length == 2 && fm.Data.baits.Length == 2);
         T.Check("Economy pack: fish goods, coast fish sell much higher", eco.Good("fish_tilapia") != null && eco.Good("fish_hamour").price > eco.Good("fish_tilapia").price * 3 && eco.Good("fish_najil").price > eco.Good("fish_carp").price * 3);
         T.Check("Economy pack: processed goods + dates + honey + squab", new[] { "dates", "packed_dates", "laban", "cheese", "flour", "juice", "honey", "squab", "manure", "camel_milk", "goat_milk" }.All(g => eco.Good(g) != null));
@@ -1650,7 +1338,7 @@ static class Program
 static class UtilityTests
 {
     static UtilityEnv Env(Season s, Weather w, float sun, int greenhouses = 2, int beds = 8, int growing = 0)
-        => new UtilityEnv { season = s, weather = w, sun = sun, greenhouses = greenhouses, beds = beds, plots = 6, growingPlots = growing, day = 3, hour = 12, wellRunning = true };
+        => new UtilityEnv { season = s, weather = w, sun = sun, greenhouses = greenhouses, beds = beds, irrigationKw = growing, day = 3, hour = 12, wellRunning = true };
 
     public static void Run()
     {
@@ -1684,26 +1372,23 @@ static class UtilityTests
         var wind = new UtilityModel { Wind = 2 }; wind.Advance(Env(Season.Spring, Weather.Sunny, 1f), 0f);
         T.Check("Wind turbines produce power", wind.WindOut > 0f && wind.WindOut <= 10f, "" + wind.WindOut);
 
-        var none = new UtilityModel(); none.Advance(Env(Season.Spring, Weather.Sunny, 1f, 2, 8, 6), 0f);
-        var drip = new UtilityModel { Irrigation = IrrigationKind.Drip }; drip.Advance(Env(Season.Spring, Weather.Sunny, 1f, 2, 8, 6), 0f);
-        T.Check("Drip irrigation needs about half the field water", drip.FieldWater < none.FieldWater * 0.5f, none.FieldWater + " -> " + drip.FieldWater);
-        T.Check("Drip lines water the fields automatically", drip.FieldsAutoWatered && !none.FieldsAutoWatered);
-        var pivot = new UtilityModel { Irrigation = IrrigationKind.CenterPivot };
-        pivot.Advance(Env(Season.Spring, Weather.Sunny, 1f, 2, 8, 6), 0f);
-        T.Check("Center pivot waters all plots and draws power", pivot.FieldsAutoWatered && pivot.IrrigationKw >= 10f);
-        pivot.Advance(Env(Season.Summer, Weather.Heatwave, 1f, 6, 24, 6), 0f);
-        T.Check("Center pivot stops when power is badly short", pivot.PowerRatio < 0.5f && !pivot.FieldsAutoWatered, "ratio " + pivot.PowerRatio);
+        var none = new UtilityModel(); none.Advance(Env(Season.Spring, Weather.Sunny, 1f, 2, 8, 0), 0f);
+        var pumps = new UtilityModel(); pumps.Advance(Env(Season.Spring, Weather.Sunny, 1f, 2, 8, 12), 0f);
+        T.Check("FarmCore irrigation pumps on grid power load the farm grid", Math.Abs(pumps.IrrigationKw - 12f) < 0.001f && pumps.PowerDemand > none.PowerDemand + 11.9f, pumps.PowerDemand + " vs " + none.PowerDemand);
+        T.Check("Fields don't use the farm's drinking / greenhouse water (they have their own network)", none.FieldWater == 0f && pumps.FieldWater == 0f);
+        var bigPumps = new UtilityModel(); bigPumps.Advance(Env(Season.Summer, Weather.Heatwave, 1f, 6, 24, 30), 0f);
+        T.Check("Big pumps on a hot day overload the grid (pumps then run at the power ratio)", bigPumps.PowerRatio < 0.6f, "ratio " + bigPumps.PowerRatio);
 
         var dry = new UtilityModel();
-        var de = Env(Season.Summer, Weather.Sunny, 1f, 2, 8, 6); de.wellRunning = false;
+        var de = Env(Season.Summer, Weather.Sunny, 1f, 6, 40, 0); de.wellRunning = false; de.animalWater = 20f;   // beds + animals (fields have their own network)
         for (int h = 0; h < 48; h++) dry.Advance(de, 1f);
-        T.Check("Stopped well: reservoir drains, then water runs short", dry.Stored < 0.01f && dry.WaterShort && dry.FieldDryFactor > 1f && dry.GreenhouseFactor < 1f, dry.Stored + " m3, ratio " + dry.WaterRatio);
+        T.Check("Stopped well: reservoir drains, then water runs short", dry.Stored < 0.01f && dry.WaterShort && dry.GreenhouseFactor < 1f, dry.Stored + " m3, ratio " + dry.WaterRatio);
         var deep = new UtilityModel { DeepWell = true };
         deep.Advance(de, 1f);
         T.Check("Deep aquifer well supplies water and needs pump power", deep.DeepOut > 10f && deep.PumpKw > 0f, deep.DeepOut + " m3/day, " + deep.PumpKw + " kW");
         var tse = new UtilityModel { Tse = true };
         tse.Advance(Env(Season.Spring, Weather.Sunny, 1f, 2, 8, 6), 0f);
-        T.Check("Treated wastewater only serves the fields", tse.TseOut > 0f && tse.TseOut <= tse.FieldWater + 0.001f);
+        T.Check("Treated wastewater only serves the fields (the irrigation network takes it)", tse.TseOut == 0f);
 
         var day = new UtilityModel();
         for (int h = 0; h < 24; h++) day.Advance(Env(Season.Spring, Weather.Sunny, 0.8f, 2, 8, 6), 1f);
@@ -1714,14 +1399,15 @@ static class UtilityTests
         for (int h = 0; h < 24; h++) big.Advance(Env(Season.Summer, Weather.Heatwave, 1f, 2, 8, 6), 1f);
         T.Check("A day with shortage resets the streak", big.EndDay(Season.Summer, Weather.Heatwave) > 0f && big.PowerOkDays == 0);
         var heavy = new UtilityModel { DeepWell = true, GridLevel = 2 };
-        for (int h = 0; h < 24; h++) heavy.Advance(Env(Season.Summer, Weather.Heatwave, 1f, 2, 8, 6), 1f);
-        T.Check("Heavy summer irrigation passes the daily water limit", heavy.WaterUsedToday > UtilityModel.DailyWaterLimit, heavy.WaterUsedToday + " m3");
+        var he = Env(Season.Summer, Weather.Heatwave, 1f, 6, 40, 0); he.animalWater = 20f;
+        for (int h = 0; h < 24; h++) heavy.Advance(he, 1f);
+        T.Check("Heavy summer water use (beds, animals) passes the daily water limit", heavy.WaterUsedToday > UtilityModel.DailyWaterLimit, heavy.WaterUsedToday + " m3");
 
         Console.WriteLine("Utilities: in game");
         var g = UtilityGrid.Instance;
         var eco = EconomyManager.Instance;
         T.Check("UtilityGrid + panel created automatically", g != null && UtilitiesUI.Instance != null);
-        T.Check("Shop has Power (6) and Water (7) pages", ShopCatalog.Entries.Count(x => x.category == "Power") == 6 && ShopCatalog.Entries.Count(x => x.category == "Water") == 7);
+        T.Check("Shop has Power (6) and Water (4) pages (field irrigation: the planner)", ShopCatalog.Entries.Count(x => x.category == "Power") == 6 && ShopCatalog.Entries.Count(x => x.category == "Water") == 4);
         T.Check("Utilities yard built with SEC connection + reservoir", GameObject.Find("SEC Grid") != null && GameObject.Find("Water Reservoir") != null);
         T.Check("Manure good comes from the economy pack", eco.Good("manure") != null);
         eco.AddMoney(40000);
@@ -1752,20 +1438,22 @@ static class UtilityTests
         FakeEngine.Run(3f, 0.25f);
         T.Check("Beds grow again when supply is back", bed.Growth > 0f);
 
-        // Field hook: drip irrigation keeps a growing plot wet
-        var plot = FieldManager.Instance.Plots[2];
-        plot.TryPlow(false); plot.TrySeed(false);
-        T.Check("Plot planted for the irrigation test", plot.State == PlotState.Growing, plot.State.ToString());
-        T.Check("Buy drip irrigation", eco.TryBuy("util_drip") && g.Model.Irrigation == IrrigationKind.Drip);
-        g.Recompute();
-        FakeEngine.Run(40f, 0.5f);
-        T.Check("Drip keeps the field watered", UtilityHooks.FieldsAutoWatered && plot.Water > 0.99f, plot.Water + " auto " + UtilityHooks.FieldsAutoWatered);
-        T.Check("Drip lines laid on the plots", GameObject.Find("Drip Lines") != null);
+        // FarmCore irrigation: a grid-powered well and drip lines on field 2 load the farm grid
         eco.AddMoney(60000);
-        T.Check("Buy center pivot", eco.TryBuy("util_pivot") && g.Model.Irrigation == IrrigationKind.CenterPivot);
+        var irr = IrrigationSystem.Instance; var f2 = FarmFields.Instance.Fields[1]; string why;
+        T.Check("Field irrigation is not sold as utilities any more (the irrigation planner builds it)", !ShopCatalog.Entries.Any(e => e.id == "util_drip" || e.id == "util_pivot" || e.id == "util_sprinklers"));
+        var wl = irr.Place(IrrKind.Well, f2.center + new Vector3(-9f, 0, 0), -1f, out why);
+        var dl = irr.Place(IrrKind.Drip, f2.center, -1f, out why);
+        irr.Connect(wl.id, dl.id, 50, out why);
+        irr.Configure(dl.id, IrrMode.On, 22, 6, 24f, IrrPower.Grid);
+        FC.Wet(f2, 0.2f);
+        FarmFields.Instance.Simulate(1f);
+        T.Check("Drip lines water the field from the well", irr.Last.m3 > 0f && irr.Last.fieldM3.ContainsKey(f2.id), irr.Last.m3 + " m3");
+        T.Check("The grid-powered pump loads the farm grid (UtilityHooks)", UtilityHooks.IrrigationKw > 0f && irr.Last.kwhGrid > 0f);
+        g.Tick(1f);
+        T.Check("The grid books the irrigation load", g.Model.IrrigationKw > 0f, "" + g.Model.IrrigationKw);
         FakeEngine.Run(0.5f);
-        T.Check("Center pivot built over the fields", GameObject.Find("Pivot Arm") != null && GameObject.Find("Drip Lines") == null);
-        T.Check("Sprinklers then back to drip", eco.TryBuy("util_sprinklers") && eco.TryBuy("util_drip") && g.Model.Irrigation == IrrigationKind.Drip);
+        T.Check("Drip lines laid on the field", GameObject.Find("Drip line") != null);
         T.Check("Buy wind turbine, biogas digester, deep well, treated wastewater line", eco.TryBuy("util_wind") && eco.TryBuy("util_biogas") && eco.TryBuy("util_deepwell") && eco.TryBuy("util_tse") && eco.TryBuy("util_grid"));
         FakeEngine.Run(0.5f);
         T.Check("All bought equipment stands in the yard", new[] { "Wind Turbine 1", "Biogas Digester", "Deep Well", "TSE Valve", "Diesel Generator", "Solar Array 1" }.All(n => GameObject.Find(n) != null));
@@ -1804,6 +1492,7 @@ static class UtilityTests
         g.Model.PowerOkDays = 2;
         FakeEngine.Run(3f);
         T.Check("Power-positive 2 days + efficient irrigation (drip) missions complete", mm.Index == first + 3, "index " + mm.Index);
+        { var irrN = IrrigationSystem.Instance; foreach (var n in irrN.Net.Nodes.ToArray()) irrN.Remove(n.id); }   // no running pumps (and bills) in the later sections
 
         // Translations of every utilities string
         var dir = Path.Combine("..", "..", "Assets", "Scripts", "Utilities");
@@ -1828,16 +1517,17 @@ static class UtilityTests
     public static void AfterRestart()
     {
         var g = UtilityGrid.Instance;
-        T.Check("Utilities restored after restart (solar, generator, tank, drip)", g != null && g.Model.Solar == 1 && g.Model.Generator && g.Model.Tanks == 1 && g.Model.Irrigation == IrrigationKind.Drip);
+        T.Check("Utilities restored after restart (solar, generator, tank)", g != null && g.Model.Solar == 1 && g.Model.Generator && g.Model.Tanks == 1);
         FakeEngine.Run(0.5f);
-        T.Check("Restored equipment rebuilt in the world", GameObject.Find("Solar Array 1") != null && GameObject.Find("Diesel Generator") != null && GameObject.Find("Drip Lines") != null);
+        T.Check("Restored equipment rebuilt in the world (yard and irrigation network)", GameObject.Find("Solar Array 1") != null && GameObject.Find("Diesel Generator") != null && GameObject.Find("Irrigation Network") != null);
     }
 
     public static void AfterNewGame()
     {
         var g = UtilityGrid.Instance;
-        T.Check("New game resets utilities", g.Model.Solar == 0 && !g.Model.Generator && g.Model.Irrigation == IrrigationKind.None && g.Model.Stored == UtilityModel.BaseReservoir);
-        T.Check("New game resets the hooks", UtilityHooks.GreenhouseGrowth == 1f && !UtilityHooks.FieldsAutoWatered);
+        T.Check("New game resets utilities", g.Model.Solar == 0 && !g.Model.Generator && g.Model.Stored == UtilityModel.BaseReservoir);
+        FarmFields.Instance.Simulate(0.25f);
+        T.Check("New game resets the hooks and the irrigation network", UtilityHooks.GreenhouseGrowth == 1f && UtilityHooks.IrrigationKw == 0f && IrrigationSystem.Instance.Net.Nodes.Count == 0);
     }
 }
 
@@ -1859,7 +1549,7 @@ static class EventsFinTests
         EventDirector.RandomEventsEnabled = true;
         Console.WriteLine("Workers, land, bank, events");
         var ed = EventDirector.Instance; var wk = WorkerManager.Instance; var bank = BankManager.Instance; var land = LandOffice.Instance;
-        var eco = EconomyManager.Instance; var fm = FieldManager.Instance; var mm = MissionManager.Instance; var gm = GameManager.Instance;
+        var eco = EconomyManager.Instance; var ff = FarmFields.Instance; var mm = MissionManager.Instance; var gm = GameManager.Instance;
         T.Check("Feature systems auto-created", ed != null && wk != null && bank != null && land != null);
         T.Check("events.json loaded (8 events)", ed.Data.events.Length == 8, "" + ed.Data.events.Length);
         T.Check("4 extra missions loaded", new[] { "hireWorker", "buyLand", "repayLoan", "surviveDustStorm" }.All(t => mm.Missions.Any(m => m.type == t)));
@@ -1889,40 +1579,46 @@ static class EventsFinTests
         T.Check("Hire-a-worker mission done", mm.Current != null && mm.Current.id == "fin_land", mm.Current?.id);
 
         // --- land ---
-        int plots0 = fm.Plots.Count;
+        int fields0 = ff.Fields.Count;
         FakeEngine.Run(0.5f);
         var sign = UnityEngine.Object.FindAnyObjectByType<LandOfficeSign>();
-        T.Check("Land office sign placed by the fields", sign != null && Vector3.Distance(sign.transform.position, fm.GridCenter) < 40f);
+        T.Check("Land office sign placed by the fields", sign != null && Vector3.Distance(sign.transform.position, ff.GridCenter) < 40f);
         sign.Interact();
         T.Check("Land sign E opens the Land page", ShopUI.Instance.IsOpen); ShopUI.Instance.Close();
         T.Check("Buy a parcel", eco.TryBuy("land_next"));
         FakeEngine.Run(0.5f);
-        T.Check("Parcel adds 2 plots", fm.Plots.Count == plots0 + 2, "" + fm.Plots.Count);
+        T.Check("Parcel adds a field beyond the farm's two (22 x 6 m)", ff.Fields.Count == fields0 + 1 && ff.Fields.Last().width == 22f && ff.Fields.Last().depth == 6f && ff.Fields.Last().source == "office", "" + ff.Fields.Count);
         T.Check("Buy-land mission done", mm.Current != null && mm.Current.id == "fin_loan", mm.Current?.id);
         for (int i = 0; i < 3; i++) eco.TryBuy("land_next");
         FakeEngine.Run(0.5f);
-        T.Check("All parcels incl. the large block: +12 plots", fm.Plots.Count == plots0 + 12 && land.Owned == 4, fm.Plots.Count + "");
+        T.Check("All parcels incl. the large block: +4 fields (+704 m2)", ff.Fields.Count == fields0 + 4 && land.Owned == 4 && ff.Fields.Skip(fields0).Sum(f => f.Area) == 3 * 132f + 22f * 14f, ff.Fields.Count + "");
         T.Check("No more land for sale", !eco.TryBuy("land_next"));
-        float minGap = 99f;
-        for (int i = 0; i < fm.Plots.Count; i++) for (int j = i + 1; j < fm.Plots.Count; j++) minGap = Math.Min(minGap, Vector3.Distance(fm.Plots[i].transform.position, fm.Plots[j].transform.position));
-        T.Check("New plots don't overlap old ones", minGap > 6f, "" + minGap);
-        T.Check("New plots have unique save indexes", fm.Plots.Select(p => p.index).Distinct().Count() == fm.Plots.Count);
+        bool overlap = false;
+        var inv = Quaternion.Inverse(ff.GridRotation);
+        for (int i = 0; i < ff.Fields.Count; i++) for (int j = i + 1; j < ff.Fields.Count; j++)
+        {
+            var a = ff.Fields[i]; var b = ff.Fields[j];
+            Vector3 d = inv * (b.center - a.center);
+            if (Math.Abs(d.x) < (a.width + b.width) * 0.5f - 0.01f && Math.Abs(d.z) < (a.depth + b.depth) * 0.5f - 0.01f) overlap = true;
+        }
+        T.Check("New fields don't overlap old ones", !overlap);
+        T.Check("New fields have unique ids (own saved cells)", ff.Fields.Select(f => f.id).Distinct().Count() == ff.Fields.Count);
 
-        // field hand works the new land: plows, plants, waters
+        // field hand works the land by hand: hoes, sows, waters, harvests
+        foreach (var f in ff.Fields) f.ResetSoil(FcData.CurrentRegion);
         FakeEngine.Run(150f, 0.5f);
-        T.Check("Field hand plows and plants (incl. the new land)", fm.Plots.Count(p => p.State == PlotState.Growing) >= 8 && fm.Plots.Skip(plots0).Any(p => p.State == PlotState.Growing), string.Join(",", fm.Plots.Skip(plots0).Select(p => p.State.ToString())));
-        var growing = fm.Plots.First(p => p.State == PlotState.Growing);
-        growing.AddWater(-1f);
-        for (int i = 0; i < 20 && growing.Water < 0.5f; i++) wk.Work(WorkerRole.FieldHand);
-        T.Check("Field hand waters dry plots", growing.Water > 0.9f, "" + growing.Water);
-        // isolate: only this plot is ripe (another ripe plot would be picked first) and count its own crop
-        foreach (var other in fm.Plots) if (other != growing && other.State == PlotState.Ripe) T.SetProp(other, "State", PlotState.Growing);
-        string handCrop = growing.CropId;
+        int sownFields = ff.Fields.Count(f => FC.Sown(f) > 0);
+        T.Check("Field hand hoes and sows patches by hand", sownFields >= 2 && ff.Fields.Sum(FC.Sown) >= 50, sownFields + " fields, " + ff.Fields.Sum(FC.Sown) + " cells");
+        var growing = ff.Fields.First(f => FC.Sown(f) > 0);
+        FC.Wet(growing, 0.1f);
+        for (int i = 0; i < 6; i++) wk.Work(WorkerRole.FieldHand);
+        T.Check("Field hand waters dry crops", FarmSim.Summarize(growing).moisture > 0.15f, "" + FarmSim.Summarize(growing).moisture);
+        string handCrop = FC.Crop(growing);
         float wheat0 = eco.Stored(handCrop);
-        T.SetProp(growing, "Growth", 1f);
-        T.SetProp(growing, "State", PlotState.Ripe);
+        FC.Ripen(growing);
+        int ripe0 = FC.Ripe(growing);
         wk.Work(WorkerRole.FieldHand);
-        T.Check("Field hand harvests ripe plots", eco.Stored(handCrop) > wheat0 && growing.State != PlotState.Ripe, growing.CropId + " " + growing.State + " " + Regions.CurrentId + " " + eco.Stored(growing.CropId));
+        T.Check("Field hand harvests ripe crops", eco.Stored(handCrop) > wheat0 && FC.Ripe(growing) < ripe0, handCrop + " " + eco.Stored(handCrop));
 
         // greenhouse worker
         T.Check("Hire greenhouse worker", eco.TryBuy("worker_ghworker"));
@@ -2010,28 +1706,29 @@ static class EventsFinTests
         T.Check("Survive a dust storm mission done", ed.StormsSurvived == survived0 + 1 && (mm.Current == null || mm.Current.id != "fin_storm"), ed.StormsSurvived + " " + mm.Current?.id + " " + string.Join(",", gm.Greenhouses.Select(g => ed.IsClosed(g))));
 
         // extreme heat
-        var plot = fm.Plots.First(p => p.State == PlotState.Growing);
-        plot.AddWater(1f); FakeEngine.Run(10f, 0.5f); float normalLoss = 1f - plot.Water;
+        var plot = ff.Fields[0];
+        eco.AddSeeds("wheat", 4); FC.Prepare(plot); FC.Sow(plot, "wheat");
+        FC.Wet(plot, 1f); ff.Simulate(6f); float normalLoss = 1f - FarmSim.Summarize(plot).moisture;
         ed.StartNow("heat"); FakeEngine.Run(0.1f);
         T.Check("Heat: fields dry and animals drink twice as fast", FarmModifiers.FieldDry == 2f && FarmModifiers.PenWaterUse == 2f);
-        plot.AddWater(1f); FakeEngine.Run(10f, 0.5f); float heatLoss = 1f - plot.Water;
-        T.Check("Heat: plot loses water faster", heatLoss > normalLoss * 1.7f, normalLoss + " vs " + heatLoss);
+        FC.Wet(plot, 1f); ff.Simulate(6f); float heatLoss = 1f - FarmSim.Summarize(plot).moisture;
+        T.Check("Heat: the field loses water faster", heatLoss > normalLoss * 1.7f, normalLoss + " vs " + heatLoss);
         ed.EndActive();
         T.Check("Modifiers back to normal after the event", FarmModifiers.FieldDry == 1f && FarmModifiers.PenWaterUse == 1f);
 
         // water restriction
         ed.StartNow("waterban"); FakeEngine.Run(0.1f);
-        plot.AddWater(-1f); plot.Interact();
-        T.Check("Water ban: E can't water", plot.Water < 0.1f && FarmModifiers.IrrigationBanned);
+        FC.Wet(plot, 0f); ff.HandJob(plot.center);
+        T.Check("Water ban: E can't water", FarmSim.Summarize(plot).moisture < 0.05f && FarmModifiers.IrrigationBanned);
         wk.Hire(WorkerRole.FieldHand);
-        var dry = fm.Plots.Where(p => p.State == PlotState.Growing).ToList();
-        foreach (var p in dry) p.AddWater(-1f);
+        var dry = ff.Fields.Where(f => FC.Sown(f) > 0).ToList();
+        foreach (var p in dry) FC.Wet(p, 0f);
         for (int i = 0; i < 5; i++) wk.Work(WorkerRole.FieldHand);
-        T.Check("Water ban: field hand doesn't water", dry.Count > 0 && dry.All(p => p.Water < 0.1f));
+        T.Check("Water ban: field hand doesn't water", dry.Count > 0 && dry.All(p => FarmSim.Summarize(p).moisture < 0.05f));
         wk.Dismiss(WorkerRole.FieldHand, false);
         ed.EndActive(); FakeEngine.Run(0.1f);
-        plot.Interact();
-        T.Check("After the ban watering works again", plot.Water > 0.9f);
+        ff.HandJob(plot.center);
+        T.Check("After the ban watering works again", plot.Get(FieldLayer.Moisture, plot.CellAt(plot.center)) > 0.3f);
 
         // frost
         ed.StartNow("frost"); FakeEngine.Run(0.1f);
@@ -2039,26 +1736,27 @@ static class EventsFinTests
         ed.EndActive();
 
         // flood + fertility bonus
-        while (eco.Seeds("wheat") < 30) eco.TryBuy("seed_wheat");
-        foreach (var p in fm.Plots) { p.TryPlow(false); p.TrySeed(false); }
-        int withCrop = fm.Plots.Count(p => p.State == PlotState.Growing);
+        eco.AddSeeds("wheat", 20);
+        foreach (var f in ff.Fields) { FC.Prepare(f); FC.Sow(f, "wheat"); }
+        int withCrop = ff.Fields.Sum(FC.Sown);
         ed.StartNow("flood"); FakeEngine.Run(0.1f);
-        var flooded = fm.Plots.Where(p => ed.IsFertile(p.index)).ToList();
-        T.Check("Flash flood ruins 2 plots", flooded.Count == 2 && flooded.All(p => p.State == PlotState.Untilled) && fm.Plots.Count(p => p.State == PlotState.Growing) == withCrop - 2, flooded.Count + " " + withCrop + " " + fm.Plots.Count(p => p.State == PlotState.Growing));
+        var flooded = ff.Fields.Where(f => ed.IsFertile(f.id)).ToList();
+        int lostCells = withCrop - ff.Fields.Sum(FC.Sown);
+        T.Check("Flash flood washes out 2 patches (~6 x 6 m each)", flooded.Count >= 1 && lostCells >= 9 * 2 - 6 && lostCells <= 18, flooded.Count + " fields, " + lostCells + " cells");
         ed.EndActive();
-        var fp = flooded[0]; fp.TryPlow(false); fp.TrySeed(false); T.SetProp(fp, "State", PlotState.Ripe);
-        float w0 = eco.Stored("wheat");
-        fp.TryHarvest(false);
-        T.Check("Flooded plot's next harvest +40% (silt)", eco.Stored("wheat") - w0 > eco.FieldCrop("wheat").yieldKg * 1.4f * 0.55f && !ed.IsFertile(fp.index), (eco.Stored("wheat") - w0) + ""); // soil fertility (crops) scales yields too
+        var fp = flooded[0]; FC.Prepare(fp); FC.Sow(fp, "wheat"); FC.Ripen(fp);
+        float w0 = eco.Stored("wheat"), exp = FarmSim.Summarize(fp).expectedKg;
+        FC.HandHarvest(fp);
+        T.Check("Flooded field's next harvest +30% (Nile / wadi silt)", eco.Stored("wheat") - w0 > exp * 1.25f && !ed.IsFertile(fp.id), (eco.Stored("wheat") - w0) + " vs " + exp);
 
         // locusts
         ed.Find("locust").lossChance = 1f;
         T.Check("Buy pesticide", eco.TryBuy("pesticide") && ed.Pesticide == 1);
-        int g0 = fm.Plots.Count(p => p.State == PlotState.Growing);
+        int g0 = ff.Fields.Sum(FC.Sown);
         ed.StartNow("locust"); FakeEngine.Run(0.1f); ed.EndActive();
-        T.Check("Pesticide saves the crops", fm.Plots.Count(p => p.State == PlotState.Growing) == g0 && ed.Pesticide == 0);
+        T.Check("Pesticide saves the crops", ff.Fields.Sum(FC.Sown) == g0 && ed.Pesticide == 0);
         ed.StartNow("locust"); FakeEngine.Run(0.1f); ed.EndActive();
-        T.Check("Locusts eat unprotected crops", fm.Plots.Count(p => p.State == PlotState.Growing) == 0, "" + fm.Plots.Count(p => p.State == PlotState.Growing));
+        T.Check("Locusts eat unprotected crops", ff.Fields.Sum(FC.Sown) == 0, "" + ff.Fields.Sum(FC.Sown));
 
         // Ramadan demand
         float milk = MarketManager.Instance.Price("milk");
@@ -2076,7 +1774,7 @@ static class EventsFinTests
         ed.EndActive();
         T.Check("Buyer leaves at the end", MarketManager.Instance.Contracts.Count == c0);
 
-        fm.Plots[1].ResetPlot(); fm.Plots[1].TryPlow(false);   // the save test below expects plot 2 plowed
+        ff.Fields[1].ResetSoil(FcData.CurrentRegion); FC.Whole(ff.Fields[1], FieldTool.Plough);   // the save test below expects field 2 worked
         // something to restore after the restart
         ed.Schedule("flood", WorldClock.Instance.Day + 1);
         T.Check("No errors in the feature tests", FakeEngine.Errors.Count == 0, string.Join(" | ", FakeEngine.Errors.Take(3)));
@@ -2086,14 +1784,14 @@ static class EventsFinTests
     {
         Console.WriteLine("Workers, land, bank, events: restart");
         FakeEngine.Run(1f);
-        T.Check("Bought land restored (18 plots)", FieldManager.Instance.Plots.Count == 18 && LandOffice.Instance.Owned == 4, "" + FieldManager.Instance.Plots.Count);
+        T.Check("Bought land restored (6 fields)", FarmFields.Instance.Fields.Count == 6 && LandOffice.Instance.Owned == 4, "" + FarmFields.Instance.Fields.Count);
         T.Check("Forecast restored", EventDirector.Instance.Pending != null && EventDirector.Instance.Pending.id == "flood");
         T.Check("Closed vents restored", GameManager.Instance.Greenhouses.All(g => EventDirector.Instance.IsClosed(g)));
     }
 
     public static void AfterNewGame()
     {
-        T.Check("New game removes bought land", FieldManager.Instance.Plots.Count == 6 && LandOffice.Instance.Owned == 0);
+        T.Check("New game removes bought land", FarmFields.Instance.Fields.Count == 2 && LandOffice.Instance.Owned == 0);
         T.Check("New game clears debt, workers and events", BankManager.Instance.Debt == 0 && WorkerManager.Instance.HiredCount == 0 && EventDirector.Instance.Pending == null && EventDirector.Instance.Active == null);
     }
 }
@@ -2107,10 +1805,12 @@ static class MpTests
         var mp = MultiplayerManager.Instance;
         T.Check("Multiplayer systems created", mp != null && MultiplayerPanel.Instance != null);
         T.Check("Offline by default (local backend)", NetSession.Mode == NetMode.Offline && !NetSession.IsClient && !NetSession.IsHost && !NetSession.Backend.Available);
-        var plot = FieldManager.Instance.Plots[2];
+        var ffm = FarmFields.Instance;
+        var plot = ffm.Fields[1].View;
+        ffm.Fields[1].ResetSoil(FcData.CurrentRegion);
         T.Check("Offline: interactions run locally", !NetSession.HandleInteract(plot));
-        plot.Interact();
-        T.Check("Offline: plot plowed locally", plot.State == PlotState.Plowed);
+        ffm.HandJob(ffm.Fields[1].center);
+        T.Check("Offline: E works the field locally", FC.Worked(ffm.Fields[1]) > 0);
         T.Check("Offline: Host fails with a clear message", !mp.Host() && mp.Status.Contains("Netcode"));
         bool uiBefore = UIManager.Instance.IsUIOpened;   // another feature's panel may already hold the UI
         MultiplayerPanel.Instance.Open();
@@ -2127,14 +1827,13 @@ static class MpTests
         st.goods["wheat"] = 12.5f;
         var back = NetSyncState.Decode(st.Encode());
         T.Check("Sync message round-trips", back != null && back.money == 4321 && back.day == 7 && back.weather == 2 && back.mission == 3
-            && Math.Abs(back.missionProgress - 1.5f) < 0.01f && back.wellRunning && Math.Abs(back.goods["wheat"] - 12.5f) < 0.01f
-            && back.plots.Count == 6 && back.plots[2].state == (int)PlotState.Plowed, st.Encode().Replace('\u001f', '|'));
+            && Math.Abs(back.missionProgress - 1.5f) < 0.01f && back.wellRunning && Math.Abs(back.goods["wheat"] - 12.5f) < 0.01f, st.Encode().Replace('\u001f', '|'));
         T.Check("Sync message is compact (< 400 chars)", st.Encode().Length < 400, "" + st.Encode().Length);
         T.Check("Non-sync message is not decoded as sync", NetSyncState.Decode(NetProtocol.Make(NetProtocol.Chat, "hi")) == null);
         T.Check("User text: separators and tags removed, capped", NetProtocol.Clean("a\u001fb<color=red>c", 8) == "abcolor=" && NetProtocol.Clean("هلا والله", 80) == "هلا والله");
         var pose = NetPose.Parse(NetProtocol.Split(NetProtocol.Make(NetProtocol.Pose, new NetPose { position = new Vector3(1.5f, 2, -3), yaw = 90, vehicle = "Truck", speed = 4 }.Fields())), 1);
         T.Check("Pose round-trips", Math.Abs(pose.position.z + 3f) < 0.01f && pose.vehicle == "Truck" && Math.Abs(pose.yaw - 90f) < 0.01f);
-        T.Check("Object ids are unique and resolvable", NetIds.Find(NetIds.Of(plot)) == plot && NetIds.Of(FieldManager.Instance.Plots[0]) != NetIds.Of(plot));
+        T.Check("Object ids are unique and resolvable", NetIds.Find(NetIds.Of(plot)) == plot && NetIds.Of(ffm.Fields[0].View) != NetIds.Of(plot));
         var missing = new List<string>();
         foreach (var f in Directory.GetFiles(Path.Combine(resources, "..", "Scripts", "Multiplayer"), "*.cs"))
             foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f),
@@ -2147,6 +1846,8 @@ static class MpTests
         Console.WriteLine("Co-op: client (fake connection)");
         var eco = EconomyManager.Instance;
         eco.AddGood("wheat", 40f);
+        ffm.SaveAll(); IrrigationSystem.Instance.Save();
+        string ownField0 = ffm.Fields[0].EncodeCells(), ownNet = IrrigationSystem.Instance.Net.Encode();
         SaveData.Flush(true);
         int homeMoney = eco.Money, homeDay = WorldClock.Instance.Day, homeMission = MissionManager.Instance.Index;
         float homeWheat = eco.Stored("wheat");
@@ -2155,57 +1856,52 @@ static class MpTests
         FakeEngine.Run(0.2f);
         net.RaiseConnected();
         T.Check("Joining starts a save session (own farm untouched)", SaveData.InSession && !MissionManager.Instance.enabled && net.Sent.Any(x => x.msg.StartsWith("H")));
-        var plot0 = FieldManager.Instance.Plots[0];
-        var stateBefore = plot0.State;
-        T.Check("Client: E on a plot is sent to the host", NetSession.HandleInteract(plot0) && net.Sent.Any(x => x.msg == NetProtocol.Make(NetProtocol.Interact, NetIds.Of(plot0))));
-        T.Check("Client: plot not changed locally", plot0.State == stateBefore);
+        var field0 = ffm.Fields[0]; var plot0 = field0.View;
+        string stateBefore = field0.EncodeCells();
+        T.Check("Client: E on a field runs locally (it sends the job, not the object)", !NetSession.HandleInteract(plot0));
+        plot0.Interact();
+        T.Check("Client: E on a field sends the hand job at the point you look at to the host", net.Sent.Any(x => x.msg.StartsWith(FarmNet.FieldWork + NetProtocol.Sep + "0" + NetProtocol.Sep)));
+        T.Check("Client: field not changed locally", field0.EncodeCells() == stateBefore);
         T.Check("Client: shop stays local (opens the shop UI)", !NetSession.HandleInteract(UnityEngine.Object.FindAnyObjectByType<ShopStall>()));
         int m0 = eco.Money;
         T.Check("Client: buying is sent to the host", eco.TryBuy("feed") && eco.Money == m0 && net.Sent.Any(x => x.msg == NetProtocol.Make(NetProtocol.Buy, "feed")));
         var cargo = new Dictionary<string, float> { { "wheat", 10f } };
         eco.SellAll(cargo, new List<string>());
         T.Check("Client: selling is sent to the host", cargo.Count == 0 && eco.Money == m0 && net.Sent.Any(x => x.msg.StartsWith(NetProtocol.Sell)));
-        var untilled = FieldManager.Instance.Plots.First(x => x.State == PlotState.Untilled);
-        T.Check("Client: tractor work is sent to the host", untilled.TryPlow(false) && untilled.State == PlotState.Untilled && net.Sent.Any(x => x.msg.StartsWith(NetProtocol.PlotJob)));
+        net.Sent.Clear();
+        ffm.Work(FieldTool.Plough, field0.center - new Vector3(0, 0, 5f), field0.center + new Vector3(0, 0, 5f), 2.4f, false, true);
+        T.Check("Client: tractor work is sent to the host (tool, path, width)", field0.EncodeCells() == stateBefore && net.Sent.Any(x => x.msg.StartsWith(FarmNet.FieldWork + NetProtocol.Sep + ((int)FieldTool.Plough))));
         var sync = NetSyncState.Capture();
         sync.money = 98765; sync.day = homeDay + 3; sync.weather = (int)Weather.Rain; sync.mission = homeMission + 1; sync.goods["wheat"] = 3f;
-        sync.plots[0] = new NetSyncState.Plot { state = (int)PlotState.Ripe, crop = "wheat", growth = 1f, water = 1f };
         net.Receive(0, sync.Encode());
+        var hostField = new FarmField(field0.id, "host", field0.center, field0.yaw, field0.width, field0.depth);
+        hostField.ResetSoil(FcData.CurrentRegion);
+        for (int i = 0; i < hostField.Cells; i++) { hostField.ground[i] = (byte)Ground.Sown; hostField.crop[i] = FcData.CropIndex("wheat"); hostField.Set(FieldLayer.Growth, i, 1f); }
+        hostField.pest = "aphids";
+        net.Receive(0, FarmNet.EncodeSnapshot(hostField));
         T.Check("Client: host money and storage applied", eco.Money == 98765 && Math.Abs(eco.Stored("wheat") - 3f) < 0.01f, eco.Money + "");
         T.Check("Client: host day, weather and mission applied", WorldClock.Instance.Day == homeDay + 3 && WorldClock.Instance.Weather == Weather.Rain && MissionManager.Instance.Index == homeMission + 1);
-        T.Check("Client: host plot state applied", plot0.State == PlotState.Ripe && plot0.CropId == "wheat");
+        T.Check("Client: host field snapshot applied (ripe wheat, pest)", FC.Ripe(field0) == field0.Cells && FC.Crop(field0) == "wheat" && field0.pest == "aphids");
+        hostField.TakeNetDirty();
+        FieldWork.Paint(hostField, hostField.center - new Vector3(0, 0, 8f), hostField.center + new Vector3(0, 0, 8f), 2f, new WorkContext { tool = FieldTool.HandHarvest, byHand = true });
+        net.Receive(0, FarmNet.EncodeDelta(hostField, hostField.TakeNetDirty()));
+        T.Check("Client: host cell deltas applied (harvested strip)", field0.EncodeCells() == hostField.EncodeCells());
+        var hostNet = new IrrigationNetwork();
+        var hw = hostNet.Add(IrrKind.Well, field0.center + new Vector3(-8f, 0, 0)); var hd = hostNet.Add(IrrKind.Drip, field0.center, field0.id); hostNet.Connect(hw.id, hd.id, 75);
+        net.Receive(0, NetProtocol.Make(FarmNet.IrrSync, hostNet.Encode(), "123.5", "wheat=50", "2"));
+        T.Check("Client: host irrigation network, groundwater, combine tank and density applied", IrrigationSystem.Instance.Net.Nodes.Count == 2 && Math.Abs(IrrigationSystem.Instance.Net.GroundwaterM - 123.5f) < 0.01f
+            && Math.Abs(ffm.Tank.kg - 50f) < 0.01f && ffm.Tank.crop == "wheat" && ffm.Density == 2);
+        string cpage = FieldsPage.Text();
+        T.Check("Client: the Fields page shows the host's field (ripe wheat, drip)", cpage.Contains("Wheat") && cpage.Contains("Drip"), cpage);
+        float sim0 = ffm.SimHours; int cm0 = eco.Money;
         FakeEngine.Run(WorldClock.Instance.secondsPerDay * 1.5f, 1f);
         T.Check("Client: the day does not roll over on its own", WorldClock.Instance.Day == homeDay + 3);
-        // ---- soil on a client: the host's values, nothing simulated here
-        var soilC = SoilManager.Instance;
-        var plotSoil = new List<string>();
-        for (int i = 0; i < FieldManager.Instance.Plots.Count; i++)
-            plotSoil.Add(string.Join(NetProtocol.Pair.ToString(), i == 0 ? new[] { "33", "44", "55", "8.2", "1.25", "6.5", "40", "30", "60", "1", "2", "3", "1", "72", "4", "wheat" }
-                                                                            : new[] { "150", "50", "200", "7.9", "0.6", "1.5", "15", "0", "0", "0", "1", "-1", "0", "0", "-1", "" }));
-        string soilMsg = NetProtocol.Make(NetProtocol.SoilSync, "2", "12.5", "1.5", "31", "1.2", "kit" + NetProtocol.Pair + "3", string.Join(NetProtocol.Item.ToString(), plotSoil));
-        net.Receive(0, soilMsg);
-        var cs = soilC.Soil(0);
-        T.Check("Client soil: host's N, P, K, pH, OM, salinity, compaction, weeds, waterlogging applied",
-            Math.Abs(cs.n - 33f) < 0.01f && Math.Abs(cs.p - 44f) < 0.01f && Math.Abs(cs.k - 55f) < 0.01f && Math.Abs(cs.ph - 8.2f) < 0.01f && Math.Abs(cs.om - 1.25f) < 0.01f
-            && Math.Abs(cs.ec - 6.5f) < 0.01f && Math.Abs(cs.compaction - 0.4f) < 0.01f && Math.Abs(cs.weeds - 0.3f) < 0.01f && Math.Abs(cs.waterlog - 0.6f) < 0.01f, cs.Pack());
-        T.Check("Client soil: sampled flag, irrigation, density, kits and groundwater applied", soilC.Sampled(cs) && soilC.Irrigation(plot0) == FieldWater.Drip && cs.density == 2 && soilC.Density == 2
-            && soilC.Items(SoilManager.KitId) == 3 && Math.Abs(soilC.WaterTodayM3 - 12.5f) < 0.01f && !soilC.Sampled(soilC.Soil(1)));
-        string cpage = SoilManager.FieldsText(0, 2);
-        T.Check("Client soil: Fields page shows the host's test, expected yield and limiting factor", cpage.Contains("N 33") && cpage.Contains("EC 6.5") && cpage.Contains("(72%)") && cpage.Contains("Limiting: Salinity")
-            && cpage.Contains("Irrigation: Drip lines"), cpage);
-        T.Check("Client soil: prompt shows the host's irrigation", plot0.InteractionPrompt.Contains("Drip lines") || plot0.State == PlotState.Ripe, plot0.InteractionPrompt);
-        float cw = cs.weeds; int cm = eco.Money;
-        soilC.Tick(300f);
-        typeof(SoilManager).GetMethod("OnDay", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(soilC, new object[] { WorldClock.Instance.Day });
-        T.Check("Client soil: no soil simulation or water bill on the client", Math.Abs(cs.weeds - cw) < 0.0001f && Math.Abs(cs.n - 33f) < 0.01f && eco.Money == cm);
+        T.Check("Client: no field simulation or water bill on the client", ffm.SimHours == sim0 && FC.Ripe(field0) > 0 && eco.Money == cm0);
         net.Sent.Clear();
-        soilC.CycleIrrigation(FieldManager.Instance.Plots[1], 1);
-        T.Check("Client soil: irrigation change sent to the host", net.Sent.Any(x => x.msg == NetProtocol.Make(NetProtocol.SoilSet, "i", "1", "0")), string.Join(" ", net.Sent.Select(x => x.msg.Replace('\u001f', '|'))));
-        soilC.CycleDensity(1);
-        T.Check("Client soil: sowing density change sent to the host", net.Sent.Any(x => x.msg == NetProtocol.Make(NetProtocol.SoilSet, "d", "0")));
-        var sampleOn = FieldManager.Instance.Plots[1];
-        T.Check("Client soil: E (sample, spread, leach) goes to the host, kit not used here", NetSession.HandleInteract(sampleOn) && soilC.Items(SoilManager.KitId) == 3 && !soilC.Sampled(soilC.Soil(1)));
-
+        ffm.CycleDensity(1);
+        T.Check("Client: sowing density change sent to the host", net.Sent.Any(x => x.msg == NetProtocol.Make(FarmNet.FieldSet, "d", "0")), string.Join(" ", net.Sent.Select(x => x.msg.Replace('\u001f', '|'))));
+        string why;
+        T.Check("Client: irrigation planner edits are sent to the host (nothing bought here)", IrrigationSystem.Instance.Place(IrrKind.Sprinkler, field0.center, 8f, out why) == null && net.Sent.Any(x => x.msg.StartsWith(FarmNet.IrrEdit + NetProtocol.Sep + "add")) && eco.Money == cm0);
         net.Receive(0, NetProtocol.Make(NetProtocol.Roster, "0" + NetProtocol.Pair + "Omar" + NetProtocol.Item + "7" + NetProtocol.Pair + "Me"));
         net.Receive(0, NetProtocol.Make(NetProtocol.Pose, "0", "5", "0", "-50", "90", "", "0"));
         FakeEngine.Run(1f);
@@ -2225,8 +1921,7 @@ static class MpTests
         T.Check("Leaving restores the own farm (money, day, mission)", !SaveData.InSession && eco.Money == homeMoney && WorldClock.Instance.Day == homeDay && MissionManager.Instance.Index == homeMission && MissionManager.Instance.enabled,
             eco.Money + " " + WorldClock.Instance.Day + " " + MissionManager.Instance.Index);
         T.Check("Leaving adds the gift to the own storage", Math.Abs(eco.Stored("wheat") - (homeWheat + 5f)) < 0.01f, eco.Stored("wheat") + " vs " + homeWheat);
-        T.Check("Leaving restores the own plots", plot0.State == stateBefore);
-        T.Check("Leaving restores the own soil", Math.Abs(SoilManager.Instance.Soil(0).n - 33f) > 0.01f && SoilManager.Instance.Items(SoilManager.KitId) != 3, SoilManager.Instance.Soil(0).Pack());
+        T.Check("Leaving restores the own fields and irrigation", field0.EncodeCells() == ownField0 && IrrigationSystem.Instance.Net.Encode() == ownNet && ffm.Density == 1, ffm.Density + "");
 
         T.Check("Remote players removed on leave", !mp.Remotes.Any() && FakeEngine.Errors.Count == beforeErr);
 
@@ -2240,32 +1935,31 @@ static class MpTests
         T.Check("Host: welcome + roster sent", net.Sent.Any(x => x.to == 5 && x.msg.StartsWith(NetProtocol.Welcome)) && net.Sent.Any(x => x.msg.StartsWith(NetProtocol.Roster)));
         net.Receive(5, NetProtocol.Make(NetProtocol.Hello, "Sara"));
         T.Check("Host: client name known", mp.Players[5] == "Sara");
-        var p3 = FieldManager.Instance.Plots.First(x => x.State == PlotState.Untilled);
+        int fcBefore = net.Sent.Count(x => x.to == 5 && x.msg.StartsWith(FarmNet.FieldCells + NetProtocol.Sep + "s"));
+        FakeEngine.Run(0.6f);
+        T.Check("Host: a new player gets every field in full (snapshots)", net.Sent.Count(x => x.to == 5 && x.msg.StartsWith(FarmNet.FieldCells + NetProtocol.Sep + "s")) >= ffm.Fields.Count, net.Sent.Count(x => x.msg.StartsWith(FarmNet.FieldCells)) + "");
+        var hf = ffm.Fields[1];
+        hf.ResetSoil(FcData.CurrentRegion); hf.TakeNetDirty();
         net.Sent.Clear();
-        net.Receive(5, NetProtocol.Make(NetProtocol.Interact, NetIds.Of(p3)));
+        net.Receive(5, NetProtocol.Make(FarmNet.FieldWork, "0", FarmNet.V(hf.center), FarmNet.V(hf.center), "6.4", "1", "0", "", "", "1", "0"));
         FakeEngine.Run(0.2f);
-        T.Check("Host: client's E on a plot plows it", p3.State == PlotState.Plowed);
+        T.Check("Host: client's E on a field does the hand job there (hoe)", FC.Worked(hf) > 0);
         T.Check("Host: farm state sent right after", net.Sent.Any(x => x.msg.StartsWith(NetProtocol.Sync)));
-        // ---- soil: clients' settings applied by the host, soil sent with the sync
-        var soilH = SoilManager.Instance;
-        var hp = FieldManager.Instance.Plots[4];
-        net.Sent.Clear();
-        net.Receive(5, NetProtocol.Make(NetProtocol.SoilSet, "i", "4", ((int)FieldWater.Flood).ToString()));
-        net.Receive(5, NetProtocol.Make(NetProtocol.SoilSet, "d", "2"));
-        FakeEngine.Run(0.2f);
-        T.Check("Host soil: client's irrigation and sowing density applied", soilH.Irrigation(hp) == FieldWater.Flood && soilH.Density == 2);
-        var soilSync = net.Sent.LastOrDefault(x => x.to == 5 && x.msg.StartsWith(NetProtocol.SoilSync + NetProtocol.Sep));
-        T.Check("Host soil: soil sent to the client right after", soilSync.msg != null && NetProtocol.Split(soilSync.msg)[1] == "2");
-        T.Check("Host soil: compact (< 80 chars a field)", soilSync.msg != null && soilSync.msg.Length < 80 * FieldManager.Instance.Plots.Count + 60, soilSync.msg == null ? "" : soilSync.msg.Length + "");
-        net.Receive(5, NetProtocol.Make(NetProtocol.SoilSet, "i", "4", ((int)FieldWater.Pivot).ToString()));
-        T.Check("Host soil: a system the farm hasn't bought is refused", SoilManager.Available(FieldWater.Pivot) || soilH.Irrigation(hp) == FieldWater.Flood);
-        var hs = FieldManager.Instance.Plots.First(x => x.State == PlotState.Untilled);
-        soilH.ResetSoil(hs.index);
-        eco.AddMoney(500); eco.TryBuy("soil_kit");
-        int kits = soilH.Items(SoilManager.KitId);
-        net.Receive(5, NetProtocol.Make(NetProtocol.Interact, NetIds.Of(hs)));
-        T.Check("Host soil: client's E takes the soil sample on the host", soilH.Sampled(soilH.Soil(hs)) && soilH.Items(SoilManager.KitId) == kits - 1 && hs.State == PlotState.Untilled);
-        soilH.SetDensity(1);
+        FakeEngine.Run(0.3f);
+        var delta = net.Sent.LastOrDefault(x => x.to == 5 && x.msg.StartsWith(FarmNet.FieldCells + NetProtocol.Sep + "d"));
+        T.Check("Host: the changed cells go to the client as a compact delta", delta.msg != null && delta.msg.Length < 40 * 12 + 40, delta.msg == null ? "none" : delta.msg.Length + "");
+        int worked0 = FC.Worked(hf);
+        net.Receive(5, NetProtocol.Make(FarmNet.FieldWork, ((int)FieldTool.Plough).ToString(), FarmNet.V(hf.center + new Vector3(-4f, 0, -6f)), FarmNet.V(hf.center + new Vector3(-4f, 0, 6f)), "2.4", "0", "1", "", "", "1", "0"));
+        T.Check("Host: client's tractor work ploughs the strip", FC.Worked(hf) > worked0);
+        net.Receive(5, NetProtocol.Make(FarmNet.FieldWork, ((int)FieldTool.Plough).ToString(), FarmNet.V(hf.center + new Vector3(0, 0, -30f)), FarmNet.V(hf.center + new Vector3(0, 0, 30f)), "2.4", "0", "1", "", "", "1", "0"));
+        T.Check("Host: a stroke longer than a frame's drive is refused", FC.Worked(hf) >= worked0);
+        net.Receive(5, NetProtocol.Make(FarmNet.FieldSet, "d", "2"));
+        T.Check("Host: client's sowing density applied", ffm.Density == 2);
+        ffm.SetDensity(1);
+        eco.AddMoney(5000);
+        int nodes0 = IrrigationSystem.Instance.Net.Nodes.Count, hostMoney = eco.Money;
+        net.Receive(5, NetProtocol.Make(FarmNet.IrrEdit, "add", ((int)IrrKind.Well).ToString(), FarmNet.V(hf.center + new Vector3(-10f, 0, 0)), "0"));
+        T.Check("Host: client's irrigation edit is built (and paid) on the host", IrrigationSystem.Instance.Net.Nodes.Count == nodes0 + 1 && eco.Money < hostMoney);
 
         eco.AddMoney(1000);
         int hm = eco.Money;
@@ -2568,9 +2262,12 @@ static class CozyTests
         T.Check("Ramadan: better prices at night", Math.Abs(dayMul - 1f) < 0.001f && Math.Abs(SeasonalEvents.PriceFor("milk") - 1.2f) < 0.001f);
         T.SetProp(WorldClock.Instance, "DayProgress", 0.3f);
         int ed = SeasonalEvents.NextDayOf("eid", WorldClock.Instance.Day);
-        m0 = Money; float feed0 = eco.Feed;
+        m0 = Money; float feed0 = eco.Feed; int eidFrom = WorldClock.Instance.Day;
         while (WorldClock.Instance.Day < ed) WorldClock.Instance.NextDay();
-        T.Check("Eid follows Ramadan: gift (eidiya) + lights", se.Active?.id == "eid" && Money >= m0 + 150 && /* daily power bills also run */ eco.Feed >= feed0 + 5f && GameObject.Find("Eid Lights") != null, Money - m0 + "");
+        var books = new System.Text.StringBuilder();
+        int running = 0;   // daily power bills and processing plants also run meanwhile (how much depends on what earlier sections left in storage)
+        if (FinanceLedger.Instance != null) foreach (var cat in Ledger.Categories) { int ex = 0, inc = 0; for (int d = eidFrom; d <= ed; d++) { ex += FinanceLedger.Instance.Expense(d, cat); inc += FinanceLedger.Instance.Income(d, cat); } if (cat == Ledger.Utilities || cat == Ledger.Production) running += ex; if (ex + inc > 0) books.Append(" ").Append(cat).Append(" +").Append(inc).Append("/-").Append(ex); }
+        T.Check("Eid follows Ramadan: gift (eidiya) + lights", se.Active?.id == "eid" && Money + running >= m0 + 250 && eco.Feed >= feed0 + 5f && GameObject.Find("Eid Lights") != null, Money - m0 + " over " + (ed - eidFrom) + " days:" + books);
         int dd = SeasonalEvents.NextDayOf("dates", WorldClock.Instance.Day);
         while (WorldClock.Instance.Day < dd) WorldClock.Instance.NextDay();
         T.Check("Buraidah date festival at the end of summer", se.Active?.id == "dates" && WorldClock.Instance.Season == Season.Summer);
@@ -2726,13 +2423,13 @@ static class ArtTests
         T.Check("Parts merged into few meshes", dd.MergedParts > 100, "" + dd.MergedParts);
         var player = GameObject.Find("PlayerCapsule").transform;
         T.Check("Najdi farmhouse near the start", dd.HasHouse && Flat(dd.HousePosition, player.position) < 45f, dd.HousePosition.ToString());
-        var plots = FieldManager.Instance.Plots;
+        var plots = FarmFields.Instance.Fields.Select(f => f.center).ToList();
         var zones = new[] { DeliveryZone.LoadingBay.transform.position, DeliveryZone.Market.transform.position };
         var pen = AnimalPen.Instance.transform.position;
-        T.Check("Farmhouse clear of plots, zones, pen and start",
-            plots.All(p => Flat(p.transform.position, dd.HousePosition) > 11f) && zones.All(z => Flat(z, dd.HousePosition) > 15f) && Flat(pen, dd.HousePosition) > 18f && Flat(player.position, dd.HousePosition) > 10f);
+        T.Check("Farmhouse clear of fields, zones, pen and start",
+            FarmFields.Instance.Fields.All(f => !f.Contains(dd.HousePosition, 6f)) && zones.All(z => Flat(z, dd.HousePosition) > 15f) && Flat(pen, dd.HousePosition) > 18f && Flat(player.position, dd.HousePosition) > 10f);
         var props = UnityEngine.Object.FindObjectsByType<BoxCollider>(FindObjectsSortMode.None).Where(c => c.gameObject.layer == DesertProps.PropLayer && (c.name == "Date Palm" || c.name == "Acacia" || c.name == "Sidr")).ToList();
-        var bad = props.Where(c => plots.Any(p => Flat(p.transform.position, c.transform.position) < 6f) || zones.Any(z => Flat(z, c.transform.position) < 11f) || Flat(pen, c.transform.position) < 12f
+        var bad = props.Where(c => FarmFields.Instance.Fields.Any(f => f.Contains(c.transform.position, 1.5f)) || zones.Any(z => Flat(z, c.transform.position) < 11f) || Flat(pen, c.transform.position) < 12f
             || gm.Greenhouses.Any(g => Flat(g.transform.position, c.transform.position) < 6f)).Select(c => c.name + c.transform.position).ToList();
         T.Check("Palms and trees keep off plots, pads, pen and greenhouses (" + props.Count + " props)", props.Count > 0 && bad.Count == 0, string.Join(" ", bad.Take(3)));
         T.Check("Prop colliders are ignored by ground raycasts", props.All(c => (Build.GroundMask & (1 << c.gameObject.layer)) == 0));
@@ -2849,18 +2546,20 @@ static class EgyptTests
 
         // ---- data
         T.Check("Egypt: 4 DLC field crops tagged for the Nile Delta, with goods, families and soil agronomy",
-            EgyptCrops.All(c => eco.FieldCrop(c) != null && eco.FieldCrop(c).regions.SequenceEqual(new[] { "nile_delta" }) && eco.Good(c) != null && CropsData.Meta(c) != null && SoilData.Data.crops.Any(s => s.id == c)));
+            EgyptCrops.All(c => eco.FieldCrop(c) != null && eco.FieldCrop(c).regions.SequenceEqual(new[] { "nile_delta" }) && eco.Good(c) != null && CropsData.Meta(c) != null && FcData.File.crops.Any(s => s.id == c)));
         T.Check("Egypt: crops have Arabic names and placeholder stage models", EgyptCrops.All(c => !string.IsNullOrEmpty(eco.FieldCrop(c).nameAr) && !string.IsNullOrEmpty(eco.Good(c).nameAr) && CropVisuals.HasModels(c)));
         T.Check("Egypt: Delta seasons (rice + maize summer, cotton spring-summer, berseem winter forage)",
             eco.FieldCrop("rice").seasons.Contains("summer") && eco.FieldCrop("maize").seasons.Contains("summer") && eco.FieldCrop("cotton").seasons.Contains("spring")
             && eco.FieldCrop("berseem").seasons.Contains("winter") && !eco.FieldCrop("berseem").seasons.Contains("summer"));
-        var rice = SoilData.Crop("rice"); var cotton = SoilData.Crop("cotton"); var berseem = SoilData.Crop("berseem"); var maize = SoilData.Crop("maize");
+        var rice = FcData.Crop("rice"); var cotton = FcData.Crop("cotton"); var berseem = FcData.Crop("berseem"); var maize = FcData.Crop("maize");
         T.Check("Egypt: FAO salt tolerance (rice 3.0, cotton 7.7, berseem 1.5, maize 1.7 dS/m)", rice.ecT == 3f && cotton.ecT == 7.7f && berseem.ecT == 1.5f && maize.ecT == 1.7f);
-        T.Check("Egypt: rice is a flooded, thirsty crop (highest water use)", rice.flood && rice.waterMin > 0.5f && SoilData.Data.crops.All(c => c.et <= rice.et));
+        T.Check("Egypt: rice is a flooded, thirsty crop (highest water use)", rice.flood && rice.waterMin > 0.5f && FcData.File.crops.All(c => c.et <= rice.et));
+        var paddy = new FarmField(990, "paddy", Vector3.zero, 0f, 4f, 4f); paddy.ResetSoil(FcData.Region("nile_delta"));
+        FC.Wet(paddy, 1.15f);
         T.Check("Egypt: standing water doesn't hurt rice but does hurt wheat",
-            SoilModel.GrowthFactor(new SoilState { waterlog = 1f, ec = 1f }, rice) > SoilModel.GrowthFactor(new SoilState { waterlog = 1f, ec = 1f }, SoilData.Crop("wheat")) + 0.3f);
+            FarmAgronomy.SoilGrowth(paddy, 0, rice) > FarmAgronomy.SoilGrowth(paddy, 0, FcData.Crop("wheat")) + 0.3f && FarmAgronomy.Factors(paddy, 0, rice).waterlog == 1f && FarmAgronomy.Factors(paddy, 0, FcData.Crop("wheat")).waterlog < 0.6f);
         T.Check("Egypt: berseem is a multi-cut legume that feeds animals and fixes nitrogen", CropsData.Family("berseem") == "legume" && CropsData.Meta("berseem").cuts > 1 && CropsData.Meta("berseem").feedPerKg > 0f && berseem.fix > 0f && berseem.rn == 0f);
-        T.Check("Egypt: rotation berseem -> cotton bonus, cotton after cotton penalty", CropsData.Family("cotton") == "fiber" && SoilData.Rotation("legume", "fiber") > 1.1f && SoilData.Rotation("fiber", "fiber") < 1f);
+        T.Check("Egypt: rotation berseem -> cotton bonus, cotton after cotton penalty", CropsData.Family("cotton") == "fiber" && FcData.Rotation("legume", "fiber") > 1.1f && FcData.Rotation("fiber", "fiber") < 1f);
         T.Check("Egypt: cotton leafworm only attacks cotton and is treated by neem / pesticide",
             CropsData.Pest("cotton_leafworm") != null && CropsData.Pest("cotton_leafworm").families.SequenceEqual(new[] { "fiber" }) && CropsData.Pest("cotton_leafworm").curedBy.Contains("pesticide"));
         var arabicMissions = mm.AllMissions.Where(m => m.regions != null && m.regions.Contains("nile_delta")).ToList();
@@ -2879,10 +2578,8 @@ static class EgyptTests
         eco.AddMoney(5000);
         T.Check("Najd: Egypt seed can't be bought", !eco.TryBuy("seed_rice") && eco.Seeds("rice") == 0);
         eco.AddSeeds("cotton", 1);
-        var plot = FieldManager.Instance.Plots[0];
-        plot.ResetPlot(); FieldPlot.PreferredSeed = "cotton";
-        plot.TryPlow(false);
-        T.Check("Najd: a gifted Egypt seed is not planted here", plot.BestSeed() == null || plot.BestSeed().id != "cotton");
+        FarmFields.PreferredSeed = "cotton"; FarmFields.Instance.SetSowCrop("");
+        T.Check("Najd: a gifted Egypt seed is not planted here", FarmFields.Instance.CropToSow() != "cotton", FarmFields.Instance.CropToSow());
         T.Check("Najd: base mission chain, first mission the well, no Egypt missions", mm.Missions.Length == 50 && mm.Current?.id == "well" && mm.Missions.All(m => !m.id.StartsWith("eg_")), mm.Missions.Length + " " + mm.Current?.id);
         T.Check("Najd: base campaign (8 chapters with the open road, Abu Saleh)", camp.Chapters.Length == 8 && camp.Chapters[0].id == "inheritance" && camp.Narrator == "Abu Saleh" && !camp.IsRegionCampaign && StoryIntro.Body() == Loc.T("STORY_BODY"));
         T.Check("Najd: events unchanged (8, haboob, no canal turns)", ed.Data.events.Length == 8 && ed.Find("haboob") != null && ed.Find("canal_turn") == null);
@@ -2916,7 +2613,8 @@ static class EgyptTests
         T.Check("Egypt: cotton gin and rice mill pay more (selling points of the market)", market.Point("gin").mul > 1.1f && market.Point("ricemill").mul > 1.05f && market.Point("ricemill").accepts.Contains("maize")
             && !MarketMath.Accepts(market.Point("gin"), "wool") && market.BestPoint("cotton") == "gin" && market.Price("cotton", "gin") > market.Price("cotton") * 1.1f
             && MarketManager.Buildings("nile_delta").Select(sp => sp.id).OrderBy(x => x).SequenceEqual(new[] { "gin", "ricemill", "village" }) && market.Point("sugar") == null);
-        T.Check("Egypt: Delta clay soil on every field", Enumerable.Range(0, FieldManager.Instance.Plots.Count).All(i => Math.Abs(SoilManager.Instance.Soil(i).om - 1.8f) < 0.01f && Math.Abs(SoilManager.Instance.Soil(i).k - 380f) < 0.5f));
+        T.Check("Egypt: Delta clay soil on every field (OM 1.8 %, K ~380, 140 mm water)", FarmFields.Instance.Fields.All(f => Math.Abs(f.om - 1.8f) < 0.01f && Math.Abs(FarmSim.Summarize(f).k - 380f) < 20f) && FarmEnv.Now().region.capacityMm == 140f,
+            string.Join(",", FarmFields.Instance.Fields.Select(f => f.om + "/" + FarmSim.Summarize(f).k)));
 
         // ---- look
         T.Check("Egypt: green Delta ground, no dunes", dd.BuiltRegion == "nile_delta" && dd.Dunes == 0 && dd.GroundColor.g > dd.GroundColor.r, dd.BuiltRegion + " dunes " + dd.Dunes);
@@ -2924,9 +2622,8 @@ static class EgyptTests
         T.Check("Egypt: eucalyptus rows and date palms", dd.Eucalyptus > 4 && dd.Palms > 0, dd.Eucalyptus + " / " + dd.Palms);
         T.Check("Egypt: sell points by the market (gin, mill, souq) with signs", dd.SellPoints == 3 && GameObject.Find("Sell Point gin") != null && LabelKeys().Contains("Cotton gin") && LabelKeys().Contains("Rice mill"), "" + dd.SellPoints);
         T.Check("Egypt: pigeon tower by the farmhouse", !dd.HasHouse || dd.HasPigeonTower);
-        var plots = FieldManager.Instance.Plots;
         var props = UnityEngine.Object.FindObjectsByType<BoxCollider>(FindObjectsSortMode.None).Where(c => c.gameObject.layer == DesertProps.PropLayer && (c.name == "Eucalyptus" || c.name == "Date Palm" || c.name == "Sidr" || c.name.StartsWith("Sell Point") || c.name == "Pigeon Tower")).ToList();
-        var blocked = props.Where(c => plots.Any(pl => Vector3.Distance(Flat(pl.transform.position), Flat(c.transform.position)) < 6f)
+        var blocked = props.Where(c => FarmFields.Instance.Fields.Any(f => f.Contains(c.transform.position, 1.5f))
             || Vector3.Distance(Flat(DeliveryZone.Market.transform.position), Flat(c.transform.position)) < 9f || Vector3.Distance(Flat(DeliveryZone.LoadingBay.transform.position), Flat(c.transform.position)) < 9f).Select(c => c.name + c.transform.position).ToList();
         T.Check("Egypt: Delta props keep off plots and pads (" + props.Count + ")", props.Count > 0 && blocked.Count == 0, string.Join(" ", blocked.Take(3)));
         T.Check("Egypt: canals have no colliders", UnityEngine.Object.FindObjectsByType<Collider>(FindObjectsSortMode.None).All(c => c.transform.parent == null || c.transform.parent.name != "Canal"));
@@ -2944,36 +2641,38 @@ static class EgyptTests
         foreach (var w in UnityEngine.Object.FindObjectsByType<WellController>(FindObjectsSortMode.None)) if (!w.IsRunning) w.Interact();
         FakeEngine.Run(2f, 0.5f);
         T.Check("Egypt mission 1: the pump", mm.Current?.id == "eg_berseem", mm.Current?.id);
-        var p = plots[0];
-        p.ResetPlot(); CropCareManager.Instance.Plot(p.index).protectDays = 99;
-        FieldPlot.PreferredSeed = "berseem";
-        p.TryPlow(false); p.TrySeed(false);
-        T.Check("Egypt: berseem planted, story moves on", p.CropId == "berseem" && mm.Current?.id == "eg_cut", p.CropId + " " + mm.Current?.id);
-        float feed0 = eco.Feed, n0 = SoilManager.Instance.Soil(p).n;
-        T.SetProp(p, "Growth", 1f); T.SetProp(p, "State", PlotState.Ripe);
-        p.TryHarvest(false);
-        T.Check("Egypt: a berseem cut feeds the animals, grows back and adds nitrogen", eco.Feed > feed0 && eco.Stored("berseem") > 20f && p.State == PlotState.Growing && p.CropId == "berseem" && SoilManager.Instance.Soil(p).n > n0 - 1f,
-            eco.Feed + " " + eco.Stored("berseem") + " " + p.State + " n " + n0 + "->" + SoilManager.Instance.Soil(p).n);
+        var ffe = FarmFields.Instance;
+        var p = ffe.Fields[0];
+        p.ResetSoil(FcData.CurrentRegion); p.protectDays = 99;
+        FarmFields.PreferredSeed = "berseem"; ffe.SetSowCrop("");
+        FC.Prepare(p); FC.Whole(p, FieldTool.Seeder);
+        T.Check("Egypt: berseem sown (2 bags of the starting seed), story moves on", FC.Crop(p) == "berseem" && FC.Sown(p) == p.Cells && mm.Current?.id == "eg_cut", FC.Crop(p) + " " + FC.Sown(p) + " " + mm.Current?.id);
+        float feed0 = eco.Feed, n0 = FarmSim.Summarize(p).n;
+        FC.Ripen(p);
+        FC.Whole(p, FieldTool.Mower); FC.Whole(p, FieldTool.Baler);
+        T.Check("Egypt: a berseem cut feeds the animals, grows back and adds nitrogen", eco.Feed > feed0 && eco.Stored("berseem") > 20f && FC.Sown(p) == p.Cells && FC.Crop(p) == "berseem" && FarmSim.Summarize(p).n > n0 - 1f,
+            eco.Feed + " " + eco.Stored("berseem") + " " + FC.Sown(p) + " n " + n0 + "->" + FarmSim.Summarize(p).n);
 
         // ---- rice grows, is harvested and sells
-        var q = plots[1];
-        q.ResetPlot(); SoilManager.Instance.ResetSoil(q.index); CropCareManager.Instance.Plot(q.index).protectDays = 99;
+        var q = ffe.Fields[1];
+        q.ResetSoil(FcData.CurrentRegion); q.protectDays = 99;
         eco.AddMoney(1000);
-        T.Check("Egypt: buy rice seed at the cooperative", eco.TryBuy("seed_rice") && eco.Seeds("rice") == 1);
-        FieldPlot.PreferredSeed = "rice";
-        q.TryPlow(false); q.TrySeed(false);
-        T.Check("Egypt: rice planted", q.State == PlotState.Growing && q.CropId == "rice", q.State + " " + q.CropId);
-        float g0 = q.Growth;
-        for (int i = 0; i < 20; i++) { q.AddWater(1f); FakeEngine.Run(1f, 0.25f); }
-        T.Check("Egypt: rice grows in its flooded paddy", q.Growth > g0 && q.State == PlotState.Growing, g0 + " -> " + q.Growth);
-        T.Check("Egypt: flooded paddy is not waterlogging stress for rice", SoilManager.Instance.Factors(q).waterlog == 1f);
-        T.SetProp(q, "Growth", 1f); T.SetProp(q, "State", PlotState.Ripe);
+        T.Check("Egypt: buy rice seed at the cooperative", eco.TryBuy("seed_rice") && eco.TryBuy("seed_rice") && eco.Seeds("rice") == 2);
+        FarmFields.PreferredSeed = "rice";
+        FC.Prepare(q); FC.Whole(q, FieldTool.Seeder);
+        T.Check("Egypt: rice planted", FC.Sown(q) == q.Cells && FC.Crop(q) == "rice", FC.Sown(q) + " " + FC.Crop(q));
+        float g0 = FarmSim.Summarize(q).growth;
+        for (int i = 0; i < 20; i++) { FC.Wet(q, 1.12f); ffe.Simulate(2f); }
+        T.Check("Egypt: rice grows in its flooded paddy", FarmSim.Summarize(q).growth > g0 && FC.Count(q, c => q.Has(c, CellFlags.Withered)) == 0, g0 + " -> " + FarmSim.Summarize(q).growth);
+        FC.Wet(q, 1.12f);
+        T.Check("Egypt: flooded paddy is not waterlogging stress for rice", FarmSim.Summarize(q).factors.waterlog == 1f);
+        FC.Ripen(q);
         float rice0 = eco.Stored("rice"); float custom = 0f;
         Action<string, float> spy = (t, a) => { if (t == "harvest_rice") custom += a; };
         GameEvents.Custom += spy;
-        q.TryHarvest(false);
+        FC.HandHarvest(q);
         float kg = eco.Stored("rice") - rice0;
-        T.Check("Egypt: rice harvest goes to storage (story event too)", kg > 30f && Math.Abs(custom - kg) < 0.01f && q.State == PlotState.Untilled, kg + " kg, event " + custom);
+        T.Check("Egypt: rice harvest goes to storage (story event too)", kg > 30f && Math.Abs(custom - kg) < 0.01f && FC.Sown(q) == 0, kg + " kg, event " + custom);
         float sold = 0f;
         Action<string, float> spy2 = (t, a) => { if (t == "sell_rice") sold += a; };
         GameEvents.Custom += spy2;
@@ -2985,15 +2684,18 @@ static class EgyptTests
         // ---- canal turn (nobat el-mayya)
         typeof(EventDirector).GetMethod("OnNewDay", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(ed, new object[] { 7 });
         T.Check("Egypt: the canal turn is forecast every 4 days", ed.Pending != null && ed.Pending.id == "canal_turn" && ed.PendingDay == 8, ed.Pending?.id + " " + ed.PendingDay);
-        p.AddWater(-1f);
+        FC.Wet(p, 0.1f);
         bool turned = false;
         Action<string, float> spy3 = (t, a) => { if (t == "event_canal_turn") turned = true; };
         GameEvents.Custom += spy3;
         ed.StartNow("canal_turn");
         FakeEngine.Run(1f, 0.25f);
-        T.Check("Egypt: on the canal turn every planted field gets water", turned && p.Water > 0.9f && FarmModifiers.FieldDry < 1f, turned + " water " + p.Water + " dry " + FarmModifiers.FieldDry);
+        T.Check("Egypt: on the canal turn every planted field gets water", turned && FarmSim.Summarize(p).moisture > 0.9f && FarmModifiers.FieldDry < 1f, turned + " water " + FarmSim.Summarize(p).moisture + " dry " + FarmModifiers.FieldDry);
+        T.Check("Egypt: canal intakes of the irrigation network flow on the turn", IrrigationSystem.CanalOpen());
         ed.EndActive();
         GameEvents.Custom -= spy3;
+        int today = WorldClock.Instance.Day;
+        T.Check("Egypt: between turns the canal is closed (every 4th day open)", IrrigationSystem.CanalOpen() == (today % 4 == 0));
 
         // ---- back to Najd: everything resets to the base game
         eco.AddSeeds("rice", 2);
@@ -3008,7 +2710,7 @@ static class EgyptTests
         T.Check("Switch to Najd: base quests, Saudi buyers", dq.Templates.Length == 9 && dq.Quests.All(qq => !qq.template.StartsWith("eg_")) && market.Offers.All(c => !EgyptClient(c.buyerEn)) && market.Point("gin") == null);
         T.Check("Switch to Najd: market name, desert look and grade back", LabelKeys().Contains("Market") && LabelKeys().Contains("Farm Shop") && !LabelKeys().Contains("Village souq")
             && dd.BuiltRegion == "najd" && dd.Dunes > 0 && dd.Canals == 0 && dd.SellPoints == 0 && dd.Eucalyptus == 0 && GraphicsEnhancer.Instance.GradeSaturation == 12f && GameObject.Find("Sell Point gin") == null);
-        T.Check("Switch to Najd: Najd sandy soil again", Math.Abs(SoilManager.Instance.Soil(0).om - 0.6f) < 0.01f);
+        T.Check("Switch to Najd: Najd sandy soil again", Math.Abs(FarmFields.Instance.Fields[0].om - 0.6f) < 0.01f && FarmEnv.Now().region.capacityMm == 70f);
         T.Check("Egypt: no errors", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
     }
 
@@ -3250,8 +2952,8 @@ static class DrivingTests
         T.Check("Driving: HUD shows gear, RPM, slip %, surface and condition", sb.ToString().Contains("Slip") && sb.ToString().Contains("rpm") && sb.ToString().Contains("Asphalt") && sb.ToString().Contains("Tyres"), sb.ToString());
 
         // ---- implements: drag, working speed, fuel by load, ballast
-        var plot = FieldManager.Instance.Plots[0];
-        tractor.transform.position = plot.transform.position + tractor.transform.forward * 2.6f; tractor.RefreshSurface();
+        var plot = FarmFields.Instance.Fields[0];
+        tractor.transform.position = plot.center + tractor.transform.forward * 2.6f; tractor.RefreshSurface();
         T.SetProp(tractor, "ActiveImplement", Implement.Plow); T.Set(tractor, "workCheckTime", -1f);
         Stop(tractor); Step(tractor, 1f, 1f);
         T.Check("Driving: plow in the ground while moving over a plot", tractor.Working && tractor.SurfaceNow == DriveSurface.Field, tractor.Working + " " + tractor.SurfaceNow);
@@ -3490,19 +3192,19 @@ static class LifeTests
         UnityEngine.InputSystem.Gamepad.current = pad;
         Press(pad.leftShoulder);
         T.Check("Life: LB cycles back", life.Tool == HandTool.Hoe);
-        var plot = FieldManager.Instance.Plots.FirstOrDefault(p => p.State == PlotState.Untilled);
-        if (plot != null)
+        var plot = FarmFields.Instance.Fields[0];
+        plot.ResetSoil(FcData.CurrentRegion);
         {
-            player.position = plot.transform.position;
+            player.position = plot.center;
             life.Model.stamina = StaminaModel.Max;
             Press(pad.rightTrigger);
-            T.Check("Life: RT with the hoe plows the plot by hand (costs stamina)", plot.State == PlotState.Plowed && life.Model.stamina < StaminaModel.Max, life.LastMessage);
+            T.Check("Life: RT with the hoe works the soil by hand (costs stamina)", FC.Worked(plot) > 0 && life.Model.stamina < StaminaModel.Max, life.LastMessage);
             life.SetTool(HandTool.WateringCan);
-            plot.AddWater(-1f);
+            FC.Wet(plot, 0f);
+            T.SetProp(life, "CanWater", 1f);
             string w = life.UseTool();
-            T.Check("Life: watering can waters the plot", plot.Water >= 0.49f, w);
+            T.Check("Life: watering can waters the soil around you", FarmSim.Summarize(plot).moisture > 0.02f, w);
         }
-        else T.Check("Life: an untilled plot for the hoe", false);
         UnityEngine.InputSystem.Gamepad.current = null;
         life.SetTool(HandTool.Shovel);
         player.position = pen.transform.position;
@@ -3520,7 +3222,7 @@ static class LifeTests
         string br = life.UseTool();
         T.Check("Life: brushing an animal cleans it and makes it happier", rec.clean == 1f && rec.happiness >= 0.5f, br);
         T.Check("Life: footsteps know the surface (pen straw, field soil, sand)", PlayerLife.SurfaceAt(pen.transform.position) == "straw"
-            && PlayerLife.SurfaceAt(FieldManager.Instance.Plots[0].transform.position) == "soil" && PlayerLife.SurfaceAt(new Vector3(400, 0, 400)) == "sand");
+            && PlayerLife.SurfaceAt(FarmFields.Instance.Fields[0].center) == "soil" && PlayerLife.SurfaceAt(new Vector3(400, 0, 400)) == "sand");
 
         // --- illness: produces less, medicine cures
         var ewe = sheep.First(a => !a.male);

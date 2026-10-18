@@ -1,7 +1,5 @@
 using UnityEngine;
 
-public enum IrrigationKind { None, Sprinklers, Drip, CenterPivot }
-
 /// <summary>What the farm looks like this hour (gathered from the scene by UtilityGrid, or set directly in tests).</summary>
 public class UtilityEnv
 {
@@ -12,13 +10,11 @@ public class UtilityEnv
     public int hour = 12;                  // 0..23 clock hour
     public int greenhouses;
     public int beds;
-    public int plots;
-    public int growingPlots;
+    /// <summary>kW of the FarmCore irrigation pumps on grid power (UtilityHooks.IrrigationKw).</summary>
+    public float irrigationKw;
     public float animalWater;              // m3/day
     public float manureKg;                 // manure in storage
     public bool wellRunning = true;
-    /// <summary>Growing plots per irrigation method (index = IrrigationKind), when fields have their own method; null = all use the farm system.</summary>
-    public int[] plotKinds;
 }
 
 /// <summary>
@@ -50,11 +46,6 @@ public class UtilityModel
     public int GridLevel;
     public int Solar, Wind, Tanks;
     public bool Generator, Biogas, DeepWell, Tse;
-    public IrrigationKind Irrigation;
-    /// <summary>Irrigation systems bought (bit per IrrigationKind): fields can use any of them (SoilManager per-field irrigation).</summary>
-    public int OwnedIrrigation;
-    public bool Owns(IrrigationKind k) => k == IrrigationKind.None || Irrigation == k || (OwnedIrrigation & (1 << (int)k)) != 0;
-    public void MarkOwned(IrrigationKind k) { if (k != IrrigationKind.None) OwnedIrrigation |= 1 << (int)k; }
 
     // ---- stocks ----
     public float DieselL;
@@ -72,8 +63,7 @@ public class UtilityModel
     public float GhWater, FieldWater, AnimalWater, WaterDemand;
     public float WellOut, DeepOut, TseOut, WaterSupply;
     public float PowerRatio = 1f, WaterRatio = 1f;
-    public float GreenhouseFactor = 1f, FieldDryFactor = 1f;
-    public bool FieldsAutoWatered;
+    public float GreenhouseFactor = 1f;
 
     public float StorageCapacity => BaseReservoir + Tanks * TankSize;
     public float PowerCapacity => SolarKwp * Solar + WindKw * Wind + (Biogas ? BiogasKw : 0f) + GridKw[Mathf.Clamp(GridLevel, 0, GridKw.Length - 1)] + (Generator ? GeneratorKw : 0f);
@@ -83,11 +73,11 @@ public class UtilityModel
 
     public void ResetAll()
     {
-        GridLevel = 0; Solar = Wind = Tanks = 0; Generator = Biogas = DeepWell = Tse = false; Irrigation = IrrigationKind.None; OwnedIrrigation = 0;
+        GridLevel = 0; Solar = Wind = Tanks = 0; Generator = Biogas = DeepWell = Tse = false;
         DieselL = 0f; Dust = 0f; Stored = BaseReservoir;
         GridKwhToday = ExportKwhToday = DieselLToday = WaterUsedToday = TseUsedToday = 0f;
         PowerShortToday = WaterShortToday = WarnedLimit80 = WarnedLimit = false; PowerOkDays = 0;
-        PowerRatio = WaterRatio = GreenhouseFactor = FieldDryFactor = 1f; FieldsAutoWatered = false;
+        PowerRatio = WaterRatio = GreenhouseFactor = 1f;
     }
 
     // ---------------- climate helpers ----------------
@@ -96,7 +86,6 @@ public class UtilityModel
     public static float CoolingWeather(Weather w) { switch (w) { case Weather.Heatwave: return 1.4f; case Weather.Cloudy: return 0.85f; case Weather.Rain: return 0.7f; default: return 1f; } }
     public static float WaterSeason(Season s) { switch (s) { case Season.Summer: return 1.5f; case Season.Autumn: return 1.1f; case Season.Winter: return 0.7f; default: return 1f; } }
     public static float SolarWeather(Weather w) { switch (w) { case Weather.Cloudy: return 0.5f; case Weather.Rain: return 0.25f; case Weather.Heatwave: return 0.9f; default: return 1f; } }
-    public static float IrrigationWater(IrrigationKind k) { switch (k) { case IrrigationKind.Drip: return 0.55f; case IrrigationKind.CenterPivot: return 0.85f; case IrrigationKind.Sprinklers: return 1f; default: return 1.3f; } }
 
     /// <summary>Deterministic gusty wind 0..1 from day and hour (stronger in the afternoon and in unsettled weather).</summary>
     public static float WindFactor(int day, int hour, Weather w)
@@ -120,16 +109,10 @@ public class UtilityModel
         // ---- water demand (m3/day) ----
         float ws = WaterSeason(e.season) * (e.weather == Weather.Heatwave ? 1.3f : 1f);
         GhWater = 0.6f * e.beds * ws;
-        float fieldLoad = e.growingPlots * IrrigationWater(Irrigation);
-        if (e.plotKinds != null)
-        {
-            fieldLoad = 0f;
-            for (int k = 0; k < e.plotKinds.Length && k < 4; k++) fieldLoad += e.plotKinds[k] * IrrigationWater((IrrigationKind)k);
-        }
-        FieldWater = e.weather == Weather.Rain ? 0f : 3f * fieldLoad * ws;
+        FieldWater = 0f;   // the fields have their own irrigation network (FarmCore IrrigationSystem: wells, canal, tanks)
         AnimalWater = Mathf.Max(0f, e.animalWater);
         WaterDemand = GhWater + FieldWater + AnimalWater;
-        TseOut = Tse ? Mathf.Min(TseM3, FieldWater) : 0f;
+        TseOut = 0f;   // treated wastewater only goes to the fields: the irrigation network takes it (IrrigationSystem, tseM3h)
         WellOut = e.wellRunning ? WellM3 : 0f;
         float freshDemand = WaterDemand - TseOut;
         float space = StorageCapacity - Stored;
@@ -138,17 +121,7 @@ public class UtilityModel
         // ---- power demand (kW) ----
         CoolingKw = GreenhouseCoolingKw(e);
         PumpKw = DeepPumpKw * pumpDuty;
-        bool watering = e.growingPlots > 0 && e.weather != Weather.Rain;
-        if (e.plotKinds != null)
-            IrrigationKw = !watering ? 0f : (e.plotKinds[(int)IrrigationKind.CenterPivot] > 0 ? 10f : 0f) + 0.5f * e.plotKinds[(int)IrrigationKind.Sprinklers] + 0.2f * e.plotKinds[(int)IrrigationKind.Drip];
-        else
-            switch (Irrigation)
-            {
-                case IrrigationKind.CenterPivot: IrrigationKw = watering ? 10f : 0f; break;
-                case IrrigationKind.Sprinklers: IrrigationKw = watering ? 0.5f * e.growingPlots : 0f; break;
-                case IrrigationKind.Drip: IrrigationKw = watering ? 0.2f * e.growingPlots : 0f; break;
-                default: IrrigationKw = 0f; break;
-            }
+        IrrigationKw = Mathf.Max(0f, e.irrigationKw);
         BaseKw = 2f;
         PowerDemand = CoolingKw + PumpKw + IrrigationKw + BaseKw;
 
@@ -183,9 +156,6 @@ public class UtilityModel
         // ---- effects on crops ----
         float gh = Mathf.Min(PowerRatio, WaterRatio);
         GreenhouseFactor = gh < 0.2f ? 0f : gh;
-        bool irrigationPowered = Irrigation == IrrigationKind.Drip ? PowerRatio > 0.2f : PowerRatio > 0.5f;
-        FieldsAutoWatered = Irrigation != IrrigationKind.None && WaterRatio > 0.6f && irrigationPowered;
-        FieldDryFactor = WaterRatio < 0.995f ? 1f + 1.5f * (1f - WaterRatio) : (Irrigation == IrrigationKind.Drip ? 0.8f : 1f);
 
         float manureUsed = BiogasOut * h / KwhPerKgManure;
         if (!commit) return 0f;

@@ -5,7 +5,8 @@ using UnityEngine;
 /// Land office: a sign beside the fields (E opens the "Land" shop page) that sells extra farmland.
 /// Three parcels of 2 plots, then a large 6-plot block (used instead of a third greenhouse: a whole
 /// greenhouse needs scene-authored beds, modules and crop profiles, so the expansion is an open-field block).
-/// New plots extend the FieldManager grid (FieldManager.AddPlot) and keep their own save keys (mazraa.plot.N).
+/// Each parcel becomes a FarmCore field beyond the farm's two fields (FarmFields.AddOfficeField: 21 x 6 m, the large block
+/// 21 x 14 m), with its own saved cells (mazraa.fc.f.10+).
 /// Parcels owned: mazraa.fin.land.
 /// </summary>
 [MazraaSystem(42)]
@@ -26,8 +27,7 @@ public class LandOffice : MonoBehaviour
     public int ExtraPlots { get { int n = 0; for (int i = 0; i < Owned && i < Parcels.Length; i++) n += Parcels[i].plots; return n; } }
     public Parcel? Next => Owned < Parcels.Length ? Parcels[Owned] : (Parcel?)null;
 
-    private int built;          // extra plots placed in the world
-    private int basePlots = -1; // plots FieldManager made itself
+    private int built;          // parcels placed in the world as fields
     private LandOfficeSign sign;
 
     private void Awake()
@@ -56,27 +56,15 @@ public class LandOffice : MonoBehaviour
 
     private void Update()
     {
-        var fm = FieldManager.Instance;
-        if (fm == null) return;
-        if (basePlots < 0)
-        {
-            // Wait until FieldManager has laid out its own grid.
-            if (fm.Plots.Count < fm.rows * fm.columns) return;
-            basePlots = fm.rows * fm.columns;
-        }
-        while (built < ExtraPlots) AddPlot(fm);
+        var ff = FarmFields.Instance;
+        if (ff == null || !ff.Ready) return;   // wait until the farm's own fields are laid out
+        while (built < Owned && built < Parcels.Length) { ff.AddOfficeField(built, Parcels[built].large); built++; }
         if (sign == null)
         {
-            float half = (fm.columns * 0.5f + 0.9f) * (fm.plotSize.x + fm.gap);
-            Vector3 pos = fm.GridCenter + fm.GridRotation * new Vector3(-half, 0, 0);
-            sign = LandOfficeSign.Create(pos, fm.GridRotation * Quaternion.Euler(0, 90f, 0));
+            float half = FarmFields.FarmBlockWidth * 0.5f + 7.6f;
+            Vector3 pos = ff.GridCenter + ff.GridRotation * new Vector3(-half, 0, 0);
+            sign = LandOfficeSign.Create(pos, ff.GridRotation * Quaternion.Euler(0, 90f, 0));
         }
-    }
-
-    private void AddPlot(FieldManager fm)
-    {
-        int k = built++;
-        fm.AddPlot(fm.rows + k / fm.columns, k % fm.columns);
     }
 
     private void Bought()
@@ -101,15 +89,6 @@ public class LandOffice : MonoBehaviour
     {
         Owned = 0;
         SaveData.SetInt("mazraa.fin.land", 0);
-        var fm = FieldManager.Instance;
-        if (fm != null && basePlots >= 0)
-        {
-            for (int i = fm.Plots.Count - 1; i >= basePlots; i--)
-            {
-                if (fm.Plots[i] != null) { fm.Plots[i].ResetPlot(); Destroy(fm.Plots[i].gameObject); }
-                fm.Plots.RemoveAt(i);
-            }
-        }
-        built = 0;
+        built = 0;   // FarmFields takes the land office fields off the farm on a new game
     }
 }

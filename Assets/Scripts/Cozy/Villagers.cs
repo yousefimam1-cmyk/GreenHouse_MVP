@@ -71,7 +71,7 @@ public class Villagers : MonoBehaviour
         }
         Vector3 shopPos = farmShop != null ? farmShop.transform.position + farmShop.transform.right * 2.4f : start + new Vector3(-6f, 0, 4f);
         Vector3 marketPos = DeliveryZone.Market != null ? DeliveryZone.Market.transform.position + new Vector3(-4f, 0, -7f) : start + new Vector3(0, 0, 40f);
-        Vector3 fieldPos = FieldManager.Instance != null && FieldManager.Instance.Plots.Count > 0 ? FieldManager.Instance.Plots[0].transform.position + new Vector3(-6f, 0, -4f) : start + new Vector3(10f, 0, 6f);
+        Vector3 fieldPos = FarmFields.Instance != null && FarmFields.Instance.Fields.Count > 0 ? FarmFields.Instance.Fields[0].center + new Vector3(-6f, 0, -4f) : start + new Vector3(10f, 0, 6f);
         Make("shopkeeper", "Characters/character-male-c", shopPos, ActorMode.Wander, false);
         Make("buyer", "Characters/character-male-a", marketPos, ActorMode.Wander, false);
         Make("neighbour", "Characters/character-male-c", fieldPos, ActorMode.Wander, false);

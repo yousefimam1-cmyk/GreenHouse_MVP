@@ -109,9 +109,10 @@ static class LookTests
         var sand = UnityEngine.Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).FirstOrDefault(r => r.name == "Sand" && r.transform.IsChildOf(dd.transform));
         var track = UnityEngine.Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).FirstOrDefault(r => r.name == "Track" && r.transform.IsChildOf(dd.transform));
         T.Check("Look: Najd sand mesh uses the sand PBR material, the track compacted gravel", sand != null && sand.sharedMaterial == LookLibrary.Get(LookMat.Sand) && (track == null || track.sharedMaterial == LookLibrary.Get(LookMat.Gravel)));
-        var plot = FieldManager.Instance.Plots[0];
-        var soil = plot.transform.Find("Soil").GetComponent<MeshRenderer>();
-        T.Check("Look: field plots use the tilled-soil texture", LookLibrary.Classify(soil.sharedMaterial) == LookMat.Tilled);
+        var plot = FarmFields.Instance.Fields[0];
+        var soil = plot.View.transform.Find("Ground").GetComponent<MeshRenderer>();
+        T.Check("Look: FarmCore fields use the tilled-soil texture (detail map) over the cell texture", soil.sharedMaterial.GetTexture("_DetailAlbedoMap") == LookLibrary.Get(LookMat.Tilled).GetTexture("_BaseMap")
+            && soil.sharedMaterial.GetTexture("_DetailAlbedoMap") != null && soil.sharedMaterial.GetTexture("_BaseMap") == plot.View.GroundTexture);
 
         var tgo = new GameObject("Look Test Terrain");
         var terrain = tgo.AddComponent<Terrain>();

@@ -39,7 +39,7 @@ public static class VehicleObstacles
         if (c == null || c.isTrigger || c is TerrainCollider) return false;
         if (hit.normal.y > 0.55f) return false;                       // ground, ramps, dunes: drive over them
         if (c.bounds.max.y < groundY + LowObstacle) return false;      // kerbs, flat pads
-        if (c.GetComponentInParent<FieldPlot>() != null) return false; // fields are driven on, even where the soil sits up a slope
+        if (c.GetComponentInParent<FarmFieldObject>() != null) return false; // fields are driven on, even where the soil sits up a slope
         if (c.GetComponentInParent<Carriable>() != null) return false; // loose crates and bales
         if (NpcBump.IsBumpable(c.transform)) return false;            // people and animals get bumped instead
         return true;
@@ -89,8 +89,8 @@ public static class VehicleObstacles
             if (Flat(z.transform.position - p).magnitude < z.radius + GateMargin + r) return true;
         foreach (var v in Object.FindObjectsByType<Vehicle>(FindObjectsSortMode.None))
             if (Flat(v.transform.position - p).magnitude < v.BodyHalfExtents.z + 1.5f + r) return true;
-        foreach (var plot in Object.FindObjectsByType<FieldPlot>(FindObjectsSortMode.None))
-            if (InRect(plot.transform, plot.size, p, 1.5f + r)) return true;
+        if (FarmFields.Instance != null)
+            foreach (var f in FarmFields.Instance.Fields) if (f.Contains(p, 1.5f + r)) return true;
         var pen = AnimalPen.Instance;
         if (pen != null && InRect(pen.transform, pen.size, p, 1f + r)) return true;
         var dressing = DesertDressing.Instance;

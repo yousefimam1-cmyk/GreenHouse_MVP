@@ -53,10 +53,10 @@ public class AmbientLife : MonoBehaviour
         GameEvents.UpgradeBought += OnSale;
 
         // Field workers and market buyers
-        if (FieldManager.Instance != null && FieldManager.Instance.Plots.Count > 0)
+        if (FarmFields.Instance != null && FarmFields.Instance.Fields.Count > 0)
             for (int i = 0; i < 2; i++)
             {
-                var w = Actor.Spawn(People[(p++) % People.Length], 1.5f, true, ActorMode.Worker, Build.OnGround(FieldManager.Instance.Plots[i * 3 % FieldManager.Instance.Plots.Count].transform.position));
+                var w = Actor.Spawn(People[(p++) % People.Length], 1.5f, true, ActorMode.Worker, Build.OnGround(FarmFields.Instance.Fields[i % FarmFields.Instance.Fields.Count].center));
                 if (w != null) { w.radius = 9f; w.speed = 1.1f; }
             }
         if (DeliveryZone.Market != null)

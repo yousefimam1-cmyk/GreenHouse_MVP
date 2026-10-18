@@ -36,7 +36,7 @@ public class CollectionBook : MonoBehaviour
     {
         Panel = new CozyPanel(transform, "Collection Book UI", 820f);
         GameEvents.Harvested += OnHarvested;
-        FieldPlot.FieldHarvested += OnFieldHarvested;
+        FieldEvents.Harvested += OnFieldHarvested;
         GameEvents.Custom += OnCustom;
         GameEvents.AnimalBorn += OnAnimal;
         GameEvents.UpgradeBought += OnAnimal;
@@ -48,7 +48,7 @@ public class CollectionBook : MonoBehaviour
     private void OnDestroy()
     {
         GameEvents.Harvested -= OnHarvested;
-        FieldPlot.FieldHarvested -= OnFieldHarvested;
+        FieldEvents.Harvested -= OnFieldHarvested;
         GameEvents.Custom -= OnCustom;
         GameEvents.AnimalBorn -= OnAnimal;
         GameEvents.UpgradeBought -= OnAnimal;
@@ -75,7 +75,7 @@ public class CollectionBook : MonoBehaviour
     public int Count(string category) => found.ContainsKey(category) ? found[category].Count : 0;
 
     private void OnHarvested(Cropbed bed, float kg) { if (bed != null && bed.Crop != null) Record("crops", bed.Crop.id); }
-    private void OnFieldHarvested(FieldPlot p, string crop, float kg) => Record("crops", crop);
+    private void OnFieldHarvested(FarmField p, string crop, float kg) => Record("crops", crop);
     private void OnAnimal(string id) => CheckAnimals();
 
     private void OnCustom(string type, float amount)

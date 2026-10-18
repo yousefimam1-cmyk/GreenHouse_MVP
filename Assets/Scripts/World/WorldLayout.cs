@@ -169,7 +169,7 @@ public class WorldLayout
         int li = 0;
         foreach (var l in LandDefs)
         {
-            var parcel = new LandParcel { id = l.id, rows = l.rows, cols = l.cols, price = l.price, indexBase = FieldManager.WorldPlotBase + (w.Delta ? 100 : 0) + li++ * 10 };
+            var parcel = new LandParcel { id = l.id, rows = l.rows, cols = l.cols, price = l.price, indexBase = FarmFields.WorldFieldBase + (w.Delta ? 100 : 0) + li++ * 10 };
             var hx = parcel.HalfExtents;
             var p = new WorldPoi { id = l.id, kind = PoiKind.Land, nameEn = LandNameEn, nameAr = LandNameAr, sellPoint = "", letter = "L", radius = Mathf.Max(hx.x, hx.y) + 4f, asphalt = false, color = KindColor(PoiKind.Land), parcel = parcel };
             p.pos = w.OutsideCore(w.Center + new Vector3(l.fx * w.Half, 0f, l.fz * w.Half), p.radius + 45f);

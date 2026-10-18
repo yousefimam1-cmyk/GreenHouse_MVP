@@ -106,8 +106,7 @@ public static class DriveSurfaces
     {
         var world = WorldSurface?.Invoke(p);
         if (world.HasValue) return world.Value;
-        var fm = FieldManager.Instance;
-        if (fm != null) foreach (var plot in fm.Plots) if (plot != null && plot.Contains(p)) return DriveSurface.Field;
+        if (FarmFields.Instance != null && FarmFields.Instance.OnField(p)) return DriveSurface.Field;
         if (OnPad(DeliveryZone.LoadingBay, p) || OnPad(DeliveryZone.Market, p)) return DriveSurface.Asphalt;
         var dd = DesertDressing.Instance;
         if (dd != null)

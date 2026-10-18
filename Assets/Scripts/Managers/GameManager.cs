@@ -51,7 +51,7 @@ public class GameManager : MonoBehaviour
         if (GetComponent<FeedbackFX>() == null) gameObject.AddComponent<FeedbackFX>();
         if (GetComponent<ShopUI>() == null) gameObject.AddComponent<ShopUI>();
         if (GetComponent<WorldClock>() == null) gameObject.AddComponent<WorldClock>();
-        if (GetComponent<FieldManager>() == null) gameObject.AddComponent<FieldManager>();
+        if (GetComponent<FarmFields>() == null) gameObject.AddComponent<FarmFields>();   // FarmCore fields (replaced FieldManager)
         if (GetComponent<MarketManager>() == null) gameObject.AddComponent<MarketManager>();
         if (GetComponent<ObjectiveMarker>() == null) gameObject.AddComponent<ObjectiveMarker>();
         if (GetComponent<StoryIntro>() == null) gameObject.AddComponent<StoryIntro>();

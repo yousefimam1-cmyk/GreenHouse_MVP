@@ -68,7 +68,7 @@ public class OpenWorld : MonoBehaviour
         Vehicle.WorkshopAt = AtWorkshop;
         ObjectiveMarker.TargetHooks.RemoveAll(h => h.Target is OpenWorld);   // a previous scene's world
         ObjectiveMarker.TargetHooks.Add(MissionTarget);
-        Invoke(nameof(BuildWorld), 0.4f);   // after VehicleSpawner, FieldManager and the land office placed the farm
+        Invoke(nameof(BuildWorld), 0.4f);   // after VehicleSpawner, FarmFields and the land office placed the farm
     }
 
     private void OnDestroy()
@@ -154,8 +154,8 @@ public class OpenWorld : MonoBehaviour
     private List<WorldLayout.Obstacle> Obstacles()
     {
         var list = new List<WorldLayout.Obstacle> { new WorldLayout.Obstacle(start, 10f) };
-        var fm = FieldManager.Instance;
-        if (fm != null) foreach (var p in fm.Plots) if (p != null) list.Add(new WorldLayout.Obstacle(p.transform.position, Mathf.Max(p.size.x, p.size.y) * 0.75f + 2f));
+        var ff = FarmFields.Instance;
+        if (ff != null) foreach (var f in ff.Fields) if (f.source != "world" && !f.source.StartsWith("world:")) list.Add(new WorldLayout.Obstacle(f.center, Mathf.Max(f.width, f.depth) * 0.75f + 2f));
         foreach (var g in FindObjectsByType<GreenhouseManager>(FindObjectsSortMode.None)) list.Add(new WorldLayout.Obstacle(g.transform.position, 18f));
         if (AnimalPen.Instance != null) list.Add(new WorldLayout.Obstacle(AnimalPen.Instance.transform.position, 14f));
         if (DeliveryZone.LoadingBay != null) list.Add(new WorldLayout.Obstacle(DeliveryZone.LoadingBay.transform.position, 10f));

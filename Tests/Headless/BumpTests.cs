@@ -72,9 +72,9 @@ static class BumpTests
         // ---- gates: fence panels on the pads, where vehicles park and over plots come down; the rest stay
         var bay = DeliveryZone.LoadingBay.transform.position;
         var bayFence = FenceLine("Fence Bay Test", bay + new Vector3(-60f, 0f, 1f), bay + new Vector3(60f, 0f, 1f));
-        var plot = FieldManager.Instance.Plots[0];
-        Transform pt = plot.transform;
-        float edge = plot.size.y * 0.5f + 1f;   // the far side of the plot (the pen is on the near side)
+        var plot = FarmFields.Instance.Fields[0];
+        Transform pt = plot.View.transform;
+        float edge = plot.depth * 0.5f + 1f;   // the far side of the field (the pen is on the near side)
         var plotFence = FenceLine("Fence Field Test", pt.position + pt.rotation * new Vector3(-60f, 0f, edge), pt.position + pt.rotation * new Vector3(60f, 0f, edge));
         int opened = VehicleObstacles.OpenGates();
         var bayPanels = bayFence.GetComponentsInChildren<BoxCollider>(true);

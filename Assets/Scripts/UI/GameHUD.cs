@@ -95,7 +95,7 @@ public class GameHUD : MonoBehaviour
         if (MissionManager.Instance != null) MissionManager.Instance.ResetChain();
         if (GameManager.Instance != null) GameManager.Instance.ResetProgress();
         if (WorldClock.Instance != null) WorldClock.Instance.ResetCalendar();
-        if (FieldManager.Instance != null) FieldManager.Instance.ResetAll();
+        // FarmCore fields reset themselves on GameEvents.NewGameStarted (FarmFields.OnNewGame)
         if (MarketManager.Instance != null) MarketManager.Instance.ResetMarket();
         if (AnimalPen.Instance != null) AnimalPen.Instance.ResetPen();
         if (FarmTruck.Instance != null) FarmTruck.Instance.ClearCargo();
@@ -112,7 +112,7 @@ public class GameHUD : MonoBehaviour
         Vector3 targetPos;
         if (v is FarmTruck truck) { var z = TruckTarget(truck); if (z == null) return; targetPos = z.transform.position; }
         else if (v.Fuel < v.fuelCapacity * 0.2f && DeliveryZone.LoadingBay != null) targetPos = DeliveryZone.LoadingBay.transform.position;
-        else if (FieldManager.Instance != null && FieldManager.Instance.Plots.Count > 0) targetPos = FieldManager.Instance.Plots[0].transform.position;
+        else if (FarmFields.Instance != null && FarmFields.Instance.Fields.Count > 0) targetPos = FarmFields.Instance.Fields[0].center;
         else return;
         Vector3 to = targetPos - v.transform.position; to.y = 0f;
         float angle = Vector3.SignedAngle(Vector3.ProjectOnPlane(v.transform.forward, Vector3.up), to, Vector3.up);

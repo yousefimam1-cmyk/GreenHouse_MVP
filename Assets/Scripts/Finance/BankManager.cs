@@ -97,7 +97,7 @@ public class BankManager : MonoBehaviour
             foreach (var g in eco.Data.goods) v += eco.Stored(g.id) * g.price;
             foreach (var a in eco.Data.animals) v += eco.Owned(a.id) * a.price;
             v += (eco.CapacityLevel + eco.GrowthLevel) * 2000f;
-            if (FieldManager.Instance != null) v += FieldManager.Instance.Plots.Count * 1500f;
+            if (FarmFields.Instance != null) v += FarmFields.Instance.TotalHectares * 10000f / 36f * 1500f;   // land value: 1,500 SAR per 36 m2 (an old plot)
             if (GameManager.Instance != null) v += GameManager.Instance.Greenhouses.Count * 10000f;
             return Mathf.RoundToInt(v);
         }

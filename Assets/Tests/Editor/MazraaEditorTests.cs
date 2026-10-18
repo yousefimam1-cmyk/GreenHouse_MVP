@@ -89,7 +89,7 @@ public class MazraaEditorTests
         Assert.IsNotNull(GameManager.Instance, "GameManager");
         Assert.IsNotNull(FarmTruck.Instance, "truck");
         Assert.IsNotNull(Tractor.Instance, "tractor");
-        Assert.AreEqual(6, FieldManager.Instance.Plots.Count, "field plots");
+        Assert.AreEqual(2, FarmFields.Instance.Fields.Count, "FarmCore fields");
         Assert.AreEqual(2, GameManager.Instance.Greenhouses.Count, "greenhouses");
         Assert.Greater(Object.FindObjectsByType<Actor>(FindObjectsSortMode.None).Length, 5, "animated actors");
         Assert.AreEqual(4, GameManager.Instance.Greenhouses.First(g => g.name == "GreenHouse").HealthyCount, "greenhouse 1 healthy");

@@ -64,7 +64,7 @@ public class DailyQuests : MonoBehaviour
         GameEvents.Harvested += OnHarvest;
         GameEvents.Delivered += OnDelivered;
         GameEvents.ProductsCollected += OnCollected;
-        FieldPlot.FieldPlanted += OnPlanted;
+        FieldEvents.Planted += OnPlanted;
         GameEvents.NewGameStarted += OnNewGame;
         GameEvents.RegionChanged += OnRegion;
         Loc.OnLanguageChanged += Refresh;
@@ -79,7 +79,7 @@ public class DailyQuests : MonoBehaviour
         GameEvents.Harvested -= OnHarvest;
         GameEvents.Delivered -= OnDelivered;
         GameEvents.ProductsCollected -= OnCollected;
-        FieldPlot.FieldPlanted -= OnPlanted;
+        FieldEvents.Planted -= OnPlanted;
         GameEvents.NewGameStarted -= OnNewGame;
         GameEvents.RegionChanged -= OnRegion;
         Loc.OnLanguageChanged -= Refresh;
@@ -175,7 +175,7 @@ public class DailyQuests : MonoBehaviour
     }
     private void OnHarvest(Cropbed b, float kg) => Add("harvestKg", kg);
     private void OnDelivered(float kg, int money) => Add("earn", money);
-    private void OnPlanted(FieldPlot p) => Add("plantField", 1f);
+    private void OnPlanted(FarmField p, string crop) => Add("plantField", 1f);
     private void OnCollected()
     {
         var eco = EconomyManager.Instance;

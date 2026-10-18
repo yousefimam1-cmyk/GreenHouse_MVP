@@ -67,8 +67,8 @@ public class OrchardManager : MonoBehaviour
     {
         if (built) return;
         waited += Time.deltaTime;
-        var fm = FieldManager.Instance;
-        if ((fm != null && fm.Plots.Count > 0) || waited > 2f) BuildOrchard();
+        var ff = FarmFields.Instance;
+        if ((ff != null && ff.Ready && ff.Fields.Count > 0) || waited > 2f) BuildOrchard();
     }
 
     public int Saplings(string id) => saplings.TryGetValue(id, out var n) ? n : 0;
@@ -93,18 +93,15 @@ public class OrchardManager : MonoBehaviour
         built = true;
         Vector3 center; Quaternion rot;
         var spot = GameObject.Find("OrchardSpot");
-        var fm = FieldManager.Instance;
+        var ff = FarmFields.Instance;
         if (spot != null) { center = spot.transform.position; rot = spot.transform.rotation; }
-        else if (fm != null && fm.Plots.Count > 0)
+        else if (ff != null && ff.Fields.Count > 0)
         {
-            // To the right of the field block.
-            Vector3 sum = Vector3.zero;
-            rot = fm.Plots[0].transform.rotation;
-            float maxRight = float.MinValue;
-            foreach (var p in fm.Plots) { sum += p.transform.position; }
-            Vector3 mid = sum / fm.Plots.Count;
+            // To the right of the field block (the farm's own fields, centred on the grid).
+            rot = ff.GridRotation;
+            Vector3 mid = ff.GridCenter;
             Vector3 right = rot * Vector3.right;
-            foreach (var p in fm.Plots) maxRight = Mathf.Max(maxRight, Vector3.Dot(p.transform.position - mid, right) + fm.plotSize.x * 0.5f);
+            float maxRight = FarmFields.FarmBlockWidth * 0.5f;
             center = mid + right * (maxRight + 4f + (columns - 1) * spacing * 0.5f + 1.5f);
         }
         else

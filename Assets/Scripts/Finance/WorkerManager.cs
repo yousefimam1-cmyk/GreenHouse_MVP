@@ -161,29 +161,13 @@ public class WorkerManager : MonoBehaviour
 
     private bool FieldJob()
     {
-        var fm = FieldManager.Instance;
-        if (fm == null) return false;
-        bool canWater = !FarmModifiers.IrrigationBanned && WellRunning();
-        FieldPlot best = null; int bestRank = 0;
-        foreach (var p in fm.Plots)
-        {
-            if (p == null) continue;
-            int rank = 0;
-            if (p.State == PlotState.Ripe) rank = 4;
-            else if (p.State == PlotState.Growing && p.Water < 0.4f && canWater) rank = 3;
-            else if (p.State == PlotState.Plowed && HasSeeds()) rank = 2;
-            else if (p.State == PlotState.Untilled && HasSeeds()) rank = 1;
-            if (rank > bestRank) { best = p; bestRank = rank; }
-        }
-        if (best == null) return false;
-        GoTo(WorkerRole.FieldHand, best.transform.position);
-        switch (bestRank)
-        {
-            case 4: return best.TryHarvest(false);
-            case 3: best.AddWater(1f); return true;
-            case 2: return best.TrySeed(false);
-            default: return best.TryPlow(false);
-        }
+        // FarmCore: the field hand works the most useful ~6 x 6 m patch by hand (harvest, water, sow, hoe)
+        var ff = FarmFields.Instance;
+        if (ff == null) return false;
+        Vector3 where;
+        bool done = ff.WorkerJob(out where);
+        GoTo(WorkerRole.FieldHand, where);
+        return done;
     }
 
     private bool GreenhouseJob()
@@ -250,14 +234,6 @@ public class WorkerManager : MonoBehaviour
         FinText.Alert(string.Join("\n", notes));
     }
 
-    private static bool HasSeeds()
-    {
-        var eco = EconomyManager.Instance;
-        if (eco == null) return false;
-        foreach (var c in eco.Data.fieldCrops) if (eco.Seeds(c.id) > 0 && EconomyManager.Available(c)) return true;   // seeds this map can plant
-        return false;
-    }
-
     private static bool WellRunning()
     {
         var wells = FindObjectsByType<WellController>(FindObjectsSortMode.None);
@@ -281,7 +257,7 @@ public class WorkerManager : MonoBehaviour
     {
         switch (r)
         {
-            case WorkerRole.FieldHand: return FieldManager.Instance != null ? FieldManager.Instance.GridCenter : Vector3.zero;
+            case WorkerRole.FieldHand: return FarmFields.Instance != null ? FarmFields.Instance.GridCenter : Vector3.zero;
             case WorkerRole.Herder: return AnimalPen.Instance != null ? AnimalPen.Instance.transform.position : Vector3.zero;
             case WorkerRole.Driver: return DeliveryZone.LoadingBay != null ? DeliveryZone.LoadingBay.transform.position + Vector3.right * 4f : Vector3.zero;
             default:

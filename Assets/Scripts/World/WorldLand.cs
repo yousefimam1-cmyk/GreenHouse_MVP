@@ -3,8 +3,9 @@ using UnityEngine;
 
 /// <summary>
 /// Expansion farmland on the open world map (WorldLayout.LandDefs): each parcel has a "for sale" sign; buying it
-/// (E at the sign, or Buy() from code) pays the price and turns the parcel into real field plots (FieldManager.AddPlotAt,
-/// own save keys from FieldManager.WorldPlotBase so they never clash with the farm's grid or the land office). Counts as
+/// (E at the sign, or Buy() from code) pays the price and turns the parcel into a FarmCore field covering its plots
+/// (FarmFields.AddWorldField, field id = the parcel's indexBase from FarmFields.WorldFieldBase, so its saved cells never
+/// clash with the farm's fields or the land office). Counts as
 /// buying land for missions and achievements ("buyLand") and raises "buyWorldLand" for the open-world story.
 /// Owned parcels: mazraa.world.land.&lt;map&gt;.&lt;id&gt; (per map; a new game sells them back).
 /// </summary>
@@ -13,7 +14,7 @@ public class WorldLand : MonoBehaviour
 {
     public static WorldLand Instance { get; private set; }
 
-    private readonly Dictionary<string, List<FieldPlot>> plots = new Dictionary<string, List<FieldPlot>>();
+    private readonly Dictionary<string, FarmField> plots = new Dictionary<string, FarmField>();
     private readonly Dictionary<string, WorldLandSign> signs = new Dictionary<string, WorldLandSign>();
     private OpenWorld world;
 
@@ -26,7 +27,8 @@ public class WorldLand : MonoBehaviour
 
     public bool Owned(LandParcel p) => p != null && world != null && SaveData.GetInt(Key(world.BuiltRegion, p.id), 0) == 1;
     public int OwnedCount { get { int n = 0; if (world?.Layout != null) foreach (var p in world.Layout.Parcels) if (Owned(p)) n++; return n; } }
-    public IEnumerable<FieldPlot> PlotsOf(LandParcel p) => p != null && plots.TryGetValue(p.id, out var l) ? l : (IEnumerable<FieldPlot>)new FieldPlot[0];
+    /// <summary>The FarmCore field of an owned parcel, or null.</summary>
+    public FarmField FieldOf(LandParcel p) => p != null && plots.TryGetValue(p.id, out var f) ? f : null;
 
     /// <summary>(Re)build signs and owned plots for the world that was just built.</summary>
     public void Apply(OpenWorld w)
@@ -55,30 +57,16 @@ public class WorldLand : MonoBehaviour
 
     private void CreatePlots(LandParcel p)
     {
-        var fm = FieldManager.Instance;
-        if (fm == null) return;
-        var list = new List<FieldPlot>();
-        int k = 0;
-        for (int r = 0; r < p.rows; r++)
-            for (int c = 0; c < p.cols; c++)
-            {
-                Vector3 pos = world.OnGround(p.PlotPos(r, c));
-                list.Add(fm.AddPlotAt(p.indexBase + k++, pos, p.rot, new Vector2(p.plotSize, p.plotSize)));
-            }
-        plots[p.id] = list;
+        var ff = FarmFields.Instance;
+        if (ff == null) return;
+        plots[p.id] = ff.AddWorldField(p, world.OnGround(p.center));
     }
 
     private void RemovePlots()
     {
-        var fm = FieldManager.Instance;
-        foreach (var l in plots.Values)
-            foreach (var plot in l)
-            {
-                if (fm != null) fm.Plots.Remove(plot);
-                if (plot != null) Destroy(plot.gameObject);
-            }
+        var ff = FarmFields.Instance;
+        foreach (var f in plots.Values) if (ff != null && f != null) ff.RemoveField(f, false);   // cells stay saved (the world can be rebuilt)
         plots.Clear();
-        if (fm != null) fm.Plots.RemoveAll(x => x == null);
     }
 
     private void UpdateIcon(LandParcel p)
@@ -95,7 +83,7 @@ public class WorldLand : MonoBehaviour
     {
         if (p == null || world == null) return "Not for sale";
         if (Owned(p)) return "You already own this land";
-        if (FieldManager.Instance == null) return "Not for sale";
+        if (FarmFields.Instance == null) return "Not for sale";
         var eco = EconomyManager.Instance;
         if (eco == null || eco.Money < p.price) return "Not enough money";
         return null;

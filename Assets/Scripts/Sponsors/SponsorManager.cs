@@ -45,7 +45,7 @@ public class SponsorManager : MonoBehaviour
 
     private void Start()
     {
-        FieldPlot.FieldHarvested += OnFieldHarvested;
+        FieldEvents.Harvested += OnFieldHarvested;
         GameEvents.Harvested += OnHarvested;
         Invoke(nameof(BuildBillboards), 1.5f);
         InvokeRepeating(nameof(CheckBillboards), 3f, 1f);
@@ -53,7 +53,7 @@ public class SponsorManager : MonoBehaviour
 
     private void OnDestroy()
     {
-        FieldPlot.FieldHarvested -= OnFieldHarvested;
+        FieldEvents.Harvested -= OnFieldHarvested;
         GameEvents.Harvested -= OnHarvested;
         if (Instance == this) Instance = null;
     }
@@ -132,7 +132,7 @@ public class SponsorManager : MonoBehaviour
         return b;
     }
 
-    private void OnFieldHarvested(FieldPlot plot, string crop, float kg)
+    private void OnFieldHarvested(FarmField plot, string crop, float kg)
     {
         var eco = EconomyManager.Instance;
         if (eco == null || kg <= 0f) return;
