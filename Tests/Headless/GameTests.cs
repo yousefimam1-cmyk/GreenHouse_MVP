@@ -1265,6 +1265,9 @@ static class Program
         FakeEngine.Run(0.5f);
         T.Check("Chickens appear in the pen", UnityEngine.Object.FindObjectsByType<FarmAnimal>(FindObjectsSortMode.None).Length == 2);
         AnimalPen.Instance.FillWater();
+        // Weather comes from the pre-rolled forecast: a heatwave would stress the hens (herd factor ~0.1), so lay in mild weather.
+        T.SetProp(WorldClock.Instance, "Weather", Weather.Sunny);
+        if (HerdManager.Instance != null) foreach (var hen in HerdManager.Instance.Animals) hen.heatStress = 0f;
         FakeEngine.Run(60f, 0.5f);
         T.Check("Chickens lay eggs while fed", AnimalPen.Instance.Waiting.TryGetValue("chicken", out var eggs) && eggs > 0,
             "weather " + WorldClock.Instance.Weather + " productivity " + AnimalPen.Instance.Productivity + " herd " + (HerdManager.Instance != null ? HerdManager.Instance.ProductionFactor("chicken") : 1f) + " feed " + EconomyManager.Instance.Feed);
