@@ -28,7 +28,14 @@ public class FarmInfoScreen : MonoBehaviour
     public int MoneyEarned { get; private set; }
 
     private Canvas canvas;
-    private TextMeshProUGUI text;
+    private TextMeshProUGUI text, tabTitle, prevKey, nextKey, footer;
+    private RectTransform panel, tabBar, graph;
+    private readonly Image[] tabBg = new Image[PageCount], tabIcon = new Image[PageCount];
+    private readonly Image[] incBars = new Image[7], expBars = new Image[7];
+    private readonly TextMeshProUGUI[] dayLabels = new TextMeshProUGUI[7];
+    private TextMeshProUGUI graphLegend;
+    private const float TabW = 64f, GraphH = 150f;
+    private static readonly string[] TabIcons = { "warehouse", "info", "poi_field", "coins", "contract", "poi_barn", "money", "map", "calendar", "weather_sun", "vehicle_tractor", "animal_cow", "help" };
     private int lastMoney = -1;
     private int openedFrame;
     private float refreshTimer;
@@ -58,8 +65,16 @@ public class FarmInfoScreen : MonoBehaviour
         if (EconomyManager.Instance != null) lastMoney = EconomyManager.Instance.Money;
         canvas = MenuKit.Canvas("Farm Info UI", transform, 62);
         MenuKit.Backdrop(canvas.transform, 0.55f);
-        var panel = MenuKit.Panel("Panel", canvas.transform, 760);
-        text = MenuKit.Text(panel, 24, Color.white);
+        panel = MenuKit.Panel("Panel", canvas.transform, 1040);
+        BuildTabBar(panel);
+        tabTitle = MenuKit.Text(panel, UiTheme.Heading, UiTheme.Text, "Page title");
+        tabTitle.fontStyle = FontStyles.Bold;
+        UiKit.Rule(tabTitle.rectTransform);
+        graph = MenuKit.Rect("Finance graph", panel, typeof(LayoutElement));
+        graph.GetComponent<LayoutElement>().preferredHeight = GraphH + 40f;
+        BuildGraph(graph);
+        text = MenuKit.Text(panel, UiTheme.Lead - 2f, UiTheme.Text);
+        footer = MenuKit.Text(panel, UiTheme.Small, UiTheme.TextDim, "Footer");
         canvas.gameObject.SetActive(false);
         Loc.OnLanguageChanged += Refresh;
     }
@@ -158,9 +173,11 @@ public class FarmInfoScreen : MonoBehaviour
             canvas.gameObject.SetActive(true);
             if (UIManager.Instance != null) UIManager.Instance.SetExternalPanel(true);
         }
+        bool changed = Open != page;
         Open = page;
         openedFrame = Time.frameCount;
         Refresh();
+        if (changed) UiMotion.Play(panel, 0.985f);
     }
 
     public void Close()
@@ -196,10 +213,145 @@ public class FarmInfoScreen : MonoBehaviour
             : Open == Page.Contracts ? "Up / Down: contracts   [Enter] accept   [Esc] close"
             : Open == Page.Production ? "Up / Down: buildings   Left / Right: action   [Enter] do it   [Esc] close"
             : MenuPages.Handles(Open) ? MenuPages.Hint(Open) : "[Esc] close";
-        text.text = TabStrip() + "\n" + body + "\n\n<size=80%><color=#BBBBBB>" + Glyphs.Apply(UiText.T(hint)) + "\n" + Glyphs.Apply(UiText.T("[LB] [RB] or Q / E: switch tabs   1-9, 0: jump to a tab")) + "</color></size>";
+        // tab bar with icons (the open tab lit), the page name as heading, the page body, one line of keys
+        RefreshTabBar();
+        Loc.ApplyFont(tabTitle); Loc.ApplyFont(footer);
+        tabTitle.text = UiText.T(TabNames[(int)Open - 1]);
+        tabTitle.alignment = footer.alignment = Loc.IsArabic ? TextAlignmentOptions.Right : TextAlignmentOptions.Left;
+        UiKit.PlaceRule(tabTitle.rectTransform.Find("Rule") as RectTransform, Loc.IsArabic);
+        bool fin = Open == Page.Finances;
+        if (graph.gameObject.activeSelf != fin) graph.gameObject.SetActive(fin);
+        if (fin) RefreshGraph();
+        string heading = MenuKit.Title(tabTitle.text);   // the page name is the heading above: drop the body's own copy
+        int hi = body.IndexOf(heading, System.StringComparison.Ordinal);
+        if (hi >= 0 && hi < 16)
+        {
+            body = body.Remove(hi, heading.Length);
+            while (hi < body.Length && body[hi] == '\n') body = body.Remove(hi, 1);
+        }
+        text.text = body;
+        footer.text = UiKit.Keycaps(Glyphs.Apply(UiText.T(hint)));
     }
 
     private static readonly string[] TabNames = { "Inventory", "Stats", "Fields", "Prices", "Contracts", "Production", "Finances", "Map", "Calendar", "Weather", "Vehicles", "Animals", "Help" };
+
+    // ---------------------------------------------------------------- tab bar (icons, LB / RB at the ends)
+
+    private void BuildTabBar(RectTransform parent)
+    {
+        tabBar = MenuKit.Rect("Tabs", parent, typeof(LayoutElement));
+        tabBar.GetComponent<LayoutElement>().preferredHeight = 56f;
+        for (int i = 0; i < PageCount; i++)
+        {
+            int page = i + 1;
+            Image bg;
+            var b = MenuKit.Button(tabBar, "Tab " + TabNames[i], () => Show((Page)page), out bg);
+            var rt = (RectTransform)b.transform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(TabW - 6f, 52f);
+            tabBg[i] = bg;
+            tabIcon[i] = UiKit.IconImage(rt, TabIcons[i], 28f, UiTheme.TextDim);
+        }
+        prevKey = KeyLabel("Prev"); nextKey = KeyLabel("Next");
+    }
+
+    private TextMeshProUGUI KeyLabel(string name)
+    {
+        var t = MenuKit.Text(tabBar, UiTheme.Small, UiTheme.Text, name);
+        t.alignment = TextAlignmentOptions.Center;
+        t.textWrappingMode = TextWrappingModes.NoWrap;
+        var rt = t.rectTransform;
+        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(70f, 40f);
+        return t;
+    }
+
+    private void RefreshTabBar()
+    {
+        bool rtl = Loc.IsArabic;
+        float span = PageCount * TabW, x0 = -span / 2f + TabW / 2f;
+        for (int i = 0; i < PageCount; i++)
+        {
+            bool on = (int)Open == i + 1;
+            var rt = tabBg[i].rectTransform;
+            float x = x0 + i * TabW;
+            rt.anchoredPosition = new Vector2(rtl ? -x : x, 0f);   // Arabic: first tab on the right
+            if (!UiKit.Sliced(tabBg[i], on ? "tab_active" : "tab")) tabBg[i].color = on ? UiTheme.RowHover : new Color(0f, 0f, 0f, 0f);
+            tabIcon[i].color = on ? UiTheme.Accent : UiTheme.TextMuted;
+        }
+        // previous / next keys at the ends (LB / RB on a pad, Q / E on the keyboard)
+        string prev = UiKit.Keycaps(GameInput.UsingGamepad ? "[" + Glyphs.PadLabel(Glyphs.Pad.LB) + "]" : "[Q]");
+        string next = UiKit.Keycaps(GameInput.UsingGamepad ? "[" + Glyphs.PadLabel(Glyphs.Pad.RB) + "]" : "[E]");
+        prevKey.text = rtl ? next : prev; nextKey.text = rtl ? prev : next;
+        prevKey.rectTransform.anchoredPosition = new Vector2(-span / 2f - 44f, 0f);
+        nextKey.rectTransform.anchoredPosition = new Vector2(span / 2f + 44f, 0f);
+    }
+
+    // ---------------------------------------------------------------- finances graph (last 7 days, income vs expenses)
+
+    private void BuildGraph(RectTransform g)
+    {
+        var baseLine = MenuKit.Rect("Baseline", g, typeof(Image));
+        baseLine.anchorMin = new Vector2(0f, 0f); baseLine.anchorMax = new Vector2(1f, 0f); baseLine.pivot = new Vector2(0.5f, 0f);
+        baseLine.sizeDelta = new Vector2(0f, 1f); baseLine.anchoredPosition = new Vector2(0f, 28f);
+        var bi = baseLine.GetComponent<Image>(); bi.color = UiTheme.Stroke; bi.raycastTarget = false;
+        for (int i = 0; i < 7; i++)
+        {
+            incBars[i] = GraphBar(g, "Income " + i, UiTheme.Good);
+            expBars[i] = GraphBar(g, "Expense " + i, UiTheme.Bad);
+            dayLabels[i] = MenuKit.Text(g, UiTheme.Caption, UiTheme.TextMuted, "Day " + i);
+            dayLabels[i].alignment = TextAlignmentOptions.Center;
+            dayLabels[i].textWrappingMode = TextWrappingModes.NoWrap;
+            var lr = dayLabels[i].rectTransform;
+            lr.anchorMin = lr.anchorMax = lr.pivot = new Vector2(0f, 0f);
+            lr.sizeDelta = new Vector2(80f, 24f);
+        }
+        graphLegend = MenuKit.Text(g, UiTheme.Caption, UiTheme.TextDim, "Legend");
+        var gl = graphLegend.rectTransform;
+        gl.anchorMin = gl.anchorMax = gl.pivot = new Vector2(1f, 1f);
+        gl.sizeDelta = new Vector2(360f, 24f); gl.anchoredPosition = Vector2.zero;
+        graphLegend.alignment = TextAlignmentOptions.Right;
+    }
+
+    private static Image GraphBar(RectTransform g, string name, Color c)
+    {
+        var rt = MenuKit.Rect(name, g, typeof(Image));
+        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 0f);
+        var img = rt.GetComponent<Image>(); img.raycastTarget = false;
+        if (!UiKit.Sliced(img, "bar_fill_white", c)) img.color = c;
+        img.pixelsPerUnitMultiplier = 3f;
+        return img;
+    }
+
+    private void RefreshGraph()
+    {
+        var led = FinanceLedger.Instance;
+        int today = FinanceLedger.Today;
+        int max = 1;
+        for (int i = 0; i < 7; i++) if (led != null) max = Mathf.Max(max, Mathf.Max(led.DayIncome(today - 6 + i), led.DayExpense(today - 6 + i)));
+        float width = 1040f - 2f * (UiTheme.ShadowInset + UiTheme.S5), col = width / 7f;
+        bool rtl = Loc.IsArabic;
+        for (int i = 0; i < 7; i++)
+        {
+            int d = today - 6 + i;
+            int inc = led != null ? led.DayIncome(d) : 0, exp = led != null ? led.DayExpense(d) : 0;
+            float cx = (rtl ? 6 - i : i) * col + col / 2f;
+            SetGraphBar(incBars[i], cx - 15f, inc / (float)max);
+            SetGraphBar(expBars[i], cx + 15f, exp / (float)max);
+            Loc.ApplyFont(dayLabels[i]);
+            dayLabels[i].text = d < 1 ? "" : i == 6 ? UiText.T("Today") : Loc.Display(Loc.Raw("D") + d);
+            dayLabels[i].rectTransform.anchoredPosition = new Vector2(cx - 40f, 0f);
+        }
+        Loc.ApplyFont(graphLegend);
+        graphLegend.text = "<mark=" + UiTheme.GoodHex + "FF>\u00A0\u00A0</mark> " + UiText.T("Income") + "     <mark=" + UiTheme.BadHex + "FF>\u00A0\u00A0</mark> " + UiText.T("Expenses");
+    }
+
+    private static void SetGraphBar(Image bar, float x, float t)
+    {
+        var rt = bar.rectTransform;
+        rt.sizeDelta = new Vector2(24f, Mathf.Max(2f, GraphH * Mathf.Clamp01(t)));
+        rt.anchoredPosition = new Vector2(x - 12f, 30f);
+    }
 
     /// <summary>Tab strip across the top (FS-style): the open tab highlighted.</summary>
     public string TabStrip()
@@ -209,7 +361,7 @@ public class FarmInfoScreen : MonoBehaviour
         {
             if (i > 0) sb.Append("  ");
             string n = UiText.T(TabNames[i]);
-            sb.Append((int)Open == i + 1 ? "<color=#FF9A3C><b>" + n + "</b></color>" : "<color=#9A968C>" + n + "</color>");
+            sb.Append((int)Open == i + 1 ? "<color=#F2A93B><b>" + n + "</b></color>" : "<color=#9A968C>" + n + "</color>");
         }
         return sb.Append("</size>").ToString();
     }

@@ -103,7 +103,7 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
         var p = list.Panel;
         bool main = mode == Mode.Main;
         // Both menus: column on the left (MainMenuScene draws the farm cards / overview on the right).
-        if (backdrop != null) backdrop.color = new Color(0.02f, 0.02f, 0.015f, main ? 0.05f : 0.35f);
+        if (backdrop != null) { var sc = UiTheme.Scrim; sc.a = main ? 0.05f : 0.45f; backdrop.color = sc; }
         p.anchorMin = p.anchorMax = new Vector2(0f, 0.5f);
         p.pivot = new Vector2(0f, 0.6f);
         p.anchoredPosition = new Vector2(64f, 0f);
@@ -217,32 +217,32 @@ public partial class GameMenu : MonoBehaviour   // settings hub and pages: GameM
     {
         if (mode == Mode.Main) return MainRows();   // front end: Continue, Career, Multiplayer, Achievements, Settings, Credits, Quit
         var rows = new List<MenuRow>();   // pause menu
-        rows.Add(MenuRow.Button(() => UiText.T("Resume"), Close));
-        rows.Add(MenuRow.Button(() => UiText.T("Map"), () => { Close(); if (Minimap.Instance != null) Minimap.Instance.SetFull(true); }));
+        rows.Add(MenuRow.Button(() => UiText.T("Resume"), Close).WithIcon("play"));
+        rows.Add(MenuRow.Button(() => UiText.T("Map"), () => { Close(); if (Minimap.Instance != null) Minimap.Instance.SetFull(true); }).WithIcon("map"));
         // FS parity: the tabbed farm menu (Map, Calendar, Weather, Vehicles, Animals, Help + the pages below; Q / E or LB / RB switch tabs)
-        rows.Add(MenuRow.Button(() => UiText.T("Farm menu (all tabs)"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Map); }));
-        rows.Add(MenuRow.Button(() => UiText.T("Farm overview"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Stats); }));
-        rows.Add(MenuRow.Button(() => UiText.T("Inventory"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Inventory); }));
-        rows.Add(MenuRow.Button(() => UiText.T("Fields (precision farming)"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Fields); }));
-        rows.Add(MenuRow.Button(() => UiText.T("Market prices"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Prices); }));
-        rows.Add(MenuRow.Button(() => UiText.T("Contracts"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Contracts); }));
-        rows.Add(MenuRow.Button(() => UiText.T("Production"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Production); }));
-        rows.Add(MenuRow.Button(() => UiText.T("Finances"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Finances); }));
+        rows.Add(MenuRow.Button(() => UiText.T("Farm menu (all tabs)"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Map); }).WithIcon("home_menu"));
+        rows.Add(MenuRow.Button(() => UiText.T("Farm overview"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Stats); }).WithIcon("info"));
+        rows.Add(MenuRow.Button(() => UiText.T("Inventory"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Inventory); }).WithIcon("warehouse"));
+        rows.Add(MenuRow.Button(() => UiText.T("Fields (precision farming)"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Fields); }).WithIcon("poi_field"));
+        rows.Add(MenuRow.Button(() => UiText.T("Market prices"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Prices); }).WithIcon("coins"));
+        rows.Add(MenuRow.Button(() => UiText.T("Contracts"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Contracts); }).WithIcon("contract"));
+        rows.Add(MenuRow.Button(() => UiText.T("Production"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Production); }).WithIcon("poi_barn"));
+        rows.Add(MenuRow.Button(() => UiText.T("Finances"), () => { Close(); if (FarmInfoScreen.Instance != null) FarmInfoScreen.Instance.Show(FarmInfoScreen.Page.Finances); }).WithIcon("money"));
         // farm life (FarmLife/*.cs): journal (level, stand orders, friends, festivals) and photo mode
-        rows.Add(MenuRow.Button(() => UiText.T("Farm life journal"), () => { Close(); if (FarmLifeScreen.Instance != null) FarmLifeScreen.Instance.Show(FarmLifeScreen.Tab.Overview); }));
-        rows.Add(MenuRow.Button(() => UiText.T("Photo mode"), () => { Close(); if (PhotoMode.Instance != null) PhotoMode.Instance.Enter(); }));
+        rows.Add(MenuRow.Button(() => UiText.T("Farm life journal"), () => { Close(); if (FarmLifeScreen.Instance != null) FarmLifeScreen.Instance.Show(FarmLifeScreen.Tab.Overview); }).WithIcon("journal"));
+        rows.Add(MenuRow.Button(() => UiText.T("Photo mode"), () => { Close(); if (PhotoMode.Instance != null) PhotoMode.Instance.Enter(); }).WithIcon("photo"));
         if (CampaignManager.Instance != null && CampaignManager.Instance.Chapters.Length > 0)
-            rows.Add(MenuRow.Button(() => UiText.T("Campaign"), () => Go(PageId.Campaign)));
-        rows.Add(MenuRow.Button(() => UiText.T("Save game"), () => Go(PageId.Save)));
-        rows.Add(MenuRow.Button(() => UiText.T("Load game"), () => Go(PageId.Load)));
-        rows.Add(MenuRow.Button(() => UiText.T("Controls tutorial"), StartControls));
-        rows.Add(MenuRow.Button(() => UiText.T("Tutorial"), StartTutorial));
-        rows.Add(MenuRow.Button(() => UiText.T("Settings"), () => Go(PageId.Settings)));
-        rows.Add(MenuRow.Button(() => UiText.T("Achievements"), () => Go(PageId.Achievements)));
-        rows.Add(MenuRow.Button(() => UiText.T("New game"), () => { pending = new NewFarm(); Go(PageId.ConfirmNew); }));
+            rows.Add(MenuRow.Button(() => UiText.T("Campaign"), () => Go(PageId.Campaign)).WithIcon("flag"));
+        rows.Add(MenuRow.Button(() => UiText.T("Save game"), () => Go(PageId.Save)).WithIcon("save"));
+        rows.Add(MenuRow.Button(() => UiText.T("Load game"), () => Go(PageId.Load)).WithIcon("load"));
+        rows.Add(MenuRow.Button(() => UiText.T("Controls tutorial"), StartControls).WithIcon("controls"));
+        rows.Add(MenuRow.Button(() => UiText.T("Tutorial"), StartTutorial).WithIcon("help"));
+        rows.Add(MenuRow.Button(() => UiText.T("Settings"), () => Go(PageId.Settings)).WithIcon("settings"));
+        rows.Add(MenuRow.Button(() => UiText.T("Achievements"), () => Go(PageId.Achievements)).WithIcon("trophy"));
+        rows.Add(MenuRow.Button(() => UiText.T("New game"), () => { pending = new NewFarm(); Go(PageId.ConfirmNew); }).WithIcon("plus"));
         // Main menu: the front end (main menu column, Career, Multiplayer) over the cinematic farm
-        rows.Add(MenuRow.Button(() => UiText.T("Main menu"), () => { mode = Mode.Main; ApplyLayout(); history.Clear(); ShowPage(PageId.Root); }));
-        rows.Add(MenuRow.Button(() => UiText.T("Quit"), Quit));
+        rows.Add(MenuRow.Button(() => UiText.T("Main menu"), () => { mode = Mode.Main; ApplyLayout(); history.Clear(); ShowPage(PageId.Root); }).WithIcon("home_menu"));
+        rows.Add(MenuRow.Button(() => UiText.T("Quit"), Quit).WithIcon("quit"));
         return rows;
     }
 

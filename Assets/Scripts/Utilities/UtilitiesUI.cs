@@ -93,7 +93,7 @@ public class UtilitiesUI : MonoBehaviour
         if (refreshTimer <= 0f) { refreshTimer = 0.5f; Refresh(); }
     }
 
-    private static string Head(string s) => "<color=#FF9A3C><b>" + s + "</b></color>";
+    private static string Head(string s) => "<color=#F2A93B><b>" + s + "</b></color>";
     private static string Bad(string s) => "<color=#FF6A4D>" + s + "</color>";
     private static string Ok(string s) => "<color=#8CE08C>" + s + "</color>";
     private static string F(float v) => v.ToString("F1");

@@ -121,7 +121,10 @@ public class Minimap : MonoBehaviour
         miniRoot.sizeDelta = new Vector2(miniSize, miniSize);
         var frame = MenuKit.Rect("Frame", miniRoot, typeof(RawImage));
         MenuKit.Stretch(frame, -6f);
-        var frameImg = frame.GetComponent<RawImage>(); frameImg.texture = circleTex; frameImg.color = new Color(0.06f, 0.08f, 0.05f, 0.85f); frameImg.raycastTarget = false;
+        var frameImg = frame.GetComponent<RawImage>(); frameImg.texture = circleTex; frameImg.color = UiTheme.GlassStrong; frameImg.raycastTarget = false;
+        var bezel = MenuKit.Rect("Bezel", miniRoot, typeof(Image));   // thin light ring on top of the map edge
+        MenuKit.Stretch(bezel, -3f);
+        var bz = bezel.GetComponent<Image>(); bz.raycastTarget = false; bz.sprite = UiKit.Kit("ring_thin"); bz.color = UiTheme.Stroke; bz.enabled = bz.sprite != null;
         var maskRt = MenuKit.Rect("Mask", miniRoot, typeof(RawImage), typeof(Mask));
         MenuKit.Stretch(maskRt);
         var maskImg = maskRt.GetComponent<RawImage>(); maskImg.texture = circleTex; maskImg.raycastTarget = false;
@@ -135,7 +138,7 @@ public class Minimap : MonoBehaviour
         miniArrow = MakeArrow(miniRoot, 0.8f);
         northTag = MenuKit.Rect("North", miniRoot);
         northTag.sizeDelta = new Vector2(30, 30);
-        var n = MenuKit.Text(northTag, 20, new Color(1f, 0.9f, 0.7f)); MenuKit.Stretch(n.rectTransform); n.alignment = TextAlignmentOptions.Center; n.text = "<b>N</b>";
+        var n = MenuKit.Text(northTag, UiTheme.Small, UiTheme.Accent); MenuKit.Stretch(n.rectTransform); n.alignment = TextAlignmentOptions.Center; n.text = "<b>N</b>";
 
         // Full map
         fullRoot = MenuKit.Rect("Full Map", canvas.transform);
@@ -144,7 +147,8 @@ public class Minimap : MonoBehaviour
         fullFrame = MenuKit.Rect("Frame", fullRoot, typeof(Image));
         fullFrame.anchorMin = fullFrame.anchorMax = fullFrame.pivot = new Vector2(0.5f, 0.5f);
         fullFrame.sizeDelta = new Vector2(fullSize + 12, fullSize + 12);
-        fullFrame.GetComponent<Image>().color = new Color(0.06f, 0.08f, 0.05f, 0.95f);
+        fullFrame.sizeDelta = new Vector2(fullSize + 2f * (UiTheme.ShadowInset + 6f), fullSize + 2f * (UiTheme.ShadowInset + 6f));
+        UiKit.Glass(fullFrame.GetComponent<Image>());
         var fmap = MenuKit.Rect("Map", fullFrame, typeof(RawImage));
         fmap.anchorMin = fmap.anchorMax = fmap.pivot = new Vector2(0.5f, 0.5f);
         fmap.sizeDelta = new Vector2(fullSize, fullSize);
@@ -153,9 +157,9 @@ public class Minimap : MonoBehaviour
         MenuKit.Stretch(fullIcons);
         fullObjective = MakeIcon(fullIcons, new Color(1f, 0.5f, 0.1f), 22f, true);
         fullArrow = MakeArrow(fullIcons, 1.1f);
-        fullTitle = MenuKit.Text(fullFrame, 34, MenuKit.Orange, "Title");
+        fullTitle = MenuKit.Text(fullFrame, UiTheme.Heading, UiTheme.Text, "Title");
         var trt = fullTitle.rectTransform; trt.anchorMin = new Vector2(0, 1); trt.anchorMax = new Vector2(1, 1); trt.pivot = new Vector2(0.5f, 0); trt.sizeDelta = new Vector2(0, 50); trt.anchoredPosition = new Vector2(0, 8);
-        fullFooter = MenuKit.Text(fullFrame, 20, new Color(0.85f, 0.82f, 0.76f), "Footer");
+        fullFooter = MenuKit.Text(fullFrame, UiTheme.Small, UiTheme.TextDim, "Footer");
         var frt = fullFooter.rectTransform; frt.anchorMin = new Vector2(0, 0); frt.anchorMax = new Vector2(1, 0); frt.pivot = new Vector2(0.5f, 1); frt.sizeDelta = new Vector2(0, 40); frt.anchoredPosition = new Vector2(0, -8);
         var legend = MenuKit.Panel("Legend", fullRoot, 300);
         legend.anchorMin = legend.anchorMax = legend.pivot = new Vector2(1f, 0.5f);
@@ -210,7 +214,7 @@ public class Minimap : MonoBehaviour
         fullFooter.alignment = TextAlignmentOptions.Center;
         legendText.alignment = Loc.IsArabic ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
         fullTitle.text = "<b>" + UiText.T("Farm map") + "</b>";
-        fullFooter.text = Glyphs.Apply(UiText.T("[N] or [Esc] close"));
+        fullFooter.text = UiKit.Keycaps(Glyphs.Apply(UiText.T("[N] or [Esc] close")));
         legendText.text = LegendText();
     }
 

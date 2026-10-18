@@ -124,20 +124,20 @@ public partial class GameMenu
     {
         var rows = new List<MenuRow>();
         // Quick continue (like FS): the farm that is loaded right now, with its name and day.
-        if (HasSave()) rows.Add(MenuRow.Button(ContinueLabel, Close));
-        rows.Add(MenuRow.Button(() => UiText.T("Career"), () => Go(PageId.Career)));
-        rows.Add(MenuRow.Button(() => UiText.T("Multiplayer"), () => Go(PageId.Multiplayer)));
-        rows.Add(MenuRow.Button(() => UiText.T("Achievements"), () => Go(PageId.Achievements)));
-        rows.Add(MenuRow.Button(() => UiText.T("Settings"), () => Go(PageId.Settings)));
-        rows.Add(MenuRow.Button(() => UiText.T("Credits"), () => Go(PageId.Credits)));
-        rows.Add(MenuRow.Button(() => UiText.T("Quit"), Quit));
+        if (HasSave()) rows.Add(MenuRow.Button(ContinueLabel, Close).WithIcon("play"));
+        rows.Add(MenuRow.Button(() => UiText.T("Career"), () => Go(PageId.Career)).WithIcon("poi_farm"));
+        rows.Add(MenuRow.Button(() => UiText.T("Multiplayer"), () => Go(PageId.Multiplayer)).WithIcon("friends"));
+        rows.Add(MenuRow.Button(() => UiText.T("Achievements"), () => Go(PageId.Achievements)).WithIcon("trophy"));
+        rows.Add(MenuRow.Button(() => UiText.T("Settings"), () => Go(PageId.Settings)).WithIcon("settings"));
+        rows.Add(MenuRow.Button(() => UiText.T("Credits"), () => Go(PageId.Credits)).WithIcon("star"));
+        rows.Add(MenuRow.Button(() => UiText.T("Quit"), Quit).WithIcon("quit"));
         return rows;
     }
 
     private static string ContinueLabel()
     {
         int day = WorldClock.Instance != null ? WorldClock.Instance.Day : SaveData.GetInt("mazraa.day", 1);
-        return UiText.T("Continue") + "\n<size=70%><color=#E9D8B4>" + Loc.Display(GameModes.CurrentFarmNameRaw + "  -  " + UiText.Raw("Day") + " " + day) + "</color></size>";
+        return UiText.T("Continue") + "\n<size=70%><color=#F5F2EB>" + Loc.Display(GameModes.CurrentFarmNameRaw + "  -  " + UiText.Raw("Day") + " " + day) + "</color></size>";
     }
 
     // ------------------------------------------------------------------ Career: save slot cards
@@ -176,8 +176,8 @@ public partial class GameMenu
         string line2 = Regions.Name(map) + " (" + Regions.Country(map) + ")  -  " + UiText.Raw(GameModes.ModeName(s.mode));
         string line3 = UiText.Raw("Day") + " " + s.day + "  -  " + s.money.ToString("N0") + " " + Currency(map, ar) + "  -  " + GameModes.PlayTimeRaw(s.playSeconds);
         string line4 = string.IsNullOrEmpty(s.saved) ? "" : UiText.Raw("Last saved") + " " + s.saved;
-        return "<b>" + Loc.Display(line1) + "</b>" + (SaveSlots.ActiveSlot == slot ? "   <size=70%><color=#FAC240>" + UiText.T("Playing") + "</color></size>" : "")
-             + "\n<size=75%><color=#E9D8B4>" + Loc.Display(line2) + "</color>\n<color=#FFFFFFCC>" + Loc.Display(line3)
+        return "<b>" + Loc.Display(line1) + "</b>" + (SaveSlots.ActiveSlot == slot ? "   <size=70%><color=#F2A93B>" + UiText.T("Playing") + "</color></size>" : "")
+             + "\n<size=75%><color=#F5F2EB>" + Loc.Display(line2) + "</color>\n<color=#FFFFFFCC>" + Loc.Display(line3)
              + (line4 == "" ? "" : "   " + Loc.Display(line4)) + "</color></size>";
     }
 
@@ -300,7 +300,7 @@ public partial class GameMenu
     {
         var f = pending;
         var sb = new System.Text.StringBuilder(256);
-        sb.Append("<b><color=#E9D8B4>").Append(Loc.T("New farm")).Append("</color></b>  <size=80%>(").Append(Loc.Display(Loc.Raw("Farm") + " " + f.slot)).Append(")</size>\n\n");
+        sb.Append("<b><color=#F5F2EB>").Append(Loc.T("New farm")).Append("</color></b>  <size=80%>(").Append(Loc.Display(Loc.Raw("Farm") + " " + f.slot)).Append(")</size>\n\n");
         Line(sb, "Game mode", Loc.Raw(GameModes.ModeName(f.mode)));
         if (page != PageId.GameModePick)
         {

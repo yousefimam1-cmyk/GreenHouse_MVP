@@ -3,7 +3,7 @@ using System;
 namespace UnityEngine.UI
 {
     public class Graphic : UnityEngine.EventSystems.UIBehaviour { public Color color; public bool raycastTarget; public RectTransform rectTransform => (RectTransform)transform; }
-    public class Image : Graphic { public UnityEngine.Sprite sprite; public enum Type { Simple, Sliced, Tiled, Filled } public Type type; public bool fillCenter = true, preserveAspect; }
+    public class Image : Graphic { public UnityEngine.Sprite sprite; public enum Type { Simple, Sliced, Tiled, Filled } public Type type; public bool fillCenter = true, preserveAspect; public enum FillMethod { Horizontal, Vertical, Radial90, Radial180, Radial360 } public enum Origin360 { Bottom, Right, Top, Left } public enum OriginHorizontal { Left, Right } public FillMethod fillMethod; public int fillOrigin; public bool fillClockwise = true; public float fillAmount = 1f; public float pixelsPerUnitMultiplier = 1f; }
     public class Button : UnityEngine.EventSystems.UIBehaviour { public bool interactable; public UnityEngine.Events.UnityEvent onClick = new UnityEngine.Events.UnityEvent(); }
     public class LayoutElement : UnityEngine.EventSystems.UIBehaviour { public float minHeight, preferredHeight = -1f, preferredWidth = -1f, flexibleWidth = -1f; public bool ignoreLayout; }
     public class GraphicRaycaster : UnityEngine.EventSystems.UIBehaviour { }
@@ -18,7 +18,7 @@ namespace TMPro
     public enum TextAlignmentOptions { TopLeft, TopRight, Top, Center, Left, Right, MidlineLeft, MidlineRight }
     public enum TextWrappingModes { NoWrap, Normal }
     [Flags] public enum FontStyles { Normal = 0, Bold = 1 }
-    public class TMP_Text : UnityEngine.UI.Graphic { public string text; public TMP_FontAsset font; public float fontSize; public float alpha; public bool richText; public TextAlignmentOptions alignment; public TextWrappingModes textWrappingMode; public FontStyles fontStyle; }
+    public class TMP_Text : UnityEngine.UI.Graphic { public string text; public TMP_FontAsset font; public float fontSize; public float alpha; public bool richText; public TextAlignmentOptions alignment; public TextWrappingModes textWrappingMode; public FontStyles fontStyle; public float lineSpacing; }
     public class TextMeshProUGUI : TMP_Text { }
     public class TextMeshPro : TMP_Text { }
 }

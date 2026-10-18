@@ -103,7 +103,7 @@ public static class MenuPages
     public static bool Handles(FarmInfoScreen.Page p) => p >= FarmInfoScreen.Page.Map;
 
     private static string L(string s) => "\n" + Loc.Display(s);
-    private static string Sel(bool on, string s) => on ? "<color=#FF9A3C>> " + s + "</color>" : "  " + s;
+    private static string Sel(bool on, string s) => on ? "<color=#F2A93B>> " + s + "</color>" : "  " + s;
     private static string Dim(string s) => "<color=#BBBBBB>" + s + "</color>";
 
     public static int RowCount(FarmInfoScreen.Page p)
@@ -356,7 +356,7 @@ public static class MenuPages
         {
             if (i > 0) sb.Append("  ");
             string n = UiText.T(names[i]);
-            sb.Append(i == a ? "<color=#FF9A3C>[" + n + "]</color>" : Dim(n));
+            sb.Append(i == a ? "<color=#F2A93B>[" + n + "]</color>" : Dim(n));
         }
         return sb.ToString();
     }

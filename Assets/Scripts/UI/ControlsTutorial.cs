@@ -24,10 +24,10 @@ public class ControlsTutorial : MonoBehaviour
     public static ControlsTutorial Instance { get; private set; }
 
     // Mazraa brand palette: palm green, desert sand, date brown, sun gold.
-    public static readonly Color Green = new Color(0.18f, 0.42f, 0.23f, 0.94f);
-    public static readonly Color GreenDark = new Color(0.09f, 0.2f, 0.11f, 0.96f);
-    public static readonly Color Sand = new Color(0.91f, 0.85f, 0.71f);
-    public static readonly Color Gold = new Color(0.98f, 0.76f, 0.25f);
+    public static readonly Color Green = UiTheme.Glass;          // design tokens (UiTheme)
+    public static readonly Color GreenDark = UiTheme.GlassStrong;
+    public static readonly Color Sand = UiTheme.Text;
+    public static readonly Color Gold = UiTheme.Accent;
     private const string SandHex = "#E9D8B4", GoldHex = "#FAC240", BrownHex = "#5A3A1C", MintHex = "#9BE07A";
 
     // English Loc keys. [X] tokens become the current device's key / button through Glyphs.Apply.
