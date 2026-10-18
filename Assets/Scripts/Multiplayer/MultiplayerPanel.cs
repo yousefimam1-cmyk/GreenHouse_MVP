@@ -4,8 +4,10 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Co-op menu (F8, or the "Co-op" button while the cursor is free): player name, Host / Join (IP) / Leave,
-/// players on the farm and gifts. Quick chat: Enter opens a line at the bottom-left, Enter sends, Esc cancels.
+/// Co-op menu (F8, or the "Co-op" button while the cursor is free): player name (picked from a list, never typed:
+/// strangers see it online), LAN Host / Join (IP) / Leave, the online join code, players on the farm (friend, block,
+/// report; the host can also remove or ban for the session) and gifts. Online hosting / joining is in Main menu >
+/// Multiplayer. Quick chat: Enter opens a line at the bottom-left, Enter sends, Esc cancels.
 /// Drawn with IMGUI because it needs text fields (Arabic names/chat can be typed; Tajawal font).
 /// While a text field is open, NetSession.Typing is set and walking is paused so keys don't trigger the game.
 /// </summary>
@@ -16,7 +18,7 @@ public class MultiplayerPanel : MonoBehaviour
     public bool IsOpen { get; private set; }
     public bool ChatOpen { get; private set; }
 
-    private string nameField = "", ipField = "", chatField = "";
+    private string ipField = "", chatField = "";
     private int openedFrame = -10;
     private bool holdingUI;
     private readonly List<MonoBehaviour> pausedMovement = new List<MonoBehaviour>();
@@ -67,7 +69,6 @@ public class MultiplayerPanel : MonoBehaviour
         if (IsOpen || mp == null) return;
         IsOpen = true;
         openedFrame = Time.frameCount;
-        nameField = mp.PlayerName;
         ipField = mp.LastAddress;
         SetTyping(true);
     }
@@ -76,7 +77,6 @@ public class MultiplayerPanel : MonoBehaviour
     {
         if (!IsOpen) return;
         IsOpen = false;
-        if (MultiplayerManager.Instance != null) MultiplayerManager.Instance.SetPlayerName(nameField);
         SetTyping(false);
     }
 
@@ -192,7 +192,13 @@ public class MultiplayerPanel : MonoBehaviour
         cy = y;
         GUI.Label(R(x, cy, w, 40f), Mp.Tr("Co-op Farm") + "  (F8)", title); cy += 46f;
         GUI.Label(R(x, cy, 190f, 34f), Mp.Tr("Your name"), label);
-        nameField = GUI.TextField(R(x + 200f, cy, w - 200f, 34f), nameField ?? "", 20, field); cy += line;
+        bool canRename = !NetSession.IsOnline && !backend.Connecting;   // the name others already see stays while playing
+        GUI.enabled = canRename;
+        if (GUI.Button(R(x + 200f, cy, 44f, 34f), "<", button)) { PlayerNames.Index = PlayerNames.Index - 1; mp.UseGeneratedName(); }
+        GUI.Label(R(x + 252f, cy, w - 252f - 52f, 34f), Mp.UserText(PlayerNames.Display(mp.PlayerName)), label);
+        if (GUI.Button(R(x + w - 44f, cy, 44f, 34f), ">", button)) { PlayerNames.Index = PlayerNames.Index + 1; mp.UseGeneratedName(); }
+        GUI.enabled = true;
+        cy += line;
 
         if (!backend.Available)
         {
@@ -202,10 +208,10 @@ public class MultiplayerPanel : MonoBehaviour
         {
             GUI.Label(R(x, cy, 190f, 34f), Mp.Tr("Host IP address"), label);
             ipField = GUI.TextField(R(x + 200f, cy, w - 200f, 34f), ipField ?? "", 40, field); cy += line * 1.2f;
-            if (GUI.Button(R(x, cy, w * 0.5f - 6f, 40f), Mp.Tr("Host a farm"), button)) { mp.SetPlayerName(nameField); if (mp.Host()) lanAddress = LanAddress(); }
-            if (GUI.Button(R(x + w * 0.5f + 6f, cy, w * 0.5f - 6f, 40f), Mp.Tr("Join"), button)) { mp.SetPlayerName(nameField); mp.Join(ipField); }
+            if (GUI.Button(R(x, cy, w * 0.5f - 6f, 40f), Mp.Tr("Host a farm"), button)) { if (mp.Host()) lanAddress = LanAddress(); }
+            if (GUI.Button(R(x + w * 0.5f + 6f, cy, w * 0.5f - 6f, 40f), Mp.Tr("Join"), button)) mp.Join(ipField);
             cy += line * 1.2f;
-            GUI.Label(R(x, cy, w, 34f), Mp.Tr("Port 7777 (UDP) - allow the game in your firewall"), small); cy += line;
+            GUI.Label(R(x, cy, w, 34f), Mp.Tr("Port 7777 (UDP) - allow the game in your firewall") + "   " + Mp.Tr("Online: Main menu > Multiplayer"), small); cy += line;
             cy = DrawSafety(x, cy, w, line);
         }
         else if (backend.Connecting)
@@ -216,19 +222,27 @@ public class MultiplayerPanel : MonoBehaviour
         }
         else
         {
-            string role = NetSession.IsHost ? Mp.Tr("You are hosting - friends join with your IP address") + (string.IsNullOrEmpty(lanAddress) ? "" : "  " + lanAddress)
+            string role = NetSession.IsHost && mp.IsOnlineSession ? Mp.Tr("Join code") + ":  <size=140%><b>" + JoinCodes.Pretty(mp.JoinCode) + "</b></size>"
+                        : NetSession.IsHost ? Mp.Tr("You are hosting - friends join with your IP address") + (string.IsNullOrEmpty(lanAddress) ? "" : "  " + lanAddress)
                                             : Mp.Tr("You are visiting a friend's farm");
             GUI.Label(R(x, cy, w, 48f), role, label); cy += line * 1.3f;
             foreach (var kv in new List<KeyValuePair<ulong, string>>(mp.Players))
             {
                 bool me = kv.Key == backend.LocalId;
-                string who = "- " + Mp.UserText(kv.Value) + (kv.Key == 0UL ? "  (" + Mp.Tr("host") + ")" : "") + (me ? "  (" + Mp.Tr("you") + ")" : "")
+                string who = "- " + Mp.UserText(PlayerNames.Display(kv.Value)) + (kv.Key == 0UL ? "  (" + Mp.Tr("host") + ")" : "") + (me ? "  (" + Mp.Tr("you") + ")" : "")
                            + (ChatSafety.IsFriend(kv.Value) ? "  *" : "");
                 float bw = 96f;
-                GUI.Label(R(x + 16f, cy, me ? w - 16f : w - 16f - bw * 3f - 12f, 34f), who, label);
+                int nb = NetSession.IsHost ? 5 : 3;
+                GUI.Label(R(x + 16f, cy, me ? w - 16f : w - 16f - bw * nb - 12f, 34f), who, label);
                 if (!me)
                 {
-                    float bx = x + w - bw * 3f - 8f;
+                    float bx = x + w - bw * nb - 8f;
+                    if (NetSession.IsHost)
+                    {
+                        if (GUI.Button(R(bx, cy, bw - 4f, 32f), Mp.Tr("Remove"), small)) mp.Kick(kv.Key);
+                        if (GUI.Button(R(bx + bw, cy, bw - 4f, 32f), Mp.Tr("Ban"), small)) mp.Ban(kv.Key);
+                        bx += bw * 2f;
+                    }
                     bool friend = ChatSafety.IsFriend(kv.Value);
                     if (GUI.Button(R(bx, cy, bw - 4f, 32f), Mp.Tr(friend ? "Unfriend" : "Friend"), small)) ChatSafety.SetFriend(kv.Value, !friend);
                     bool blocked = ChatSafety.IsBlocked(kv.Value);
@@ -277,7 +291,8 @@ public class MultiplayerPanel : MonoBehaviour
     private float DrawSafety(float x, float cy, float w, float line)
     {
         if (GUI.Button(R(x, cy, w * 0.5f - 6f, 36f), Mp.Tr("Chat") + ": " + Mp.Tr(ChatSafety.ChatModeLabel(ChatSafety.Chat)), button)) ChatSafety.NextChatMode();
-        if (GUI.Button(R(x + w * 0.5f + 6f, cy, w * 0.5f - 6f, 36f), Mp.Tr("Who can join") + ": " + Mp.Tr(ChatSafety.JoinModeLabel(ChatSafety.Join)), button)) ChatSafety.NextJoinMode();
+        if (GUI.Button(R(x + w * 0.5f + 6f, cy, w * 0.5f - 6f, 36f), Mp.Tr("Who can join") + ": " + Mp.Tr(MultiplayerManager.VisibilityLabel(MultiplayerManager.Visibility)), button))
+            MultiplayerManager.Visibility = (OnlineVisibility)(((int)MultiplayerManager.Visibility + 1) % 3);
         return cy + line * 1.2f;
     }
 

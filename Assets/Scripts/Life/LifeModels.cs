@@ -83,8 +83,8 @@ public static class MoveRules
     public const float MaxCarryKg = 50f;
     public const float NoSprintKg = 20f;
 
-    /// <summary>1 with empty hands, down to 0.5 at the 50 kg limit.</summary>
-    public static float CarryFactor(float kg) => 1f - 0.5f * Mathf.Clamp01(kg / MaxCarryKg);
+    /// <summary>1 with empty hands, down to 0.7 at the 50 kg limit (mild, Farming Simulator style).</summary>
+    public static float CarryFactor(float kg) => 1f - 0.3f * Mathf.Clamp01(kg / MaxCarryKg);
 
     public static float SpeedFactor(float kg, bool crouching, bool exhausted, float hydration)
     {
@@ -97,8 +97,8 @@ public static class MoveRules
 
     public static bool CanSprint(float kg, bool crouching, bool exhausted) => !exhausted && !crouching && kg < NoSprintKg;
 
-    /// <summary>Acceleration multiplier for the controller (smooth start / stop; slower with a load).</summary>
-    public static float Acceleration(float kg) => Mathf.Lerp(0.6f, 0.3f, Mathf.Clamp01(kg / MaxCarryKg));
+    /// <summary>Acceleration multiplier for the controller (MoveFeel): 1 with empty hands, a little slower with a load.</summary>
+    public static float Acceleration(float kg) => Mathf.Lerp(1f, 0.75f, Mathf.Clamp01(kg / MaxCarryKg));
 }
 
 public enum HandTool { Hands, Hoe, WateringCan, Shovel, Brush }

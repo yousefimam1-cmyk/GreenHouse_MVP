@@ -230,7 +230,29 @@ public static class Loc
     private static readonly HashSet<TMP_Text> excluded = new HashSet<TMP_Text>();
 
     /// <summary>Texts whose owner sets them in code (alerts, values) are skipped by LocalizeScene.</summary>
-    public static void ExcludeFromScene(TMP_Text text) { if (text != null) excluded.Add(text); }
+    public static void ExcludeFromScene(TMP_Text text) { if (text != null) { excluded.Add(text); PruneIfLarge(); } }
+
+    // Floating texts (harvest numbers, labels) come and go all session; drop destroyed ones so these tables don't grow forever.
+    private static int pruneAt = 512;
+    private static readonly List<TMP_Text> deadTexts = new List<TMP_Text>();
+    private static void PruneIfLarge()
+    {
+        if (excluded.Count + originalFonts.Count + sceneOriginals.Count < pruneAt) return;
+        Prune();
+        pruneAt = Mathf.Max(512, (excluded.Count + originalFonts.Count + sceneOriginals.Count) * 2);
+    }
+
+    /// <summary>Forget texts that have been destroyed. Returns how many entries were removed.</summary>
+    public static int Prune()
+    {
+        int removed = excluded.RemoveWhere(t => t == null);
+        deadTexts.Clear();
+        foreach (var t in originalFonts.Keys) if (t == null) deadTexts.Add(t);
+        foreach (var t in sceneOriginals.Keys) if (t == null) deadTexts.Add(t);   // (a key in both lists twice: Remove is a no-op the second time)
+        foreach (var t in deadTexts) { if (originalFonts.Remove(t)) removed++; if (sceneOriginals.Remove(t)) removed++; }
+        deadTexts.Clear();
+        return removed;
+    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics()
@@ -311,7 +333,7 @@ public static class Loc
     public static void ApplyFont(TMP_Text text)
     {
         if (text == null) return;
-        if (!originalFonts.ContainsKey(text)) originalFonts[text] = text.font;
+        if (!originalFonts.ContainsKey(text)) { originalFonts[text] = text.font; PruneIfLarge(); }
         TMP_FontAsset target = IsArabic && ArabicFont != null ? ArabicFont : originalFonts[text];
         if (target != null && text.font != target) text.font = target;
     }

@@ -36,6 +36,13 @@ public class WorldMesh
         Triangles++;
     }
 
+    /// <summary>One quad (a b c d counter-clockwise seen from its front) / triangle of a material (custom shapes: facades, roofs).</summary>
+    public void AddQuad(Material m, Vector3 a, Vector3 b, Vector3 c, Vector3 d) => Quad(P(m), a, b, c, d);
+    public void AddTri(Material m, Vector3 a, Vector3 b, Vector3 c) => Tri(P(m), a, b, c);
+
+    /// <summary>Every vertex written so far (tests: visual extents against colliders).</summary>
+    public IEnumerable<Vector3> Vertices { get { foreach (var p in parts.Values) foreach (var v in p.v) yield return v; } }
+
     private static Vector3 C(Vector3 basePos, Quaternion rot, float a, float b, float d) => basePos + rot * new Vector3(a, b, d);
     private static Vector3 S(Vector3 center, float r, float a, float b) => center + new Vector3(Mathf.Cos(a) * Mathf.Sin(b), Mathf.Sin(a), Mathf.Cos(a) * Mathf.Cos(b)) * r;
 
@@ -68,9 +75,11 @@ public class WorldMesh
     }
 
     /// <summary>Upright cylinder (n sides) from basePos up h; rot tilts it (e.g. a horizontal tank).</summary>
-    public void Cylinder(Vector3 basePos, float r, float h, int n, Quaternion rot, Color c, bool cap = true, float smooth = 0.12f)
+    public void Cylinder(Vector3 basePos, float r, float h, int n, Quaternion rot, Color c, bool cap = true, float smooth = 0.12f) => Cylinder(basePos, r, h, n, rot, Mat(c, smooth), cap);
+
+    public void Cylinder(Vector3 basePos, float r, float h, int n, Quaternion rot, Material mat, bool cap = true)
     {
-        var p = P(Mat(c, smooth));
+        var p = P(mat);
         for (int i = 0; i < n; i++)
         {
             float a0 = i * Mathf.PI * 2f / n, a1 = (i + 1) * Mathf.PI * 2f / n;
@@ -82,9 +91,11 @@ public class WorldMesh
     }
 
     /// <summary>Cone (or a frustum when rTop > 0) from basePos up h.</summary>
-    public void Cone(Vector3 basePos, float r, float h, int n, Color c, float rTop = 0f)
+    public void Cone(Vector3 basePos, float r, float h, int n, Color c, float rTop = 0f) => Cone(basePos, r, h, n, Mat(c), rTop);
+
+    public void Cone(Vector3 basePos, float r, float h, int n, Material mat, float rTop = 0f)
     {
-        var p = P(Mat(c));
+        var p = P(mat);
         Vector3 top = basePos + Vector3.up * h;
         for (int i = 0; i < n; i++)
         {
@@ -101,9 +112,11 @@ public class WorldMesh
     }
 
     /// <summary>Low-poly dome / ball (half = upper hemisphere only).</summary>
-    public void Dome(Vector3 center, float r, Color c, bool half = true)
+    public void Dome(Vector3 center, float r, Color c, bool half = true) => Dome(center, r, Mat(c), half);
+
+    public void Dome(Vector3 center, float r, Material mat, bool half = true)
     {
-        var p = P(Mat(c));
+        var p = P(mat);
         int rings = 4, segs = 10;
         float start = half ? 0f : -Mathf.PI * 0.5f;
         for (int i = 0; i < rings; i++)
@@ -118,9 +131,11 @@ public class WorldMesh
     }
 
     /// <summary>Flat disc lying on y = center.y.</summary>
-    public void Disc(Vector3 center, float r, int n, Color c, float smooth = 0.1f)
+    public void Disc(Vector3 center, float r, int n, Color c, float smooth = 0.1f) => Disc(center, r, n, Mat(c, smooth));
+
+    public void Disc(Vector3 center, float r, int n, Material mat)
     {
-        var p = P(Mat(c, smooth));
+        var p = P(mat);
         for (int i = 0; i < n; i++)
         {
             float a0 = i * Mathf.PI * 2f / n, a1 = (i + 1) * Mathf.PI * 2f / n;
@@ -166,6 +181,50 @@ public class WorldMesh
         }
     }
 
+    /// <summary>
+    /// Road surface draped on the ground: 4 vertices across (shoulder edge, carriageway edge x2, shoulder edge) every
+    /// point of path, each at ground(p) + its lift. The carriageway sits `lift` above the ground, the gravel shoulders
+    /// slope down to `edgeLift` (just under the ground), so there is no kerb or step anywhere.
+    /// </summary>
+    public void Road(IList<Vector3> path, System.Func<Vector3, float> ground, float width, float shoulder, float lift, float edgeLift, Material surface, Material shoulderMat)
+    {
+        if (path.Count < 2) return;
+        var ps = P(surface); var pv = shoulderMat != null ? P(shoulderMat) : null;
+        Vector3 pl0 = default, pr0 = default, el0 = default, er0 = default;
+        for (int i = 0; i < path.Count; i++)
+        {
+            Vector3 dir = path[Mathf.Min(i + 1, path.Count - 1)] - path[Mathf.Max(i - 1, 0)];
+            dir.y = 0f;
+            if (dir.sqrMagnitude < 1e-4f) dir = Vector3.forward;
+            Vector3 side = Vector3.Cross(Vector3.up, dir.normalized);
+            Vector3 c = new Vector3(path[i].x, 0f, path[i].z);
+            Vector3 l = c - side * (width * 0.5f), r = c + side * (width * 0.5f);
+            Vector3 el = c - side * (width * 0.5f + shoulder), er = c + side * (width * 0.5f + shoulder);
+            l.y = ground(l) + lift; r.y = ground(r) + lift; el.y = ground(el) + edgeLift; er.y = ground(er) + edgeLift;
+            if (i > 0)
+            {
+                Quad(ps, pl0, l, r, pr0);
+                if (pv != null) { Quad(pv, el0, el, l, pl0); Quad(pv, pr0, r, er, er0); }
+            }
+            pl0 = l; pr0 = r; el0 = el; er0 = er;
+        }
+    }
+
+    /// <summary>Split a polyline into points no further apart than step (roads follow the ground between the layout points).</summary>
+    public static List<Vector3> Densify(IList<Vector3> path, float step)
+    {
+        var o = new List<Vector3>();
+        for (int i = 0; i < path.Count; i++)
+        {
+            if (i == 0) { o.Add(path[0]); continue; }
+            Vector3 a = path[i - 1], b = path[i];
+            float len = new Vector3(b.x - a.x, 0f, b.z - a.z).magnitude;
+            int n = Mathf.Max(1, Mathf.CeilToInt(len / step));
+            for (int k = 1; k <= n; k++) o.Add(Vector3.Lerp(a, b, k / (float)n));
+        }
+        return o;
+    }
+
     /// <summary>Thin flat quad on the ground between a and b (centre-line dashes, field rows).</summary>
     public void FlatLine(Vector3 a, Vector3 b, float width, Material m)
     {
@@ -185,6 +244,9 @@ public class WorldMesh
         {
             if (kv.Value.t.Count == 0) continue;
             var mesh = ProcMesh.Finish(name, kv.Value.v, kv.Value.t);
+            // textured look materials (plaster, mud brick, concrete...): world-space box UVs, same texel density everywhere
+            var look = LookLibrary.Classify(kv.Key);
+            if (look.HasValue) LookLibrary.BoxUV(mesh, Matrix4x4.TRS(parent.position, parent.rotation, parent.lossyScale), LookLibrary.TileSize(look.Value));
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
