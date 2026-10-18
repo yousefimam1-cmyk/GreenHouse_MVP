@@ -1377,6 +1377,7 @@ static class Program
         ArtTests.Run();   // before the sections that rebuild the world
         FishTests();
         MpTests.MultiplayerTests(args[0]);
+        OnlineTests.Run();   // internet co-op with a fake Relay / Lobby service, handshake, names, market sync
         // ---- loading screen + menu theme
         var theme = ProceduralAudio.Get("theme");
         float peak = 0f; double sq = 0;
@@ -2351,13 +2352,34 @@ class TestBackend : INetBackend
     public readonly List<(ulong to, string msg)> Sent = new List<(ulong, string)>();
     public bool Available => true;
     public NetMode Mode => mode;
-    public bool Connecting => false;
+    public bool connecting;
+    public bool Connecting => connecting;
     public ulong LocalId => localId;
     public IEnumerable<ulong> ClientIds => Clients;
-    public bool StartHost(ushort port) { mode = NetMode.Host; return true; }
-    public bool StartClient(string address, ushort port) { return true; }
-    public void Leave() { mode = NetMode.Offline; }
-    public void Kick(ulong id) { Clients.Remove(id); }
+    public bool relay;                       // the last start went through a Relay server
+    public readonly Dictionary<ulong, string> KickReasons = new Dictionary<ulong, string>();
+    public string disconnectReason = "";
+    public string DisconnectReason => disconnectReason;
+    public string ConnectPayload { get; set; }
+    public Func<ulong, string, string> ApprovalCheck { get; set; }
+    public bool StartHost(ushort port) { mode = NetMode.Host; relay = false; return true; }
+    public bool StartClient(string address, ushort port) { relay = false; connecting = true; return true; }
+    public bool StartRelayHost() { mode = NetMode.Host; relay = true; return true; }
+    public bool StartRelayClient() { relay = true; connecting = true; return true; }
+    public void Leave() { mode = NetMode.Offline; connecting = false; }
+    public void Kick(ulong id, string reason) { Clients.Remove(id); KickReasons[id] = reason; }
+    /// <summary>A player tries to join this host: the approval check runs like Netcode's ConnectionApproval.
+    /// Returns null when let in (then connected), else the refusal reason.</summary>
+    public string TryJoin(ulong id, string payload)
+    {
+        string refuse = ApprovalCheck != null ? ApprovalCheck(id, payload) : null;
+        if (refuse != null) return refuse;
+        Clients.Add(id);
+        ClientConnected?.Invoke(id);
+        return null;
+    }
+    /// <summary>Client side: the host refused us / ended the session with this reason.</summary>
+    public void RaiseRefused(string reason) { disconnectReason = reason; connecting = false; mode = NetMode.Offline; Disconnected?.Invoke(); }
     public void SendToHost(string msg, bool reliable) => Sent.Add((0UL, msg));
     public void SendToClient(ulong id, string msg, bool reliable) => Sent.Add((id, msg));
     public void SendToClients(string msg, bool reliable) { foreach (var c in Clients) Sent.Add((c, msg)); }
@@ -2365,7 +2387,7 @@ class TestBackend : INetBackend
     public event Action<ulong> ClientConnected, ClientDisconnected;
     public event Action Connected, Disconnected;
     public void Receive(ulong from, string msg) => Received?.Invoke(from, msg);
-    public void RaiseConnected() => Connected?.Invoke();
+    public void RaiseConnected() { connecting = false; mode = NetMode.Client; Connected?.Invoke(); }
     public void RaiseDisconnected() => Disconnected?.Invoke();
     public void RaiseClientConnected(ulong id) => ClientConnected?.Invoke(id);
     public void RaiseClientDisconnected(ulong id) { Clients.Remove(id); ClientDisconnected?.Invoke(id); }
@@ -2771,7 +2793,9 @@ static class ArtTests
         player.position = AnimalPen.Instance.transform.position + new Vector3(0, 0, 12f);
         FakeEngine.Run(40f, 0.5f);
         T.Check("Animal calls near the pen", aa.LastCall == "chicken" || aa.LastCall == "sheep", aa.LastCall);
-        T.SetProp(clock, "DayProgress", 0.95f); FakeEngine.Run(20f, 0.5f);
+        // Night well before midnight (02:00 is 0.83) so the 20 s run can't roll into a new day with a rain roll.
+        T.SetProp(clock, "Weather", Weather.Sunny);   // crickets are silent in rain
+        T.SetProp(clock, "DayProgress", 0.82f); FakeEngine.Run(20f, 0.5f);
         T.Check("Crickets at night", aa.NightVolume > 0.05f, "" + aa.NightVolume);
         MazraaAudio.SetMaster(0.4f);
         T.Check("Master volume drives the listener", Math.Abs(AudioListener.volume - 0.4f) < 0.001f);

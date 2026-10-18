@@ -74,7 +74,7 @@ public class RemotePlayer : MonoBehaviour
     public void SetName(string playerName)
     {
         PlayerName = string.IsNullOrEmpty(playerName) ? "Player " + Id : playerName;
-        SetText(nameTag, PlayerName);
+        SetText(nameTag, PlayerNames.Display(PlayerName));
     }
 
     public void ApplyPose(NetPose p)
