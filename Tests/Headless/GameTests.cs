@@ -833,7 +833,7 @@ static class Program
         var selColor = menu.List.Rows[menu.List.Selected].bg.color;
         T.Check("High-contrast menus: opaque black panel, yellow selection", panelColor.a == 1f && panelColor.r == 0f && selColor.r == 1f && selColor.a == 1f && GameSettings.NotificationScale == 2f);
         menu.List.Choose(menu.List.Rows.Count - 2);
-        T.Check("Reset to defaults (Accessibility)", GameSettings.UiScale == 100 && GameSettings.ColorBlindMode == 0 && !GameSettings.HighContrast && GameSettings.NotificationScale == 1f && Math.Abs(scaler.referenceResolution.x - 1920f) < 0.5f && menu.List.Panel.GetComponent<UnityEngine.UI.Image>().color.a < 1f);
+        T.Check("Reset to defaults (Accessibility)", GameSettings.UiScale == 100 && GameSettings.ColorBlindMode == 0 && !GameSettings.HighContrast && GameSettings.NotificationScale == 1f && Math.Abs(scaler.referenceResolution.x - 1920f) < 0.5f && menu.List.Panel.GetComponent<UnityEngine.UI.Image>().color.r > 0f);   // kit panel: white tint; flat: translucent
         menu.Close();
 
         // Values for the checks that follow (new game keeps settings)
@@ -1446,6 +1446,15 @@ static class Program
         T.Check("Loading bar fills gradually", LoadingScreen.Visible && LoadingScreen.Progress > 0.1f && LoadingScreen.Progress < 0.6f, LoadingScreen.Progress + "");
         FakeEngine.Run(14f);
         T.Check("Loading screen closes by itself", !LoadingScreen.Visible && LoadingScreen.Progress >= 0.999f);
+        // UI art kit (Branding/make_ui_kit.py -> Resources/UI): 9-slice panels with borders from the manifest, icons, pad glyphs
+        var kitPanel = UiKit.Kit("panel"); var kitBtn = UiKit.Kit("button_selected");
+        T.Check("UI kit: panel and button sprites load as 9-slice (border from kit_manifest.json)", UiKit.Enabled && kitPanel != null && kitPanel.border.x > 0 && kitBtn != null && kitBtn.border.x > 0, kitPanel == null ? "null" : kitPanel.border.ToString());
+        T.Check("UI kit: 100+ icons incl. crops, animals, vehicles, places and settings", UiKit.IconNames.Count() >= 100 && UiKit.Icon("crop_wheat") != null && UiKit.Icon("animal_cow") != null && UiKit.Icon("vehicle_tractor") != null && UiKit.Icon("poi_market") != null && UiKit.Icon("settings") != null && UiKit.CropIcon("nonsense") != null, UiKit.IconNames.Count() + "");
+        T.Check("UI kit: Xbox and PlayStation glyphs for every pad button", Enum.GetValues(typeof(Glyphs.Pad)).Cast<Glyphs.Pad>().All(b => UiKit.Glyph(UiKit.GlyphName(b, false)) != null && UiKit.Glyph(UiKit.GlyphName(b, true)) != null) && UiKit.KeyGlyph("Esc") != null);
+        var menuRows = GameMenu.Instance != null ? GameMenu.Instance.List.Panel.GetComponent<UnityEngine.UI.Image>() : null;
+        T.Check("Menus draw on the kit panel sprite", menuRows != null && menuRows.sprite != null && menuRows.type == UnityEngine.UI.Image.Type.Sliced);
+        var overlayGo = UnityEngine.Object.FindAnyObjectByType<LoadingOverlay>();
+        T.Check("Loading screen shows the illustrated Najd farm (parallax layers from Resources/Branding/Loading)", overlayGo != null && overlayGo.ArtRegion == "najd", overlayGo == null ? "no overlay" : overlayGo.ArtRegion);
 
         DrivingTests.Run();
         SharedKeyTests.Run();

@@ -12,6 +12,10 @@ public class LoadingOverlay : MonoBehaviour
     private RectTransform bar;
     private CanvasGroup group;
     private RawImage logo;
+    private readonly RawImage[] art = new RawImage[4];   // sky, far, mid, fg (Resources/Branding/Loading, Branding/make_brand_kit.py)
+    private RectTransform sand, dune;
+    private string artRegion;
+    private static readonly string[] ArtLayers = { "sky", "far", "mid", "fg" };
     private float shown, tipTimer, fade = -1f, musicVol, musicTarget;
     private bool ready;
     private int tipIndex;
@@ -26,12 +30,22 @@ public class LoadingOverlay : MonoBehaviour
         var bg = MenuKit.Rect("Background", canvas.transform, typeof(Image));
         MenuKit.Stretch(bg);
         Img(bg, new Color(0.07f, 0.16f, 0.09f, 1f));
+        // Golden-hour farm illustration in parallax layers (slightly oversized so they can drift). Missing files: flat bands below.
+        for (int i = 0; i < art.Length; i++)
+        {
+            var lr0 = MenuKit.Rect("Art " + ArtLayers[i], canvas.transform, typeof(RawImage));
+            lr0.anchorMin = new Vector2(-0.03f, -0.03f); lr0.anchorMax = new Vector2(1.03f, 1.03f);
+            lr0.offsetMin = lr0.offsetMax = Vector2.zero;
+            art[i] = lr0.GetComponent<RawImage>();
+            art[i].raycastTarget = false;
+            art[i].enabled = false;
+        }
         // Sand horizon band with a gold rule: reads as desert farmland at sunset behind the logo.
-        var sand = MenuKit.Rect("Sand", canvas.transform, typeof(Image));
+        sand = MenuKit.Rect("Sand", canvas.transform, typeof(Image));
         sand.anchorMin = new Vector2(0f, 0f); sand.anchorMax = new Vector2(1f, 0.3f);
         sand.offsetMin = sand.offsetMax = Vector2.zero;
         Img(sand, new Color(0.62f, 0.5f, 0.32f, 1f));
-        var dune = MenuKit.Rect("Dune", canvas.transform, typeof(Image));
+        dune = MenuKit.Rect("Dune", canvas.transform, typeof(Image));
         dune.anchorMin = new Vector2(0f, 0f); dune.anchorMax = new Vector2(1f, 0.16f);
         dune.offsetMin = dune.offsetMax = Vector2.zero;
         Img(dune, new Color(0.5f, 0.39f, 0.24f, 1f));
@@ -51,11 +65,13 @@ public class LoadingOverlay : MonoBehaviour
         track.anchorMin = track.anchorMax = track.pivot = new Vector2(0.5f, 0.3f);
         track.anchoredPosition = new Vector2(0f, 90f);
         track.sizeDelta = new Vector2(900f, 14f);
-        Img(track, new Color(0f, 0f, 0f, 0.45f));
+        var trackImg = Img(track, new Color(0f, 0f, 0f, 0.45f));
+        UiKit.Sliced(trackImg, "bar_track");
         bar = MenuKit.Rect("Bar Fill", track, typeof(Image));
         bar.anchorMin = new Vector2(0f, 0f); bar.anchorMax = new Vector2(0f, 1f);
         bar.offsetMin = bar.offsetMax = Vector2.zero;
-        Img(bar, ControlsTutorial.Gold);
+        var fillImg = Img(bar, ControlsTutorial.Gold);
+        UiKit.Sliced(fillImg, "bar_fill");
         status = Label(canvas.transform, "Status", 26, Color.white, new Vector2(0.5f, 0.3f), new Vector2(900f, 40f));
         status.rectTransform.anchoredPosition = new Vector2(0f, 130f);
 
@@ -64,7 +80,7 @@ public class LoadingOverlay : MonoBehaviour
         box.anchorMin = box.anchorMax = box.pivot = new Vector2(0.5f, 0f);
         box.anchoredPosition = new Vector2(0f, 60f);
         box.sizeDelta = new Vector2(1100f, 120f);
-        Img(box, new Color(0.06f, 0.12f, 0.07f, 0.88f));
+        if (!UiKit.Sliced(box.GetComponent<Image>(), "tooltip")) Img(box, new Color(0.06f, 0.12f, 0.07f, 0.88f)); else box.GetComponent<Image>().raycastTarget = false;
         tip = MenuKit.Text(box, 26, Color.white, "Tip");
         var trt = tip.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
@@ -95,15 +111,40 @@ public class LoadingOverlay : MonoBehaviour
 
     internal void SceneReady() { ready = true; }
 
+    /// <summary>Which illustration is shown ("najd", "delta") or "" for the flat bands.</summary>
+    public string ArtRegion => artRegion ?? "";
+
+    private void LoadArt()
+    {
+        string region = Regions.Current != null && Regions.Current.id == "nile_delta" ? "delta" : "najd";
+        if (region == artRegion) return;
+        artRegion = region;
+        bool any = false;
+        for (int i = 0; i < art.Length; i++)
+        {
+            var tex = Resources.Load<Texture2D>("Branding/Loading/" + region + "_" + ArtLayers[i]);
+            art[i].texture = tex;
+            art[i].enabled = tex != null;
+            any |= tex != null;
+        }
+        if (!any) artRegion = "";
+        if (sand != null) sand.gameObject.SetActive(!any);
+        if (dune != null) dune.gameObject.SetActive(!any);
+        // over the illustration the logo sits higher and smaller, the bar lower
+        if (logo != null) logo.rectTransform.anchorMin = logo.rectTransform.anchorMax = logo.rectTransform.pivot = new Vector2(0.5f, any ? 0.7f : 0.62f);
+    }
+
     private void Refresh()
     {
         bool ar = Loc.IsArabic;
+        LoadArt();
         var tex = Resources.Load<Texture2D>(ar ? "Branding/mazraa_logo_ar_512" : "Branding/mazraa_logo_en_512");
         if (logo != null)
         {
             logo.texture = tex;
             logo.enabled = tex != null;
-            if (tex != null) logo.rectTransform.sizeDelta = new Vector2(760f, 760f * tex.height / Mathf.Max(1, tex.width));
+            float w = string.IsNullOrEmpty(artRegion) ? 760f : 640f;
+            if (tex != null) logo.rectTransform.sizeDelta = new Vector2(w, w * tex.height / Mathf.Max(1, tex.width));
         }
         title.enabled = tex == null;
         title.text = ar ? ArabicShaper.Shape("مزرعة") : "MAZRAA";
@@ -122,6 +163,13 @@ public class LoadingOverlay : MonoBehaviour
         UpdateMusic(dt);
         if (!canvasGo.activeSelf) return;
         shown += dt;
+        if (!GameSettings.ReduceMotion && !string.IsNullOrEmpty(artRegion))
+        {
+            // gentle parallax drift: far layers move less than the foreground
+            float ph = shown * 0.25f;
+            for (int i = 0; i < art.Length; i++)
+                if (art[i] != null && art[i].enabled) art[i].rectTransform.anchoredPosition = new Vector2(Mathf.Sin(ph) * 6f * i, Mathf.Cos(ph * 0.7f) * 3f * i);
+        }
         if (!ready && shown > 12f) ready = true;      // fail-safe: never stay stuck on the loading screen
         // Fill to 90% over the minimum time, the rest once the scene is ready.
         float target = Mathf.Clamp01(shown / LoadingScreen.MinSeconds) * 0.9f + (ready ? 0.1f : 0f);
