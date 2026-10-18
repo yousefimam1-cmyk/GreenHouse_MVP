@@ -88,6 +88,8 @@ public abstract class Vehicle : Interactable
     public bool RemoteDriven { get; private set; }
 
     protected abstract string SaveId { get; }
+    /// <summary>Stable id of this vehicle ("truck", "tractor"): save keys, dealer configuration, statistics. (FS parity hook)</summary>
+    public string Id => SaveId;
     public override bool CanInteract => !IsDriving && !RemoteDriven;
 
     protected override void Awake()
@@ -185,7 +187,7 @@ public abstract class Vehicle : Interactable
         drive.fuelPerSecond = fuelPerSecond; drive.gears = Mathf.Max(1, gears);
         drive.ExtraMass = LoadMass; drive.BallastMass = BallastMass;
         drive.DraftForce = DraftForce; drive.WorkSpeedLimit = WorkSpeedLimit;
-        drive.Mode = GameSettings.Gearbox; drive.LowPressure = GameSettings.LowTyrePressure;
+        drive.Mode = GameSettings.Gearbox; drive.LowPressure = VehicleConfig.LowPressure(SaveId, GameSettings.LowTyrePressure);   // FS parity hook: dealer wheel type
         surfaceTimer -= dt;
         if (surfaceTimer <= 0f)
         {

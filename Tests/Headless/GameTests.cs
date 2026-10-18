@@ -45,7 +45,8 @@ static class Program
 
     static void ResetStatics()
     {
-        foreach (var t in new[] { typeof(GameEvents), typeof(Loc), typeof(CropDatabase), typeof(SaveData), typeof(WorldClock), typeof(FieldPlot), typeof(FarmModifiers), typeof(DesertWeatherFX), typeof(CozyFx), typeof(Appearance), typeof(SponsorManager), typeof(CozyAnalytics), typeof(LoadingScreen) })
+        foreach (var t in new[] { typeof(GameEvents), typeof(Loc), typeof(CropDatabase), typeof(SaveData), typeof(WorldClock), typeof(FieldPlot), typeof(FarmModifiers), typeof(DesertWeatherFX), typeof(CozyFx), typeof(Appearance), typeof(SponsorManager), typeof(CozyAnalytics), typeof(LoadingScreen),
+                                 typeof(ParkedImplement), typeof(ImplementYard), typeof(VehicleConfig), typeof(FarmMenuData), typeof(Tractor) })
         {
             var m = t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
                 .FirstOrDefault(x => x.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false).Length > 0);
@@ -1443,6 +1444,7 @@ static class Program
         FrontEndTests.Run();   // title screen, main menu, Career slots + new-farm wizard, play modes, multiplayer screen
         LookTests.Run();   // graphics makeover (Tests/Headless/LookTests.cs)
         WorldTests.Run();      // open world: terrain tiles, roads, places, selling at a place, land, map, waypoint, fast travel, Delta layout
+        ParityTests.Run();     // Farming Simulator parity: HUD layout, Tab switching, implements, farm menu tabs, GPS route, dealer
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
@@ -3979,7 +3981,7 @@ static class MarketTests
         var pad = new UnityEngine.InputSystem.Gamepad();
         UnityEngine.InputSystem.Gamepad.current = pad;
         Pad(pad.rightShoulder);
-        T.Check("Pages: RB wraps from Finances to Inventory", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Inventory);
+        T.Check("Pages: RB goes from Finances to the Map tab (FS-style farm menu)", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Map);
         Pad(pad.leftShoulder); Pad(pad.leftShoulder); Pad(pad.leftShoulder); Pad(pad.leftShoulder);
         T.Check("Pages: LB back to Prices", FarmInfoScreen.Instance.Open == FarmInfoScreen.Page.Prices, FarmInfoScreen.Instance.Open.ToString());
         Pad(pad.dpad.down); Pad(pad.dpad.down);

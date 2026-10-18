@@ -196,7 +196,7 @@ public static class Loc
             "G - graphics quality    P - pause / new game\n" +
             "Fields: E to plow, plant (buy seeds), water (well must run), harvest. Seasons and weather change growth.\n" +
             "M - market prices and buyer contracts (contracts pay a bonus when you sell at the market)\n" +
-            "Tractor: Q changes implement (plow, seeder, harvester) - drive it over a field. Park on the green pad to refuel.\n" +
+            "Tractor: reverse up to an implement in the yard, Q attaches / detaches it, V lowers / raises it - drive it over a field. Tab switches vehicles. Park on the green pad to refuel.\n" +
             "Animals need feed, a full water trough and a clean pen (barn door). Happy pairs have young." },
     };
 
@@ -219,7 +219,7 @@ public static class Loc
             "G - جودة الجرافيكس    P - إيقاف / لعبة جديدة\n" +
             "الحقول: E للحرث والزراعة (اشترِ بذور) والري (البئر لازم يشتغل) والحصاد. المواسم والطقس تأثر على النمو.\n" +
             "M - أسعار السوق وعقود المشترين (العقود تدفع أكثر لما تبيع في السوق)\n" +
-            "الجرار: Q لتغيير المعدّة (محراث، بذّارة، حصّادة) - سُقه فوق الحقل. وقّف على المنطقة الخضراء للتموين.\n" +
+            "الجرار: ارجع إلى معدّة في الساحة، Q للتركيب / الفك، V للإنزال / الرفع - سُقه فوق الحقل. Tab لتبديل المركبة. وقّف على المنطقة الخضراء للتموين.\n" +
             "الحيوانات تحتاج علف وحوض ماء مليان وحظيرة نظيفة (باب الحظيرة). الأزواج المرتاحة تتكاثر." },
     };
 

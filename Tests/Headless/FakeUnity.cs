@@ -310,6 +310,7 @@ namespace UnityEngine
     public class RectTransform : Transform
     {
         public Vector2 anchorMin, anchorMax, pivot, anchoredPosition, sizeDelta, offsetMin, offsetMax;
+        public Rect rect => new Rect(0f, 0f, sizeDelta.x, sizeDelta.y);   // real: computed by the layout (no layout here)
     }
 
     // ------------------------------------------------------------------ math
