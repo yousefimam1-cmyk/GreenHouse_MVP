@@ -1,0 +1,7 @@
+{
+ "notes": "Content pack manifests (Assets/Scripts/Core/ContentPacks.cs). id = pack; regions = maps it adds content for (empty = all); dlcId = entitlement checked with Dlc.Owns; requires = packs it builds on; filePrefixes = its file prefixes in Data/Economy, Data/Loc, Data/Missions, Data/Campaigns, Data/Events, Data/Quests; comingSoon = listed but never active.",
+ "packs": [
+  {"id": "base", "nameEn": "Mazraa - Najd", "nameAr": "المزرعة - نجد", "version": "1.0", "regions": [], "dlcId": "", "storeId": "",
+   "requires": [], "filePrefixes": ["00_", "10_", "20_", "30_", "40_", "50_", "60_", "70_", "75_", "80_", "85_", "90_", "91_", "92_", "94_", "95_", "96_", "97_", "98_", "99_"], "comingSoon": false, "minSchema": 1}
+ ]
+}

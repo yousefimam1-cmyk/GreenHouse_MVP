@@ -13,6 +13,19 @@ public static class SaveData
     [Serializable] private class Entry { public string k; public string v; public int t; } // t: 0 int, 1 float, 2 string
     [Serializable] private class FileData { public int version = 1; public string savedAt; public List<Entry> entries = new List<Entry>(); }
 
+    // [Core] schema versioning hook (Assets/Scripts/Core/SaveMigrations.cs): bump when a key is renamed/changed and add a step there.
+    public const int SchemaVersion = 2;
+    /// <summary>Version of the file that was read (before migration); 0 when no file existed.</summary>
+    public static int LoadedVersion { get; private set; }
+    private sealed class Store : ISaveStore
+    {
+        public bool Has(string key) => map.ContainsKey(key);
+        public string Get(string key) { Entry e; return map.TryGetValue(key, out e) ? e.v : null; }
+        public void Set(string key, string value, int type) { map[key] = new Entry { k = key, v = value, t = type }; }
+        public void Remove(string key) => map.Remove(key);
+        public IEnumerable<string> Keys => new List<string>(map.Keys);
+    }
+
     private static Dictionary<string, Entry> map;
     private static Dictionary<string, Entry> homeMap;   // the player's own save while a co-op session uses a throwaway map
     private static bool dirty;
@@ -33,6 +46,9 @@ public static class SaveData
             {
                 var f = JsonUtility.FromJson<FileData>(File.ReadAllText(Path));
                 if (f?.entries != null) foreach (var e in f.entries) if (e != null && e.k != null) map[e.k] = e;
+                // [Core] migrate older files, then write them back at the current version
+                LoadedVersion = f != null ? f.version : 0;
+                if (f != null && f.version < SchemaVersion && SaveMigrations.Apply(f.version, SchemaVersion, new Store()) == SchemaVersion) dirty = true;
             }
         }
         catch (Exception ex) { Debug.LogWarning("[SaveData] Could not read save, starting fresh: " + ex.Message); }
@@ -43,7 +59,7 @@ public static class SaveData
     }
 
     /// <summary>Forget the in-memory values and read the file again (after a save slot was copied over it).</summary>
-    public static void Reload() { map = null; dirty = false; }
+    public static void Reload() { map = null; dirty = false; LoadedVersion = 0; }
 
     public static int GetInt(string k, int d = 0) { Load(); return map.TryGetValue(k, out var e) && int.TryParse(e.v, out var r) ? r : homeMap != null ? d : PlayerPrefs.GetInt(k, d); }
     public static float GetFloat(string k, float d = 0f) { Load(); return map.TryGetValue(k, out var e) && float.TryParse(e.v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var r) ? r : homeMap != null ? d : PlayerPrefs.GetFloat(k, d); }
@@ -93,7 +109,7 @@ public static class SaveData
         if (map == null || (!dirty && !force)) return;
         try
         {
-            var f = new FileData { savedAt = DateTime.UtcNow.ToString("o") };
+            var f = new FileData { version = SchemaVersion, savedAt = DateTime.UtcNow.ToString("o") };   // [Core] schema version
             f.entries.AddRange((homeMap ?? map).Values);   // during a co-op session only the player's own farm is written
             File.WriteAllText(Path, JsonUtility.ToJson(f, true));
             dirty = false;

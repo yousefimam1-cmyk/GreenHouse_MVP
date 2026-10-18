@@ -1443,6 +1443,7 @@ static class Program
         FrontEndTests.Run();   // title screen, main menu, Career slots + new-farm wizard, play modes, multiplayer screen
         LookTests.Run();   // graphics makeover (Tests/Headless/LookTests.cs)
         WorldTests.Run();      // open world: terrain tiles, roads, places, selling at a place, land, map, waypoint, fast travel, Delta layout
+        CoreTests.Run();       // [Core] tick scheduler, signals, save migrations, content packs (Tests/Headless/CoreTests.cs)
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
