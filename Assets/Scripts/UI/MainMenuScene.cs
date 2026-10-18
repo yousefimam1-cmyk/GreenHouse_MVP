@@ -381,11 +381,36 @@ public class MainMenuScene : MonoBehaviour
     {
         var sb = new StringBuilder(256);
         sb.Append("<b><color=#E9D8B4>").Append(Loc.T("Multiplayer")).Append("</color></b>\n\n");
-        if (!GameMenu.MultiplayerAvailable)
+        var mp = MultiplayerManager.Instance;
+        if (!GameMenu.MultiplayerAvailable || mp == null)
+        {
             sb.Append(Loc.T("Multiplayer is coming in a future update")).Append("\n\n<size=90%>").Append(Loc.T("Farm together with up to 3 friends - stay tuned!")).Append("</size>");
-        else
-            sb.Append(Loc.T("Host your farm, or join a friend's farm with their IP address.")).Append("\n\n<size=90%>")
-              .Append(Loc.T("Port 7777 (UDP) - allow the game in your firewall")).Append("</size>");
+            return sb.ToString();
+        }
+        if (NetSession.IsHost && mp.IsOnlineSession)
+        {
+            // The join code, big: friends read it off the screen (Multiplayer > Join with a code).
+            sb.Append(Loc.T("Join code")).Append("\n<size=260%><b><color=#FAC240>").Append(JoinCodes.Pretty(mp.JoinCode)).Append("</color></b></size>\n\n");
+            sb.Append(Loc.Display(Loc.Raw("Players") + ": " + mp.Players.Count + "/" + MultiplayerManager.MaxPlayers)).Append('\n');
+            sb.Append(Loc.Display(Loc.Raw("Who can join") + ": " + Loc.Raw(MultiplayerManager.VisibilityLabel(MultiplayerManager.Visibility)))).Append('\n');
+            sb.Append(Loc.Display(Loc.Raw("Chat") + ": " + Loc.Raw(ChatSafety.ChatModeLabel(ChatSafety.Chat)))).Append("\n\n<size=85%>");
+            sb.Append(Loc.T("Only share the code with people you know. You can remove or ban players under Players.")).Append("</size>");
+            return sb.ToString();
+        }
+        if (NetSession.IsOnline)
+        {
+            sb.Append(Loc.T(NetSession.IsHost ? "You are hosting - friends join with your IP address" : "You are visiting a friend's farm")).Append("\n\n");
+            foreach (var kv in mp.Players) sb.Append("- ").Append(Mp.Name(kv.Value)).Append('\n');
+            return sb.ToString();
+        }
+        if (mp.Busy != MultiplayerManager.OnlineStep.Idle || !string.IsNullOrEmpty(mp.Status))
+            sb.Append("<color=#FAC240>").Append(Mp.Tr(mp.Status)).Append("</color>\n\n");
+        if (GameMenu.OnlineAvailable)
+            sb.Append(Loc.T("Online: host your farm and give friends the 6-letter join code, or join with a friend's code. Public farms can be browsed."))
+              .Append("\n\n");
+        sb.Append(Loc.T("Host your farm, or join a friend's farm with their IP address.")).Append("\n<size=90%>")
+          .Append(Loc.T("Port 7777 (UDP) - allow the game in your firewall")).Append("</size>\n\n<size=85%>")
+          .Append(Loc.Display(Loc.Raw("Your name") + ": " + PlayerNames.Display(PlayerNames.Current))).Append("</size>");
         return sb.ToString();
     }
 

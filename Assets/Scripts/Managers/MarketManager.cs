@@ -491,6 +491,7 @@ public class MarketManager : MonoBehaviour
     {
         string block = AcceptBlock(c);
         if (block != null) { Alert(Loc.T(block)); return false; }
+        if (NetSession.IsClient) { NetSession.RequestContract(c.id); return true; }   // co-op: the host runs the contracts board
         int today = WorldClock.Instance != null ? WorldClock.Instance.Day : 1;
         Offers.Remove(c);
         c.dueDay = today + Mathf.Max(1, c.days);
@@ -611,6 +612,55 @@ public class MarketManager : MonoBehaviour
     {
         foreach (var kv in trend) SaveData.SetFloat("mazraa.price." + kv.Key, kv.Value);
         SaveData.Save();
+    }
+
+    // ---------------- co-op sync (host -> clients) ----------------
+
+    [Serializable] private class SyncState { public List<KeyVal> trend = new List<KeyVal>(); public List<KeyVal> glut = new List<KeyVal>(); public List<MarketEvent> events = new List<MarketEvent>(); public List<Contract> contracts = new List<Contract>(); public List<Contract> offers = new List<Contract>(); }
+
+    /// <summary>Host: today's prices (trend), supply, demand events and the contracts board for the clients.</summary>
+    public string EncodeSync()
+    {
+        var s = new SyncState();
+        foreach (var kv in trend) s.trend.Add(new KeyVal { k = kv.Key, v = kv.Value });
+        foreach (var kv in glut) s.glut.Add(new KeyVal { k = kv.Key, v = kv.Value });
+        s.events.AddRange(Events);
+        s.contracts.AddRange(Contracts);
+        s.offers.AddRange(Offers);
+        return NetProtocol.Make(NetProtocol.MarketSync, JsonUtility.ToJson(s));
+    }
+
+    /// <summary>Client: show the host's market (nothing is saved; ReloadLocal brings our own market back).</summary>
+    public bool ApplySync(string[] parts)
+    {
+        SyncState s = null;
+        try { s = JsonUtility.FromJson<SyncState>(NetProtocol.Field(parts, 1)); } catch { }
+        if (s == null) return false;
+        trend.Clear(); glut.Clear(); Events.Clear(); Contracts.Clear(); Offers.Clear();
+        if (s.trend != null) foreach (var kv in s.trend) if (kv != null && kv.k != null) trend[kv.k] = Mathf.Clamp(kv.v, 0.1f, 5f);
+        if (s.glut != null) foreach (var kv in s.glut) if (kv != null && kv.k != null) glut[kv.k] = Mathf.Clamp01(kv.v);
+        if (s.events != null) foreach (var e in s.events) if (e != null) Events.Add(e);
+        if (s.contracts != null) foreach (var c in s.contracts) if (c != null) Contracts.Add(c);
+        if (s.offers != null) foreach (var c in s.offers) if (c != null) Offers.Add(c);
+        return true;
+    }
+
+    /// <summary>Host: a client accepted a contract offer.</summary>
+    public bool HostAccept(string contractId)
+    {
+        var c = Offers.Find(x => x != null && x.id == contractId);
+        return c != null && Accept(c);
+    }
+
+    /// <summary>Back on our own farm after visiting: reload our own prices, market state and contracts.</summary>
+    public void ReloadLocal()
+    {
+        var eco = EconomyManager.Instance;
+        trend.Clear();
+        if (eco != null) foreach (var g in eco.Data.goods) trend[g.id] = SaveData.GetFloat("mazraa.price." + g.id, 1f);
+        LoadState();
+        Contracts.Clear(); Offers.Clear();
+        LoadContracts();
     }
 
     public void ResetMarket()

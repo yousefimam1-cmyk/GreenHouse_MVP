@@ -5,8 +5,10 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Co-op on one farm (host + up to 3 players over LAN/IP). Works through NetSession.Backend, so it has no Netcode
-/// dependency. The host runs the real farm: it applies the requests clients send (interact, buy, sell, tractor work,
+/// Co-op on one farm (host + up to 3 players), over the internet (Unity Relay join code, optional public games list)
+/// or LAN / direct IP. Works through NetSession.Backend and NetSession.Online, so it has no Netcode or Unity Gaming
+/// Services dependency. Every joining player sends the game version, anonymous player id and name (NetHandshake); the
+/// host refuses wrong versions, banned or blocked players, strangers on a friends-only farm and a full farm. The host runs the real farm: it applies the requests clients send (interact, buy, sell, tractor work,
 /// gifts), and every second sends the farm state (NetSyncState). Every player sends its own position ~10 times a
 /// second; the host relays them. Also: emotes (1-4), quick chat (Enter, see MultiplayerPanel) and gifts.
 /// A client's own save file is never touched while connected (SaveData session); gifts are added when leaving.
@@ -20,6 +22,7 @@ public class MultiplayerManager : MonoBehaviour
     public const string NameKey = "mazraa.mp.name";
     public const string AddressKey = "mazraa.mp.ip";
     public const string GiftsKey = "mazraa.mp.giftsReceived";
+    public const string MaxPlayersKey = "mazraa.mp.maxPlayers", VisibilityKey = "mazraa.mp.visibility";
     public const float GiftRange = 8f;
     public const int GiftAmount = 5;
 
@@ -39,6 +42,50 @@ public class MultiplayerManager : MonoBehaviour
     public readonly Dictionary<string, float> PendingGifts = new Dictionary<string, float>();
     public IEnumerable<RemotePlayer> Remotes => remotes.Values;
 
+    /// <summary>What an online step is waiting for (the menu shows a "please wait" line and a Cancel button).</summary>
+    public enum OnlineStep { Idle, Hosting, Joining, Browsing }
+    public OnlineStep Busy { get; private set; }
+    /// <summary>The current session goes through a Unity Relay server (internet), not LAN.</summary>
+    public bool IsOnlineSession { get; private set; }
+    /// <summary>Host of an online farm: the 6-character code friends type ("" otherwise).</summary>
+    public string JoinCode { get; private set; } = "";
+    /// <summary>Public farms found by the last BrowsePublic().</summary>
+    public readonly List<LobbyInfo> PublicGames = new List<LobbyInfo>();
+    public bool BrowsedOnce { get; private set; }
+    /// <summary>Changes whenever the multiplayer state changes (menus rebuild their rows).</summary>
+    public int StateVersion { get; private set; }
+    /// <summary>Host: anonymous Unity player id of each player ("" on LAN).</summary>
+    public readonly Dictionary<ulong, string> PlayerIds = new Dictionary<ulong, string>();
+    /// <summary>Host: players banned until hosting stops.</summary>
+    public readonly SessionBans Bans = new SessionBans();
+
+    /// <summary>Farm size when hosting: 2-4 players including the host.</summary>
+    public static int MaxPlayers
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetInt(MaxPlayersKey, NetSession.MaxClients + 1), 2, NetSession.MaxClients + 1);
+        set { PlayerPrefs.SetInt(MaxPlayersKey, Mathf.Clamp(value, 2, NetSession.MaxClients + 1)); PlayerPrefs.Save(); }
+    }
+
+    /// <summary>Who can find / join the farm. Friends only is the same setting as ChatSafety.Join (who can join).</summary>
+    public static OnlineVisibility Visibility
+    {
+        get => ChatSafety.Join == ChatSafety.JoinMode.FriendsOnly ? OnlineVisibility.FriendsOnly
+             : PlayerPrefs.GetInt(VisibilityKey, (int)OnlineVisibility.CodeOnly) == (int)OnlineVisibility.Public ? OnlineVisibility.Public : OnlineVisibility.CodeOnly;
+        set
+        {
+            ChatSafety.Join = value == OnlineVisibility.FriendsOnly ? ChatSafety.JoinMode.FriendsOnly : ChatSafety.JoinMode.Anyone;
+            if (value != OnlineVisibility.FriendsOnly) { PlayerPrefs.SetInt(VisibilityKey, (int)value); PlayerPrefs.Save(); }
+        }
+    }
+
+    public static string VisibilityLabel(OnlineVisibility v) => v == OnlineVisibility.Public ? "Public (listed)" : v == OnlineVisibility.CodeOnly ? "Anyone with the code" : "Friends only";
+
+    private readonly Dictionary<ulong, string> approvedNames = new Dictionary<ulong, string>();
+    private readonly Dictionary<ulong, string> approvedIds = new Dictionary<ulong, string>();
+    private int sessionMaxPlayers = NetSession.MaxClients + 1;
+    private float marketTimer;
+    private bool marketDirty;
+
     private readonly Dictionary<ulong, RemotePlayer> remotes = new Dictionary<ulong, RemotePlayer>();
     private readonly Dictionary<ulong, Vehicle> drivenBy = new Dictionary<ulong, Vehicle>();
     private readonly Dictionary<ulong, float> lastGift = new Dictionary<ulong, float>();
@@ -54,7 +101,7 @@ public class MultiplayerManager : MonoBehaviour
     {
         Instance = this;
         PlayerName = SaveData.GetString(NameKey, "");
-        if (string.IsNullOrEmpty(PlayerName)) PlayerName = "Farmer " + UnityEngine.Random.Range(100, 1000);
+        if (string.IsNullOrEmpty(PlayerName)) PlayerName = PlayerNames.Current;   // picked from the list, never typed
         LastAddress = SaveData.GetString(AddressKey, "127.0.0.1");
         remotesRoot = new GameObject("Remote Players").transform;
     }
@@ -69,6 +116,7 @@ public class MultiplayerManager : MonoBehaviour
 
     private void OnApplicationQuit()
     {
+        if (NetSession.IsHost && IsOnlineSession) NetSession.Online.CloseLobby();
         if (inClientSession) EndClientSession();
         SaveData.Flush(true);
     }
@@ -80,6 +128,7 @@ public class MultiplayerManager : MonoBehaviour
         if (backend == NetSession.Backend) return;
         Detach();
         backend = NetSession.Backend;
+        backend.ApprovalCheck = Approve;
         backend.Received += OnReceived;
         backend.ClientConnected += OnClientConnected;
         backend.ClientDisconnected += OnClientDisconnected;
@@ -90,6 +139,7 @@ public class MultiplayerManager : MonoBehaviour
     private void Detach()
     {
         if (backend == null) return;
+        backend.ApprovalCheck = null;
         backend.Received -= OnReceived;
         backend.ClientConnected -= OnClientConnected;
         backend.ClientDisconnected -= OnClientDisconnected;
@@ -110,40 +160,224 @@ public class MultiplayerManager : MonoBehaviour
         else if (NetSession.IsHost) { Players[backend.LocalId] = PlayerName; BroadcastRoster(); }
     }
 
+    /// <summary>Use the name picked from the list in the settings (PlayerNames.Current). Returns the name.</summary>
+    public string UseGeneratedName()
+    {
+        string n = PlayerNames.Current;
+        if (n != PlayerName) SetPlayerName(n);
+        return PlayerName;
+    }
+
+    /// <summary>LAN / direct IP host on port 7777.</summary>
     public bool Host()
     {
         Attach();
-        if (NetSession.IsOnline) return false;
-        if (!backend.Available) { Status = "Multiplayer needs the Netcode package (see Documentation.txt)"; return false; }
-        if (!backend.StartHost(NetSession.DefaultPort)) { Status = "Could not host - is port 7777 already in use?"; return false; }
-        Players.Clear();
-        Players[backend.LocalId] = PlayerName;
+        if (NetSession.IsOnline || Busy != OnlineStep.Idle) return false;
+        if (!backend.Available) { Status = "Multiplayer needs the Netcode package (see Documentation.txt)"; Changed(); return false; }
+        if (!backend.StartHost(NetSession.DefaultPort)) { Status = "Could not host - is port 7777 already in use?"; Changed(); return false; }
+        IsOnlineSession = false;
+        BeginHosting();
         Status = "Hosting on port 7777 - friends join with your IP address";
-        syncDirty = true;
+        Changed();
         return true;
     }
 
+    /// <summary>LAN / direct IP: join a host's address.</summary>
     public bool Join(string address)
     {
         Attach();
-        if (NetSession.IsOnline || backend.Connecting) return false;
+        if (NetSession.IsOnline || backend.Connecting || Busy != OnlineStep.Idle) return false;
         address = (address ?? "").Trim();
         if (address.Length == 0) address = "127.0.0.1";
         LastAddress = address;
         SaveData.SetString(AddressKey, address); SaveData.Save();
-        if (!backend.Available) { Status = "Multiplayer needs the Netcode package (see Documentation.txt)"; return false; }
-        if (!backend.StartClient(address, NetSession.DefaultPort)) { Status = "Could not connect - check the IP address"; return false; }
+        if (!backend.Available) { Status = "Multiplayer needs the Netcode package (see Documentation.txt)"; Changed(); return false; }
+        IsOnlineSession = false;
+        backend.ConnectPayload = HandshakePayload();
+        if (!backend.StartClient(address, NetSession.DefaultPort)) { Status = "Could not connect - check the IP address"; Changed(); return false; }
         Status = "Connecting...";
+        Changed();
         return true;
     }
+
+    /// <summary>True when internet play (Unity Relay) can be used in this build.</summary>
+    public static bool OnlineAvailable => NetSession.Backend.Available && NetSession.Online.Available;
+
+    /// <summary>Internet host: reserve a Relay server, show the join code, list the farm when it is public.
+    /// Returns false when it can't even start (the reason is in Status).</summary>
+    public bool HostOnline()
+    {
+        Attach();
+        if (NetSession.IsOnline || backend.Connecting || Busy != OnlineStep.Idle) return false;
+        if (!OnlineAvailable) { Status = OnlineErrors.Message(OnlineError.NotSetUp); Changed(); return false; }
+        EnsureListedName();
+        Busy = OnlineStep.Hosting;
+        Status = "Starting your online farm...";
+        Changed();
+        int max = MaxPlayers;
+        NetSession.Online.CreateRelay(max, (err, code) =>
+        {
+            if (Busy != OnlineStep.Hosting) return;   // cancelled meanwhile
+            Busy = OnlineStep.Idle;
+            if (err != OnlineError.None) { OnlineFailed(err); return; }
+            if (!JoinCodes.IsValid(code) || !backend.StartRelayHost()) { OnlineFailed(OnlineError.ServiceError); return; }
+            IsOnlineSession = true;
+            JoinCode = JoinCodes.Normalize(code);
+            BeginHosting();
+            sessionMaxPlayers = max;
+            Status = "Hosting online - friends join with your code";
+            if (Visibility == OnlineVisibility.Public)
+                NetSession.Online.PublishLobby(new LobbyInfo
+                {
+                    farmName = GameModes.CurrentFarmNameRaw, map = Regions.CurrentId, code = JoinCode, version = NetHandshake.GameVersion,
+                    players = Players.Count, maxPlayers = max,
+                }, e2 =>
+                {
+                    if (e2 != OnlineError.None && NetSession.IsHost) { Status = "Hosting online - the farm could not be listed, share your code instead"; Changed(); }
+                });
+            Say(Mp.Tr("Your join code: {0}", JoinCodes.Pretty(JoinCode)));
+            Changed();
+        });
+        return true;
+    }
+
+    /// <summary>Internet: join a friend's farm with their join code. Returns false when the code isn't valid.</summary>
+    public bool JoinWithCode(string code)
+    {
+        Attach();
+        if (NetSession.IsOnline || backend.Connecting || Busy != OnlineStep.Idle) return false;
+        code = JoinCodes.Normalize(code);
+        if (!OnlineAvailable) { Status = OnlineErrors.Message(OnlineError.NotSetUp); Changed(); return false; }
+        if (!JoinCodes.IsValid(code)) { Status = OnlineErrors.Message(OnlineError.WrongCode); Changed(); return false; }
+        EnsureListedName();
+        Busy = OnlineStep.Joining;
+        Status = "Finding your friend's farm...";
+        Changed();
+        NetSession.Online.JoinRelay(code, err =>
+        {
+            if (Busy != OnlineStep.Joining) return;
+            Busy = OnlineStep.Idle;
+            if (err != OnlineError.None) { OnlineFailed(err); return; }
+            IsOnlineSession = true;
+            backend.ConnectPayload = HandshakePayload();
+            if (!backend.StartRelayClient()) { IsOnlineSession = false; OnlineFailed(OnlineError.ServiceError); return; }
+            Status = "Connecting...";
+            Changed();
+        });
+        return true;
+    }
+
+    /// <summary>Internet: look for public farms (same game version, room left). Results in PublicGames.</summary>
+    public bool BrowsePublic()
+    {
+        Attach();
+        if (Busy != OnlineStep.Idle) return false;
+        if (!OnlineAvailable) { Status = OnlineErrors.Message(OnlineError.NotSetUp); Changed(); return false; }
+        Busy = OnlineStep.Browsing;
+        Status = "Looking for public farms...";
+        Changed();
+        NetSession.Online.QueryLobbies(NetHandshake.GameVersion, (err, list) =>
+        {
+            if (Busy != OnlineStep.Browsing) return;
+            Busy = OnlineStep.Idle;
+            BrowsedOnce = true;
+            PublicGames.Clear();
+            if (err != OnlineError.None) { OnlineFailed(err); return; }
+            foreach (var l in list) if (l != null && JoinCodes.IsValid(l.code) && l.version == NetHandshake.GameVersion && l.players < l.maxPlayers) PublicGames.Add(l);
+            Status = PublicGames.Count == 0 ? "No public farms right now - host one, or join a friend with a code" : "";
+            Changed();
+        });
+        return true;
+    }
+
+    /// <summary>Stop waiting for an online step (results that arrive later are ignored).</summary>
+    public void CancelOnline()
+    {
+        if (Busy == OnlineStep.Idle) return;
+        Busy = OnlineStep.Idle;
+        Status = "Cancelled";
+        Changed();
+    }
+
+    private void OnlineFailed(OnlineError err)
+    {
+        Status = OnlineErrors.Message(err);
+        Say(Mp.Tr(Status));
+        Changed();
+    }
+
+    /// <summary>Online, strangers see your name: it must come from the generated list.</summary>
+    private void EnsureListedName()
+    {
+        if (!PlayerNames.IsGenerated(PlayerName)) PlayerName = PlayerNames.Current;
+    }
+
+    private string HandshakePayload() => NetHandshake.Encode(NetHandshake.GameVersion, IsOnlineSession ? NetSession.Online.PlayerId : "", PlayerName);
+
+    private void BeginHosting()
+    {
+        Players.Clear();
+        PlayerIds.Clear();
+        approvedNames.Clear(); approvedIds.Clear();
+        Bans.Clear();
+        sessionMaxPlayers = MaxPlayers;
+        Players[backend.LocalId] = PlayerName;
+        syncDirty = true;
+        marketDirty = true;
+    }
+
+    private void Changed() => StateVersion++;
 
     public void Leave()
     {
         bool wasClient = inClientSession;
+        bool wasHost = NetSession.IsHost;
+        if (wasHost && IsOnlineSession) NetSession.Online.CloseLobby();
+        Busy = OnlineStep.Idle;
         if (backend != null) backend.Leave();
         CleanupSession();
-        Status = wasClient ? "You left the farm - back on your own farm" : "Stopped hosting";
-        Say(Mp.Tr(Status));
+        Status = wasClient ? "You left the farm - back on your own farm" : wasHost ? "Stopped hosting" : "";
+        if (Status.Length > 0) Say(Mp.Tr(Status));
+        Changed();
+    }
+
+    // ------------------------------------------------------------ host tools: approval, kick, ban
+
+    /// <summary>Host: decide on a joining player before they are connected (null = welcome, else a reason code).</summary>
+    public string Approve(ulong clientId, string payload)
+    {
+        var r = NetHandshake.Decode(payload);
+        if (!r.ok || r.version != NetHandshake.GameVersion) return NetHandshake.Version + ":" + NetHandshake.GameVersion;
+        string n = r.name;
+        if (IsOnlineSession && !PlayerNames.IsGenerated(n)) return NetHandshake.BadName;
+        if (Bans.IsBanned(r.playerId, n)) return NetHandshake.Banned;
+        if (ChatSafety.IsBlocked(n)) return NetHandshake.Blocked;
+        if (ChatSafety.Join == ChatSafety.JoinMode.FriendsOnly && !ChatSafety.IsFriend(n)) return NetHandshake.FriendsOnly;
+        if (Players.Count + approvedNames.Count >= sessionMaxPlayers) return NetHandshake.Full;
+        approvedNames[clientId] = n.Length > 0 ? n : "Player " + clientId;
+        approvedIds[clientId] = r.playerId ?? "";
+        return null;
+    }
+
+    /// <summary>Host: remove a player from the farm (they may join again).</summary>
+    public void Kick(ulong id)
+    {
+        if (!NetSession.IsHost || id == backend.LocalId) return;
+        string n = Players.ContainsKey(id) ? Players[id] : "Player " + id;
+        backend.Kick(id, NetHandshake.Kicked);
+        Say(Mp.Tr("{0} was removed from the farm", Mp.Name(n)));
+        Changed();
+    }
+
+    /// <summary>Host: remove a player and keep them out until you stop hosting.</summary>
+    public void Ban(ulong id)
+    {
+        if (!NetSession.IsHost || id == backend.LocalId) return;
+        string n = Players.ContainsKey(id) ? Players[id] : "Player " + id;
+        Bans.Add(PlayerIds.ContainsKey(id) ? PlayerIds[id] : "", n);
+        backend.Kick(id, NetHandshake.Banned);
+        Say(Mp.Tr("{0} is banned from this session", Mp.Name(n)));
+        Changed();
     }
 
     // ------------------------------------------------------------ connection events
@@ -151,21 +385,40 @@ public class MultiplayerManager : MonoBehaviour
     private void OnClientConnected(ulong id)
     {
         if (!NetSession.IsHost) return;
-        if (Players.Count > NetSession.MaxClients) { backend.Kick(id); return; }   // host + 3 already here
-        Players[id] = "Player " + id;
+        string n, pid;
+        approvedNames.TryGetValue(id, out n);
+        approvedIds.TryGetValue(id, out pid);
+        approvedNames.Remove(id); approvedIds.Remove(id);
+        if (Players.Count >= sessionMaxPlayers) { backend.Kick(id, NetHandshake.Full); return; }   // the farm is full
+        Players[id] = string.IsNullOrEmpty(n) ? "Player " + id : n;
+        PlayerIds[id] = pid ?? "";
         backend.SendToClient(id, NetProtocol.Make(NetProtocol.Welcome, NetProtocol.I((long)id)), true);
         BroadcastRoster();
+        if (!string.IsNullOrEmpty(n)) Say(Mp.Tr("{0} joined the farm", Mp.Name(n)));
         syncDirty = true;
+        marketDirty = true;
+        LobbyCount();
+        Changed();
     }
 
     private void OnClientDisconnected(ulong id)
     {
+        approvedNames.Remove(id); approvedIds.Remove(id);
         if (!NetSession.IsHost) return;
         string n;
         if (Players.TryGetValue(id, out n)) Say(Mp.Tr("{0} left the farm", Mp.Name(n)));
         Players.Remove(id);
+        PlayerIds.Remove(id);
         RemoveRemote(id);
         BroadcastRoster();
+        LobbyCount();
+        Changed();
+    }
+
+    /// <summary>Public online farm: keep the player count in the games list up to date.</summary>
+    private void LobbyCount()
+    {
+        if (IsOnlineSession && NetSession.IsHost && Visibility == OnlineVisibility.Public) NetSession.Online.UpdateLobby(Players.Count);
     }
 
     private void OnConnected()
@@ -174,14 +427,20 @@ public class MultiplayerManager : MonoBehaviour
         Status = "Connected - you are on the host's farm";
         backend.SendToHost(NetProtocol.Make(NetProtocol.Hello, PlayerName), true);
         Say(Mp.Tr(Status));
+        Changed();
     }
 
     private void OnDisconnected()
     {
         bool was = inClientSession;
+        bool online = IsOnlineSession;
+        string reason = NetHandshake.ReasonMessage(backend != null ? backend.DisconnectReason : "");
         CleanupSession();
-        Status = was ? "Disconnected from the host" : "Could not connect - check the IP address and firewall";
+        if (reason.Length > 0) Status = reason;
+        else if (was) Status = "The host left the game";
+        else Status = online ? "Could not connect to the farm - the host may have left" : "Could not connect - check the IP address and firewall";
         Say(Mp.Tr(Status));
+        Changed();
     }
 
     private void CleanupSession()
@@ -189,7 +448,12 @@ public class MultiplayerManager : MonoBehaviour
         if (inClientSession) EndClientSession();
         foreach (var id in new List<ulong>(remotes.Keys)) RemoveRemote(id);
         Players.Clear();
+        PlayerIds.Clear();
+        approvedNames.Clear(); approvedIds.Clear();
         lastGift.Clear();
+        IsOnlineSession = false;
+        JoinCode = "";
+        Bans.Clear();
     }
 
     // ------------------------------------------------------------ client session (save isolation)
@@ -251,6 +515,7 @@ public class MultiplayerManager : MonoBehaviour
                 p.ApplyRemote((PlotState)Mathf.Clamp(SaveData.GetInt(k + "state", 0), 0, 3), SaveData.GetString(k + "crop", ""), SaveData.GetFloat(k + "growth", 0f), SaveData.GetFloat(k + "water", 0f));
             }
         if (SoilManager.Instance != null) SoilManager.Instance.ReloadLocal();
+        if (MarketManager.Instance != null) MarketManager.Instance.ReloadLocal();
         SaveData.Flush(true);
     }
 
@@ -259,6 +524,7 @@ public class MultiplayerManager : MonoBehaviour
     private void Update()
     {
         Attach();   // a network backend may register after this system started
+        NetSession.Online.Tick(Time.unscaledDeltaTime);
         if (!NetSession.IsOnline) return;
 
         poseTimer -= Time.unscaledDeltaTime;
@@ -272,6 +538,12 @@ public class MultiplayerManager : MonoBehaviour
                 syncTimer = 1f; syncDirty = false;
                 backend.SendToClients(NetSyncState.Capture().Encode(), true);
                 if (SoilManager.Instance != null) backend.SendToClients(SoilManager.Instance.EncodeSync(), true);
+            }
+            marketTimer -= Time.unscaledDeltaTime;
+            if ((marketTimer <= 0f || marketDirty) && MarketManager.Instance != null)
+            {   // prices, supply, demand events and the contracts board (every 5 s, or right after a change)
+                marketTimer = 5f; marketDirty = false;
+                backend.SendToClients(MarketManager.Instance.EncodeSync(), true);
             }
         }
 
@@ -367,7 +639,7 @@ public class MultiplayerManager : MonoBehaviour
     {
         ChatSafety.SetBlocked(name, true);
         ChatLog.RemoveAll(c => c.from == name);
-        if (NetSession.IsHost && id != backend.LocalId && Players.ContainsKey(id)) backend.Kick(id);
+        if (NetSession.IsHost && id != backend.LocalId && Players.ContainsKey(id)) backend.Kick(id, NetHandshake.Blocked);
         Say(Mp.Tr("{0} is blocked", Mp.Name(name)));
     }
 
@@ -427,17 +699,20 @@ public class MultiplayerManager : MonoBehaviour
         {
             string n = NetProtocol.Clean(NetProtocol.Field(p, 1), 20);
             if (n.Length == 0) n = "Player " + sender;
+            if (IsOnlineSession && !PlayerNames.IsGenerated(n)) n = Players.ContainsKey(sender) ? Players[sender] : "Player " + sender;   // strangers: list names only
             if (!ChatSafety.AllowJoin(n))
             {
-                backend.Kick(sender);
+                backend.Kick(sender, ChatSafety.IsBlocked(n) ? NetHandshake.Blocked : NetHandshake.FriendsOnly);
                 Say(Mp.Tr(ChatSafety.IsBlocked(n) ? "{0} is blocked and can't join your farm" : "{0} can't join: only friends can join your farm", Mp.Name(n)));
                 return;
             }
             bool first = !Players.ContainsKey(sender) || Players[sender] == "Player " + sender;
+            if (!first && Players[sender] == n) return;   // already announced on connect
             Players[sender] = n;
             if (remotes.ContainsKey(sender)) remotes[sender].SetName(n);
             BroadcastRoster();
             if (first) Say(Mp.Tr("{0} joined the farm", Mp.Name(n)));
+            Changed();
         }
         else if (type == NetProtocol.Pose)
         {
@@ -453,6 +728,11 @@ public class MultiplayerManager : MonoBehaviour
         else if (type == NetProtocol.PlotJob) HostPlotJob(NetProtocol.PI(NetProtocol.Field(p, 1)), NetProtocol.PI(NetProtocol.Field(p, 2)));
         else if (type == NetProtocol.Gift) HostGift(sender, msg);
         else if (type == NetProtocol.SoilSet) { if (SoilManager.Instance != null && SoilManager.Instance.HostSetting(p)) syncDirty = true; }
+        else if (type == NetProtocol.ContractAccept)
+        {
+            if (MarketManager.Instance != null && MarketManager.Instance.HostAccept(NetProtocol.Field(p, 1))) { marketDirty = true; Say(Mp.Tr("{0} accepted a contract", Mp.Name(who))); }
+            else Reply(sender, "That contract is no longer available");
+        }
         else if (type == NetProtocol.Emote)
         {
             int i = NetProtocol.PI(NetProtocol.Field(p, 1));
@@ -479,6 +759,7 @@ public class MultiplayerManager : MonoBehaviour
         string type = p[0];
         if (type == NetProtocol.Sync) { var s = NetSyncState.Decode(msg); if (s != null) s.Apply(); }
         else if (type == NetProtocol.SoilSync) { if (SoilManager.Instance != null) SoilManager.Instance.ApplySync(p); }
+        else if (type == NetProtocol.MarketSync) { if (MarketManager.Instance != null) MarketManager.Instance.ApplySync(p); }
         else if (type == NetProtocol.Pose)
         {
             ulong id = NetProtocol.PU(NetProtocol.Field(p, 1));
@@ -496,6 +777,7 @@ public class MultiplayerManager : MonoBehaviour
                 }
             foreach (var id in new List<ulong>(remotes.Keys)) if (!Players.ContainsKey(id)) RemoveRemote(id);
             foreach (var kv in Players) if (kv.Key != backend.LocalId) GetRemote(kv.Key).SetName(kv.Value);
+            Changed();
         }
         else if (type == NetProtocol.Emote)
         {

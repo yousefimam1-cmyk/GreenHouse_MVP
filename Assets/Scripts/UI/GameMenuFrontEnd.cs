@@ -24,8 +24,10 @@ public class NewFarm
 ///  Career: the 3 save slots as cards (map + flag colour, farm name, mode, day, money, play time, last saved). An empty
 ///  slot starts the new-farm wizard: Game mode -> Map -> Start (campaign) / Money (free play) / Challenge -> Economy ->
 ///  Farm name -> Start farming. A used slot offers Load / Delete (with a confirmation).
-///  Multiplayer: Host / Join (digit picker for the IP address, no typing) / Settings (chat, who can join). Without the
-///  Netcode backend the page says multiplayer is coming in a future update and Host / Join are greyed out.
+///  Multiplayer: Host an online game (Unity Relay join code; options: players 2-4, who can join, chat, name) / Join
+///  with a code (character picker, no typing) / Browse public games / LAN host / LAN join (digit picker for the IP
+///  address) / Players (friend, block, report; host: remove, ban for the session) / Settings. Without the Netcode
+///  backend the page says multiplayer is coming in a future update and everything but the settings is greyed out.
 /// Everything works with keyboard, mouse and gamepad: Up / Down, Left / Right, Enter / A, Esc / B, LB / RB.
 /// </summary>
 public partial class GameMenu
@@ -45,7 +47,8 @@ public partial class GameMenu
                 case PageId.Career: case PageId.SlotActions: case PageId.ConfirmDelete: return FrontScreen.Career;
                 case PageId.GameModePick: case PageId.Map: case PageId.Start: case PageId.FreeMoney: case PageId.ChallengePick:
                 case PageId.Economy: case PageId.FarmName: return pending.slot > 0 ? FrontScreen.NewFarm : FrontScreen.Other;
-                case PageId.Multiplayer: case PageId.MpJoin: case PageId.MpSettings: return FrontScreen.Multiplayer;
+                case PageId.Multiplayer: case PageId.MpJoin: case PageId.MpSettings: case PageId.MpHost: case PageId.MpCode:
+                case PageId.MpBrowse: case PageId.MpPlayers: case PageId.MpPlayer: return FrontScreen.Multiplayer;
                 default: return FrontScreen.Other;
             }
         }
@@ -106,6 +109,11 @@ public partial class GameMenu
             case PageId.Multiplayer: list.Show(() => MenuKit.Title(UiText.T("Multiplayer")), MultiplayerRows(), MultiplayerFooter, sel); return true;
             case PageId.MpJoin: list.Show(() => MenuKit.Title(UiText.T("Join a game")), JoinRows(), () => UiText.T("[<- ->] Change   LB / RB +-10   [Enter] Choose   [Esc] Back"), sel); return true;
             case PageId.MpSettings: list.Show(() => MenuKit.Title(UiText.T("Multiplayer settings")), MpSettingRows(), () => UiText.T("[<- ->] Change   [Esc] Back"), sel); return true;
+            case PageId.MpHost: list.Show(() => MenuKit.Title(UiText.T("Host an online game")), HostOptionRows(), () => UiText.T("[<- ->] Change   [Enter] Choose   [Esc] Back"), sel); return true;
+            case PageId.MpCode: list.Show(() => MenuKit.Title(UiText.T("Join with a code")), CodeRows(), () => UiText.T("[<- ->] Change   LB / RB +-10   [Enter] Choose   [Esc] Back"), sel); return true;
+            case PageId.MpBrowse: list.Show(() => MenuKit.Title(UiText.T("Public games")), BrowseRows(), MultiplayerFooter, sel); return true;
+            case PageId.MpPlayers: list.Show(() => MenuKit.Title(UiText.T("Players")), PlayerRows(), MultiplayerFooter, sel); return true;
+            case PageId.MpPlayer: list.Show(() => MenuKit.Title(Mp.Name(MpPlayerName(mpPlayer))), PlayerActionRows(), Footer, sel); return true;
         }
         return false;
     }
@@ -317,16 +325,53 @@ public partial class GameMenu
 
     /// <summary>True when co-op can be played in this build (the Netcode backend is compiled in).</summary>
     public static bool MultiplayerAvailable => NetSession.Backend.Available && MultiplayerManager.Instance != null;
+    /// <summary>True when internet play (Unity Relay / Lobby) is compiled in too.</summary>
+    public static bool OnlineAvailable => MultiplayerAvailable && MultiplayerManager.OnlineAvailable;
+
+    private static bool MpIdle => MultiplayerManager.Instance != null && MultiplayerManager.Instance.Busy == MultiplayerManager.OnlineStep.Idle;
+    private static bool CanStart => MpIdle && !NetSession.IsOnline && !NetSession.Backend.Connecting;
+
+    private readonly char[] joinCode = { 'A', 'A', 'A', 'A', 'A', 'A' };
+    private ulong mpPlayer;
+    private int mpSeenVersion = -1;
+    private bool mpWasClient;
+    private int mpWatchFrame = -10;
+    private const string LastCodeKey = "mazraa.mp.lastCode";
+
+    /// <summary>Join code picked on the "Join with a code" page.</summary>
+    public string PickedCode => new string(joinCode);
 
     private List<MenuRow> MultiplayerRows()
     {
         var rows = new List<MenuRow>();
+        var mp = MultiplayerManager.Instance;
         if (!MultiplayerAvailable)
             rows.Add(new MenuRow { label = () => TwoLines(UiText.T("Multiplayer is coming in a future update"), UiText.T("Farm together with up to 3 friends - stay tuned!")), enabled = () => false });
-        rows.Add(new MenuRow { label = () => UiText.T("Host a game"), confirm = HostGame, enabled = () => MultiplayerAvailable && !NetSession.IsOnline });
-        rows.Add(new MenuRow { label = () => UiText.T("Join a game"), confirm = OpenJoin, enabled = () => MultiplayerAvailable && !NetSession.IsOnline });
-        if (MultiplayerAvailable)
-            rows.Add(new MenuRow { label = () => UiText.T(NetSession.IsHost ? "Stop hosting" : "Leave the farm"), confirm = () => { MultiplayerManager.Instance.Leave(); list.Refresh(); }, enabled = () => NetSession.IsOnline });
+        else if (mp.Busy != MultiplayerManager.OnlineStep.Idle)
+        {
+            rows.Add(new MenuRow { label = () => TwoLines(UiText.T("Please wait..."), Mp.Tr(mp.Status)), enabled = () => false });
+            rows.Add(MenuRow.Button(() => UiText.T("Cancel"), () => { mp.CancelOnline(); }));
+        }
+        else if (NetSession.IsHost && mp.IsOnlineSession)
+            rows.Add(new MenuRow { label = () => TwoLines(UiText.T("Join code") + ":  <size=130%><b>" + JoinCodes.Pretty(mp.JoinCode) + "</b></size>", UiText.T("Friends choose Multiplayer > Join with a code")), enabled = () => false, height = 96f });
+
+        bool online = OnlineAvailable;
+        var hostOnline = new MenuRow { label = () => UiText.T("Host an online game"), confirm = () => Go(PageId.MpHost), enabled = () => online && CanStart };
+        var joinCodeRow = new MenuRow { label = () => UiText.T("Join with a code"), confirm = OpenCode, enabled = () => online && CanStart };
+        var browse = new MenuRow { label = () => UiText.T("Browse public games"), confirm = OpenBrowse, enabled = () => online && CanStart };
+        if (MultiplayerAvailable && !online)
+            foreach (var r in new[] { hostOnline, joinCodeRow, browse }) r.value = () => UiText.T("Not in this version");
+        rows.Add(hostOnline);
+        rows.Add(joinCodeRow);
+        rows.Add(browse);
+        rows.Add(new MenuRow { label = () => UiText.T("Host on local network (LAN)"), confirm = HostGame, enabled = () => MultiplayerAvailable && CanStart });
+        rows.Add(new MenuRow { label = () => UiText.T("Join on local network (LAN)"), confirm = OpenJoin, enabled = () => MultiplayerAvailable && CanStart });
+        if (MultiplayerAvailable && (NetSession.IsOnline || NetSession.Backend.Connecting))
+        {
+            if (NetSession.IsOnline) rows.Add(MenuRow.Button(() => UiText.T("Players"), () => Go(PageId.MpPlayers)));
+            rows.Add(MenuRow.Button(() => UiText.T(NetSession.IsHost ? "Stop hosting" : NetSession.IsClient ? "Leave the farm" : "Cancel"), () => { MultiplayerManager.Instance.Leave(); list.Refresh(); }));
+            if (NetSession.IsOnline) rows.Add(MenuRow.Button(() => UiText.T("Continue farming"), Close));
+        }
         rows.Add(MenuRow.Button(() => UiText.T("Multiplayer settings"), () => Go(PageId.MpSettings)));
         rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
         return rows;
@@ -338,6 +383,178 @@ public partial class GameMenu
         string status = MultiplayerAvailable && mp != null && !string.IsNullOrEmpty(mp.Status) ? Mp.Tr(mp.Status) + "\n" : "";
         return status + UiText.T("[Enter] Choose   [Esc] Back");
     }
+
+    /// <summary>Multiplayer pages: rebuild when the co-op state changes (connected, code ready, error...); close the
+    /// menu once we have joined a farm.</summary>
+    private void MpWatch()
+    {
+        if (Front != FrontScreen.Multiplayer) return;
+        var mp = MultiplayerManager.Instance;
+        if (mp == null) return;
+        if (Time.frameCount - mpWatchFrame > 1) mpWasClient = NetSession.IsClient;   // menu just opened: no transition yet
+        mpWatchFrame = Time.frameCount;
+        bool client = NetSession.IsClient;
+        if (client && !mpWasClient) { mpWasClient = true; Close(); return; }       // joined a farm: play
+        mpWasClient = client;
+        if (mp.StateVersion != mpSeenVersion) { mpSeenVersion = mp.StateVersion; ShowPage(page, false, page == PageId.MpBrowse ? 0 : list.Selected); }   // new games list: first farm selected
+    }
+
+    // ---- online host options
+
+    private List<MenuRow> HostOptionRows()
+    {
+        return new List<MenuRow>
+        {
+            MenuRow.Setting(() => UiText.T("Players"), () => UiText.T("Up to {0}", MultiplayerManager.MaxPlayers),
+                            d => MultiplayerManager.MaxPlayers = 2 + (((MultiplayerManager.MaxPlayers - 2 + d) % 3) + 3) % 3),
+            MenuRow.Setting(() => UiText.T("Who can join"), () => UiText.T(MultiplayerManager.VisibilityLabel(MultiplayerManager.Visibility)), StepVisibility),
+            MenuRow.Setting(() => UiText.T("Chat"), () => UiText.T(ChatSafety.ChatModeLabel(ChatSafety.Chat)), StepChat),
+            MenuRow.Setting(() => UiText.T("Your name"), () => Mp.Name(PlayerNames.Current), StepName),
+            MenuRow.Button(() => UiText.T("Start hosting"), HostOnlineGame),
+            MenuRow.Button(() => UiText.T("Back"), Back),
+        };
+    }
+
+    private static void StepVisibility(int d) => MultiplayerManager.Visibility = (OnlineVisibility)((((int)MultiplayerManager.Visibility + d) % 3 + 3) % 3);
+    private static void StepChat(int d) => ChatSafety.Chat = (ChatSafety.ChatMode)((((int)ChatSafety.Chat + d) % 3 + 3) % 3);
+    private static void StepName(int d)
+    {
+        PlayerNames.Index = PlayerNames.Index + d;
+        if (MultiplayerManager.Instance != null) MultiplayerManager.Instance.UseGeneratedName();
+    }
+
+    private void HostOnlineGame()
+    {
+        var mp = MultiplayerManager.Instance;
+        if (mp == null || !OnlineAvailable) return;
+        mp.UseGeneratedName();
+        mp.HostOnline();
+        BackTo(PageId.Multiplayer);   // shows "Please wait", then the join code
+    }
+
+    // ---- join with a code (character picker)
+
+    private void OpenCode()
+    {
+        string last = JoinCodes.Normalize(PlayerPrefs.GetString(LastCodeKey, ""));
+        for (int i = 0; i < JoinCodes.Length; i++) joinCode[i] = JoinCodes.IsValid(last) ? last[i] : 'A';
+        Go(PageId.MpCode);
+    }
+
+    private List<MenuRow> CodeRows()
+    {
+        var rows = new List<MenuRow>();
+        for (int i = 0; i < JoinCodes.Length; i++)
+        {
+            int at = i;
+            rows.Add(MenuRow.Setting(() => Loc.Display(UiText.Raw("Character") + " " + (at + 1)), () => "<b>" + joinCode[at] + "</b>", d => joinCode[at] = JoinCodes.Step(joinCode[at], d)));
+        }
+        rows.Add(MenuRow.Button(() => UiText.T("Join") + "  <b>" + JoinCodes.Pretty(PickedCode) + "</b>", JoinCodeGame));
+        rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
+        return rows;
+    }
+
+    private void JoinCodeGame()
+    {
+        var mp = MultiplayerManager.Instance;
+        if (mp == null || !OnlineAvailable) return;
+        PlayerPrefs.SetString(LastCodeKey, PickedCode); PlayerPrefs.Save();
+        mp.UseGeneratedName();
+        if (mp.JoinWithCode(PickedCode)) BackTo(PageId.Multiplayer);
+        else list.Refresh();
+    }
+
+    // ---- public games
+
+    private void OpenBrowse()
+    {
+        var mp = MultiplayerManager.Instance;
+        if (mp == null || !OnlineAvailable) return;
+        mp.BrowsePublic();
+        Go(PageId.MpBrowse);
+    }
+
+    private List<MenuRow> BrowseRows()
+    {
+        var rows = new List<MenuRow>();
+        var mp = MultiplayerManager.Instance;
+        if (mp != null && mp.Busy == MultiplayerManager.OnlineStep.Browsing)
+            rows.Add(new MenuRow { label = () => UiText.T("Looking for public farms..."), enabled = () => false });
+        else if (mp != null)
+        {
+            foreach (var g in mp.PublicGames)
+            {
+                var game = g;
+                rows.Add(MenuRow.Button(() => TwoLines(Loc.Display(game.farmName), Loc.Display(Regions.Name(Regions.Find(game.map)) + "  -  " + UiText.Raw("Players") + " " + game.players + "/" + game.maxPlayers)), () => JoinPublic(game)));
+            }
+            if (mp.PublicGames.Count == 0)
+                rows.Add(new MenuRow { label = () => UiText.T("No public farms right now - host one, or join a friend with a code"), enabled = () => false });
+        }
+        rows.Add(new MenuRow { label = () => UiText.T("Refresh"), confirm = () => { if (MultiplayerManager.Instance != null) MultiplayerManager.Instance.BrowsePublic(); }, enabled = () => MpIdle });
+        rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
+        return rows;
+    }
+
+    private void JoinPublic(LobbyInfo game)
+    {
+        var mp = MultiplayerManager.Instance;
+        if (mp == null || game == null) return;
+        mp.UseGeneratedName();
+        if (mp.JoinWithCode(game.code)) BackTo(PageId.Multiplayer);
+    }
+
+    // ---- players (host tools: kick / ban; everyone: friend, block, report)
+
+    private List<MenuRow> PlayerRows()
+    {
+        var rows = new List<MenuRow>();
+        var mp = MultiplayerManager.Instance;
+        if (mp != null)
+            foreach (var kv in new List<KeyValuePair<ulong, string>>(mp.Players))
+            {
+                ulong id = kv.Key; string name = kv.Value;
+                bool me = id == NetSession.Backend.LocalId;
+                string tag = (id == 0UL ? "  (" + Mp.Tr("host") + ")" : "") + (me ? "  (" + Mp.Tr("you") + ")" : "") + (ChatSafety.IsFriend(name) ? "  *" : "");
+                rows.Add(new MenuRow { label = () => Mp.Name(name) + tag, confirm = () => { mpPlayer = id; Go(PageId.MpPlayer); }, enabled = () => !me });
+            }
+        rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
+        return rows;
+    }
+
+    private string MpPlayerName(ulong id)
+    {
+        var mp = MultiplayerManager.Instance;
+        string n;
+        return mp != null && mp.Players.TryGetValue(id, out n) ? n : "";
+    }
+
+    private List<MenuRow> PlayerActionRows()
+    {
+        var mp = MultiplayerManager.Instance;
+        string name = MpPlayerName(mpPlayer);
+        var rows = new List<MenuRow>();
+        rows.Add(MenuRow.Button(() => UiText.T(ChatSafety.IsFriend(name) ? "Unfriend" : "Friend"), () => ChatSafety.SetFriend(name, !ChatSafety.IsFriend(name))));
+        rows.Add(MenuRow.Button(() => UiText.T(ChatSafety.IsBlocked(name) ? "Unblock" : "Block"), () =>
+        {
+            if (ChatSafety.IsBlocked(name)) ChatSafety.SetBlocked(name, false);
+            else if (mp != null) { mp.Block(mpPlayer, name); if (NetSession.IsHost) BackTo(PageId.MpPlayers); }
+        }));
+        rows.Add(MenuRow.Button(() => UiText.T("Report"), () =>
+        {
+            if (mp == null) return;
+            Application.OpenURL(mp.Report(mpPlayer, name, "Reported from the multiplayer menu"));
+            BackTo(PageId.MpPlayers);
+        }));
+        if (NetSession.IsHost)
+        {
+            rows.Add(MenuRow.Button(() => UiText.T("Remove from the farm"), () => { if (mp != null) mp.Kick(mpPlayer); BackTo(PageId.MpPlayers); }));
+            rows.Add(MenuRow.Button(() => UiText.T("Ban for this session"), () => { if (mp != null) mp.Ban(mpPlayer); BackTo(PageId.MpPlayers); }));
+        }
+        rows.Add(MenuRow.Button(() => UiText.T("Back"), Back));
+        return rows;
+    }
+
+    // ---- LAN
 
     private void HostGame()
     {
@@ -378,13 +595,17 @@ public partial class GameMenu
         return rows;
     }
 
-    /// <summary>LB / RB (Page Up / Down) change the selected part of the address by 10. Returns true when handled.</summary>
+    /// <summary>LB / RB (Page Up / Down): +-10 on the selected part of the IP address, +-10 characters on the join code.
+    /// Returns true when handled.</summary>
     private bool IpPageInput()
     {
-        if (page != PageId.MpJoin || list.Selected > 3) return false;
+        bool ipPage = page == PageId.MpJoin && list.Selected <= 3;
+        bool codePage = page == PageId.MpCode && list.Selected < JoinCodes.Length;
+        if (!ipPage && !codePage) return false;
         int d = PageInput() * 10;
         if (d == 0) return false;
-        StepIp(list.Selected, d);
+        if (ipPage) StepIp(list.Selected, d);
+        else joinCode[list.Selected] = JoinCodes.Step(joinCode[list.Selected], d);
         list.Refresh();
         return true;
     }
@@ -397,14 +618,18 @@ public partial class GameMenu
         else list.Refresh();
     }
 
+    // ---- settings
+
     private List<MenuRow> MpSettingRows()
     {
         return new List<MenuRow>
         {
-            MenuRow.Setting(() => UiText.T("Chat"), () => UiText.T(ChatSafety.ChatModeLabel(ChatSafety.Chat)),
-                            d => ChatSafety.Chat = (ChatSafety.ChatMode)((((int)ChatSafety.Chat + d) % 3 + 3) % 3)),
-            MenuRow.Setting(() => UiText.T("Who can join"), () => UiText.T(ChatSafety.JoinModeLabel(ChatSafety.Join)),
-                            d => ChatSafety.Join = (ChatSafety.JoinMode)((((int)ChatSafety.Join + d) % 2 + 2) % 2)),
+            MenuRow.Setting(() => UiText.T("Chat"), () => UiText.T(ChatSafety.ChatModeLabel(ChatSafety.Chat)), StepChat),
+            MenuRow.Setting(() => UiText.T("Who can join"), () => UiText.T(MultiplayerManager.VisibilityLabel(MultiplayerManager.Visibility)), StepVisibility),
+            MenuRow.Setting(() => UiText.T("Players"), () => UiText.T("Up to {0}", MultiplayerManager.MaxPlayers),
+                            d => MultiplayerManager.MaxPlayers = 2 + (((MultiplayerManager.MaxPlayers - 2 + d) % 3) + 3) % 3),
+            MenuRow.Setting(() => UiText.T("Your name"), () => Mp.Name(PlayerNames.Current), StepName),
+            MenuRow.Button(() => UiText.T("New random name"), () => { PlayerNames.Randomize(); if (MultiplayerManager.Instance != null) MultiplayerManager.Instance.UseGeneratedName(); }),
             MenuRow.Button(() => UiText.T("Back"), Back),
         };
     }
