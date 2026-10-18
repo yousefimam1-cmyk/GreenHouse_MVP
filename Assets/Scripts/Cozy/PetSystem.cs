@@ -2,8 +2,12 @@ using UnityEngine;
 
 /// <summary>
 /// Farm pets: the AmbientLife dog becomes a saluki (سلوقي) you can pet with E once a day (hearts + a small gift:
-/// seeds, feed or a few riyals), and a falcon perch next to the farmhouse: E flies the falcon (it circles and comes
-/// back) once a day for a small reward; five flights earn the Falconer title. Saved under mazraa.cozy.*.
+/// seeds, feed or a few riyals), the farm cat follows you at its own distance, and a falcon perch next to the farmhouse:
+/// E flies the falcon (it circles and comes back) once a day for a small reward; five flights earn the Falconer title.
+/// Saved under mazraa.cozy.*.
+/// Pets are set up once the player exists (not at a fixed time), and a check every 2 s keeps them there on every
+/// graphics preset and density: re-created if missing (primitive stand-in when a model is missing), switched back on,
+/// renderers on and never culled by stale skinned bounds, brought back next to the player when far away or off the ground.
 /// </summary>
 [MazraaSystem(61)]
 public class PetSystem : MonoBehaviour
@@ -11,9 +15,16 @@ public class PetSystem : MonoBehaviour
     public static PetSystem Instance;
 
     public GameObject Saluki { get; private set; }
+    public GameObject Cat { get; private set; }
     public GameObject Perch { get; private set; }
     public bool FalconFlying => flight != null;
     public int FalconFlights => SaveData.GetInt("mazraa.cozy.falconFlights", 0);
+    public bool Ready { get; private set; }
+    /// <summary>Times a pet had to be re-created or brought back (tests / diagnostics).</summary>
+    public int Rescues { get; private set; }
+
+    /// <summary>Further than this from the player on foot, a pet is brought back next to you.</summary>
+    public const float LeashDistance = 60f;
 
     private GameObject perchedBird, flight;
     private float flightTime;
@@ -23,47 +34,161 @@ public class PetSystem : MonoBehaviour
     private void Awake() => Instance = this;
     private void Start()
     {
-        Invoke(nameof(Setup), 2f);   // AmbientLife spawns the dog at 1.2 s
+        InvokeRepeating(nameof(Tick), 1.5f, 0.5f);   // AmbientLife spawns the dog and cat at 1.2 s
         GameEvents.NewGameStarted += OnNewGame;
     }
     private void OnDestroy() { GameEvents.NewGameStarted -= OnNewGame; if (Instance == this) Instance = null; }
 
     private void OnNewGame() { if (flight != null) EndFlight(false); }
 
-    private void Setup()
+    private float checkTimer;
+
+    private void Tick()
     {
-        SetupSaluki();
-        BuildPerch();
+        var player = CozyFx.Player;
+        if (player == null || (!player.gameObject.activeInHierarchy && Vehicle.Current == null)) return;   // menu / loading: wait for the player
+        if (!Ready)
+        {
+            Ready = true;
+            SetupSaluki();
+            SetupCat();
+            BuildPerch();
+            checkTimer = 0f;
+        }
+        checkTimer -= 0.5f;
+        if (checkTimer <= 0f) { checkTimer = 2f; KeepPetsNear(); }
     }
 
-    // ---------------- saluki ----------------
+    // ---------------- keeping them visible and near
+
+    /// <summary>Re-create missing pets, switch them back on, and bring them next to the player when lost.</summary>
+    public void KeepPetsNear()
+    {
+        if (!Ready) return;
+        if (Saluki == null || Saluki.GetComponent<Actor>() == null) { SetupSaluki(); Rescues++; }
+        if (Cat == null) { SetupCat(); Rescues++; }
+        if (Perch == null) BuildPerch();
+        Transform leader = Vehicle.Current != null ? Vehicle.Current.transform : CozyFx.Player;
+        foreach (var pet in new[] { Saluki, Cat })
+        {
+            if (pet == null) continue;
+            if (!pet.activeSelf) { pet.SetActive(true); Rescues++; }
+            MakeVisible(pet);
+            if (leader == null) continue;
+            Vector3 p = pet.transform.position, l = leader.position;
+            float flat = Mathf.Sqrt((p.x - l.x) * (p.x - l.x) + (p.z - l.z) * (p.z - l.z));
+            float groundY = Build.GroundY(p);
+            bool lost = flat > LeashDistance || p.y < groundY - 1.5f || float.IsNaN(p.x);
+            if (lost)
+            {
+                var a = pet.GetComponent<Actor>();
+                if (a != null) a.CatchUp(leader); else pet.transform.position = Build.GroundNear(l - leader.forward * 2.5f);
+                Rescues++;
+            }
+        }
+    }
+
+    /// <summary>Renderers on, shadows on, and skinned meshes always updated (their bounds can lag behind an animated root and get culled).</summary>
+    public static void MakeVisible(GameObject pet)
+    {
+        foreach (var r in pet.GetComponentsInChildren<Renderer>(true))
+        {
+            if (r == null) continue;
+            if (!r.enabled) r.enabled = true;
+            var sk = r as SkinnedMeshRenderer;
+            if (sk != null) sk.updateWhenOffscreen = true;
+        }
+    }
+
+    // ---------------- saluki
+
+    private static Actor FindPet(string modelName)
+    {
+        Actor any = null;
+        foreach (var a in FindObjectsByType<Actor>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (a == null || a.mode != ActorMode.FollowPlayer) continue;
+            if (a.name == "Actor " + modelName || a.name == (modelName == "dog" ? "Saluki" : "Cat")) return a;
+            if (modelName == "dog" && any == null && !a.name.ToLowerInvariant().Contains("cat")) any = a;
+        }
+        return any;
+    }
+
+    private Vector3 NearPlayer(Vector3 offset)
+    {
+        var p = CozyFx.Player;
+        Vector3 at = p != null ? p.position : CozyFx.FarmStart;
+        return Build.GroundNear(at + offset);
+    }
 
     private void SetupSaluki()
     {
-        Actor dog = null;
-        foreach (var a in FindObjectsByType<Actor>(FindObjectsSortMode.None))
-            if (a.mode == ActorMode.FollowPlayer) { dog = a; break; }
+        Actor dog = FindPet("dog");
+        bool fresh = false;
+        if (dog == null)
+        {
+            dog = Actor.Spawn("dog", 0.9f, false, ActorMode.FollowPlayer, NearPlayer(new Vector3(2f, 0, 1f)));
+            if (dog != null) dog.speed = 2.2f;
+            fresh = true;
+        }
         GameObject go;
         if (dog != null)
         {
             go = dog.gameObject;
-            go.name = "Saluki";
-            // Salukis are slim, long-legged sighthounds: stretch the dog model and give it a sandy coat.
-            foreach (Transform child in go.transform) child.localScale = Vector3.Scale(child.localScale, new Vector3(0.8f, 1.15f, 1.2f));
-            CozyFx.Tint(go, new Color(0.88f, 0.76f, 0.58f), 0.6f);
+            dog.IsPet = true;
+            if (go.name != "Saluki" || fresh)
+            {
+                go.name = "Saluki";
+                // Salukis are slim, long-legged sighthounds: stretch the dog model and give it a sandy coat.
+                foreach (Transform child in go.transform) child.localScale = Vector3.Scale(child.localScale, new Vector3(0.8f, 1.15f, 1.2f));
+                CozyFx.Tint(go, new Color(0.88f, 0.76f, 0.58f), 0.6f);
+            }
         }
         else
         {
             go = new GameObject("Saluki");
-            go.transform.position = Build.OnGround(CozyFx.FarmStart + new Vector3(2.5f, 0, 2f));
+            go.transform.position = NearPlayer(new Vector3(2.5f, 0, 2f));
+            var body = new GameObject("Model");
+            body.transform.SetParent(go.transform, false);
             var coat = Build.Mat(new Color(0.86f, 0.74f, 0.56f), 0.3f);
-            Build.Part(PrimitiveType.Capsule, go.transform, new Vector3(0, 0.55f, 0), new Vector3(0.3f, 0.45f, 0.3f), coat, "Body", new Vector3(90, 0, 0));
-            Build.Part(PrimitiveType.Cube, go.transform, new Vector3(0, 0.85f, 0.45f), new Vector3(0.16f, 0.18f, 0.32f), coat, "Head");
+            Build.Part(PrimitiveType.Capsule, body.transform, new Vector3(0, 0.55f, 0), new Vector3(0.3f, 0.45f, 0.3f), coat, "Body", new Vector3(90, 0, 0));
+            Build.Part(PrimitiveType.Cube, body.transform, new Vector3(0, 0.85f, 0.45f), new Vector3(0.16f, 0.18f, 0.32f), coat, "Head");
             for (int i = 0; i < 4; i++)
-                Build.Part(PrimitiveType.Cube, go.transform, new Vector3(i % 2 == 0 ? -0.1f : 0.1f, 0.22f, i < 2 ? 0.28f : -0.28f), new Vector3(0.06f, 0.45f, 0.06f), coat, "Leg");
+                Build.Part(PrimitiveType.Cube, body.transform, new Vector3(i % 2 == 0 ? -0.1f : 0.1f, 0.22f, i < 2 ? 0.28f : -0.28f), new Vector3(0.06f, 0.45f, 0.06f), coat, "Leg");
+            var a = Actor.Attach(go, body, ActorMode.FollowPlayer, true);   // a stand-in still follows you
+            a.speed = 2.2f; a.IsPet = true;
         }
-        CozyFx.MakeInteractable(go, new Vector3(0, 0.45f, 0), new Vector3(0.6f, 0.9f, 1.2f), SalukiPrompt, () => Pet());
+        if (go.GetComponent<CozyProp>() == null)
+            CozyFx.MakeInteractable(go, new Vector3(0, 0.45f, 0), new Vector3(0.6f, 0.9f, 1.2f), SalukiPrompt, () => Pet());
+        MakeVisible(go);
         Saluki = go;
+    }
+
+    // ---------------- cat
+
+    private void SetupCat()
+    {
+        Actor cat = FindPet("cat");
+        if (cat == null)
+        {
+            cat = Actor.Spawn("cat", 0.55f, false, ActorMode.FollowPlayer, NearPlayer(new Vector3(-2f, 0, 1.5f)));
+            if (cat == null)
+            {
+                var go = new GameObject("Cat");
+                go.transform.position = NearPlayer(new Vector3(-2f, 0, 1.5f));
+                var body = new GameObject("Model");
+                body.transform.SetParent(go.transform, false);
+                var fur = Build.Mat(new Color(0.85f, 0.55f, 0.3f), 0.2f);
+                Build.Part(PrimitiveType.Capsule, body.transform, new Vector3(0, 0.2f, 0), new Vector3(0.16f, 0.2f, 0.16f), fur, "Body", new Vector3(90, 0, 0));
+                Build.Part(PrimitiveType.Sphere, body.transform, new Vector3(0, 0.3f, 0.22f), Vector3.one * 0.13f, fur, "Head");
+                cat = Actor.Attach(go, body, ActorMode.FollowPlayer, true);
+            }
+            cat.speed = 1.4f; cat.followNear = 5.5f;
+        }
+        cat.IsPet = true;
+        cat.gameObject.name = "Cat";
+        MakeVisible(cat.gameObject);
+        Cat = cat.gameObject;
     }
 
     public bool PettedToday => SaveData.GetInt("mazraa.cozy.petDay", 0) == CozyFx.Today;
@@ -100,7 +225,7 @@ public class PetSystem : MonoBehaviour
         if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
         Vector3 right = Vector3.Cross(Vector3.up, fwd);
         var root = new GameObject("Falcon Perch");
-        root.transform.SetPositionAndRotation(Build.OnGround(CozyFx.FarmStart - right * 4f - fwd * 2.5f), Quaternion.LookRotation(fwd));
+        root.transform.SetPositionAndRotation(Build.GroundNear(CozyFx.FarmStart - right * 4f - fwd * 2.5f), Quaternion.LookRotation(fwd));
         var wood = Build.Mat(new Color(0.45f, 0.3f, 0.18f), 0.2f);
         Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0, 0.7f, 0), new Vector3(0.12f, 0.7f, 0.12f), wood, "Post");
         Build.Part(PrimitiveType.Cylinder, root.transform, new Vector3(0, 1.4f, 0), new Vector3(0.08f, 0.35f, 0.08f), wood, "Bar", new Vector3(0, 0, 90));
@@ -116,7 +241,15 @@ public class PetSystem : MonoBehaviour
         var holder = new GameObject("Falcon");
         holder.transform.SetParent(parent, false);
         holder.transform.localPosition = localPos;
-        if (Build.TryModel("eagle", holder.transform, 0.55f, 0f) == null)
+        // ~1 m wingspan (a 0.55 m fit made the bird a hand-sized speck on the perch); perched birds play their idle loop
+        var model = Build.TryModel("eagle", holder.transform, 0.95f, 0f);
+        if (model != null)
+        {
+            var anim = model.GetComponentInChildren<Animation>();
+            if (anim != null) foreach (AnimationState st in anim) if (st.name.ToLowerInvariant().Contains("idle")) { st.wrapMode = WrapMode.Loop; anim.CrossFade(st.name, 0.1f); break; }
+            MakeVisible(holder);
+        }
+        else
         {
             var feathers = Build.Mat(new Color(0.55f, 0.45f, 0.35f), 0.3f);
             Build.Part(PrimitiveType.Sphere, holder.transform, new Vector3(0, 0.18f, 0), new Vector3(0.22f, 0.3f, 0.22f), feathers, "Body");
@@ -149,6 +282,7 @@ public class PetSystem : MonoBehaviour
         if (model == null) NewFalcon(flight.transform, Vector3.zero);
         else
         {
+            MakeVisible(flight);
             var anim = model.GetComponentInChildren<Animation>();
             if (anim != null) foreach (AnimationState s in anim) if (s.name.ToLowerInvariant().Contains("fly")) { s.wrapMode = WrapMode.Loop; anim.CrossFade(s.name, 0.2f); break; }
         }

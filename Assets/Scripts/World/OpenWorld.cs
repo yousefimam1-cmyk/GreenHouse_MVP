@@ -40,6 +40,12 @@ public class OpenWorld : MonoBehaviour
     public int Signs { get; private set; }
     public readonly Dictionary<string, Transform> Places = new Dictionary<string, Transform>();
     public readonly List<GameObject> EdgeWalls = new List<GameObject>();
+    /// <summary>The town's shops, people and cars (WorldTown.Populate), null before the world is built.</summary>
+    public WorldTown.Info Town { get; private set; }
+    /// <summary>Far clip the game cameras get while the open world exists (the whole 2.4 km map stays visible from the farm).</summary>
+    public float ViewDistance => Layout != null ? Mathf.Max(2000f, Layout.Half * 1.5f + 200f) : 0f;
+    /// <summary>Haze cap in the open world (exponential density): the far rim and the town stay visible.</summary>
+    public const float FogCap = 0.0018f;
 
     public const float SellRadius = 7.5f, FuelRadius = 12f, WorkshopRadius = 14f, DiscoverPad = 25f;
     public const int FuelPrice = 3;   // per litre, like the farm's loading bay
@@ -98,7 +104,7 @@ public class OpenWorld : MonoBehaviour
         if (root != null) Destroy(root.gameObject);
         root = null;
         foreach (var o in owned) if (o != null) Destroy(o);
-        owned.Clear(); Tiles.Clear(); culled.Clear(); Places.Clear(); EdgeWalls.Clear();
+        owned.Clear(); Tiles.Clear(); culled.Clear(); Places.Clear(); EdgeWalls.Clear(); Town = null;
         Layout = null;
     }
 
@@ -128,6 +134,7 @@ public class OpenWorld : MonoBehaviour
         string region = Regions.CurrentId;
         BuiltRegion = region;
         BaseY = CoreTerrain != null ? CoreTerrain.transform.position.y : 0f;
+        WorldRim.Open(CoreTerrain);   // ease the scene terrain's berms down to the farm level (before the tiles read its edges)
         CoreRect(out var cmin, out var cmax);
         root = new GameObject("Open World").transform;
         root.SetParent(transform, false);
@@ -147,6 +154,7 @@ public class OpenWorld : MonoBehaviour
         catch (System.Exception e) { Debug.LogWarning("[OpenWorld] " + e); }
         Minimap.MaxFullRange = Layout != null ? Layout.Half + 60f : 400f;
         VehicleObstacles.OpenGates();   // a gate wherever the farm road crosses a scene fence
+        EnsureView();
         tick = 0f;
         Built?.Invoke();
     }
@@ -275,32 +283,53 @@ public class OpenWorld : MonoBehaviour
 
     // ------------------------------------------------------------------ roads
 
+    /// <summary>Lift of the carriageway above the ground / of its shoulder edges (just under it, so no seam shows).</summary>
+    public const float RoadLift = 0.06f, ShoulderLift = -0.03f, RoadSampleStep = 2f;
+
+    /// <summary>Height of the rendered ground at p: the terrain tile (or the scene terrain) under it, as drawn.</summary>
+    public float TerrainY(Vector3 p)
+    {
+        if (Layout != null && Layout.InCore(p) && CoreTerrain != null) return CoreTerrain.SampleHeight(p) + CoreTerrain.transform.position.y;
+        foreach (var t in Tiles)
+        {
+            if (t == null || t.terrainData == null) continue;
+            Vector3 o = t.transform.position, sz = t.terrainData.size;
+            if (p.x >= o.x && p.x <= o.x + sz.x && p.z >= o.z && p.z <= o.z + sz.z) return t.SampleHeight(p) + o.y;
+        }
+        if (CoreTerrain != null) return CoreTerrain.SampleHeight(p) + CoreTerrain.transform.position.y;
+        return GroundY(p);
+    }
+
+    /// <summary>Road surface height at a point of the carriageway (what the road mesh is built from).</summary>
+    public float RoadSurfaceY(Vector3 p) => TerrainY(p) + RoadLift;
+
     private void BuildRoads()
     {
         var look = Regions.Look;
-        var asphalt = WorldMesh.Mat(new Color(0.21f, 0.21f, 0.22f), 0.18f);
+        var asphalt = LookLibrary.Tinted(LookMat.Concrete, new Color(0.34f, 0.34f, 0.36f), 0.2f);
         var dirt = WorldMesh.Mat(RegionLook.C(look.track, DesertDressing.TrackColor), 0.05f);
+        var gravel = LookLibrary.Tinted(LookMat.Gravel, Color.white);
         var paint = WorldMesh.Mat(new Color(0.92f, 0.9f, 0.82f), 0.3f);
         var m = new WorldMesh();
+        System.Func<Vector3, float> ground = TerrainY;
         foreach (var r in Layout.Roads)
         {
-            int n = r.path.Count;
-            var hs = new float[n];
-            for (int i = 0; i < n; i++) hs[i] = r.inCore ? Build.GroundY(r.path[i]) : BaseY + r.profile[i];
-            m.Strip(r.path, hs, r.width, r.inCore ? 0.12f : (r.asphalt ? 0.16f : 0.12f), r.asphalt ? asphalt : dirt);
-            if (!r.asphalt || r.width < 7f) continue;
-            // dashed centre line
+            var pts = WorldMesh.Densify(r.path, RoadSampleStep);
+            m.Road(pts, ground, r.width, WorldLayout.Shoulder, RoadLift, ShoulderLift, r.asphalt ? asphalt : dirt, r.asphalt ? gravel : null);
+            if (!r.asphalt || r.width < WorldLayout.AsphaltWidth) continue;
+            // dashed centre line (1 cm over the asphalt)
             float run = 0f;
-            for (int i = 1; i < n; i++)
+            for (int i = 1; i < pts.Count; i++)
             {
-                Vector3 a = new Vector3(r.path[i - 1].x, hs[i - 1] + 0.18f, r.path[i - 1].z), b = new Vector3(r.path[i].x, hs[i] + 0.18f, r.path[i].z);
-                run += (b - a).magnitude;
-                if (run % 12f < 6f) m.FlatLine(a, b, 0.18f, paint);
+                Vector3 a = pts[i - 1], b = pts[i];
+                a.y = TerrainY(a) + RoadLift + 0.01f; b.y = TerrainY(b) + RoadLift + 0.01f;
+                run += Flat(b - a).magnitude;
+                if (run % 12f < 6f) m.FlatLine(a, b, 0.15f, paint);
             }
         }
         var go = new GameObject("Roads");
         go.transform.SetParent(root, false);
-        m.Emit(go.transform, "Road", false);
+        m.Emit(go.transform, "Road", false);   // no colliders: the terrain under the road carries wheels and feet
         StaticBatchingUtility.Combine(go);
     }
 
@@ -315,7 +344,9 @@ public class OpenWorld : MonoBehaviour
             return null;
         }
         float d = Shape.RoadDistance(p, out bool asphalt, out float half);
-        if (d <= half + 0.8f) return asphalt ? DriveSurface.Asphalt : DriveSurface.DirtRoad;
+        if (d <= half + WorldLayout.Shoulder) return asphalt ? DriveSurface.Asphalt : DriveSurface.DirtRoad;
+        var town = Layout.Poi("town");
+        if (town != null && Flat(p - town.pos).magnitude < WorldTown.Extent * 1.42f) return DriveSurface.Asphalt;   // paved streets
         foreach (var poi in Layout.Pois)
             if (poi.kind != PoiKind.Farm && poi.kind != PoiKind.Neighbour && poi.kind != PoiKind.Land && Flat(p - poi.pos).magnitude < poi.radius * 0.6f) return DriveSurface.DirtRoad;
         return Layout.Delta ? DriveSurface.Field : DriveSurface.Sand;
@@ -366,16 +397,28 @@ public class OpenWorld : MonoBehaviour
             {
                 foreach (var c in cols)
                 {
-                    var bc = visual.AddComponent<BoxCollider>();
-                    bc.center = c.center; bc.size = c.size;
+                    BoxCollider bc;
+                    if (Mathf.Abs(Mathf.DeltaAngle(c.yaw, 0f)) < 0.5f) { bc = visual.AddComponent<BoxCollider>(); bc.center = c.center; }
+                    else
+                    {   // turned piece (a stall at an angle, a parked tractor): its own box, exactly as turned as its mesh
+                        var holder = new GameObject("Collider");
+                        holder.layer = DesertProps.PropLayer;
+                        holder.transform.SetParent(visual.transform, false);
+                        holder.transform.localPosition = c.center;
+                        holder.transform.localRotation = Quaternion.Euler(0f, c.yaw, 0f);
+                        bc = holder.AddComponent<BoxCollider>();
+                        bc.center = Vector3.zero;
+                    }
+                    bc.size = c.size;
                 }
                 visual.layer = DesertProps.PropLayer;   // solid, but ground raycasts ignore it
             }
             StaticBatchingUtility.Combine(visual);
-            float view = p.kind == PoiKind.Town || p.kind == PoiKind.Port ? 1100f : p.kind == PoiKind.Land ? 450f : 800f;
+            float view = p.kind == PoiKind.Town || p.kind == PoiKind.Port ? 1400f : p.kind == PoiKind.Land ? 450f : 900f;
             culled.Add((visual, go.transform.position, view));
+            if (p.kind == PoiKind.Town) Town = WorldTown.Populate(this, go.transform, p, Layout.Delta, culled);
             // name label
-            if (p.kind != PoiKind.Land)
+            if (p.kind != PoiKind.Land && p.kind != PoiKind.Town)
             {
                 var label = new GameObject("Label");
                 label.transform.SetParent(go.transform, false);
@@ -396,7 +439,7 @@ public class OpenWorld : MonoBehaviour
 
     private void Life(Transform place, WorldPoi p)
     {
-        int n = p.kind == PoiKind.Neighbour ? 2 : p.kind == PoiKind.Town || p.kind == PoiKind.VillageSouq ? 3 : 0;
+        int n = p.kind == PoiKind.Neighbour ? 2 : p.kind == PoiKind.VillageSouq ? 3 : 0;   // the town has its own people (WorldTown)
         if (n == 0) return;
         var life = new GameObject("Life");
         life.transform.SetParent(place, false);
@@ -650,6 +693,7 @@ public class OpenWorld : MonoBehaviour
         tick -= Time.unscaledDeltaTime;
         if (tick > 0f) return;
         tick = 0.25f;
+        EnsureView();
         var anchor = Minimap.Anchor();
         if (anchor == null) return;
         Vector3 a = anchor.position;
@@ -662,6 +706,21 @@ public class OpenWorld : MonoBehaviour
         {
             edgeWarned = Time.unscaledTime + 12f;
             Alert(Loc.T("End of the map - turn back"));
+        }
+    }
+
+    /// <summary>
+    /// Game cameras see the whole world: perspective cameras (player, vehicle chase cams) get at least ViewDistance as far
+    /// clip unless the player picked a view distance in Settings; the scene camera's own 500 m would cut the world off.
+    /// </summary>
+    public void EnsureView()
+    {
+        if (Layout == null || GameSettings.ViewDistance > 0) return;
+        float far = ViewDistance;
+        foreach (var cam in Camera.allCameras)
+        {
+            if (cam == null || cam.orthographic || cam.targetTexture != null || cam.name.Contains("Menu")) continue;
+            if (cam.farClipPlane < far) cam.farClipPlane = far;
         }
     }
 
@@ -733,8 +792,7 @@ public class OpenWorld : MonoBehaviour
     {
         var v = Vehicle.Current;
         var eco = EconomyManager.Instance;
-        var fuel = Layout.Poi("fuel");
-        if (v == null || eco == null || fuel == null || Flat(v.transform.position - fuel.pos).magnitude > FuelRadius || Mathf.Abs(v.Speed) > 0.5f || v.Fuel >= v.fuelCapacity - 0.5f) { refuelTimer = 0f; return; }
+        if (v == null || eco == null || !AtFuel(v.transform.position) || Mathf.Abs(v.Speed) > 0.5f || v.Fuel >= v.fuelCapacity - 0.5f) { refuelTimer = 0f; return; }
         refuelTimer += 0.25f;
         if (refuelTimer < 1.2f) return;
         refuelTimer = 0f;
@@ -747,6 +805,14 @@ public class OpenWorld : MonoBehaviour
             Alert(Loc.T("Refuelled {0} L for {1} SAR", added.ToString("F0"), cost.ToString("N0")));
         }
         else Alert(Loc.T("Not enough money"));
+    }
+
+    /// <summary>At a fuel station's pumps: the highway fuel station or the town's own station.</summary>
+    public bool AtFuel(Vector3 p)
+    {
+        var fuel = Layout?.Poi("fuel");
+        if (fuel != null && Flat(p - fuel.pos).magnitude < FuelRadius) return true;
+        return Town != null && Town.fuel != null && Flat(p - Town.fuel.position).magnitude < WorldTown.FuelPumpRadius;
     }
 
     /// <summary>Parked in the dealership's workshop yard (Vehicle.AtWorkshop: R repairs there too).</summary>

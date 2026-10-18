@@ -19,6 +19,7 @@ public static class NetProtocol
     public const string PlotJob = "J";     // plot index, Implement
     public const string Gift = "G";        // to player id, good id, amount
     public const string SoilSet = "F";     // "d", sowing density | "i", plot index, irrigation method (SoilManager)
+    public const string ContractAccept = "Q";   // contract offer id (MarketManager)
     // both ways (client -> host, host relays with the sender id first)
     public const string Pose = "P";        // [id] x, y, z, yaw, vehicle id, speed
     public const string Emote = "E";       // [id] emote index
@@ -32,6 +33,7 @@ public static class NetProtocol
     public const string Alert = "A";       // English Loc key, args...
     public const string GiftIn = "K";      // from name, good id, amount
     public const string SoilSync = "L";    // soil per field + farm soil settings (SoilManager.EncodeSync), sent with Sync
+    public const string MarketSync = "M";  // market prices, supply, demand events, contracts (MarketManager.EncodeSync)
 
     public static string Make(string type, params string[] fields)
     {

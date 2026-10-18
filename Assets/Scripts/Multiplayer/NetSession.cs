@@ -20,11 +20,24 @@ public interface INetBackend
     /// <summary>Remote clients connected to this host (empty on clients).</summary>
     IEnumerable<ulong> ClientIds { get; }
 
+    /// <summary>LAN / direct IP: host on this port (every network card).</summary>
     bool StartHost(ushort port);
+    /// <summary>LAN / direct IP: connect to a host's address.</summary>
     bool StartClient(string address, ushort port);
+    /// <summary>Online: host through the Relay server that IOnlineServices.CreateRelay set up.</summary>
+    bool StartRelayHost();
+    /// <summary>Online: connect through the Relay server that IOnlineServices.JoinRelay set up.</summary>
+    bool StartRelayClient();
     void Leave();
-    /// <summary>Host only: drop a client (e.g. the farm is full).</summary>
-    void Kick(ulong clientId);
+    /// <summary>Host only: drop a client with a reason code the client sees (NetHandshake: full, kicked, banned...).</summary>
+    void Kick(ulong clientId, string reason);
+    /// <summary>Client: the host's reason code when the connection was refused or ended ("" if none).</summary>
+    string DisconnectReason { get; }
+    /// <summary>Client: sent to the host with the connection request (NetHandshake.Encode: version, player id, name).</summary>
+    string ConnectPayload { get; set; }
+    /// <summary>Host: decides on every joining player before they are connected: (client id, payload) -> null to
+    /// let them in, or a reason code (NetHandshake) to refuse.</summary>
+    Func<ulong, string, string> ApprovalCheck { get; set; }
 
     void SendToHost(string msg, bool reliable);
     void SendToClient(ulong clientId, string msg, bool reliable);
@@ -51,8 +64,13 @@ public class LocalBackend : INetBackend
     public IEnumerable<ulong> ClientIds { get { yield break; } }
     public bool StartHost(ushort port) => false;
     public bool StartClient(string address, ushort port) => false;
+    public bool StartRelayHost() => false;
+    public bool StartRelayClient() => false;
     public void Leave() { }
-    public void Kick(ulong clientId) { }
+    public void Kick(ulong clientId, string reason) { }
+    public string DisconnectReason => "";
+    public string ConnectPayload { get; set; }
+    public Func<ulong, string, string> ApprovalCheck { get; set; }
     public void SendToHost(string msg, bool reliable) { }
     public void SendToClient(ulong clientId, string msg, bool reliable) { }
     public void SendToClients(string msg, bool reliable) { }
@@ -75,6 +93,12 @@ public static class NetSession
 
     private static INetBackend backend;
     public static INetBackend Backend => backend ?? (backend = new LocalBackend());
+
+    private static IOnlineServices online;
+    /// <summary>Unity Gaming Services (Relay join codes, public games list). OfflineServices when not compiled in.</summary>
+    public static IOnlineServices Online => online ?? (online = new OfflineServices());
+    /// <summary>Called by UgsOnlineServices at startup (or tests). null = no online services.</summary>
+    public static void RegisterOnline(IOnlineServices s) { online = s; }
     public static NetMode Mode => Backend.Mode;
     public static bool IsHost => Backend.Mode == NetMode.Host;
     public static bool IsClient => Backend.Mode == NetMode.Client;
@@ -84,7 +108,7 @@ public static class NetSession
     public static bool Typing;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStatics() { backend = null; Typing = false; lastJob.Clear(); }
+    private static void ResetStatics() { backend = null; online = null; Typing = false; lastJob.Clear(); }
 
     /// <summary>Called by a network implementation (e.g. NetcodeBackend) at startup. null = back to single player.</summary>
     public static void Register(INetBackend b) { backend = b; }
@@ -167,6 +191,12 @@ public static class NetSession
         return true;
     }
 
+    /// <summary>MarketManager.Accept on a client: the host accepts the contract offer (the board comes back with the sync).</summary>
+    public static void RequestContract(string contractId)
+    {
+        if (IsClient && !string.IsNullOrEmpty(contractId)) Backend.SendToHost(NetProtocol.Make(NetProtocol.ContractAccept, contractId), true);
+    }
+
     /// <summary>UIManager after a module was optimized from the control station: copy it on the other machines.</summary>
     public static void OnOptimized(GreenhouseManager gh, ModuleType module)
     {
@@ -188,7 +218,7 @@ public static class Mp
     public static string UserText(string s) => string.IsNullOrEmpty(s) ? "" : ArabicShaper.HasArabic(s) ? ArabicShaper.Shape(s) : s;
 
     /// <summary>A player name to put inside a translated sentence (Loc.T shapes the whole line in Arabic mode).</summary>
-    public static string Name(string s) => Loc.IsArabic ? (s ?? "") : UserText(s);
+    public static string Name(string s) { s = PlayerNames.Display(s); return Loc.IsArabic ? s : UserText(s); }
 
     public static bool HasArabic(string s) => !string.IsNullOrEmpty(s) && ArabicShaper.HasArabic(s);
 }

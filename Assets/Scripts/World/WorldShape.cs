@@ -32,10 +32,12 @@ public class WorldShape
 
     private struct Feature
     {
-        public Vector3 a, b; public float ha, hb, flat, shoulder; public bool disc, road, asphalt;
+        public Vector3 a, b; public float ha, hb, flat, shoulder, half; public bool disc, road, asphalt;
     }
     private readonly List<Feature> features = new List<Feature>();
     private const float Cell = 40f;
+    /// <summary>Ground kept dead flat beyond the road's shoulders (m), so the road strip never meets a slope at its edge.</summary>
+    public const float RoadFlatPad = 1.5f;
     private readonly Dictionary<long, List<int>> grid = new Dictionary<long, List<int>>();
 
     public WorldShape(string region, Vector3 coreMin, Vector3 coreMax, Func<Vector3, float> coreHeight)
@@ -187,7 +189,7 @@ public class WorldShape
         {
             if (r.inCore || r.path.Count < 2) continue;
             for (int i = 0; i + 1 < r.path.Count; i++)
-                Add(new Feature { a = r.path[i], b = r.path[i + 1], ha = r.profile[i], hb = r.profile[i + 1], flat = r.width * 0.5f + 1.6f, shoulder = r.asphalt ? 14f : 10f, road = true, asphalt = r.asphalt });
+                Add(new Feature { a = r.path[i], b = r.path[i + 1], ha = r.profile[i], hb = r.profile[i + 1], flat = r.width * 0.5f + WorldLayout.Shoulder + RoadFlatPad, shoulder = r.asphalt ? 14f : 10f, half = r.width * 0.5f, road = true, asphalt = r.asphalt });
         }
         foreach (var p in w.Pois)
         {
@@ -255,7 +257,7 @@ public class WorldShape
             var f = features[id];
             if (!f.road) continue;
             float d = Seg(p, f.a, f.b, out _);
-            if (d < best) { best = d; asphalt = f.asphalt; halfWidth = f.flat - 1.6f; }
+            if (d < best) { best = d; asphalt = f.asphalt; halfWidth = f.half; }
         }
         return best;
     }
