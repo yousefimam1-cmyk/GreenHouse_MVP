@@ -1132,6 +1132,15 @@ static class Program
         if (Directory.Exists(FakeEngine.PersistentPath)) Directory.Delete(FakeEngine.PersistentPath, true);
         Directory.CreateDirectory(FakeEngine.PersistentPath);
         GameSettings.DefaultDayMinutes = 6;   // tests were written for the old 6-minute day
+        // MAZRAA_ONLY=Bump,World runs just those sections (quick checks while developing)
+        var only = Environment.GetEnvironmentVariable("MAZRAA_ONLY");
+        if (!string.IsNullOrEmpty(only))
+        {
+            foreach (var name in only.Split(','))
+                typeof(Program).Assembly.GetType(name.Trim() + "Tests").GetMethod("Run").Invoke(null, null);
+            Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
+            Environment.Exit(T.Fail > 0 ? 1 : 0);
+        }
 
         Console.WriteLine("Boot");
         BuildWorld();
@@ -1445,6 +1454,7 @@ static class Program
         LookTests.Run();   // graphics makeover (Tests/Headless/LookTests.cs)
         WorldTests.Run();      // open world: terrain tiles, roads, places, selling at a place, land, map, waypoint, fast travel, Delta layout
         FeelTests.Run();       // on-foot movement feel, pets near the player, exposure budget / High-contrast menus (Tests/Headless/FeelTests.cs)
+        QaTests.Run();         // QA pass: save robustness, damaged slots, vehicle removed while driving (Tests/Headless/QaTests.cs)
 
         Console.WriteLine($"\n{T.Pass} passed, {T.Fail} failed");
         if (FakeEngine.Errors.Count > 0) { Console.WriteLine("Logged errors:"); foreach (var e in FakeEngine.Errors.Distinct().Take(10)) Console.WriteLine("  " + e.Split('\n')[0]); }
@@ -2720,7 +2730,7 @@ static class ArtTests
 
         Console.WriteLine("Desert dressing");
         var dd = DesertDressing.Instance;
-        T.Check("DesertDressing built", dd != null && dd.Palms > 0 && dd.Trees > 0 && dd.Dunes > 0 && dd.SandCells > 0,
+        T.Check("DesertDressing built", dd != null && dd.Palms > 0 && dd.Trees > 0 && dd.Dunes == 0 && dd.SandCells > 0,
             dd == null ? "null" : $"palms {dd.Palms} trees {dd.Trees} dunes {dd.Dunes} sand {dd.SandCells}");
         T.Check("Cooling pads on both greenhouses", dd.CoolingWalls == 2, "" + dd.CoolingWalls);
         T.Check("Track from loading bay to market", dd.Track.Count >= 2 && Flat(dd.Track[0], DeliveryZone.LoadingBay.transform.position) < 1f);
@@ -2889,7 +2899,7 @@ static class EgyptTests
         T.Check("Najd: events unchanged (8, haboob, no canal turns)", ed.Data.events.Length == 8 && ed.Find("haboob") != null && ed.Find("canal_turn") == null);
         T.Check("Najd: daily quests unchanged", dq.Templates.Length == 9 && dq.Templates.All(t => t.regions == null || t.regions.Length == 0));
         T.Check("Najd: market and shop names", LabelKeys().Contains("Market") && LabelKeys().Contains("Farm Shop") && !LabelKeys().Contains("Village souq"));
-        T.Check("Najd: desert look (sand, dunes, no canals or sell points)", dd.BuiltRegion == "najd" && dd.Dunes > 0 && dd.Canals == 0 && dd.SellPoints == 0 && dd.Eucalyptus == 0 && dd.GroundColor.Equals(DesertDressing.SandColor),
+        T.Check("Najd: desert look (sand, no edge dunes around the open farm, no canals or sell points)", dd.BuiltRegion == "najd" && dd.Dunes == 0 && dd.Canals == 0 && dd.SellPoints == 0 && dd.Eucalyptus == 0 && dd.GroundColor.Equals(DesertDressing.SandColor),
             dd.BuiltRegion + " dunes " + dd.Dunes + " canals " + dd.Canals);
         T.Check("Najd: warm grade, no river haze, no sell bonus", GraphicsEnhancer.Instance.GradeSaturation == 12f && Regions.Look.humidity == 0f && market.Point("gin") == null && market.Point("ricemill") == null && !market.Offers.Any(c => EgyptClient(c.buyerEn)));
         int najdTrees = dd.Palms + dd.Trees;
@@ -3008,7 +3018,7 @@ static class EgyptTests
         T.Check("Switch to Najd: base campaign and events", camp.Chapters.Length == 8 && camp.Narrator == "Abu Saleh" && ed.Data.events.Length == 8 && ed.Pending == null && ed.Active == null);
         T.Check("Switch to Najd: base quests, Saudi buyers", dq.Templates.Length == 9 && dq.Quests.All(qq => !qq.template.StartsWith("eg_")) && market.Offers.All(c => !EgyptClient(c.buyerEn)) && market.Point("gin") == null);
         T.Check("Switch to Najd: market name, desert look and grade back", LabelKeys().Contains("Market") && LabelKeys().Contains("Farm Shop") && !LabelKeys().Contains("Village souq")
-            && dd.BuiltRegion == "najd" && dd.Dunes > 0 && dd.Canals == 0 && dd.SellPoints == 0 && dd.Eucalyptus == 0 && GraphicsEnhancer.Instance.GradeSaturation == 12f && GameObject.Find("Sell Point gin") == null);
+            && dd.BuiltRegion == "najd" && dd.Dunes == 0 && dd.Canals == 0 && dd.SellPoints == 0 && dd.Eucalyptus == 0 && GraphicsEnhancer.Instance.GradeSaturation == 12f && GameObject.Find("Sell Point gin") == null);
         T.Check("Switch to Najd: Najd sandy soil again", Math.Abs(SoilManager.Instance.Soil(0).om - 0.6f) < 0.01f);
         T.Check("Egypt: no errors", FakeEngine.Errors.Count == e0, string.Join(" | ", FakeEngine.Errors.Skip(e0).Take(3)));
     }

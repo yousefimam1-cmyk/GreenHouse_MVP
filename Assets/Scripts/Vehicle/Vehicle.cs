@@ -55,6 +55,8 @@ public abstract class Vehicle : Interactable
     /// <summary>Hits against solid obstacles (fences, walls, buildings...) and the speed into the last one (m/s).</summary>
     public int ImpactCount { get; private set; }
     public float LastImpactSpeed { get; private set; }
+    /// <summary>Time.time of the last frame the body was held by an obstacle (StuckRescue: a wall is reversed away from, not rescued).</summary>
+    public float LastObstacleTime { get; private set; } = -100f;
     public Collider LastObstacle { get; private set; }
     /// <summary>Half size and centre of the body box (from its BoxCollider) in vehicle space.</summary>
     public Vector3 BodyHalfExtents { get; private set; } = new Vector3(0.95f, 0.65f, 2.3f);
@@ -370,12 +372,18 @@ public abstract class Vehicle : Interactable
         Vector3 pos = rb.position;
         Vector3 n = Vector3.zero; float groundY = 0f; int hits = 0;
         Vector3 f = Quaternion.Euler(0, yaw, 0) * Vector3.forward, r = Quaternion.Euler(0, yaw, 0) * Vector3.right;
-        foreach (var o in new[] { f * footprint.y + r * footprint.x, f * footprint.y - r * footprint.x, -f * footprint.y + r * footprint.x, -f * footprint.y - r * footprint.x })
+        // four ground probes at the corners (no array: this runs every physics step)
+        for (int c = 0; c < 4; c++)
         {
+            Vector3 o = f * (c < 2 ? footprint.y : -footprint.y) + r * ((c & 1) == 0 ? footprint.x : -footprint.x);
             if (Physics.Raycast(pos + o + Vector3.up * 2f, Vector3.down, out var h, 4f + rideHeight, Build.GroundMask, QueryTriggerInteraction.Ignore))
             { n += h.normal; groundY += h.point.y; hits++; }
         }
         bool grounded = hits >= 2;
+        // A crest or a road edge under the middle of the body (between the wheels): ride over it instead of high-centring.
+        float crest = float.MinValue;
+        if (grounded && Physics.Raycast(pos + Vector3.up * 2f, Vector3.down, out var mid, 4f + rideHeight, Build.GroundMask, QueryTriggerInteraction.Ignore))
+            crest = mid.point.y - CrestClearance(rideHeight);
         Vector3 up = grounded ? (n / hits).normalized : Vector3.up;
         Vector3 fwd = Vector3.ProjectOnPlane(f, up).normalized;
         drive.SlopeSin = grounded ? fwd.y : 0f;
@@ -386,7 +394,7 @@ public abstract class Vehicle : Interactable
         Vector3 vel = Collide(fwd * Speed, dt, grounded ? groundY / hits : pos.y - rideHeight);
         if (grounded)
         {
-            float targetY = groundY / hits + rideHeight;
+            float targetY = Mathf.Max(groundY / hits, crest) + rideHeight;
             vel.y += Mathf.Clamp((targetY - pos.y) * 12f, -8f, 8f);
             rb.useGravity = false;
         }
@@ -432,6 +440,7 @@ public abstract class Vehicle : Interactable
     private void OnImpact(Collider c, float impactSpeed, Vector3 point)
     {
         LastObstacle = c;
+        LastObstacleTime = Time.time;
         if (impactCooldown > 0f || impactSpeed < 0.8f) return;
         impactCooldown = 0.4f;
         ImpactCount++;
@@ -480,11 +489,16 @@ public abstract class Vehicle : Interactable
         chaseCam.transform.LookAt(target);
     }
 
+    /// <summary>How far the ground under the body's middle may rise above the wheels' average before the body lifts (m).</summary>
+    public static float CrestClearance(float rideHeight) => Mathf.Max(0.05f, rideHeight * 0.45f);
+
     // The physics solver still reports contacts the sweep did not see (something moved into the vehicle, steep ground).
+    // Terrain and walkable ground never bounce the vehicle back (that is what made it stick on dune crests and road edges).
     private void OnCollisionEnter(Collision c)
     {
         if (c.contactCount == 0 || c.collider == null || NpcBump.IsBumpable(c.collider.transform)) return;
         var contact = c.GetContact(0);
+        if (c.collider is TerrainCollider || contact.normal.y > 0.55f || VehicleObstacles.IsWalkable(c.collider)) return;
         float into = -Vector3.Dot(contact.normal, transform.forward * Mathf.Sign(Speed));
         if (Mathf.Abs(Speed) > 3f && into > 0.4f)
         {
@@ -495,6 +509,17 @@ public abstract class Vehicle : Interactable
     }
 
     public const int TowFee = 150;
+
+    /// <summary>Stuck rescue (World/StuckRescue): put the vehicle down at p facing yaw, stopped, on its wheels.</summary>
+    public void RescueTo(Vector3 p, float newYaw)
+    {
+        Speed = 0f;
+        yaw = newYaw;
+        rb.position = Build.OnGround(p, rideHeight + 0.6f);
+        rb.rotation = Quaternion.Euler(0, yaw, 0);
+        rb.linearVelocity = Vector3.zero;
+        Assist.Reset();
+    }
 
     /// <summary>Put the vehicle back on its wheels. Out of fuel (or off the map): tow it to the loading bay for a fee.</summary>
     public void Recover()
@@ -587,5 +612,26 @@ public abstract class Vehicle : Interactable
         rb.position = p; rb.rotation = r;
     }
 
-    protected virtual void OnDestroy() { GameEvents.NewGameStarted -= OnNewGame; if (Current == this) Current = null; }
+    private static bool quitting;
+    private void OnApplicationQuit() => quitting = true;
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetQuitting() => quitting = false;   // play mode without domain reload
+
+    protected virtual void OnDestroy()
+    {
+        GameEvents.NewGameStarted -= OnNewGame;
+        // Removed while driving (sold, replaced, despawned): give the player back their body, camera and interactions,
+        // otherwise they are left hidden with no active camera. Not while quitting (everything is going away);
+        // a save-slot reload exits the vehicle first (SaveSlots.Load).
+        if (IsDriving && !quitting)
+        {
+            if (mainCam != null) mainCam.enabled = true;
+            if (mainListener != null) mainListener.enabled = true;
+            if (player != null) player.SetActive(true);
+            if (interaction != null) interaction.enabled = true;
+            IsDriving = false;
+        }
+        if (chaseCam != null) Destroy(chaseCam.gameObject);
+        if (Current == this) Current = null;
+    }
 }

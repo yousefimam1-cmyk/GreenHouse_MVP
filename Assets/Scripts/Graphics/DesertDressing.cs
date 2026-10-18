@@ -105,7 +105,7 @@ public class DesertDressing : MonoBehaviour
             BuildSellPoints();
             BuildCooling();
             BuildSand();
-            if (look.dunes) BuildDunes(rnd, RegionLook.C(look.dune, DuneColor));
+            if (look.dunes && OpenWorld.Instance == null) BuildDunes(rnd, RegionLook.C(look.dune, DuneColor));   // the open world replaces the closed ring of edge dunes
             if (look.trees == "eucalyptus" && density > 0.01f) BuildWindbreaks(rnd, density);   // Settings > Foliage 0 = no trees
             BuildTrees(rnd, density, look);
             BuildUndergrowth(new System.Random(Seed + 7), density, look);

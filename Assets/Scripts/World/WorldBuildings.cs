@@ -5,7 +5,9 @@ using UnityEngine;
 public struct WorldCollider
 {
     public Vector3 center, size;
-    public WorldCollider(Vector3 center, Vector3 size) { this.center = center; this.size = size; }
+    /// <summary>Turn of the box about its centre (degrees, in the place's frame); 0 = aligned with the place.</summary>
+    public float yaw;
+    public WorldCollider(Vector3 center, Vector3 size, float yaw = 0f) { this.center = center; this.size = size; this.yaw = yaw; }
 }
 
 /// <summary>
@@ -36,7 +38,7 @@ public static class WorldBuildings
         var c = new Ctx { m = m, cols = cols, o = p.pos, rot = Quaternion.Euler(0f, p.yaw, 0f), delta = delta, rnd = new System.Random(seed) };
         switch (p.kind)
         {
-            case PoiKind.Town: Town(c, p); break;
+            case PoiKind.Town: WorldTown.BuildMesh(m, cols, delta, seed); break;
             case PoiKind.Fuel: Fuel(c); break;
             case PoiKind.Dealer: Dealer(c); break;
             case PoiKind.Silo: Silo(c); break;
@@ -54,7 +56,7 @@ public static class WorldBuildings
 
     // ------------------------------------------------------------------ parts
 
-    private static void Col(Ctx c, float x, float z, float y, Vector3 size) => c.cols.Add(new WorldCollider(new Vector3(x, y + size.y * 0.5f, z), size));
+    private static void Col(Ctx c, float x, float z, float y, Vector3 size, float yaw = 0f) => c.cols.Add(new WorldCollider(new Vector3(x, y + size.y * 0.5f, z), size, yaw));
 
     /// <summary>Flat-roofed house with a parapet, door and windows. Najd: mud brick; Delta: brick or plaster.</summary>
     private static void House(Ctx c, float x, float z, float w, float d, float h, float yaw)
@@ -93,7 +95,7 @@ public static class WorldBuildings
         for (int i = 0; i < 4; i++) c.m.Box(b + r * new Vector3(i % 2 == 0 ? -1.45f : 1.45f, 0f, i < 2 ? -0.6f : 0.6f), new Vector3(0.1f, 2.6f, 0.1f), r, wood);
         c.m.Box(b + r * new Vector3(0f, 2.6f, 0.2f), new Vector3(3.3f, 0.08f, 2f), r * Quaternion.Euler(-8f, 0f, 0f), awning);
         for (int i = 0; i < 4; i++) c.m.Box(b + r * new Vector3(-1.1f + i * 0.72f, 1f, 0f), new Vector3(0.5f, 0.25f, 0.5f), r, new Color(0.62f, 0.45f, 0.26f));
-        Col(c, x, z, 0f, RotSize(3f, 1.2f, 1.2f, yaw));
+        Col(c, x, z, 0f, new Vector3(3.1f, 1.2f, 1.3f), yaw);   // the counter (posts and awning are walked under)
     }
 
     private static void SellPad(Ctx c, float x, float z, float r, Color color)
@@ -119,42 +121,10 @@ public static class WorldBuildings
             c.m.Cylinder(b + r * (w + new Vector3(0f, 0.85f, 0f)), 0.85f, 0.45f, 10, r * Quaternion.Euler(0f, 0f, 90f), Dark);
         foreach (var w in new[] { new Vector3(-0.7f, 0f, 1.2f), new Vector3(0.7f, 0f, 1.2f) })
             c.m.Cylinder(b + r * (w + new Vector3(0f, 0.5f, 0f)), 0.5f, 0.3f, 10, r * Quaternion.Euler(0f, 0f, 90f), Dark);
-        Col(c, x, z, 0f, new Vector3(2.2f, 2.4f, 3.2f));
+        Col(c, x, z, 0f, new Vector3(2.2f, 2.4f, 3.2f), yaw);
     }
 
     // ------------------------------------------------------------------ places
-
-    private static void Town(Ctx c, WorldPoi p)
-    {
-        // souq stalls around the market pad
-        for (int i = 0; i < 6; i++)
-        {
-            float a = -60f + i * 24f;
-            var d = Quaternion.Euler(0f, a, 0f) * Vector3.back * 13f;
-            Stall(c, d.x, d.z, a, Awnings[i % Awnings.Length]);
-        }
-        // mosque with minaret and dome behind the square
-        c.m.Box(c.W(0f, -30f), new Vector3(14f, 7f, 14f), c.rot, c.delta ? DeltaPlaster : Plaster);
-        c.m.Dome(c.W(0f, -30f, 7f), 4.6f, c.delta ? new Color(0.35f, 0.55f, 0.45f) : Plaster);
-        c.m.Cylinder(c.W(8.5f, -23.5f), 1.2f, 21f, 8, Quaternion.identity, c.delta ? DeltaPlaster : Plaster);
-        c.m.Cylinder(c.W(8.5f, -23.5f, 15f), 1.6f, 0.6f, 8, Quaternion.identity, MudDark);
-        c.m.Cone(c.W(8.5f, -23.5f, 21f), 1.3f, 2.6f, 8, new Color(0.35f, 0.55f, 0.45f));
-        Col(c, 0f, -30f, 0f, new Vector3(14f, 9f, 14f));
-        Col(c, 8.5f, -23.5f, 0f, new Vector3(2.6f, 21f, 2.6f));
-        // houses around the square, leaving the road open
-        float rad = p.radius - 9f;
-        for (int i = 0; i < 14; i++)
-        {
-            float a = 120f + i * (240f / 13f);
-            float rr = rad + (i % 2) * 6f;
-            Vector3 d = Quaternion.Euler(0f, a, 0f) * Vector3.forward * rr;
-            if (Mathf.Abs(d.x) < 9f && d.z < -22f) continue;   // mosque
-            float yaw = Mathf.Round(a / 90f) * 90f;
-            yaw = Mathf.Abs(Mathf.DeltaAngle(yaw, 0f)) < 1f || Mathf.Abs(Mathf.DeltaAngle(yaw, 180f)) < 1f ? 0f : 90f;
-            House(c, d.x, d.z, 7f + (float)c.rnd.NextDouble() * 4f, 7f + (float)c.rnd.NextDouble() * 3f, c.delta ? 6f + (i % 3) * 3f : 4f + (i % 3) * 1.2f, yaw);
-        }
-        for (int i = 0; i < 6; i++) { var d = Quaternion.Euler(0f, 40f + i * 56f, 0f) * Vector3.forward * 20f; if (d.z > 5f) continue; Palm(c, d.x, d.z); }
-    }
 
     private static void Fuel(Ctx c)
     {

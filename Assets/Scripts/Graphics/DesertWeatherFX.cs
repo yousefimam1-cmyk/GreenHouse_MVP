@@ -171,7 +171,9 @@ public class DesertWeatherFX : MonoBehaviour
     private void UpdateFog(float day, RegionLook look)
     {
         if (FogOverridden) return;
-        float density = look.fogBase + 0.016f * Mathf.Clamp01((Wind01 - 0.3f) / 0.55f) * Mathf.Min(1f, look.dust * 2f) + 0.008f * Humidity01;
+        float baseFog = look.fogBase;
+        if (OpenWorld.Instance != null && OpenWorld.Instance.IsBuilt) baseFog = Mathf.Min(baseFog, OpenWorld.FogCap);   // clear days: the far world stays visible (dust and haze still add)
+        float density = baseFog + 0.016f * Mathf.Clamp01((Wind01 - 0.3f) / 0.55f) * Mathf.Min(1f, look.dust * 2f) + 0.008f * Humidity01;
         RenderSettings.fog = GameSettings.FogHaze;   // Settings > Graphics > Fog and haze (also turns off the Delta's river haze)
         RenderSettings.fogMode = FogMode.Exponential;
         RenderSettings.fogDensity = density;

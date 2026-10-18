@@ -51,8 +51,8 @@ static class WorldTests
         var farmRoad = L.Roads.First(r => r.inCore);
         T.Check("Roads: the farm road starts at the market pad and leaves the scene terrain", Flat(farmRoad.path[0] - DeliveryZone.Market.transform.position).magnitude < 1f
             && L.CoreDistance(farmRoad.path[farmRoad.path.Count - 1]) < 1f);
-        T.Check("Roads: an asphalt ring highway with dirt tracks to farms and land", L.Roads.Count(r => r.asphalt && r.width >= 9f) >= 6 && L.Roads.Any(r => !r.asphalt) && L.Ring.Count > 100);
-        var ring = L.Roads.First(r => r.width >= 9f);
+        T.Check("Roads: an asphalt ring highway with dirt tracks to farms and land", L.Roads.Count(r => r.asphalt && r.highway && r.width == WorldLayout.HighwayWidth) >= 6 && L.Roads.Any(r => !r.asphalt) && L.Ring.Count > 100);
+        var ring = L.Roads.First(r => r.highway);
         var rp = ring.path[ring.path.Count / 2];
         T.Check("Roads: ground flattened under the road (profile)", Math.Abs(w.Shape.Final(rp.x, rp.z) - ring.profile[ring.path.Count / 2]) < 0.3f);
         float maxGrade = 0f;
@@ -74,8 +74,8 @@ static class WorldTests
         T.Check("Places: outside the scene terrain, inside the world", badPlaces.Count == 0, string.Join(" ", badPlaces));
         T.Check("Places: selling points are market points of this map", L.Pois.Where(p => p.Sells).All(p => MarketManager.Instance.Point(p.sellPoint) != null));
         var townVisual = w.Places["town"].Find("Visual");
-        T.Check("Places: merged meshes + a few cheap box colliders", townVisual != null && townVisual.GetComponentsInChildren<BoxCollider>().Length >= 10 && townVisual.GetComponentsInChildren<BoxCollider>().Length < 40
-            && townVisual.gameObject.layer == DesertProps.PropLayer && townVisual.GetComponentsInChildren<MeshRenderer>(true).Length <= 30,
+        T.Check("Places: merged meshes (one per material) + cheap box colliders (one per building)", townVisual != null && townVisual.GetComponentsInChildren<BoxCollider>().Length >= 40 && townVisual.GetComponentsInChildren<BoxCollider>().Length < 120
+            && townVisual.gameObject.layer == DesertProps.PropLayer && townVisual.GetComponentsInChildren<MeshRenderer>(true).Length <= 60,
             townVisual == null ? "null" : townVisual.GetComponentsInChildren<BoxCollider>().Length + " cols " + townVisual.GetComponentsInChildren<MeshRenderer>(true).Length + " renderers");
         T.Check("Places: each has a map icon", L.Pois.Where(p => p.kind != PoiKind.Farm).All(p => w.Places[p.id].GetComponent<MinimapIcon>() != null));
         T.Check("Places: neighbour farms have workers (when models exist) and trees are scattered", w.Trees > 50, w.Trees + "");
@@ -210,6 +210,82 @@ static class WorldTests
         w.BuildWorld();
         T.Check("Modes: free play at mission 1 builds the same world", w.IsBuilt && w.Layout.Pois.Count == L.Pois.Count && w.Tiles.Count == 24);
         SaveData.SetInt(GameModes.ModeKey, (int)GameModes.Mode.Campaign);
+
+        // ---- the farm opens onto the world (no berm ring), roads without kerbs, view distance
+        var core = OpenWorld.CoreTerrain;
+        T.Check("Rim: the scene terrain is opened at world build", core == null || WorldRim.IsOpen(core));   // the headless scene has no terrain
+        {
+            // a scene-like terrain: 200 m, farm ground at 2 m, an 8 m berm 4-30 m inside the edge
+            var bgo = new GameObject("Berm Test Terrain"); var bt = bgo.AddComponent<Terrain>(); bgo.AddComponent<TerrainCollider>();
+            bt.terrainData = new TerrainData { heightmapResolution = 65, size = new Vector3(200f, 50f, 200f) };
+            var hb = new float[65, 65];
+            for (int z = 0; z < 65; z++) for (int x = 0; x < 65; x++) { float e = Math.Min(Math.Min(x, 64 - x), Math.Min(z, 64 - z)) * 200f / 64f; hb[z, x] = (2f + (e > 4f && e < 30f ? 8f : 0f)) / 50f; }
+            bt.terrainData.SetHeights(0, 0, hb);
+            bool opened = WorldRim.Open(bt);
+            var core0 = bt;
+            var cd = core0.terrainData; Vector3 co = core0.transform.position;
+            T.Check("Rim: the edge berms are eased down to the farm level", opened && WorldRim.Changed > 0 && Math.Abs(WorldRim.RimHeight - 2f) < 0.05f && Math.Abs(core0.SampleHeight(new Vector3(100f, 0f, 100f)) - 2f) < 0.01f,
+                WorldRim.Changed + " rim " + WorldRim.RimHeight);
+            float worst = 0f;
+            for (float u = 0.1f; u < 0.95f; u += 0.1f)
+                foreach (var e in new[] { new Vector3(co.x + cd.size.x * u, 0f, co.z + 1f), new Vector3(co.x + cd.size.x - 1f, 0f, co.z + cd.size.z * u), new Vector3(co.x + cd.size.x * u, 0f, co.z + cd.size.z - 1f), new Vector3(co.x + 1f, 0f, co.z + cd.size.z * u) })
+                    worst = Math.Max(worst, Math.Abs(core0.SampleHeight(e) - WorldRim.RimHeight));
+            T.Check("Rim: flat at the rim level all round the edge (no wall between farm and world)", worst < 0.05f, worst + "");
+            T.Check("Rim: the TerrainData asset is not changed (runtime copy)", ReferenceEquals(cd, bt.GetComponent<TerrainCollider>().terrainData) && cd.name.Contains("(runtime)"));
+            UnityEngine.Object.Destroy(bgo);
+        }
+        T.Check("Roads: carriageway widths highway 8 / asphalt 6 / farm 5 / dirt 3.5 m", L.Roads.Where(r => r.highway).All(r => r.width == 8f) && L.Roads.First(r => r.inCore).width == 5f
+            && L.Roads.Where(r => !r.asphalt).All(r => r.width == WorldLayout.DirtWidth));
+        var onRoad = ring.path[ring.path.Count / 3];
+        T.Check("Roads: the road surface sits just on the drawn ground (no kerb)", Math.Abs(w.RoadSurfaceY(onRoad) - w.TerrainY(onRoad) - OpenWorld.RoadLift) < 1e-3f && OpenWorld.RoadLift < 0.1f);
+        T.Check("Roads: the ground beside the carriageway is level with it (shoulder + flat pad)", Math.Abs(w.Shape.Final(onRoad.x, onRoad.z) - w.Shape.Final(onRoad.x + WorldLayout.HighwayWidth * 0.5f + 1.5f, onRoad.z)) < 0.25f);
+        T.Check("View: game cameras see the whole world (far clip), haze capped", Camera.main.farClipPlane >= w.ViewDistance && w.ViewDistance >= 2000f && OpenWorld.FogCap < 0.003f, Camera.main.farClipPlane + "");
+        T.Check("Edge dunes: the closed ring of dunes is gone (the open world is the horizon)", DesertDressing.Instance == null || DesertDressing.Instance.Dunes == 0);
+
+        // ---- the town
+        var tn = w.Town;
+        T.Check("Town: built with a street grid and 40+ buildings", tn != null && tn.plan.Buildings >= 40 && tn.plan.streets.Count == 5, tn == null ? "null" : tn.plan.Buildings + "");
+        T.Check("Town: no building stands on a street", tn.plan.lots.All(l => !tn.plan.streets.Any(a => a.Contains(l.c, -0.5f))));
+        T.Check("Town: mosque, fuel station, dealership, animal market, bank, cafe, seed shop, general store", new[] { WorldTown.Use.Mosque, WorldTown.Use.Fuel, WorldTown.Use.Dealer, WorldTown.Use.AnimalMarket, WorldTown.Use.Bank, WorldTown.Use.Cafe, WorldTown.Use.SeedShop, WorldTown.Use.GeneralStore }.All(u => tn.plan.lots.Any(l => l.use == u)));
+        T.Check("Town: working shops (Seeds, Supplies, Animals, Upgrades, Cafe, Bank)", new[] { "Seeds", "Supplies", "Animals", "Upgrades", "Cafe" }.All(c => tn.shops.OfType<TownShop>().Any(x => x.category == c)) && tn.shops.Any(x => x is BankSign)
+            && tn.shops.All(x => x.gameObject.layer == 7));
+        T.Check("Town: shop signs in English and Arabic", tn.plan.signs.Count >= 10 && tn.plan.signs.All(x => !string.IsNullOrEmpty(x.en) && !string.IsNullOrEmpty(x.ar)) && tn.plan.signs.All(x => Loc.HasTranslation(x.en)),
+            string.Join(",", tn.plan.signs.Where(x => !Loc.HasTranslation(x.en)).Select(x => x.en)));
+        T.Check("Town: people on the sidewalks, cars on the streets, trees", tn.walkers.Count >= 10 && tn.cars.Count >= 4 && tn.trees >= 20 && tn.parked >= 4, $"walkers {tn.walkers.Count} cars {tn.cars.Count} trees {tn.trees} parked {tn.parked}");
+        {
+            var player0 = GameObject.FindGameObjectWithTag("Player").transform; Vector3 back = player0.position;
+            player0.position = L.Poi("town").pos + Vector3.up * 200f;   // close enough that the town is not culled
+            float walked0 = tn.walkers.Sum(x => x.Travelled), drove0 = tn.cars.Sum(x => x.Travelled);
+            FakeEngine.Run(6f);
+            T.Check("Town: pedestrians walk and cars drive", tn.walkers.Sum(x => x.Travelled) > walked0 + 5f && tn.cars.Sum(x => x.Travelled) > drove0 + 10f);
+            var car = tn.cars[0];
+            player0.position = car.transform.position + car.transform.forward * 4f;
+            T.Check("Town: a car stops for the player in front of it", car.Blocked());
+            player0.position = back;
+        }
+        var cafe = tn.shops.OfType<TownShop>().First(x => x.category == "Cafe");
+        int teaMoney = eco.Money;
+        T.Check("Town: tea at the cafe costs 5", cafe.Tea() && eco.Money == teaMoney - TownShop.TeaPrice && Loc.HasTranslation("[E] Tea - {0} SAR"));
+        T.Check("Town: the town fuel station refuels", tn.fuel != null && w.AtFuel(tn.fuel.position) && !w.AtFuel(L.Poi("town").pos + Vector3.right * 300f));
+
+        // ---- never stuck
+        var sr = StuckRescue.Instance;
+        T.Check("Stuck: rescue system running, step offset raised", sr != null && GameObject.FindGameObjectWithTag("Player").GetComponent<CharacterController>().stepOffset >= StuckRescue.StepOffset - 0.01f);
+        {
+            var pl = GameObject.FindGameObjectWithTag("Player").transform; Vector3 back = pl.position;
+            float yaw = 0f;
+            T.Check("Stuck: an open spot on a nearby road is found", StuckRescue.FindSpot(ring.path[5] + Vector3.right * 6f, 0.6f, false, out var spot, ref yaw) && Flat(spot - ring.path[5]).magnitude < 12f);
+            var intro = UnityEngine.Object.FindAnyObjectByType<StoryIntro>();   // no panel open (pushing in a menu is not walking)
+            if (intro != null) typeof(StoryIntro).GetMethod("Close", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(intro, null);
+            FakeEngine.Tick(0.1f);
+            int r0 = sr.PlayerRescues;
+            StuckRescue.ForceInput = true;
+            FakeEngine.Run(StuckRescue.StuckSeconds + 0.6f);
+            StuckRescue.ForceInput = false;
+            T.Check("Stuck: pushing without moving for 3 s moves the player to open ground", sr.PlayerRescues == r0 + 1, sr.PlayerRescues + $" ui {UIManager.Instance?.IsUIOpened} wall {StuckRescue.AgainstWall(pl, new Vector2(0, 1))} drive {Vehicle.Current?.IsDriving} ts {Time.timeScale} pos {pl.position}");
+            pl.position = back;
+        }
+        T.Check("Vehicles: roads and terrain are never obstacles", VehicleObstacles.IsWalkable(new GameObject("T").AddComponent<TerrainCollider>()) && Vehicle.CrestClearance(0.5f) > 0.1f);
 
         // ---- texts
         var missing = new List<string>();
