@@ -1,4 +1,5 @@
-# Builds Mazraa.exe for Windows and uploads it as a downloadable zip.
+# Builds Mazraa.exe for Windows plus the release zip and the Microsoft Store .msix, uploaded as downloads.
+# (The Inno Setup installer needs Windows, so it is only made by the local Unity menu build.)
 # One-time setup (repo Settings > Secrets and variables > Actions):
 #   UNITY_LICENSE (contents of your Unity_v20xx.ulf), UNITY_EMAIL, UNITY_PASSWORD.
 # Then: Actions tab > "Windows build" > Run workflow. When it finishes, download "Mazraa-Windows"
@@ -32,8 +33,17 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: StandaloneWindows64
-          buildMethod: MazraaBuild.Windows
+          buildMethod: MazraaRelease.BuildAllBatch
       - uses: actions/upload-artifact@v4
         with:
           name: Mazraa-Windows
           path: build/Windows/Mazraa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mazraa-Store-MSIX
+          path: release/*.msix
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mazraa-Release-Zip
+          path: release/*.zip
