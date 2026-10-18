@@ -5,6 +5,13 @@ using UnityEngine.InputSystem;
 
 namespace StarterAssets
 {
+	/// <summary>
+	/// StarterAssets first-person controller, reworked for Mazraa (Farming Simulator 25 style on foot, see MoveFeel):
+	/// walk ~1.5 m/s, run ~5 m/s, quick linear acceleration / braking with fast turns (no ice-skating), ground snapping
+	/// on slopes and steps (no bouncing downhill), coyote time and a jump buffer, smooth crouch, slight head bob,
+	/// raw mouse look and a curved gamepad look. Speed, sprint, crouch and acceleration come from PlayerLife.
+	/// Everything runs in Update / LateUpdate with rate x dt, so it feels the same at 30, 60 or 144 fps.
+	/// </summary>
 	[RequireComponent(typeof(CharacterController))]
 #if ENABLE_INPUT_SYSTEM
 	[RequireComponent(typeof(PlayerInput))]
@@ -12,59 +19,59 @@ namespace StarterAssets
 	public class FirstPersonController : MonoBehaviour
 	{
 		[Header("Player")]
-		[Tooltip("Move speed of the character in m/s")]
-		public float MoveSpeed = 4.0f;
-		[Tooltip("Sprint speed of the character in m/s")]
-		public float SprintSpeed = 6.0f;
-		[Tooltip("Rotation speed of the character")]
+		[Tooltip("Walk speed of the character in m/s (set from MoveFeel at start)")]
+		public float MoveSpeed = MoveFeel.WalkSpeed;
+		[Tooltip("Run speed of the character in m/s (set from MoveFeel at start)")]
+		public float SprintSpeed = MoveFeel.RunSpeed;
+		[Tooltip("Look speed multiplier")]
 		public float RotationSpeed = 1.0f;
-		[Tooltip("Acceleration and deceleration")]
+		[Tooltip("Unused (kept for the scene's serialized value); acceleration comes from MoveFeel")]
 		public float SpeedChangeRate = 10.0f;
 
 		[Space(10)]
-		[Tooltip("The height the player can jump")]
-		public float JumpHeight = 1.2f;
-		[Tooltip("The character uses its own gravity value. The engine default is -9.81f")]
-		public float Gravity = -15.0f;
+		[Tooltip("The height the player can jump (set from MoveFeel at start)")]
+		public float JumpHeight = MoveFeel.JumpHeight;
+		[Tooltip("The character uses its own gravity value (set from MoveFeel at start)")]
+		public float Gravity = MoveFeel.Gravity;
 
 		[Space(10)]
-		[Tooltip("Time required to pass before being able to jump again. Set to 0f to instantly jump again")]
-		public float JumpTimeout = 0.1f;
-		[Tooltip("Time required to pass before entering the fall state. Useful for walking down stairs")]
+		[Tooltip("Time required to pass before being able to jump again")]
+		public float JumpTimeout = MoveFeel.JumpCooldown;
+		[Tooltip("Unused (kept for the scene's serialized value)")]
 		public float FallTimeout = 0.15f;
 
 		[Header("Player Grounded")]
 		[Tooltip("If the character is grounded or not. Not part of the CharacterController built in grounded check")]
 		public bool Grounded = true;
-		[Tooltip("Useful for rough ground")]
+		[Tooltip("Unused (the ground check is sized from the CharacterController)")]
 		public float GroundedOffset = -0.14f;
-		[Tooltip("The radius of the grounded check. Should match the radius of the CharacterController")]
+		[Tooltip("Unused (the ground check is sized from the CharacterController)")]
 		public float GroundedRadius = 0.5f;
-		[Tooltip("What layers the character uses as ground")]
+		[Tooltip("Extra layers the character uses as ground (everything but Player / Interactable / Outline / Ignore Raycast already counts)")]
 		public LayerMask GroundLayers;
 
 		[Header("Cinemachine")]
 		[Tooltip("The follow target set in the Cinemachine Virtual Camera that the camera will follow")]
 		public GameObject CinemachineCameraTarget;
 		[Tooltip("How far in degrees can you move the camera up")]
-		public float TopClamp = 90.0f;
+		public float TopClamp = 89.0f;
 		[Tooltip("How far in degrees can you move the camera down")]
-		public float BottomClamp = -90.0f;
+		public float BottomClamp = -89.0f;
+
+		/// <summary>Current flat velocity (m/s).</summary>
+		public Vector3 PlanarVelocity => _velocity;
+		public float GroundSpeed => _velocity.magnitude;
 
 		// cinemachine
 		private float _cinemachineTargetPitch;
 
 		// player
-		private float _speed;
-		private float _rotationVelocity;
+		private Vector3 _velocity;
 		private float _verticalVelocity;
-		private float _terminalVelocity = 53.0f;
+		private float _coyote, _jumpBuffer, _jumpCooldown;
+		private bool _jumpHeld;
+		private float _lookHold;
 
-		// timeout deltatime
-		private float _jumpTimeoutDelta;
-		private float _fallTimeoutDelta;
-
-	
 #if ENABLE_INPUT_SYSTEM
 		private PlayerInput _playerInput;
 #endif
@@ -72,24 +79,26 @@ namespace StarterAssets
 		private StarterAssetsInputs _input;
 		private GameObject _mainCamera;
 
-		private const float _threshold = 0.01f;
-
-		// Mazraa: crouch (PlayerLife.Crouching) lowers the capsule and the camera smoothly.
-		private float _standHeight, _standCenterY, _standCameraY, _crouchBlend;
+		// Mazraa: crouch (PlayerLife.Crouching) lowers the capsule and the camera smoothly; head bob on the camera root.
+		private float _standHeight, _standCenterY, _standCameraY, _standCameraX, _crouchBlend;
 		private bool _crouchInit;
 		public float CrouchDrop = 0.7f;
+		private float _bobPhase;
+		private Vector2 _bob;
 
 		private bool IsCurrentDeviceMouse
 		{
 			get
 			{
-				#if ENABLE_INPUT_SYSTEM
-				return _playerInput.currentControlScheme == "KeyboardMouse";
-				#else
-				return false;
-				#endif
+#if ENABLE_INPUT_SYSTEM
+				return _playerInput == null || _playerInput.currentControlScheme == "KeyboardMouse";
+#else
+				return true;
+#endif
 			}
 		}
+
+		private int GroundMask => GroundLayers.value | Build.GroundMask;
 
 		private void Awake()
 		{
@@ -109,41 +118,36 @@ namespace StarterAssets
 #else
 			Debug.LogError( "Starter Assets package is missing dependencies. Please use Tools/Starter Assets/Reinstall Dependencies to fix it");
 #endif
+			// The scene still carries the old StarterAssets numbers (4 / 6 m/s, 1.2 m jump): use the Mazraa feel.
+			MoveSpeed = MoveFeel.WalkSpeed;
+			SprintSpeed = MoveFeel.RunSpeed;
+			JumpHeight = MoveFeel.JumpHeight;
+			Gravity = MoveFeel.Gravity;
+			JumpTimeout = MoveFeel.JumpCooldown;
+			if (TopClamp > 89f) TopClamp = 89f;
+			if (BottomClamp < -89f) BottomClamp = -89f;
 
-			// reset our timeouts on start
-			_jumpTimeoutDelta = JumpTimeout;
-			_fallTimeoutDelta = FallTimeout;
+			// Capsule: a bigger skin and step so small edges and kerbs don't catch, slopes up to 50 degrees.
+			_controller.skinWidth = Mathf.Max(MoveFeel.SkinWidth, _controller.radius * 0.1f);
+			_controller.stepOffset = Mathf.Min(MoveFeel.StepOffset, _controller.height * 0.5f);
+			_controller.slopeLimit = MoveFeel.SlopeLimit;
+			_controller.minMoveDistance = 0f;
+
+			if (CinemachineCameraTarget != null)
+			{
+				float pitch = CinemachineCameraTarget.transform.localEulerAngles.x;
+				_cinemachineTargetPitch = pitch > 180f ? pitch - 360f : pitch;
+			}
 		}
 
 		private void Update()
 		{
-			JumpAndGravity();
+			float dt = Time.deltaTime;
+			if (dt <= 0f) return;   // paused
 			GroundedCheck();
-			Move();
-			Crouch();
-		}
-
-		// Mazraa: crouch / rest posture driven by PlayerLife.
-		private void Crouch()
-		{
-			if (!_crouchInit)
-			{
-				_crouchInit = true;
-				_standHeight = _controller.height;
-				_standCenterY = _controller.center.y;
-				_standCameraY = CinemachineCameraTarget != null ? CinemachineCameraTarget.transform.localPosition.y : 0f;
-			}
-			float target = PlayerLife.Crouching ? 1f : 0f;
-			if (Mathf.Approximately(target, _crouchBlend)) return;
-			_crouchBlend = Mathf.MoveTowards(_crouchBlend, target, Time.deltaTime * 4f);
-			float drop = CrouchDrop * _crouchBlend;
-			_controller.height = _standHeight - drop;
-			_controller.center = new Vector3(_controller.center.x, _standCenterY - drop * 0.5f, _controller.center.z);
-			if (CinemachineCameraTarget != null)
-			{
-				var lp = CinemachineCameraTarget.transform.localPosition;
-				CinemachineCameraTarget.transform.localPosition = new Vector3(lp.x, _standCameraY - drop, lp.z);
-			}
+			float rise = JumpAndGravity(dt, out bool jumped);
+			Move(dt, jumped, rise);
+			Crouch(dt);
 		}
 
 		private void LateUpdate()
@@ -151,130 +155,167 @@ namespace StarterAssets
 			CameraRotation();
 		}
 
+		// ------------------------------------------------------------------ ground
+
+		/// <summary>Centre of the capsule's bottom sphere in world space.</summary>
+		private Vector3 BottomSphere()
+		{
+			Vector3 c = transform.position + _controller.center;
+			return c + Vector3.down * Mathf.Max(0f, _controller.height * 0.5f - _controller.radius);
+		}
+
 		private void GroundedCheck()
 		{
-			// set sphere position, with offset
-			Vector3 spherePosition = new Vector3(transform.position.x, transform.position.y - GroundedOffset, transform.position.z);
-			Grounded = Physics.CheckSphere(spherePosition, GroundedRadius, GroundLayers, QueryTriggerInteraction.Ignore);
+			// a slightly smaller sphere a few cm below the capsule: finds the ground, never a wall beside you
+			float r = _controller.radius * 0.9f;
+			Vector3 probe = BottomSphere() + Vector3.down * (_controller.skinWidth + 0.06f + _controller.radius * 0.1f);
+			Grounded = _controller.isGrounded || Physics.CheckSphere(probe, r, GroundMask, QueryTriggerInteraction.Ignore);
 		}
+
+		/// <summary>Vertical speed for this frame; returns the vertical move (m), integrated exactly (same jump height at any fps).</summary>
+		private float JumpAndGravity(float dt, out bool jumped)
+		{
+			jumped = false;
+			// press edge (StarterAssets keeps jump true while held); PlayerLife may clear it when out of stamina
+			bool pressed = _input.jump && !_jumpHeld;
+			_jumpHeld = _input.jump;
+			_jumpBuffer = pressed ? MoveFeel.JumpBuffer : _jumpBuffer - dt;
+			_jumpCooldown -= dt;
+			_coyote = Grounded && _verticalVelocity <= 0.01f ? MoveFeel.CoyoteTime : _coyote - dt;
+
+			if (_jumpBuffer > 0f && _coyote > 0f && _jumpCooldown <= 0f && PlayerLife.JumpAllowed)
+			{
+				_verticalVelocity = MoveFeel.JumpVelocity(JumpHeight, Gravity);
+				_jumpBuffer = 0f; _coyote = 0f; _jumpCooldown = JumpTimeout;
+				jumped = true;
+			}
+			else if (Grounded && _verticalVelocity <= 0f)
+			{
+				_verticalVelocity = MoveFeel.GroundStick;
+				return _verticalVelocity * dt;
+			}
+			return MoveFeel.Fall(ref _verticalVelocity, dt, Gravity);
+		}
+
+		// ------------------------------------------------------------------ move
+
+		private void Move(float dt, bool jumped, float rise)
+		{
+			// Mazraa: stamina, carried weight and crouching (PlayerLife) limit sprinting and scale the speed.
+			Vector2 move = _input.move;
+			float tilt = Mathf.Sqrt(move.x * move.x + move.y * move.y);
+			if (IsCurrentDeviceMouse && !_input.analogMovement && tilt > 0.001f) tilt = 1f;   // keys: always full speed
+			float targetSpeed = MoveFeel.TargetSpeed(_input.sprint, PlayerLife.SprintAllowed, PlayerLife.SpeedFactor, tilt, MoveSpeed, SprintSpeed);
+
+			Vector3 wish = Vector3.zero;
+			if (tilt > 0.001f)
+			{
+				Vector3 fwd = transform.forward; fwd.y = 0f; fwd.Normalize();
+				Vector3 right = transform.right; right.y = 0f; right.Normalize();
+				wish = (right * move.x + fwd * move.y).normalized * targetSpeed;
+			}
+			bool grounded = Grounded && !jumped;
+			Vector3 old = _velocity;
+			_velocity = MoveFeel.StepVelocity(_velocity, wish, dt, PlayerLife.AccelerationFactor, grounded);
+
+			Vector3 before = transform.position;
+			Vector3 step = MoveFeel.StepMove(old, _velocity, dt);   // average speed over the frame: same distance at any fps
+			CollisionFlags flags = _controller.Move(step + Vector3.up * rise);
+
+			// Walking down a slope or off a kerb: stay on the ground instead of flying off and bouncing.
+			if (grounded && _verticalVelocity <= 0f && (flags & CollisionFlags.Below) == 0)
+			{
+				float snap = MoveFeel.SnapDistance(step.magnitude, _controller.stepOffset, _controller.slopeLimit);
+				float r = _controller.radius * 0.9f;
+				if (Physics.SphereCast(BottomSphere(), r, Vector3.down, out RaycastHit hit, snap + _controller.radius * 0.1f + _controller.skinWidth, GroundMask, QueryTriggerInteraction.Ignore)
+					&& Vector3.Angle(hit.normal, Vector3.up) <= _controller.slopeLimit + 1f)
+				{
+					flags |= _controller.Move(Vector3.down * hit.distance);
+					Grounded = true;
+				}
+			}
+
+			// A wall took part of the step: keep only what really happened (slide along it, no stored push).
+			// (only a real block: a slope also reports Sides but keeps nearly all of the horizontal step)
+			if ((flags & CollisionFlags.Sides) != 0)
+			{
+				Vector3 actual = (transform.position - before) / dt;
+				float actualFlat = new Vector3(actual.x, 0f, actual.z).magnitude, wantedFlat = new Vector3(step.x, 0f, step.z).magnitude / dt;
+				if (actualFlat < wantedFlat * 0.9f) _velocity = MoveFeel.AfterCollision(_velocity, actual);
+			}
+			// Bumped the head: start falling at once.
+			if ((flags & CollisionFlags.Above) != 0 && _verticalVelocity > 0f) _verticalVelocity = 0f;
+		}
+
+		// ------------------------------------------------------------------ crouch + head bob (camera root height)
+
+		private void Crouch(float dt)
+		{
+			if (!_crouchInit)
+			{
+				_crouchInit = true;
+				_standHeight = _controller.height;
+				_standCenterY = _controller.center.y;
+				_standCameraY = CinemachineCameraTarget != null ? CinemachineCameraTarget.transform.localPosition.y : 0f;
+				_standCameraX = CinemachineCameraTarget != null ? CinemachineCameraTarget.transform.localPosition.x : 0f;
+			}
+			float target = PlayerLife.Crouching ? 1f : 0f;
+			if (!Mathf.Approximately(target, _crouchBlend))
+			{
+				_crouchBlend = Mathf.MoveTowards(_crouchBlend, target, dt / MoveFeel.CrouchTime);
+				float d = CrouchDrop * Mathf.SmoothStep(0f, 1f, _crouchBlend);
+				_controller.height = _standHeight - d;
+				_controller.center = new Vector3(_controller.center.x, _standCenterY - d * 0.5f, _controller.center.z);
+			}
+
+			// slight head bob from the distance walked (Settings > Controls > Head bob, off with Reduce motion)
+			float speed = _velocity.magnitude;
+			Vector2 bobTarget = Vector2.zero;
+			if (MoveFeel.BobEnabled && (ThirdPersonView.Instance == null || !ThirdPersonView.Instance.IsThirdPerson))
+			{
+				_bobPhase = MoveFeel.AdvanceBob(_bobPhase, speed, dt);
+				bobTarget = MoveFeel.BobOffset(_bobPhase, speed, Grounded);
+			}
+			float k = MoveFeel.Ease(14f, dt);
+			_bob = new Vector2(Mathf.Lerp(_bob.x, bobTarget.x, k), Mathf.Lerp(_bob.y, bobTarget.y, k));
+
+			if (CinemachineCameraTarget != null)
+			{
+				float drop = CrouchDrop * Mathf.SmoothStep(0f, 1f, _crouchBlend);
+				var lp = CinemachineCameraTarget.transform.localPosition;
+				CinemachineCameraTarget.transform.localPosition = new Vector3(_standCameraX + _bob.x, _standCameraY - drop + _bob.y, lp.z);
+			}
+		}
+
+		// ------------------------------------------------------------------ look
 
 		private void CameraRotation()
 		{
-			// if there is an input
-			if (_input.look.sqrMagnitude >= _threshold)
+			if (_input == null || CinemachineCameraTarget == null) return;
+			Vector2 look = _input.look;
+			float yaw, pitch;
+			if (IsCurrentDeviceMouse)
 			{
-				//Don't multiply mouse input by Time.deltaTime
-				float deltaTimeMultiplier = IsCurrentDeviceMouse ? 1.0f : Time.deltaTime;
-				
-				_cinemachineTargetPitch += _input.look.y * RotationSpeed * deltaTimeMultiplier;
-				_rotationVelocity = _input.look.x * RotationSpeed * deltaTimeMultiplier;
-
-				// clamp our pitch rotation
-				_cinemachineTargetPitch = ClampAngle(_cinemachineTargetPitch, BottomClamp, TopClamp);
-
-				// Update Cinemachine camera target pitch
-				CinemachineCameraTarget.transform.localRotation = Quaternion.Euler(_cinemachineTargetPitch, 0.0f, 0.0f);
-
-				// rotate the player left and right
-				transform.Rotate(Vector3.up * _rotationVelocity);
-			}
-		}
-
-		private void Move()
-		{
-			// set target speed based on move speed, sprint speed and if sprint is pressed
-			// Mazraa: stamina, carried weight and crouching (PlayerLife) limit sprinting and scale the speed.
-			float targetSpeed = (_input.sprint && PlayerLife.SprintAllowed ? SprintSpeed : MoveSpeed) * PlayerLife.SpeedFactor;
-			float changeRate = SpeedChangeRate * PlayerLife.AccelerationFactor;   // smoother start / stop, slower with a load
-
-			// a simplistic acceleration and deceleration designed to be easy to remove, replace, or iterate upon
-
-			// note: Vector2's == operator uses approximation so is not floating point error prone, and is cheaper than magnitude
-			// if there is no input, set the target speed to 0
-			if (_input.move == Vector2.zero) targetSpeed = 0.0f;
-
-			// a reference to the players current horizontal velocity
-			float currentHorizontalSpeed = new Vector3(_controller.velocity.x, 0.0f, _controller.velocity.z).magnitude;
-
-			float speedOffset = 0.1f;
-			float inputMagnitude = _input.analogMovement ? _input.move.magnitude : 1f;
-
-			// accelerate or decelerate to target speed
-			if (currentHorizontalSpeed < targetSpeed - speedOffset || currentHorizontalSpeed > targetSpeed + speedOffset)
-			{
-				// creates curved result rather than a linear one giving a more organic speed change
-				// note T in Lerp is clamped, so we don't need to clamp our speed
-				_speed = Mathf.Lerp(currentHorizontalSpeed, targetSpeed * inputMagnitude, Time.deltaTime * changeRate);
-
-				// round speed to 3 decimal places
-				_speed = Mathf.Round(_speed * 1000f) / 1000f;
+				// Mouse: raw per-frame delta (already scaled by the input actions and the sensitivity), no smoothing,
+				// no threshold (the old 0.01 threshold dropped slow movements, worst at high frame rates).
+				if (look.x == 0f && look.y == 0f) return;
+				yaw = look.x * RotationSpeed;
+				pitch = look.y * RotationSpeed;
 			}
 			else
 			{
-				_speed = targetSpeed;
+				// Gamepad: stick -> response curve + turn boost (MoveFeel), times Settings > Controls > Stick sensitivity.
+				float dt = Time.deltaTime;
+				Vector2 rate = MoveFeel.GamepadLookRate(look.x / MoveFeel.StickLookScale, look.y / MoveFeel.StickLookScale, dt, ref _lookHold);
+				float sens = GameSettings.StickSensitivity * RotationSpeed;
+				yaw = rate.x * sens * dt;
+				pitch = rate.y * sens * dt;
+				if (yaw == 0f && pitch == 0f) return;
 			}
 
-			// normalise input direction
-			Vector3 inputDirection = new Vector3(_input.move.x, 0.0f, _input.move.y).normalized;
-
-			// note: Vector2's != operator uses approximation so is not floating point error prone, and is cheaper than magnitude
-			// if there is a move input rotate player when the player is moving
-			if (_input.move != Vector2.zero)
-			{
-				// move
-				inputDirection = transform.right * _input.move.x + transform.forward * _input.move.y;
-			}
-
-			// move the player
-			_controller.Move(inputDirection.normalized * (_speed * Time.deltaTime) + new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
-		}
-
-		private void JumpAndGravity()
-		{
-			if (Grounded)
-			{
-				// reset the fall timeout timer
-				_fallTimeoutDelta = FallTimeout;
-
-				// stop our velocity dropping infinitely when grounded
-				if (_verticalVelocity < 0.0f)
-				{
-					_verticalVelocity = -2f;
-				}
-
-				// Jump
-				if (_input.jump && _jumpTimeoutDelta <= 0.0f && PlayerLife.JumpAllowed)
-				{
-					// the square root of H * -2 * G = how much velocity needed to reach desired height
-					_verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
-				}
-
-				// jump timeout
-				if (_jumpTimeoutDelta >= 0.0f)
-				{
-					_jumpTimeoutDelta -= Time.deltaTime;
-				}
-			}
-			else
-			{
-				// reset the jump timeout timer
-				_jumpTimeoutDelta = JumpTimeout;
-
-				// fall timeout
-				if (_fallTimeoutDelta >= 0.0f)
-				{
-					_fallTimeoutDelta -= Time.deltaTime;
-				}
-
-				// if we are not grounded, do not jump
-				_input.jump = false;
-			}
-
-			// apply gravity over time if under terminal (multiply by delta time twice to linearly speed up over time)
-			if (_verticalVelocity < _terminalVelocity)
-			{
-				_verticalVelocity += Gravity * Time.deltaTime;
-			}
+			_cinemachineTargetPitch = ClampAngle(_cinemachineTargetPitch + pitch, BottomClamp, TopClamp);
+			CinemachineCameraTarget.transform.localRotation = Quaternion.Euler(_cinemachineTargetPitch, 0.0f, 0.0f);
+			transform.Rotate(Vector3.up * yaw);
 		}
 
 		private static float ClampAngle(float lfAngle, float lfMin, float lfMax)
@@ -286,14 +327,11 @@ namespace StarterAssets
 
 		private void OnDrawGizmosSelected()
 		{
-			Color transparentGreen = new Color(0.0f, 1.0f, 0.0f, 0.35f);
-			Color transparentRed = new Color(1.0f, 0.0f, 0.0f, 0.35f);
-
-			if (Grounded) Gizmos.color = transparentGreen;
-			else Gizmos.color = transparentRed;
-
-			// when selected, draw a gizmo in the position of, and matching radius of, the grounded collider
-			Gizmos.DrawSphere(new Vector3(transform.position.x, transform.position.y - GroundedOffset, transform.position.z), GroundedRadius);
+			var cc = GetComponent<CharacterController>();
+			if (cc == null) return;
+			Gizmos.color = Grounded ? new Color(0.0f, 1.0f, 0.0f, 0.35f) : new Color(1.0f, 0.0f, 0.0f, 0.35f);
+			Vector3 bottom = transform.position + cc.center + Vector3.down * Mathf.Max(0f, cc.height * 0.5f - cc.radius);
+			Gizmos.DrawSphere(bottom + Vector3.down * (cc.skinWidth + 0.06f + cc.radius * 0.1f), cc.radius * 0.9f);
 		}
 	}
 }

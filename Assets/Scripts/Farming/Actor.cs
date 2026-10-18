@@ -16,6 +16,10 @@ public class Actor : MonoBehaviour
     public Vehicle vehicle;            // Driver mode
     /// <summary>Dog, cat, horse, eagle... (not a person): flees when bumped or startled (NpcBump).</summary>
     public bool IsAnimal;
+    /// <summary>The player's pets (saluki, cat): never hidden by Settings > Ambient life, kept near the player by PetSystem.</summary>
+    public bool IsPet;
+    /// <summary>FollowPlayer: distance (m) it settles at next to the leader.</summary>
+    public float followNear = 3.5f;
 
     private Animation anim;
     private readonly Dictionary<string, string> clips = new Dictionary<string, string>();
@@ -31,17 +35,26 @@ public class Actor : MonoBehaviour
         go.transform.position = pos;
         var m = byHeight ? Build.TryModelHeight(modelName, go.transform, size) : Build.TryModel(modelName, go.transform, size, 0f);
         if (m == null) { Destroy(go); return null; }   // model not in Resources: skip quietly
+        return Attach(go, m, mode, !modelName.StartsWith("Characters/"));
+    }
+
+    /// <summary>Make go (with its model child already in place, e.g. a primitive stand-in) an actor.</summary>
+    public static Actor Attach(GameObject go, GameObject model, ActorMode mode, bool animal)
+    {
         var a = go.AddComponent<Actor>();
-        a.model = m;
+        a.model = model;
         a.mode = mode;
-        a.home = pos;
-        a.IsAnimal = !modelName.StartsWith("Characters/");
+        a.home = go.transform.position;
+        a.IsAnimal = animal;
         a.SetupClips();
         return a;
     }
 
+    public GameObject Model => model;
+
     private void SetupClips()
     {
+        if (model == null) return;
         anim = model.GetComponentInChildren<Animation>();
         if (anim == null) return;
         foreach (AnimationState s in anim)
@@ -118,7 +131,7 @@ public class Actor : MonoBehaviour
             case ActorMode.Stand: if ((wait -= Time.deltaTime) <= 0f) { Play("idle"); IdleVariety(); } break;
             case ActorMode.Driver:
                 bool show = vehicle != null && (vehicle.IsDriving || vehicle.RemoteDriven);
-                if (model.activeSelf != show) model.SetActive(show);
+                if (model != null && model.activeSelf != show) model.SetActive(show);
                 if (show) Play("drive", "sit", "idle");
                 break;
         }
@@ -151,27 +164,19 @@ public class Actor : MonoBehaviour
         if (leader == null) return;
         Vector3 to = leader.position - transform.position; to.y = 0f;
         float d = to.magnitude;
-        if (d > 45f) { transform.position = Build.OnGround(leader.position - leader.forward * 3f); return; } // catch up after driving away
-        if (d > 3.5f)
+        if (d > 45f) { CatchUp(leader); return; } // catch up after driving away / fast travel
+        if (d > followNear)
         {
-            float s = d > 9f ? speed * 3f : speed * 1.6f;
+            float s = d > followNear + 5.5f ? speed * 3f : speed * 1.6f;
             MoveTowards(to, s);
-            Play(d > 9f ? "run" : "walking", "walking", "walk", "run");
+            Play(d > followNear + 5.5f ? "run" : "walking", "walking", "walk", "run");
             SyncSpeed(s);
         }
         else Play("idle", "sit");
     }
 
-    private static Transform cachedPlayer;
-    private static Transform PlayerTransform()
-    {
-        if (cachedPlayer == null)
-        {
-            var p = FindAnyObjectByType<StarterAssets.StarterAssetsInputs>();
-            if (p != null) cachedPlayer = p.transform;
-        }
-        return cachedPlayer;
-    }
+    // one shared, reset-on-load player lookup (CozyFx) instead of a second static cache that could outlive a scene
+    private static Transform PlayerTransform() => CozyFx.Player;
 
     private void Fly()
     {
@@ -184,10 +189,24 @@ public class Actor : MonoBehaviour
         Play("fly", "idle");
     }
 
+    /// <summary>Jump to a spot just behind / beside the leader, on the ground at the leader's level (not on a roof).</summary>
+    public void CatchUp(Transform leader)
+    {
+        if (leader == null) return;
+        Vector3 back = leader.forward; back.y = 0f;
+        if (back.sqrMagnitude < 1e-4f) back = Vector3.forward;
+        back.Normalize();
+        Vector3 side = Vector3.Cross(Vector3.up, back) * (name.ToLowerInvariant().Contains("cat") ? -1.5f : 1.5f);
+        transform.position = Build.GroundNear(leader.position - back * 2.5f + side);
+        target = transform.position;
+    }
+
     private void MoveTowards(Vector3 to, float s)
     {
         Quaternion look = Quaternion.LookRotation(to.normalized);
         transform.rotation = Quaternion.RotateTowards(transform.rotation, look, 240f * Time.deltaTime);
-        transform.position = Build.OnGround(transform.position + transform.forward * s * Time.deltaTime);
+        Vector3 next = transform.position + transform.forward * s * Time.deltaTime;
+        // Pets look for the ground just around their feet (a ray from 60 m up put them on roofs and greenhouses).
+        transform.position = IsPet || mode == ActorMode.FollowPlayer ? Build.GroundNear(next) : Build.OnGround(next);
     }
 }

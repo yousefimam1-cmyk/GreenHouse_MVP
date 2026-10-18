@@ -190,6 +190,7 @@ public partial class GameMenu
             MenuRow.Setting(() => UiText.T("Steering sensitivity"), () => Mult(GameSettings.SteeringSensitivity), d => GameSettings.SteeringSensitivity = GameSettings.SteeringSensitivity + d * 0.1f),
             MenuRow.Setting(() => UiText.T("Field of view"), () => GameSettings.CameraFov > 0 ? GameSettings.CameraFov + "°" : Auto(), d => GameSettings.CameraFov = GameSettings.Cycle(GameSettings.Fovs, GameSettings.CameraFov, d)),
             MenuRow.Setting(() => UiText.T("Camera"), () => UiText.T(GameSettings.ThirdPerson ? "Third person" : "First person"), d => ThirdPersonView.SetMode(!GameSettings.ThirdPerson)),
+            Toggle(() => UiText.T("Head bob"), () => GameSettings.HeadBob, v => GameSettings.HeadBob = v),
         };
     }
 

@@ -111,12 +111,12 @@ public class DesertWeatherFX : MonoBehaviour
         haze.weight = 0f;
         var profile = ScriptableObject.CreateInstance<VolumeProfile>();
         profile.name = "Heat haze (runtime)";
+        // (no exposure: GraphicsEnhancer's Brightness volume owns the final exposure, so heat never over-exposes the image)
         var color = profile.Add<ColorAdjustments>(true);
-        color.postExposure.Override(0.12f);
         color.contrast.Override(-6f);
-        color.colorFilter.Override(new Color(1f, 0.95f, 0.86f));
+        color.colorFilter.Override(new Color(1f, 0.96f, 0.9f));
         var wb = profile.Add<WhiteBalance>(true);
-        wb.temperature.Override(14f);
+        wb.temperature.Override(9f);
         var ca = profile.Add<ChromaticAberration>(true);
         ca.intensity.Override(0.08f);
         wobble = profile.Add<LensDistortion>(true);
@@ -171,7 +171,9 @@ public class DesertWeatherFX : MonoBehaviour
     private void UpdateFog(float day, RegionLook look)
     {
         if (FogOverridden) return;
-        float density = look.fogBase + 0.016f * Mathf.Clamp01((Wind01 - 0.3f) / 0.55f) * Mathf.Min(1f, look.dust * 2f) + 0.008f * Humidity01;
+        float baseFog = look.fogBase;
+        if (OpenWorld.Instance != null && OpenWorld.Instance.IsBuilt) baseFog = Mathf.Min(baseFog, OpenWorld.FogCap);   // clear days: the far world stays visible (dust and haze still add)
+        float density = baseFog + 0.016f * Mathf.Clamp01((Wind01 - 0.3f) / 0.55f) * Mathf.Min(1f, look.dust * 2f) + 0.008f * Humidity01;
         RenderSettings.fog = GameSettings.FogHaze;   // Settings > Graphics > Fog and haze (also turns off the Delta's river haze)
         RenderSettings.fogMode = FogMode.Exponential;
         RenderSettings.fogDensity = density;
