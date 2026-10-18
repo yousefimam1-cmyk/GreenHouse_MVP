@@ -332,6 +332,17 @@ def _():
     if 'MAZRAA_ONLINE' in defs and 'MAZRAA_NETCODE' not in defs: bad.append('MAZRAA_ONLINE needs MAZRAA_NETCODE')
     return not bad, bad + ['Standalone defines: ' + ';'.join(defs)]
 
+
+@test('No leftover merge-conflict markers in project files')
+def _():
+    bad = []
+    for base in (A, os.path.join(A, '..', 'ProjectSettings'), os.path.join(A, '..', 'Packages')):
+        for p in walk(base, ('.meta', '.cs', '.json', '.asset', '.unity', '.prefab', '.mat', '.shader')):
+            try: t = open(p, encoding='utf-8', errors='ignore').read()
+            except Exception: continue
+            if re.search(r'^(<<<<<<< |>>>>>>> )', t, re.M): bad.append(os.path.relpath(p, A))
+    return not bad, bad
+
 # ---------------------------------------------------------------- report
 ok = sum(1 for r in results if r[1])
 for name, passed, details in results:
