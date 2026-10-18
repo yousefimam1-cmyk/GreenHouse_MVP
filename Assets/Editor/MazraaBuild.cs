@@ -34,6 +34,13 @@ public static class MazraaBuild
     [MenuItem("Mazraa/Build Windows (.exe)")]
     public static void Windows()
     {
+        bool ok = WindowsNoExit();
+        if (Application.isBatchMode) EditorApplication.Exit(ok ? 0 : 1);
+    }
+
+    /// <summary>Windows build without quitting the editor in batch mode (used by MazraaRelease.BuildAllBatch).</summary>
+    public static bool WindowsNoExit()
+    {
         ApplyBranding();
         string outDir = "build/Windows/Mazraa";
         Directory.CreateDirectory(outDir);
@@ -41,7 +48,7 @@ public static class MazraaBuild
         var report = BuildPipeline.BuildPlayer(scenes, outDir + "/Mazraa.exe", BuildTarget.StandaloneWindows64, BuildOptions.None);
         Debug.Log("Mazraa Windows build: " + report.summary.result + " -> " + outDir + " in " + report.summary.totalTime.ToString(@"hh\:mm\:ss"));
         MazraaShaderStripper.LogAndReset();
-        if (Application.isBatchMode) EditorApplication.Exit(report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded ? 0 : 1);
+        return report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded;
     }
 
     /// <summary>Android APK: IL2CPP, ARM64 only, debug-signed unless a keystore is set in Player Settings.
