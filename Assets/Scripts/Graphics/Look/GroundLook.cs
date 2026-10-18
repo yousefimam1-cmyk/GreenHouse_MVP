@@ -39,9 +39,31 @@ public static class GroundLook
         switch (role)
         {
             case "track": return LookLibrary.Get(b == Biome.Delta ? LookMat.Soil : LookMat.Gravel);
-            case "dune": return LookLibrary.Get(LookMat.Sand);
-            default: return LookLibrary.Get(b == Biome.Delta ? LookMat.Grass : LookMat.Sand);
+            case "dune": return SandMaterial();
+            default: return b == Biome.Delta ? LookLibrary.Get(LookMat.Grass) : SandMaterial();
         }
+    }
+
+    /// <summary>Sand for the open ground and dunes: parallax-mapped on Ultra (MaxLook), plain PBR sand otherwise.</summary>
+    private static Material SandMaterial()
+    {
+        if (MaxLook.ParallaxOn) { var p = LookLibrary.GroundParallax(); if (p != null) return p; }
+        return LookLibrary.Get(LookMat.Sand);
+    }
+
+    /// <summary>Terrain layers follow LookLibrary.HighRes (2K albedo + normal on Ultra, 1K otherwise).</summary>
+    public static void SetHighRes(bool on)
+    {
+        foreach (var kv in layers) if (kv.Value != null) ApplyRes(kv.Key, kv.Value, on);
+    }
+
+    private static void ApplyRes(LookMat m, TerrainLayer l, bool on)
+    {
+        string f = FileOf(m);
+        Texture2D d = on ? LookLibrary.HiResTexture(f + "_d") : null, n = on ? LookLibrary.HiResTexture(f + "_n") : null;
+        if (d == null || n == null) { d = LookLibrary.Texture(f + "_d"); n = LookLibrary.Texture(f + "_n"); }
+        if (d != null) l.diffuseTexture = d;
+        if (n != null) l.normalMapTexture = n;
     }
 
     public static LookMat MeshLook(Biome b, string role) =>
@@ -69,6 +91,7 @@ public static class GroundLook
         l.diffuseRemapMax = Vector4.one;
         l.maskMapRemapMin = Vector4.zero;
         l.maskMapRemapMax = Vector4.one;
+        if (LookLibrary.HighRes) ApplyRes(m, l, true);
         layers[m] = l;
         return l;
     }

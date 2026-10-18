@@ -165,11 +165,42 @@ static class LookTests
         int renders = probe != null ? probe.renders : 0;
         FakeEngine.Run(12f, 0.5f);
         T.Check("Look: the reflection probe re-renders now and then (not every frame)", probe != null && probe.renders > renders && probe.renders < renders + 6, renders + " -> " + (probe != null ? probe.renders : 0));
+        // ---- max look (MaxLook): 2K textures + parallax on Ultra, water and character shaders on High / Ultra
+        Func<Texture, int> W = t => t != null ? t.width : 0;
+        var sandU = LookLibrary.Get(LookMat.Sand);
+        long bytesUltra = LookLibrary.TextureBytes();
+        T.Check("Look: Ultra swaps the 9 main sets to 2K albedo + normal (materials and terrain layers)", LookLibrary.HighRes && W(sandU.GetTexture("_BaseMap")) == 2048 && W(sandU.GetTexture("_BumpMap")) == 2048
+            && LookLibrary.HiResSets.All(m => W(LookLibrary.Get(m).GetTexture("_BaseMap")) == 2048 && W(LookLibrary.Get(m).GetTexture("_BumpMap")) == 2048)
+            && W(GroundLook.Layer(LookMat.Rock).diffuseTexture) == 2048 && W(GroundLook.Layer(LookMat.Rock).normalMapTexture) == 2048 && W(LookLibrary.Get(LookMat.Wood).GetTexture("_BaseMap")) <= 1024,
+            W(sandU.GetTexture("_BaseMap")) + "");
+        T.Check("Look: Ultra texture budget (" + (bytesUltra / (1024 * 1024)) + " MB, more than High's " + (bytes / (1024 * 1024)) + " MB)", bytesUltra > bytes && bytesUltra < LookLibrary.TextureBudgetBytesUltra);
+        var sandMeshU = UnityEngine.Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).FirstOrDefault(r => r.name == "Sand" && r.transform.IsChildOf(dd.transform));
+        var px = LookLibrary.GroundParallax();
+        T.Check("Look: Ultra sand ground is parallax-mapped (URP/Lit + height map, 2K sand)", px != null && sandMeshU != null && sandMeshU.sharedMaterial == px && px.shader.name == "Universal Render Pipeline/Lit"
+            && px.GetTexture("_ParallaxMap") != null && W(px.GetTexture("_BaseMap")) == 2048);
+        var shaderWater = MaxLook.ShaderWater();
+        Func<Material, int> usingMat = mat => UnityEngine.Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).Count(r => r.sharedMaterial == mat || (r.sharedMaterials != null && r.sharedMaterials.Contains(mat)));
+        Func<int> characterRenderers = () => UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None).Count(r => r.sharedMaterials != null && r.sharedMaterials.Any(m => m != null && m.shader != null && m.shader.name == ModelLook.CharacterShader));
+        // headless models have no meshes: a stand-in cow with one opaque URP/Lit part
+        var cowGo = new GameObject("Models/cow look test");
+        var cowR = Build.Part(PrimitiveType.Cube, cowGo.transform, Vector3.up, Vector3.one, new Material(Build.Mat(new Color(0.6f, 0.5f, 0.4f), 0.5f)), "body").GetComponent<MeshRenderer>();
+        cowR.sharedMaterials = new[] { cowR.sharedMaterial };
+        ModelLook.Upgrade(cowGo, "Models/cow");
+        int waterUltra = usingMat(shaderWater), charsUltra = characterRenderers();
+        T.Check("Look: Mazraa/Water ships and the canals use it (" + waterUltra + " water renderers, " + dd.Canals + " canals)", shaderWater != null && shaderWater.shader.name == "Mazraa/Water" && (dd.Canals == 0 || waterUltra > 0) && usingMat(MaxLook.PlainWater) == 0);
+        T.Check("Look: people and animals draw with Mazraa/Character on Ultra (" + charsUltra + " renderers)", charsUltra > 0 && cowR.sharedMaterials[0].shader.name == ModelLook.CharacterShader);
         GraphicsEnhancer.SetPreset(GraphicsEnhancer.PresetLow); FakeEngine.Run(0.2f);
+        var sandL = LookLibrary.Get(LookMat.Sand);
+        T.Check("Look: Low = 1K textures again, flat water, matte URP/Lit characters, no parallax", !LookLibrary.HighRes && W(sandL.GetTexture("_BaseMap")) == 1024 && W(GroundLook.Layer(LookMat.Rock).diffuseTexture) == 1024
+            && usingMat(shaderWater) == 0 && (dd.Canals == 0 || usingMat(MaxLook.PlainWater) > 0) && characterRenderers() == 0 && usingMat(px) == 0,
+            usingMat(shaderWater) + " " + characterRenderers() + " " + usingMat(px));
+        T.Check("Look: Low = the cow is matte URP/Lit (same base colour, smoothness 0.08)", cowR.sharedMaterials[0].shader.name == "Universal Render Pipeline/Lit" && cowR.sharedMaterials[0].name.EndsWith("(fur)"));
         T.Check("Look: Low = no probe, 1 cascade, LDR grading, no extra grade, hard shadows", !atmo.ProbeActive && urp.shadowCascadeCount == 1 && urp.colorGradingMode == ColorGradingMode.LowDynamicRange && atmo.GradeVolume.weight == 0f
             && (RenderSettings.sun == null || RenderSettings.sun.shadows == LightShadows.Hard));
         GraphicsEnhancer.SetPreset(GraphicsEnhancer.PresetHigh); FakeEngine.Run(0.2f);
+        T.Check("Look: High = water + character shaders back, 1K textures (2K is Ultra only)", !LookLibrary.HighRes && cowR.sharedMaterials[0].shader.name == ModelLook.CharacterShader && (dd.Canals == 0 || usingMat(shaderWater) > 0) && usingMat(MaxLook.PlainWater) == 0);
         T.Check("Look: High = probe on, grade on, soft shadows", atmo.ProbeActive && atmo.GradeVolume.weight > 0.9f && urp.shadowCascadeCount == 4 && (RenderSettings.sun == null || RenderSettings.sun.shadows == LightShadows.Soft));
+        UnityEngine.Object.Destroy(cowGo);
         T.Check("Look: Ultra / High / Medium / Low names have Arabic", GraphicsEnhancer.PresetNames.All(n => Loc.HasTranslation(n)) && Loc.HasTranslation(GameSettings.PresetName(3)));
 
         // ---- sky, ambient, wind, wet ground
@@ -209,6 +240,7 @@ static class LookTests
         T.Check("Look: Delta ground mesh is grass, eucalyptus are LOD trees", deltaSand != null && deltaSand.sharedMaterial == LookLibrary.Get(LookMat.Grass)
             && UnityEngine.Object.FindObjectsByType<LODGroup>(FindObjectsSortMode.None).Any(g => g.name == "Eucalyptus" && g.transform.IsChildOf(dd.transform)));
         T.Check("Look: Delta grass is green", grass.InstanceCount > 0);
+        T.Check("Look: Delta canals are Mazraa/Water on High (" + dd.Canals + " canals, " + usingMat(shaderWater) + " water renderers)", dd.Canals > 0 && usingMat(shaderWater) > 0 && usingMat(MaxLook.PlainWater) == 0);
         Regions.Select("najd"); FakeEngine.Run(2f);
         T.Check("Look: back in Najd the villagers wear thobes again", villagers.All(v => wears(v, "Thobe", "Shemagh")));
         UnityEngine.Object.Destroy(woman);
