@@ -1,9 +1,9 @@
 # Mazraa — Code Architecture
 
 Status: October 2026, branch `mazraa-dev` after the open-world, graphics, movement, online co-op and QA merges.
-207 C# files, ~42,700 lines under `Assets/Scripts`, no assembly definitions (one assembly), Unity 6000.3.10f1, URP 17.3,
+~215 C# files, ~45,000 lines under `Assets/Scripts`, no assembly definitions (one assembly), Unity 6000.3.10f1, URP 17.3,
 Input System 1.18, Netcode for GameObjects 2.11 (compiled only with `MAZRAA_NETCODE`), TextMeshPro.
-Tests: `Tests/Headless/run.sh` (mono + a fake UnityEngine, ~900 checks) and `python3 Tests/static_tests.py .` (34 checks).
+Tests: `Tests/Headless/run.sh` (mono + a fake UnityEngine, 1,789 checks incl. 62 Core) and `python3 Tests/static_tests.py .` (34 checks).
 
 This document has three parts: **what is there** (code map), **what hurts** (problems), **where we go** (target
 architecture and a staged refactor plan that runs next to feature work). The code added with this document lives in
