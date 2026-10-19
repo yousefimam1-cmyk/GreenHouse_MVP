@@ -238,7 +238,7 @@ public static class WorldTown
         pl.carLoops.Add(new List<Vector3> { new Vector3(SideX[0] - o, 0f, CrossZ[0] - o), new Vector3(SideX[0] - o, 0f, CrossZ[1] + o), new Vector3(SideX[1] + o, 0f, CrossZ[1] + o), new Vector3(SideX[1] + o, 0f, CrossZ[0] - o) });
         // cars parked at the kerb of the main street (one side each, the street stays two lanes wide)
         pl.props.Add(new Prop { s = new Spot(new Vector3(StreetHalf - 1.1f, 0f, -16f), 0f), model = "Truck", length = 4.6f, solid = true });
-        pl.props.Add(new Prop { s = new Spot(new Vector3(StreetHalf - 1.1f, 0f, -21.5f), 0f), model = "TownSedan", length = 4.6f, solid = true });
+        pl.props.Add(new Prop { s = new Spot(new Vector3(StreetHalf - 1.1f, 0f, -21.5f), 0f), model = "CoveredCar", length = 4.4f, solid = true });
         pl.props.Add(new Prop { s = new Spot(new Vector3(-StreetHalf + 1.1f, 0f, 16f), 180f), model = "Truck", length = 4.6f, solid = true });
         pl.props.Add(new Prop { s = new Spot(new Vector3(-StreetHalf + 1.1f, 0f, 21.5f), 180f), model = "TownSuv", length = 4.8f, solid = true });
         return pl;
@@ -840,7 +840,7 @@ public static class WorldTown
         t.cols.Add(new WorldCollider(Mid(l.P(-w * 0.3f, 0f, -d * 0.3f), 0.53f), Size(l, 2.2f, 1.05f, 0.7f)));
         t.pl.shops.Add(new ShopSpot { s = new Spot(l.P(-w * 0.3f, 0f, -d * 0.3f + 0.35f), l.yaw), category = "Upgrades", en = l.nameEn, ar = l.nameAr, use = Use.Dealer });
         // display models: a tractor in the showroom, a pickup outside
-        t.pl.props.Add(new Prop { s = new Spot(l.P(w * 0.18f, 0.06f, -0.5f), l.yaw + 150f), model = "Tractor", length = 4.2f, solid = true });
+        t.pl.props.Add(new Prop { s = new Spot(l.P(w * 0.18f, 0.06f, -0.5f), l.yaw + 150f), model = "Tractor", length = 4.5f, solid = true });
         t.pl.props.Add(new Prop { s = new Spot(l.P(-w * 0.12f, 0.06f, 0.8f), l.yaw + 200f), model = "Truck", length = 4.6f, solid = true });
         l.Height = H + 1.25f;
     }

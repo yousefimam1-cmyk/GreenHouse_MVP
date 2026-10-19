@@ -88,7 +88,8 @@ public static class DesertProps
         root.transform.position = pos;
         root.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
         root.transform.localScale = Vector3.one * (0.7f + (float)rnd.NextDouble() * 0.6f);
-        Tree(root, dry ? TreeType.DryShrub : TreeType.Shrub, rnd);
+        // CC0 scanned shrub (model catalog: Shrub / DryShrub), else the procedural one
+        if (Build.TryModel(dry ? "DryShrub" : "Shrub", root.transform, 0f, 0f) == null) Tree(root, dry ? TreeType.DryShrub : TreeType.Shrub, rnd);
         return root;
     }
 

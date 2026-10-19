@@ -30,7 +30,7 @@ public class FarmAnimal : MonoBehaviour
             float fit = id == "cow" ? 2.2f : id == "sheep" ? 1.3f : 0.55f;
             var model = Build.TryModel(id, root.transform, fit, 0f);
             if (model == null) a.BuildBody();
-            else a.SetupAnimation(model);
+            else { a.SetupAnimation(model); if (a.anim == null) { a.bob = model.transform; a.bobPos = a.bob.localPosition; a.bobRot = a.bob.localRotation; } }
         }
         a.speed = id == "chicken" ? 1.1f : id == "sheep" ? 0.8f : 0.6f;
         a.PickTarget();
@@ -94,6 +94,8 @@ public class FarmAnimal : MonoBehaviour
 
     // Legacy animation clips imported with the CC0 models (Quaternius cow/sheep, CDmir chicken).
     private Animation anim;
+    private Transform bob;            // static (unrigged) model: gentle gait sway instead of clips
+    private Vector3 bobPos; private Quaternion bobRot;
     private string walkClip, idleClip, eatClip, playing;
 
     public void SetupAnimation(GameObject model)
@@ -150,6 +152,12 @@ public class FarmAnimal : MonoBehaviour
             walkPhase += Time.deltaTime * speed * 7f;
         }
         if (anim != null) Play(walking ? (walkClip ?? idleClip) : (pen != null && pen.HasFeed && eatClip != null && Time.time % 9f > 6f ? eatClip : idleClip));
+        if (bob != null)
+        {
+            float g = walking ? Mathf.Sin(walkPhase) : 0f;
+            bob.localPosition = bobPos + new Vector3(0f, walking ? Mathf.Abs(Mathf.Sin(walkPhase)) * 0.025f : 0f, 0f);
+            bob.localRotation = bobRot * Quaternion.Euler(walking ? Mathf.Sin(walkPhase * 2f) * 0.8f : 0f, 0f, g * 1.6f);
+        }
         float swing = walking ? Mathf.Sin(walkPhase) * 25f : 0f;
         for (int i = 0; i < legs.Count; i++) legs[i].localRotation = Quaternion.Euler((i == 0 || i == 3) ? swing : -swing, 0, 0);
         if (head != null)

@@ -98,7 +98,7 @@ public class UtilityYard : MonoBehaviour
         if (m.Generator)
         {
             var gen = Item("Diesel Generator", new Vector3(4.5f, 0, 0), UtilityPartKind.Generator, "Diesel generator", new Vector3(2.6f, 1.6f, 1.4f));
-            if (Build.TryModel("Utilities/Generator", gen, 2.6f, 0f) == null)
+            if (Build.TryModel("Utilities/Generator", gen, 0f, 0f) == null)
             {
                 Build.Part(PrimitiveType.Cube, gen, new Vector3(0, 0.8f, 0), new Vector3(2.6f, 1.5f, 1.3f), Build.Mat(new Color(0.95f, 0.75f, 0.1f), 0.4f), "Body");
                 Build.Part(PrimitiveType.Cylinder, gen, new Vector3(0.9f, 1.9f, 0), new Vector3(0.15f, 0.4f, 0.15f), dark, "Exhaust");

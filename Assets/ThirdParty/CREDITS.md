@@ -61,3 +61,14 @@ from the leaf textures listed below (cluster cards, grass tufts). The date palm 
 | Car Kit (sedan, suv, van, hatchback-sports, delivery + colormap) | Kenney (kenney.nl) | CC0 1.0 | ThirdParty/KenneyCarKitTown: town traffic / parked cars |
 | Kloofendal 48d Partly Cloudy (Pure Sky) HDRI, 2K (kloofendal_48d_partly_cloudy_puresky) | Greg Zaal, Poly Haven | CC0 1.0 | ThirdParty/PolyHavenSky: Look/Materials/SkyHDRI (Ultra sky) |
 | Asphalt 02 (asphalt_02) | Poly Haven | CC0 1.0 | Resources/Look/Textures/asphalt_d/_n/_m (albedo, normal, packed mask; 1K / 512): LookMat.Asphalt roads |
+
+## Realistic pass (art-realistic branch) - converted with Blender (bpy), see PLACEHOLDERS.md
+
+| Asset | Author | License | Used as |
+|---|---|---|---|
+| Portable Generator (portable_generator) | Poly Haven | CC0 1.0 | ThirdParty/PolyHavenFarmProps: `Utilities/Generator` (decimated 50%) |
+| Modular Electricity Poles (modular_electricity_poles, preset 03) | Poly Haven | CC0 1.0 | ThirdParty/PolyHavenFarmProps: `Utilities/PowerPole` (decimated 50%) |
+| Covered Car (covered_car) | Poly Haven | CC0 1.0 | ThirdParty/PolyHavenFarmProps: `CoveredCar` parked in town |
+| Barrel 03 (barrel_03), Wooden Crate 02 (wooden_crate_02), Plastic Crate 02 (plastic_crate_02), Metal Jerrycan (metal_jerrycan), Cement Bag (cement_bag) | Poly Haven | CC0 1.0 | ThirdParty/PolyHavenFarmProps: `Props/*` barn yard clutter |
+| Shrub 02 (shrub_02), Wild Rooibos Bush (wild_rooibos_bush) | Poly Haven | CC0 1.0 | ThirdParty/PolyHavenFarmProps: `Shrub`, `DryShrub` |
+| Realtime Rancher's 3D Model Pack (cow) | LD, opengameart.org | CC0 | ThirdParty/OGARealtimeRanchers: `cow` (2K textures) |
