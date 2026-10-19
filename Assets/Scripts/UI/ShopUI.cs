@@ -91,23 +91,23 @@ public class ShopUI : MonoBehaviour
         panel = NewRect("Panel", canvas.transform, typeof(Image), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
         panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0.5f, 0.5f);
         panel.sizeDelta = new Vector2(760, 0);
-        panel.GetComponent<Image>().color = new Color(0.07f, 0.06f, 0.05f, 0.94f);
+        panel.GetComponent<Image>().color = UiTheme.GlassStrong;
         var vl = panel.GetComponent<VerticalLayoutGroup>();
         vl.padding = new RectOffset(28, 28, 22, 22); vl.spacing = 10;
         vl.childControlWidth = vl.childControlHeight = true; vl.childForceExpandWidth = true; vl.childForceExpandHeight = false;
         panel.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        title = NewText(panel, 34, new Color(1f, 0.55f, 0.15f));
+        title = NewText(panel, 34, UiTheme.Accent);
         list = NewRect("List", panel, typeof(VerticalLayoutGroup));
         var ll = list.GetComponent<VerticalLayoutGroup>();
         ll.spacing = 8; ll.childControlWidth = ll.childControlHeight = true; ll.childForceExpandWidth = true; ll.childForceExpandHeight = false;
-        footer = NewText(panel, 20, new Color(0.8f, 0.78f, 0.74f));
+        footer = NewText(panel, 20, UiTheme.TextDim);
 
         for (int n = 0; n < PageSize; n++)
         {
             var row = NewRect("Row " + n, list, typeof(Image), typeof(Button), typeof(LayoutElement));
             row.GetComponent<LayoutElement>().minHeight = 48;
-            row.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.06f);
+            row.GetComponent<Image>().color = UiTheme.Row;
             var label = NewText(row, 22, Color.white);
             var lrt = label.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one; lrt.offsetMin = new Vector2(16, 6); lrt.offsetMax = new Vector2(-16, -6);
@@ -269,7 +269,7 @@ public class ShopUI : MonoBehaviour
             bool affordable = price >= 0 && eco.Money >= price;
             btn.interactable = affordable;
             label.color = affordable ? Color.white : new Color(1f, 1f, 1f, 0.45f);
-            btn.GetComponent<Image>().color = i == selectedRow ? new Color(1f, 0.55f, 0.15f, 0.3f) : new Color(1f, 1f, 1f, 0.06f);
+            btn.GetComponent<Image>().color = i == selectedRow ? new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, 0.3f) : UiTheme.Row;
         }
         string keys = GameInput.UsingGamepad
             ? Glyphs.Apply(UiText.T(pages.Count > 1 ? "[Enter] Buy   [LB] [RB] Page   [Esc] Close" : "[Enter] Buy   [Esc] Close"))

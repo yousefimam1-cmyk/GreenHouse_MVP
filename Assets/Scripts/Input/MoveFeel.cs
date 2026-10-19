@@ -2,7 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// On-foot movement feel (Farming Simulator 25 style), used by the StarterAssets FirstPersonController:
-/// - walk ~1.5 m/s, run ~5 m/s (sprint), speed follows stick tilt; stamina / load / crouch scale it (PlayerLife);
+/// - walk 4.5 m/s, sprint 7.5 m/s (sprint), speed follows stick tilt; load / crouch scale it (PlayerLife);
 /// - quick, linear acceleration and braking (no sluggish ramp, no ice-skating), the direction turns quickly while
 ///   the speed is kept, only a real reversal brakes first; little control in the air;
 /// - jump ~0.85 m with a short coyote time and input buffer, firm gravity;
@@ -15,11 +15,11 @@ using UnityEngine;
 /// </summary>
 public static class MoveFeel
 {
-    public const float WalkSpeed = 1.5f, RunSpeed = 5f;
-    /// <summary>m/s²: 0 -> walk in 0.07 s, 0 -> run in 0.23 s.</summary>
-    public const float Accel = 22f;
-    /// <summary>m/s²: run -> stop in 0.18 s.</summary>
-    public const float Decel = 28f;
+    public const float WalkSpeed = 4.5f, RunSpeed = 7.5f;
+    /// <summary>m/s²: 0 -> walk in 0.11 s, 0 -> run in 0.19 s.</summary>
+    public const float Accel = 40f;
+    /// <summary>m/s²: run -> stop in 0.15 s.</summary>
+    public const float Decel = 50f;
     /// <summary>Degrees per second the walking direction turns towards the input (keeps the speed).</summary>
     public const float TurnRate = 900f;
     /// <summary>Above this angle between velocity and input it is a reversal: brake, then accelerate.</summary>

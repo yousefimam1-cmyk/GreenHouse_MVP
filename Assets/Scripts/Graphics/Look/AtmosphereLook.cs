@@ -21,6 +21,8 @@ public class AtmosphereLook : MonoBehaviour
     public const string SkyMaterial = "Look/Materials/Sky";
     public const float MaxSkyExposure = 1f, ProbeIntensity = 0.85f;
     /// <summary>Photographic sky on Ultra: Poly Haven CC0 HDRI (Assets/ThirdParty/PolyHavenSky) on Skybox/Panoramic.</summary>
+    /// <summary>The HDRI sky swap made Ultra darker than High (hand-written Panoramic material, night dimming, ambient re-bake): off until it is verified in a build.</summary>
+    public const bool HdriEnabled = false;
     public const string SkyHdriMaterial = "Look/Materials/SkyHDRI";
     /// <summary>Longitude of the sun in the HDRI (u = 0.5947 of the equirect, 48 degrees up): the sky turns to keep it at the real sun's bearing.</summary>
     public const float HdriSunLongitude = 34.1f, HdriExposure = 0.9f;
@@ -167,7 +169,7 @@ public class AtmosphereLook : MonoBehaviour
         if (sun != null && GameSettings.ShadowQuality != 0) sun.shadows = p <= 0 ? LightShadows.Hard : LightShadows.Soft;
 
         MaxLook.Apply();   // water / character shaders (High+), 2K textures and parallax (Ultra)
-        SetHdriSky(p >= 3);
+        SetHdriSky(HdriEnabled && p >= 3);
     }
 
     /// <summary>Ultra: swap the procedural sky for the HDRI photo sky (real clouds); other presets keep the procedural one.</summary>

@@ -3090,10 +3090,10 @@ static class DrivingTests
     }
 }
 
-// ---------------------------------------------------------------- On-foot life (stamina, carrying, hand tools) + animal husbandry
+// ---------------------------------------------------------------- On-foot life (carrying, hand tools) + animal husbandry
 static class LifeTests
 {
-    static float staminaSaved; static int herdSaved, balesSaved; static string traitsSaved;
+    static int herdSaved, balesSaved; static string traitsSaved;
 
     static void Hold(UnityEngine.InputSystem.KeyControl k) { k.wasPressedThisFrame = true; FakeEngine.Tick(0.05f); k.wasPressedThisFrame = false; }
     static void Press(UnityEngine.InputSystem.ButtonControl b) { b.wasPressedThisFrame = true; FakeEngine.Tick(0.05f); b.wasPressedThisFrame = false; }
@@ -3125,52 +3125,33 @@ static class LifeTests
         T.Check("Life: PlayStation labels L1 / R1 / R2", Glyphs.Apply("[,] [.] [Z]") == "[L1] [R1] [R2]", Glyphs.Apply("[,] [.] [Z]"));
         GameInput.ForceDevice(false, false);
 
-        // --- stamina model
+        // --- thirst model (no stamina)
         var mild = new StaminaModel(); var hot = new StaminaModel();
         for (int i = 0; i < 30; i++) { mild.Tick(0.1f, true, true, false, 0f, 0f, 0.0003f); hot.Tick(0.1f, true, true, false, 1f, 0f, 0.0003f); }
-        T.Check("Life: sprinting drains stamina", mild.stamina < StaminaModel.Max - 25f, "" + mild.stamina);
-        T.Check("Life: a heatwave drains it about twice as fast", StaminaModel.Max - hot.stamina > (StaminaModel.Max - mild.stamina) * 1.8f, mild.stamina + " vs " + hot.stamina);
         T.Check("Life: heat also dries you out faster", hot.hydration < mild.hydration);
-        var walk = new StaminaModel { stamina = 30f }; var rest = new StaminaModel { stamina = 30f };
-        for (int i = 0; i < 20; i++) { walk.Tick(0.1f, true, false, false, 0f, 0f, 0f); rest.Tick(0.1f, false, false, true, 0f, 0f, 0f); }
-        T.Check("Life: resting (crouched, still) recovers faster than walking", rest.stamina > walk.stamina + 10f && walk.stamina > 30f, walk.stamina + " / " + rest.stamina);
-        var ex = new StaminaModel();
-        for (int i = 0; i < 200 && !ex.exhausted; i++) ex.Tick(0.1f, true, true, false, 0.5f, 0f, 0f);
-        ex.Tick(1f, false, false, false, 0f, 0f, 0f);
-        T.Check("Life: exhausted = no sprint until stamina is back to 25", ex.exhausted && !MoveRules.CanSprint(0f, false, ex.exhausted));
-        var thirsty = new StaminaModel { hydration = 0f }; thirsty.Tick(5f, false, false, false, 0f, 0f, 0f);
-        T.Check("Life: thirst caps stamina", thirsty.stamina <= 40.01f && thirsty.Cap == 40f);
-        thirsty.Drink();
-        T.Check("Life: drinking restores water and stamina", thirsty.hydration == 1f && thirsty.stamina > 60f);
+        T.Check("Life: sprint is unlimited (always allowed on foot with empty hands)", MoveRules.CanSprint(0f, false));
+        var thirsty = new StaminaModel { hydration = 0f }; thirsty.Drink();
+        T.Check("Life: drinking restores water", thirsty.hydration == 1f);
 
-        // --- stamina in game: sprint in mild weather vs a heatwave, then rest
+        // --- sprinting for a long time never slows the player or releases sprint
         T.SetProp(clock, "DayProgress", 0.3f);
         player.position = new Vector3(0, 0, -57.4f);
-        T.SetProp(clock, "Weather", Weather.Sunny);
-        life.Model.stamina = StaminaModel.Max; life.Model.hydration = 1f;
-        inputs.move = new Vector2(0, 1); inputs.sprint = true;
-        FakeEngine.Run(2f, 0.1f);
-        float drainMild = StaminaModel.Max - life.Model.stamina;
         T.SetProp(clock, "Weather", Weather.Heatwave);
-        life.Model.stamina = StaminaModel.Max; life.Model.exhausted = false; life.Model.hydration = 1f;
-        inputs.sprint = true;
-        FakeEngine.Run(2f, 0.1f);
-        float drainHot = StaminaModel.Max - life.Model.stamina;
-        T.Check("Life: sprinting player loses stamina, faster in a heatwave", drainMild > 5f && drainHot > drainMild * 1.3f, drainMild + " vs " + drainHot);
-        inputs.sprint = true; FakeEngine.Run(12f, 0.1f);
-        T.Check("Life: an exhausted player can't sprint (input released)", life.Model.exhausted && !PlayerLife.SprintAllowed && !inputs.sprint, life.Model.stamina + "");
+        life.Model.hydration = 1f;
+        inputs.move = new Vector2(0, 1); inputs.sprint = true;
+        FakeEngine.Run(20f, 0.1f);
+        T.Check("Life: sprinting never runs out (heatwave, 20 s)", PlayerLife.SprintAllowed && inputs.sprint && PlayerLife.SpeedFactor >= 0.99f, PlayerLife.SpeedFactor + "");
         inputs.move = Vector2.zero; inputs.sprint = false;
-        float low = life.Model.stamina;
         var kb = new UnityEngine.InputSystem.Keyboard();
         foreach (var f in typeof(UnityEngine.InputSystem.Keyboard).GetFields()) if (f.FieldType == typeof(UnityEngine.InputSystem.KeyControl)) f.SetValue(kb, new UnityEngine.InputSystem.KeyControl());
         UnityEngine.InputSystem.Keyboard.current = kb;
         Hold(kb.leftCtrlKey);
         T.Check("Life: Ctrl crouches (controller lowers and slows)", life.IsCrouching && PlayerLife.Crouching && PlayerLife.SpeedFactor < 0.6f && !PlayerLife.SprintAllowed);
-        FakeEngine.Run(3f, 0.1f);
-        T.Check("Life: resting recovers stamina", life.Model.stamina > low + 20f, low + " -> " + life.Model.stamina);
+        FakeEngine.Run(1f, 0.1f);
         Hold(kb.leftCtrlKey);
         T.Check("Life: Ctrl again stands up", !life.IsCrouching);
         T.SetProp(clock, "Weather", Weather.Sunny);
+
 
         // --- drinking at the well with bare hands
         var well = UnityEngine.Object.FindAnyObjectByType<WellController>();
@@ -3187,10 +3168,10 @@ static class LifeTests
         float free = PlayerLife.SpeedFactor;
         Hold(kb.fKey);
         T.Check("Life: F picks up the nearest hay bale (25 kg)", life.Carried == bale && bale.Carried && life.CarryKg == 25f, life.LastMessage);
-        T.Check("Life: carrying a heavy bale slows you (mildly) and stops sprinting", PlayerLife.SpeedFactor < free * 0.9f && PlayerLife.SpeedFactor > free * 0.75f && !PlayerLife.SprintAllowed && PlayerLife.AccelerationFactor < 1f && PlayerLife.AccelerationFactor > 0.7f, free + " -> " + PlayerLife.SpeedFactor + ", accel " + PlayerLife.AccelerationFactor);
-        T.Check("Life: a light crate slows you less", MoveRules.CarryFactor(8f) > MoveRules.CarryFactor(25f) && MoveRules.CanSprint(8f, false, false));
+        T.Check("Life: carrying a heavy bale slows you (mildly) and stops sprinting", PlayerLife.SpeedFactor < free * 0.99f && PlayerLife.SpeedFactor > free * 0.85f && !PlayerLife.SprintAllowed && PlayerLife.AccelerationFactor < 1f && PlayerLife.AccelerationFactor > 0.7f, free + " -> " + PlayerLife.SpeedFactor + ", accel " + PlayerLife.AccelerationFactor);
+        T.Check("Life: a light crate slows you less", MoveRules.CarryFactor(8f) > MoveRules.CarryFactor(25f) && MoveRules.CanSprint(8f, false));
         FakeEngine.Run(0.3f, 0.1f);
-        T.Check("Life: HUD shows the load and the stamina bar", life.Hud.LastText.Contains("25 kg") && life.Hud.LastText.Contains("Stamina"), life.Hud.LastText);
+        T.Check("Life: HUD shows the load, no stamina bar", life.Hud.LastText.Contains("25 kg") && !life.Hud.LastText.Contains("Stamina"), life.Hud.LastText);
 
         // --- herd: two sheep (ewe + ram)
         T.Check("Life: buy 2 sheep", eco.TryBuy("sheep") && eco.TryBuy("sheep"));
@@ -3231,9 +3212,8 @@ static class LifeTests
         plot.ResetSoil(FcData.CurrentRegion);
         {
             player.position = plot.center;
-            life.Model.stamina = StaminaModel.Max;
             Press(pad.rightTrigger);
-            T.Check("Life: RT with the hoe works the soil by hand (costs stamina)", FC.Worked(plot) > 0 && life.Model.stamina < StaminaModel.Max, life.LastMessage);
+            T.Check("Life: RT with the hoe works the soil by hand ", FC.Worked(plot) > 0, life.LastMessage);
             life.SetTool(HandTool.WateringCan);
             FC.Wet(plot, 0f);
             T.SetProp(life, "CanWater", 1f);
@@ -3244,7 +3224,6 @@ static class LifeTests
         life.SetTool(HandTool.Shovel);
         player.position = pen.transform.position;
         T.SetProp(pen, "Cleanliness", 0.3f);
-        life.Model.stamina = StaminaModel.Max;
         string sh = life.UseTool();
         T.Check("Life: shovel mucks out the pen", pen.Cleanliness > 0.55f, sh);
         life.SetTool(HandTool.Brush);
@@ -3392,7 +3371,7 @@ static class LifeTests
         var herd = HerdManager.Instance; var life = PlayerLife.Instance;
         life.SetTool(HandTool.Brush);
         life.Save(); herd.Save();
-        staminaSaved = life.Model.stamina; herdSaved = herd.Animals.Count; balesSaved = life.BaleCount;
+        herdSaved = herd.Animals.Count; balesSaved = life.BaleCount;
         traitsSaved = string.Join(",", herd.Animals.Select(a => a.uid + ":" + a.trait.ToString("F3") + ":" + a.male));
     }
 
@@ -3402,7 +3381,7 @@ static class LifeTests
         string traits = string.Join(",", herd.Animals.Select(a => a.uid + ":" + a.trait.ToString("F3") + ":" + a.male));
         T.Check("Life: herd restored with uids, sex and genetics", herd.Animals.Count == herdSaved && traits == traitsSaved, traits + " vs " + traitsSaved);
         T.Check("Life: shade and fans restored", herd.Shade && herd.Fans && GameObject.Find("Pen Shade") != null);
-        T.Check("Life: stamina, tool and bales restored", Math.Abs(life.Model.stamina - staminaSaved) < 5f && life.Tool == HandTool.Brush && life.BaleCount == balesSaved, life.Model.stamina + " " + life.Tool + " " + life.BaleCount);
+        T.Check("Life: tool and bales restored", life.Tool == HandTool.Brush && life.BaleCount == balesSaved, life.Tool + " " + life.BaleCount);
         T.Check("Life: pen bodies linked after restart", AnimalPen.Instance.Animals.All(a => a.uid != 0));
     }
 
@@ -3410,7 +3389,7 @@ static class LifeTests
     {
         var herd = HerdManager.Instance; var life = PlayerLife.Instance;
         T.Check("Life: new game clears the herd, shade and medicine", herd.Animals.Count == 0 && !herd.Shade && !herd.Fans && herd.Medicine == 0 && GameObject.Find("Pen Shade") == null);
-        T.Check("Life: new game resets stamina, tool and bales", life.Model.stamina >= StaminaModel.Max - 1f && life.Tool == HandTool.Hands && life.BaleCount == 2 && life.Carried == null, life.BaleCount + "");
+        T.Check("Life: new game resets tool and bales", life.Tool == HandTool.Hands && life.BaleCount == 2 && life.Carried == null, life.BaleCount + "");
     }
 }
 
