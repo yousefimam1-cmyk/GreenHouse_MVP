@@ -127,8 +127,7 @@ public static class CozyFx
                 if (!originalColors.TryGetValue(m, out orig)) { orig = m.color; originalColors[m] = orig; }
                 Color c = Color.Lerp(orig, new Color(orig.r * color.r, orig.g * color.g, orig.b * color.b, orig.a), amount);
                 c = Color.Lerp(c, color, amount * 0.35f);
-                m.color = c;
-                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+                Rp.SetColor(m, c);
             }
         }
     }

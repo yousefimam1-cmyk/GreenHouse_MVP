@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.HighDefinition;
 
 /// <summary>
 /// Photo mode: F9 (or pause menu / journal "Photo mode") freezes the game, hides the HUD and gives a free camera.

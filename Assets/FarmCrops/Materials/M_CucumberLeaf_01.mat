@@ -8,77 +8,88 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: M_CucumberLeaf_01
-  m_Shader: {fileID: -6465566751694194690, guid: 4058c612252d4bc47ba17fb221b0aa5f, type: 3}
+  m_Shader: {fileID: 4800000, guid: 6e4ae4064600d784cac1e41a9e6f2e59, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_ValidKeywords:
+  - _ALPHATEST_ON
+  - _DOUBLESIDED_ON
+  - _NORMALMAP
+  - _NORMALMAP_TANGENT_SPACE
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
+  m_DoubleSidedGI: 1
+  m_CustomRenderQueue: 2450
+  stringTagMap:
+    RenderType: TransparentCutout
   disabledShaderPasses:
-  - MOTIONVECTORS
+  - TransparentDepthPrepass
+  - TransparentDepthPostpass
+  - TransparentBackface
+  - RayTracingPrepass
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-    - Texture2D_a027d1b6e0f34d3da2316bc18f3ae780:
-        m_Texture: {fileID: 2800000, guid: bb33003e9c84a6e44bf164189293a2ab, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - Texture2D_abf9952ade9c4b54a8681582e6b913c6:
-        m_Texture: {fileID: 2800000, guid: aaa86926f65efab4fa13af92b8aadb90, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - Texture2D_cadc3102b2f04155bdb1860b970f604d:
+    - _BaseColorMap:
         m_Texture: {fileID: 2800000, guid: 1439ab73fe65e504d8fdf698bf95b953, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _SampleTexture2D_74724a3e2ce14c07a04d8efbdb064c79_Texture_1:
-        m_Texture: {fileID: 2800000, guid: bc7e9fb5094fff044bf91b87a5b92ddb, type: 3}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: 1439ab73fe65e504d8fdf698bf95b953, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _SampleTexture2D_c2ce8b9f6cad47c6afd87ae20d9ef91e_Texture_1:
-        m_Texture: {fileID: 2800000, guid: 193b816b2948d464593f54117cf42bdc, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - unity_Lightmaps:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - unity_LightmapsInd:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - unity_ShadowMasks:
-        m_Texture: {fileID: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 2800000, guid: bb33003e9c84a6e44bf164189293a2ab, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - Vector1_1: 0.457
-    - Vector1_464b046115bd40a4aac92e7604fc8ae7: 0
-    - Vector1_8b37f33345394e67a10bed7a7998388f: 0.3
-    - Vector1_a8f88444f28d4026bd5fd16bb7b721c0: 0.2
-    - Vector1_c0ed990076324e93a67f76c34e244cc3: 4.61
-    - _QueueControl: 0
-    - _QueueOffset: 0
+    - _AORemapMax: 1
+    - _AORemapMin: 0
+    - _AlphaCutoff: 0.5
+    - _AlphaCutoffEnable: 1
+    - _AlphaCutoffShadow: 0.5
+    - _AlphaDstBlend: 0
+    - _AlphaSrcBlend: 1
+    - _AlphaToMask: 0
+    - _AlphaToMaskInspectorValue: 0
+    - _BlendMode: 0
+    - _CullMode: 0
+    - _CullModeForward: 0
+    - _DoubleSidedEnable: 1
+    - _DoubleSidedNormalMode: 1
+    - _DstBlend: 0
+    - _EmissiveExposureWeight: 1
+    - _EmissiveIntensity: 1
+    - _EnableFogOnTransparent: 1
+    - _MaterialID: 1
+    - _Metallic: 0
+    - _MetallicRemapMax: 1
+    - _MetallicRemapMin: 0
+    - _NormalScale: 1
+    - _ReceivesSSR: 1
+    - _ReceivesSSRTransparent: 0
+    - _ShadowCasting: 1
+    - _Smoothness: 0.3
+    - _SmoothnessRemapMax: 1
+    - _SmoothnessRemapMin: 0
+    - _SrcBlend: 1
+    - _SupportDecals: 1
+    - _SurfaceType: 0
+    - _TransparentSortPriority: 0
+    - _TransparentZWrite: 0
+    - _UseEmissiveIntensity: 0
+    - _UseShadowThreshold: 0
+    - _ZTestDepthEqualForOpaque: 3
+    - _ZWrite: 1
     m_Colors:
-    - Vector2_04ba3aac72e34cdfbd1bb62fb5368efb: {r: 1.5, g: 0, b: 0, a: 0}
+    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _DoubleSidedConstants: {r: 1, g: 1, b: -1, a: 0}
+    - _EmissiveColor: {r: 0, g: 0, b: 0, a: 1}
+    - _EmissiveColorLDR: {r: 0, g: 0, b: 0, a: 1}
+    - _UVMappingMask: {r: 1, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &2550057315698071745
-MonoBehaviour:
-  m_ObjectHideFlags: 11
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Editor::UnityEditor.Rendering.Universal.AssetVersion
-  version: 10

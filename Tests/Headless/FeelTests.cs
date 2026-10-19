@@ -288,7 +288,7 @@ static class FeelTests
 
     static string Snapshot(GraphicsEnhancer ge, AtmosphereLook atmo)
     {
-        var urp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+        var urp = HdrpSettings.Current;
         return string.Join(",", new object[] { ge.AppliedExposure, ge.LookWeight, ge.AppliedContrast, ge.AppliedBloom, ge.GradeSaturation, atmo.GradeVolume != null ? atmo.GradeVolume.weight : -1f,
             RenderSettings.fog, GraphicsEnhancer.Preset, urp != null ? urp.renderScale : -1f, Camera.main != null ? Camera.main.fieldOfView : -1f });
     }

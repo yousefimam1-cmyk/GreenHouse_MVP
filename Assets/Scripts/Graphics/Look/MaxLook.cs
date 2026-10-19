@@ -2,8 +2,8 @@ using UnityEngine;
 
 /// <summary>
 /// The top end of the graphics presets (called by AtmosphereLook.ApplyPreset; cheap when nothing changed):
-/// - High / Ultra: canals, ditches and the Delta river draw with Mazraa/Water (depth colour, analytic waves, sky / probe
-///   reflections, Fresnel, bank foam) instead of the flat colour; people and animals draw with Mazraa/Character.
+/// - High / Ultra: canals, ditches and the Delta river draw with the Water material (HDRP/Lit transparent, glossy, SSR /
+///   sky reflections) instead of the flat colour; people and animals get their character copy (ModelLook).
 /// - Ultra: the nine main ground / wall / palm sets switch to their 2K albedo + normal (Resources/Look/Textures2K, CC0
 ///   Poly Haven, same sources as the 1K set), on materials and terrain layers; open sand and dunes get parallax.
 /// Lower presets swap everything back. Missing shaders or textures leave the plain look in place (never pink).
@@ -35,7 +35,7 @@ public static class MaxLook
 
     public static Material PlainWater => Build.Mat(PlainWaterColor, PlainWaterSmoothness);
 
-    /// <summary>The Mazraa/Water material, or null when the shader is missing / unsupported.</summary>
+    /// <summary>The Water material (Resources/Look/Materials/Water, HDRP/Lit transparent), or null when missing / unsupported.</summary>
     public static Material ShaderWater()
     {
         if (!waterTried)

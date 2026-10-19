@@ -86,9 +86,23 @@ public class Minimap : MonoBehaviour
         mapCam.cullingMask = ~(1 << 5);        // everything but UI
         mapCam.depth = -10f;
         mapCam.targetTexture = rt;
-        // Top-down map needs no shadows or post FX: saves a full shadow pass + SSAO/outlines every frame.
-        var urp = UnityEngine.Rendering.Universal.CameraExtensions.GetUniversalAdditionalCameraData(mapCam);
-        if (urp != null) { urp.renderShadows = false; urp.renderPostProcessing = false; }
+        // Top-down map needs no shadows, SSAO, SSR or volumetrics: saves a full shadow pass and the screen-space effects every frame.
+        // HDRP clears with the sky unless the camera's clear mode says Color.
+        var hd = mapCam.GetComponent<UnityEngine.Rendering.HighDefinition.HDAdditionalCameraData>();
+        if (hd == null) hd = mapCam.gameObject.AddComponent<UnityEngine.Rendering.HighDefinition.HDAdditionalCameraData>();
+        if (hd != null)
+        {
+            hd.clearColorMode = UnityEngine.Rendering.HighDefinition.HDAdditionalCameraData.ClearColorMode.Color;
+            hd.backgroundColorHDR = Sand.linear;
+            hd.customRenderingSettings = true;
+            foreach (var f in new[] { UnityEngine.Rendering.HighDefinition.FrameSettingsField.ShadowMaps, UnityEngine.Rendering.HighDefinition.FrameSettingsField.SSAO,
+                UnityEngine.Rendering.HighDefinition.FrameSettingsField.SSR, UnityEngine.Rendering.HighDefinition.FrameSettingsField.Volumetrics,
+                UnityEngine.Rendering.HighDefinition.FrameSettingsField.ContactShadows, UnityEngine.Rendering.HighDefinition.FrameSettingsField.VolumetricClouds })
+            {
+                hd.renderingPathCustomFrameSettingsOverrideMask.mask[(uint)f] = true;
+                hd.renderingPathCustomFrameSettings.SetEnabled(f, false);
+            }
+        }
         go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
     }
 

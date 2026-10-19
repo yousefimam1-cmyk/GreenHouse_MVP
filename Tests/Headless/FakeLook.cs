@@ -1,7 +1,7 @@
 // Fake UnityEngine members used by the graphics makeover (Assets/Scripts/Graphics/Look). Every member here mirrors a
 // real Unity 6 / URP 17 API with the same name and signature (LODGroup, LOD, TerrainLayer, TerrainData alphamaps,
 // Graphics.RenderMeshInstanced + RenderParams, GeometryUtility, ReflectionProbe, DynamicGI, Mesh.SetVertices...,
-// ShadowsMidtonesHighlights, UniversalRenderPipelineAsset.shadowCascadeCount / colorGradingMode). Rendering is inert;
+// ShadowsMidtonesHighlights; HDRP types are in FakeHdrp.cs). Rendering is inert;
 // Resources.Load also reads the real .mat files of Resources/Look (shader, textures with their imported size) so the
 // tests check the shipped assets' wiring.
 using System;
@@ -90,7 +90,7 @@ namespace UnityEngine
         internal readonly Dictionary<string, Texture> texs = new Dictionary<string, Texture>();
         public void SetTextureScale(string n, Vector2 s) { }
         public void DisableKeyword(string k) { }
-        public Texture GetTexture(string n) => texs.TryGetValue(n, out var t) ? t : (n == "_BaseMap" ? mainTexture : null);
+        public Texture GetTexture(string n) => texs.TryGetValue(n, out var t) ? t : (n == "_BaseColorMap" || n == "_BaseMap" ? mainTexture : null);
         public Color GetColor(string n) => color;
         public IEnumerable<string> TextureProperties => texs.Keys;
     }
@@ -245,8 +245,9 @@ namespace UnityEngine
 
         static readonly Dictionary<string, string> builtinShaders = new Dictionary<string, string>
         {
-            { "933532a4fcc9baf4fa0491de14d08ed7", "Universal Render Pipeline/Lit" },
-            { "69c1f799e772cb6438f56c23efccb782", "Universal Render Pipeline/Terrain/Lit" },
+            { "6e4ae4064600d784cac1e41a9e6f2e59", "HDRP/Lit" },
+            { "eb607f5e8fc16e140b732f33d26c8c31", "HDRP/TerrainLit" },
+            { "c4edd00ff2db5b24391a4fcb1762e459", "HDRP/Unlit" },
             { "0000000000000000f000000000000000:106", "Skybox/Procedural" },
         };
 
@@ -276,7 +277,7 @@ namespace UnityEngine
                 if (tp == null) continue;
                 var tex = LoadTexture(tp);
                 mat.texs[m.Groups[1].Value] = tex;
-                if (m.Groups[1].Value == "_BaseMap") mat.mainTexture = tex;
+                if (m.Groups[1].Value == "_BaseColorMap" || m.Groups[1].Value == "_UnlitColorMap") mat.mainTexture = tex;
             }
             lookCache[file] = mat;
             return mat;
@@ -319,10 +320,8 @@ namespace UnityEngine.Rendering
     public enum ReflectionProbeTimeSlicingMode { AllFacesAtOnce, IndividualFaces, NoTimeSlicing }
 }
 
-namespace UnityEngine.Rendering.Universal
+namespace UnityEngine.Rendering.HighDefinition
 {
     using UnityEngine.Rendering;
-    public enum ColorGradingMode { LowDynamicRange, HighDynamicRange }
     public class ShadowsMidtonesHighlights : VolumeComponent { public VolumeParameter<UnityEngine.Vector4> shadows, midtones, highlights; }
-    public partial class UniversalRenderPipelineAsset { public int shadowCascadeCount = 4; public ColorGradingMode colorGradingMode; }
 }

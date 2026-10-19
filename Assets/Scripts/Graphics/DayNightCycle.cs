@@ -50,7 +50,7 @@ public class DayNightCycle : MonoBehaviour
                 go.transform.localPosition = new Vector3(x, 0.8f, 2.2f);
                 go.transform.localRotation = Quaternion.Euler(8f, 0, 0);
                 var l = go.AddComponent<Light>();
-                l.type = LightType.Spot; l.range = 28f; l.spotAngle = 55f; l.intensity = 2.5f; l.color = new Color(1f, 0.95f, 0.85f);
+                l.type = LightType.Spot; l.range = 28f; l.spotAngle = 55f; Rp.LegacyLight(l, 2.5f); l.color = new Color(1f, 0.95f, 0.85f);
                 l.shadows = LightShadows.None;
                 nightLights.Add(l);
             }
@@ -61,7 +61,7 @@ public class DayNightCycle : MonoBehaviour
             go.transform.SetParent(z.transform, false);
             go.transform.localPosition = new Vector3(6.4f, 8.5f, 0);
             var l = go.AddComponent<Light>();
-            l.type = LightType.Point; l.range = 22f; l.intensity = 2f; l.color = new Color(1f, 0.8f, 0.55f);
+            l.type = LightType.Point; l.range = 22f; Rp.LegacyLight(l, 2f); l.color = new Color(1f, 0.8f, 0.55f);
             nightLights.Add(l);
         }
     }

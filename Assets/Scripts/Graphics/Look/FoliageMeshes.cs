@@ -105,7 +105,7 @@ public enum TreeType { DatePalm, Acacia, Ghaf, Sidr, Eucalyptus, Shrub, DryShrub
 /// <summary>
 /// Procedural, game-ready vegetation meshes with three levels of detail each (LOD0 full, LOD1 reduced, LOD2 a few
 /// big cards = distant billboard look). Bark is sub-mesh 0 (URP/Lit, real bark textures), leaves sub-mesh 1
-/// (Mazraa/Foliage, alpha-cut CC0 leaf atlases, wind weights in vertex colours). A handful of seeded variants per
+/// (HDRP/Lit alpha-cut CC0 leaf atlases, wind weights in vertex colours). A handful of seeded variants per
 /// species is built once and shared by every instance (GPU instancing / SRP Batcher, low RAM).
 /// </summary>
 public static class FoliageMeshes

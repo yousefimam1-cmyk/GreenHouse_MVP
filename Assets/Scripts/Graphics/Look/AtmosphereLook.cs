@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.HighDefinition;
 
 /// <summary>
 /// Sky, light and air of the graphics makeover (one system, added by GameManager):
@@ -8,11 +8,12 @@ using UnityEngine.Rendering.Universal;
 ///   follows the sun / moon light; ambient light and reflections are re-baked from it as the day goes on
 ///   (DynamicGI.UpdateEnvironment: High / Ultra every few seconds, Medium rarely, Low never);
 /// - soft sun shadows (strength by time of day), shadow cascades and HDR colour grading by preset;
-/// - a realtime reflection probe around the camera on High / Ultra (glass, metal, wet ground reflect the farm);
+/// - reflections on High / Ultra: SSR + sky on HDRP (HdrpLook); a realtime reflection probe around the camera elsewhere;
 /// - a subtle extra grade (cool shadows, warm highlights; shadows-midtones-highlights) on top of GraphicsEnhancer's ACES;
 /// - global wind for the foliage shader (_MazraaWind from DesertWeatherFX.Wind01), wet ground after rain;
 /// - the terrain dressing (GroundLook) for the current map.
-/// Everything it changes on the URP asset is restored on exit.
+/// HDRP: the sky itself is HdrpLook's physically based sky; the Skybox/Procedural material set here only feeds legacy
+/// readers (DayNightCycle). Everything it changes on HdrpSettings is restored on exit.
 /// </summary>
 [MazraaSystem(74)]
 public class AtmosphereLook : MonoBehaviour
@@ -39,10 +40,10 @@ public class AtmosphereLook : MonoBehaviour
     private ReflectionProbe probe;
     private Volume grade;
     private ShadowsMidtonesHighlights smh;
-    private UniversalRenderPipelineAsset urp;
+    private HdrpSettings urp;
     private bool urpSaved;
     private int origCascades;
-    private ColorGradingMode origGrading;
+    private bool origGrading;
     private float envTimer, probeTimer;
     private Vector3 lastProbePos = new Vector3(1e6f, 0f, 0f);
     private Quaternion lastSunRot = Quaternion.identity;
@@ -70,7 +71,7 @@ public class AtmosphereLook : MonoBehaviour
         GameEvents.RegionChanged -= OnRegion;
         GameSettings.Changed -= ApplyPreset;
         if (Instance == this) Instance = null;
-        if (urp != null && urpSaved) { urp.shadowCascadeCount = origCascades; urp.colorGradingMode = origGrading; }
+        if (urp != null && urpSaved) { urp.shadowCascadeCount = origCascades; urp.hdrGrading = origGrading; }
         if (originalSky != null) RenderSettings.skybox = originalSky;
         Shader.SetGlobalVector("_MazraaWind", Vector4.zero);
         LookLibrary.SetWetness(0f);
@@ -134,7 +135,7 @@ public class AtmosphereLook : MonoBehaviour
         if (sky.HasProperty("_GroundColor")) sky.SetColor("_GroundColor", delta ? new Color(0.3f, 0.32f, 0.25f) : new Color(0.45f, 0.38f, 0.29f));
     }
 
-    // ------------------------------------------------------------------ grade + probe + URP settings by preset
+    // ------------------------------------------------------------------ grade + probe + pipeline settings by preset
     private void BuildGrade()
     {
         var go = new GameObject("Mazraa Look Grade");
@@ -156,13 +157,13 @@ public class AtmosphereLook : MonoBehaviour
     {
         int p = GraphicsEnhancer.Preset;
         if (grade != null) grade.weight = GraphicsEnhancer.PostEnabled ? (p >= 2 ? 1f : 0.6f) : 0f;
-        if (urp == null) urp = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+        if (urp == null) urp = HdrpSettings.Current;
         if (urp != null)
         {
-            if (!urpSaved) { origCascades = urp.shadowCascadeCount; origGrading = urp.colorGradingMode; urpSaved = true; }
+            if (!urpSaved) { origCascades = urp.shadowCascadeCount; origGrading = urp.hdrGrading; urpSaved = true; }
             Cascades = p <= 0 ? 1 : p == 1 ? 2 : 4;
             urp.shadowCascadeCount = Cascades;
-            urp.colorGradingMode = p >= 2 ? ColorGradingMode.HighDynamicRange : ColorGradingMode.LowDynamicRange;
+            urp.hdrGrading = p >= 2;
         }
         SetupProbe(p >= 2);
         var sun = RenderSettings.sun;
@@ -209,9 +210,11 @@ public class AtmosphereLook : MonoBehaviour
         hdriSky.SetFloat("_Exposure", HdriExposure * Mathf.Lerp(0.08f, 1f, day));
     }
 
+    /// <summary>Legacy realtime probe (URP / Built-in only). On HDRP reflections come from SSR (High+) and the physically based
+    /// sky (HdrpLook), so no legacy probe is made: HDRP does not render a ReflectionProbe without its HD probe data.</summary>
     private void SetupProbe(bool on)
     {
-        if (!on) { if (probe != null) probe.enabled = false; return; }
+        if (!on || Rp.IsHdrp) { if (probe != null) probe.enabled = false; return; }
         if (probe == null)
         {
             var go = new GameObject("Mazraa Reflection Probe");
@@ -237,7 +240,7 @@ public class AtmosphereLook : MonoBehaviour
     private void Update()
     {
         float dt = Time.deltaTime;
-        // wind for Mazraa/Foliage
+        // global wind vector (kept for shaders / particles that read _MazraaWind)
         float wind = 0.25f + DesertWeatherFX.Wind01 * 1.15f;
         Vector3 d = WindDir.normalized;
         Shader.SetGlobalVector("_MazraaWind", new Vector4(d.x, 0f, d.z, wind));

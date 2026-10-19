@@ -42,6 +42,7 @@ public static class MazraaBuild
     public static bool WindowsNoExit()
     {
         ApplyBranding();
+        MazraaHdrpSetup.Ensure();   // HDRP assets on every quality level, HDRP materials validated, pink materials logged
         string outDir = "build/Windows/Mazraa";
         Directory.CreateDirectory(outDir);
         var scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();

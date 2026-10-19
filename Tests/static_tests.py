@@ -243,12 +243,44 @@ def _():
 
 
 # ---------------------------------------------------------------- rendering
-@test('Shader stripper and URP renderers agree (Forward+ keywords not stripped while a renderer uses Forward+)')
+@test('HDRP: package, 4 HDRP assets on the Low/Medium/High/Ultra quality levels, default = High, no URP left')
+def _():
+    bad = []
+    man = json.load(open(os.path.join(root, 'Packages', 'manifest.json')))['dependencies']
+    if 'com.unity.render-pipelines.high-definition' not in man: bad.append('no HDRP package')
+    if 'com.unity.render-pipelines.universal' in man: bad.append('URP package still in the manifest')
+    guids = {}
+    for lv in ('Low', 'Medium', 'High', 'Ultra'):
+        f = os.path.join(A, 'Settings', 'HDRP', 'MazraaHDRP_%s.asset' % lv)
+        if not os.path.exists(f) or not os.path.exists(f + '.meta'): bad.append('missing ' + lv); continue
+        if 'guid: 0cf1dab834d4ec34195b920ea7bbf9ec' not in open(f).read(): bad.append(lv + ' is not an HDRenderPipelineAsset')
+        guids[lv] = re.search(r'guid: (\w+)', open(f + '.meta').read()).group(1)
+    q = open(os.path.join(root, 'ProjectSettings', 'QualitySettings.asset')).read()
+    levels = re.findall(r'\n    name: (\w+)[\s\S]*?customRenderPipeline: \{fileID: 11400000, guid: (\w+)', q)
+    if [n for n, _ in levels] != ['Low', 'Medium', 'High', 'Ultra']: bad.append('quality levels %s' % [n for n, _ in levels])
+    for n, g in levels:
+        if guids.get(n) != g: bad.append(n + ' level uses another pipeline asset')
+    gs = open(os.path.join(root, 'ProjectSettings', 'GraphicsSettings.asset')).read()
+    if guids.get('High') and 'm_CustomRenderPipeline: {fileID: 11400000, guid: %s' % guids['High'] not in gs: bad.append('default pipeline is not MazraaHDRP_High')
+    if 'Rendering.Universal' in gs: bad.append('URP global settings in GraphicsSettings')
+    low = open(os.path.join(A, 'Settings', 'HDRP', 'MazraaHDRP_Low.asset')).read()
+    if 'supportVolumetrics: 0' not in low or 'supportVolumetricClouds: 0' not in low or 'maxDirectionalShadowMapResolution: 1024' not in low: bad.append('Low is not GTX 1660 safe (volumetrics / shadow map)')
+    urp = [os.path.relpath(p, A) for p, s in src.items() if 'Rendering.Universal' in s or 'UniversalAdditional' in s]
+    return not bad and not urp, bad + urp
+
+
+@test('Shader stripper and HDRP assets agree (stripped features are off in every MazraaHDRP asset; never strip a whole pass)')
 def _():
     strip = open(os.path.join(A, 'Editor', 'MazraaShaderStripper.cs')).read()
-    fplus = [f for f in walk(os.path.join(A, 'Settings'), ('.asset',)) if 'Renderer' in f and re.search(r'm_RenderingMode: [23]\b', open(f).read())]
-    aware = 'ForwardPlusUsed()' in strip and 'keep.Count == 0' in strip
-    return aware or not fplus, fplus
+    listed = set(re.findall(r'"([A-Z_0-9]+)"', strip[strip.index('Strip = new'):strip.index('};')]))
+    bad = []
+    must_keep = {'_ALPHATEST_ON', '_SURFACE_TYPE_TRANSPARENT', '_NORMALMAP', '_MASKMAP', '_DOUBLESIDED_ON', 'LIGHTMAP_ON', 'SHADOWS_SHADOWMASK', 'DYNAMICLIGHTMAP_ON',
+                 '_FORWARD_PLUS', 'SCREEN_SPACE_SHADOWS_ON', 'USE_FPTL_LIGHTLIST', 'USE_CLUSTERED_LIGHTLIST', 'DECALS_3RT', 'DECALS_4RT', 'PUNCTUAL_SHADOW_MEDIUM', 'DIRECTIONAL_SHADOW_MEDIUM'}
+    bad += sorted(listed & must_keep)
+    assets = [open(f).read() for f in walk(os.path.join(A, 'Settings', 'HDRP'), ('.asset',))]
+    if 'LOD_FADE_CROSSFADE' in listed and any('supportDitheringCrossFade: 1' in a for a in assets): bad.append('cross-fade stripped but enabled in an HDRP asset')
+    if 'keep.Count == 0' not in strip: bad.append('no safety net')
+    return not bad and len(assets) == 4, bad
 
 
 @test('Input System control types have their using (real Unity keeps them in UnityEngine.InputSystem.Controls)')
@@ -278,11 +310,10 @@ def _():
     if total > 150 * 1024 * 1024: bad.append('total %d MB' % (total // 2**20))
     return not bad, bad + ['%.1f MB' % (total / 2**20)]
 
-@test('Look materials: every texture GUID resolves, shaders are URP Lit / Terrain Lit / Mazraa/Foliage / built-in sky')
+@test('Look materials: every texture GUID resolves, shaders are HDRP Lit / TerrainLit / Unlit / built-in sky')
 def _():
     bad = []
-    known = {'933532a4fcc9baf4fa0491de14d08ed7', '69c1f799e772cb6438f56c23efccb782', '0000000000000000f000000000000000'}
-    for p in walk(os.path.join(LOOK, 'Shaders'), ('.shader.meta',)): known.add(re.search(r'guid: (\w+)', open(p).read()).group(1))
+    known = {'6e4ae4064600d784cac1e41a9e6f2e59', 'eb607f5e8fc16e140b732f33d26c8c31', 'c4edd00ff2db5b24391a4fcb1762e459', '0000000000000000f000000000000000'}
     mats = list(walk(os.path.join(LOOK, 'Materials'), ('.mat',)))
     for p in mats:
         t = open(p).read()
@@ -296,14 +327,17 @@ def _():
         if n not in names: bad.append('LookMat.%s has no .mat' % n)
     return not bad and len(mats) > 20, bad
 
-@test('Look shader: foliage shader has forward, shadow, depth and depth-normals passes with instancing')
+@test('Materials are HDRP: no .mat in Assets uses URP Lit / Terrain Lit / Simple Lit or a removed Mazraa shader; HDRP/Lit maps use HDRP names')
 def _():
-    t = open(os.path.join(LOOK, 'Shaders', 'MazraaFoliage.shader')).read()
-    need = ['"LightMode" = "UniversalForward"', '"LightMode" = "ShadowCaster"', '"LightMode" = "DepthOnly"', '"LightMode" = "DepthNormals"', 'CBUFFER_START(UnityPerMaterial)']
-    bad = [n for n in need if n not in t]
-    if t.count('#pragma multi_compile_instancing') < 4: bad.append('instancing in every pass')
-    if 'LOD_FADE_CROSSFADE' in t or '_FORWARD_PLUS' in t: bad.append('uses keywords the build strips')
-    return not bad, bad
+    gone = {'933532a4fcc9baf4fa0491de14d08ed7', '69c1f799e772cb6438f56c23efccb782', '8d2bb70cbf9db8d4da26e15b26e74248', '5c911d097b135c6a84c1bc7fd358b3b4',
+            '83f40e6f8c854c6e90eed14f9a3c6a69', 'cfc258d465c842c089170691c2465748'}
+    bad = []
+    for p in walk(A, ('.mat',)):
+        s = open(p, encoding='utf-8', errors='ignore').read()
+        m = re.search(r'm_Shader: \{fileID: -?\d+, guid: (\w+)', s)
+        if m and m.group(1) in gone: bad.append(os.path.relpath(p, A))
+        if m and m.group(1) == '6e4ae4064600d784cac1e41a9e6f2e59' and re.search(r'- _BaseMap:\s*\n\s*m_Texture: \{fileID: 2800000', s): bad.append(os.path.relpath(p, A) + ' _BaseMap on HDRP/Lit')
+    return not bad, bad[:20]
 
 @test('Look assets credited (Assets/ThirdParty/CREDITS.md lists Poly Haven and every source asset)')
 def _():

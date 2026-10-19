@@ -417,10 +417,9 @@ static class Program
         calls = Screen.SetResolutionCalls;
         GameSettings.FpsLimit = 60; GameSettings.VSync = false;
         T.Check("Display: FPS limit 60 and VSync off (no new resolution call)", Application.targetFrameRate == 60 && QualitySettings.vSyncCount == 0 && Screen.SetResolutionCalls == calls);
-        var urp = new UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset { renderScale = 1f, msaaSampleCount = 4, shadowDistance = 90f };
-        UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline = urp;
+        var urp = HdrpSettings.Current; urp.renderScale = 1f; urp.msaaSampleCount = 4; urp.shadowDistance = 90f;
         GameSettings.RenderScale = 150; GameSettings.Brightness = 1.3f;
-        T.Check("Display: render scale 150% on the URP asset, brightness saved", Math.Abs(urp.renderScale - 1.5f) < 0.001f && Math.Abs(GameSettings.Brightness - 1.3f) < 0.001f && Math.Abs(PlayerPrefs.GetFloat(P + "brightness") - 1.3f) < 0.001f, urp.renderScale + "");
+        T.Check("Display: render scale 150% in HdrpSettings, brightness saved", Math.Abs(urp.renderScale - 1.5f) < 0.001f && Math.Abs(GameSettings.Brightness - 1.3f) < 0.001f && Math.Abs(PlayerPrefs.GetFloat(P + "brightness") - 1.3f) < 0.001f, urp.renderScale + "");
         menu.OpenSettings(GameMenu.SettingsTab.Display);
         menu.List.Choose(menu.List.Rows.Count - 2);
         T.Check("Reset to defaults (Display)", Application.targetFrameRate == -1 && QualitySettings.vSyncCount == 1 && Screen.fullScreenMode == FullScreenMode.FullScreenWindow && GameSettings.ResolutionWidth == 0 && Math.Abs(urp.renderScale - GraphicsEnhancer.EffectiveRenderScale) < 0.001f && GameSettings.Brightness == 1f);
@@ -441,7 +440,7 @@ static class Program
         T.Check("Shadows off and anti-aliasing off", urp.shadowDistance == 0f && QualitySettings.shadows == ShadowQuality.Disable && urp.msaaSampleCount == 1 && GraphicsEnhancer.EffectiveAntialiasing == 0);
         GameSettings.MotionBlur = true; GameSettings.DepthOfField = true; GameSettings.Bloom = false;
         var ge = GraphicsEnhancer.Instance;
-        var mb = (UnityEngine.Rendering.Universal.MotionBlur)T.Get(ge, "motionBlur"); var bl = (UnityEngine.Rendering.Universal.Bloom)T.Get(ge, "bloom");
+        var mb = (UnityEngine.Rendering.HighDefinition.MotionBlur)T.Get(ge, "motionBlur"); var bl = (UnityEngine.Rendering.HighDefinition.Bloom)T.Get(ge, "bloom");
         bool mbOn = mb.active && !bl.active;
         GameSettings.ReduceMotion = true;
         T.Check("Post effects: bloom off, motion blur on, Reduce motion turns it off again", mbOn && !mb.active && !GraphicsEnhancer.DepthOfFieldOn);

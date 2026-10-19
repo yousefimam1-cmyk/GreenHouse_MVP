@@ -554,7 +554,7 @@ namespace UnityEngine
     public partial class Material : Object
     {
         public Material(Shader s) { shader = s; } public Material(Material m) { shader = m != null ? m.shader : null; if (m != null) { mainTexture = m.mainTexture; renderQueue = m.renderQueue; enableInstancing = m.enableInstancing; foreach (var kv in m.texs) texs[kv.Key] = kv.Value; } } public Shader shader;
-        public Color color; public MaterialGlobalIlluminationFlags globalIlluminationFlags; public int renderQueue; public Texture mainTexture; public void SetTexture(string n, Texture t) { if (n != "_BumpMap" && n != "_OcclusionMap" && n != "_MetallicGlossMap" && n != "_ParallaxMap" && !n.StartsWith("_Detail")) mainTexture = t; texs[n] = t; }
+        public Color color; public MaterialGlobalIlluminationFlags globalIlluminationFlags; public int renderQueue; public Texture mainTexture; public void SetTexture(string n, Texture t) { if (n != "_BumpMap" && n != "_NormalMap" && n != "_MaskMap" && n != "_HeightMap" && n != "_OcclusionMap" && n != "_MetallicGlossMap" && n != "_ParallaxMap" && !n.StartsWith("_Detail")) mainTexture = t; texs[n] = t; }
         public void SetColor(string n, Color c) { } public void SetFloat(string n, float v) { } public float GetFloat(string n) => 1; public bool HasProperty(string n) => true; public void EnableKeyword(string k) { }
     }
     public partial class Mesh : Object { public int subMeshCount = 1; public Bounds bounds; public int vertexCount => vertices.Length; public void CombineMeshes(CombineInstance[] c, bool merge, bool useMatrices) { } public Vector3[] vertices = new Vector3[0]; public int[] triangles = new int[0]; public Rendering.IndexFormat indexFormat; public void RecalculateNormals() { } public void RecalculateBounds() { } }
@@ -816,7 +816,8 @@ namespace UnityEngine
     public enum FullScreenMode { ExclusiveFullScreen, FullScreenWindow, MaximizedWindow, Windowed }
     public enum ShadowQuality { Disable, HardOnly, All }
     public enum ShadowResolution { Low, Medium, High, VeryHigh }
-    public static class QualitySettings { public static int vSyncCount = 1, globalTextureMipmapLimit, antiAliasing; public static float lodBias = 1f, shadowDistance = 150f; public static ShadowQuality shadows = ShadowQuality.All; public static ShadowResolution shadowResolution = ShadowResolution.High; }
+    public static class QualitySettings { public static int vSyncCount = 1, globalTextureMipmapLimit, antiAliasing; public static float lodBias = 1f, shadowDistance = 150f; public static ShadowQuality shadows = ShadowQuality.All; public static ShadowResolution shadowResolution = ShadowResolution.High;
+        public static string[] names = { "Low", "Medium", "High", "Ultra" }; public static int level = 2, levelChanges; public static int GetQualityLevel() => level; public static void SetQualityLevel(int l, bool applyExpensiveChanges = true) { if (l != level) levelChanges++; level = l; } }
     public struct Vector2Int { public int x, y; public Vector2Int(int x, int y) { this.x = x; this.y = y; } }
     public static class ScreenCapture { public static string LastPath; public static int Count; public static void CaptureScreenshot(string path, int superSize = 1) { LastPath = path; Count++; } }
     public enum TextAnchor { UpperLeft, MiddleLeft, MiddleCenter, MiddleRight }

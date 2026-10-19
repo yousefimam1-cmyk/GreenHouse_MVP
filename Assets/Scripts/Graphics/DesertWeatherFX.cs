@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.HighDefinition;
 
 /// <summary>
 /// Desert atmosphere: blowing dust around the camera on windy (Cloudy) and Heatwave days, sandy distance fog that
@@ -72,12 +72,22 @@ public class DesertWeatherFX : MonoBehaviour
         pr.receiveShadows = false;
     }
 
-    /// <summary>Soft round transparent particle (URP Particles/Unlit); falls back to a plain lit colour.</summary>
+    public const string DustTemplate = "Look/Materials/DustParticle";
+
+    /// <summary>Soft round transparent particle (HDRP/Unlit transparent, from the DustParticle template so its shader variant
+    /// ships); falls back to a plain lit colour. HDRP/Unlit ignores particle vertex colours: dust and smoke keep one tint.</summary>
     public static Material DustMaterial()
     {
-        var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
-        if (shader == null) return Build.Mat(DustColor, 0f);
-        var m = new Material(shader);
+        var template = Resources.Load<Material>(DustTemplate);
+        Material m;
+        if (template != null && template.shader != null && template.shader.isSupported) m = new Material(template);
+        else
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            if (shader == null) return Build.Mat(DustColor, 0f);
+            m = new Material(shader);
+            Rp.MakeTransparent(m);
+        }
         m.name = "Dust (runtime)";
         var tex = new Texture2D(32, 32, TextureFormat.RGBA32, false);
         tex.wrapMode = TextureWrapMode.Clamp;
@@ -89,14 +99,8 @@ public class DesertWeatherFX : MonoBehaviour
                 tex.SetPixel(x, y, new Color(1f, 1f, 1f, a * a));
             }
         tex.Apply();
-        m.SetTexture("_BaseMap", tex);
-        m.SetColor("_BaseColor", DustColor);
-        m.SetFloat("_Surface", 1f);       // transparent
-        m.SetFloat("_Blend", 0f);         // alpha
-        m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
-        m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-        m.SetFloat("_ZWrite", 0f);
-        m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        Rp.SetBaseMap(m, tex);
+        Rp.SetColor(m, DustColor);
         m.renderQueue = 3000;
         return m;
     }

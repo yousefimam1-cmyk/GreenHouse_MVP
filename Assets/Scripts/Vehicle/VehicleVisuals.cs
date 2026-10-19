@@ -103,7 +103,7 @@ public class VehicleVisuals : MonoBehaviour
         lampGo.transform.localRotation = Quaternion.Euler(8f, 0f, 0f);
         headLamp = lampGo.AddComponent<Light>();
         headLamp.type = LightType.Spot;
-        headLamp.range = 32f; headLamp.spotAngle = 70f; headLamp.intensity = 3f;
+        headLamp.range = 32f; headLamp.spotAngle = 70f; Rp.LegacyLight(headLamp, 3f);
         headLamp.color = new Color(1f, 0.93f, 0.8f);
         headLamp.shadows = LightShadows.None;
         headLamp.enabled = false;
@@ -151,13 +151,13 @@ public class VehicleVisuals : MonoBehaviour
         if (smokeMat != null) return smokeMat;
         smokeMat = new Material(DesertWeatherFX.DustMaterial());
         smokeMat.name = "Vehicle smoke (runtime)";
-        smokeMat.SetColor("_BaseColor", Color.white);
+        Rp.SetColor(smokeMat, Color.white);
         return smokeMat;
     }
 
     // ------------------------------------------------------------------ model materials + layout
     /// <summary>
-    /// Give a Kenney vehicle model URP/Lit paint (glossy, a touch metallic) with the livery colour map, and matte rubber
+    /// Give a Kenney vehicle model lit (HDRP/Lit) paint (glossy, a touch metallic) with the livery colour map, and matte rubber
     /// on its wheels (original colour map, so hubs keep their grey). Materials are shared between copies.
     /// </summary>
     public static void Restyle(GameObject model, Transform[] wheels, Texture livery)
@@ -180,9 +180,9 @@ public class VehicleVisuals : MonoBehaviour
         if (modelMats.TryGetValue(key, out m) && m != null) return m;
         m = new Material(src);
         m.name = src.name + (rubber ? " (rubber)" : " (paint)");
-        if (tex != null) { m.SetTexture("_BaseMap", tex); m.mainTexture = tex; }
-        m.SetFloat("_Smoothness", rubber ? 0.18f : 0.62f);
-        m.SetFloat("_Metallic", rubber ? 0f : 0.22f);
+        if (tex != null) { Rp.SetBaseMap(m, tex); m.mainTexture = tex; }
+        Rp.SetSmoothness(m, rubber ? 0.18f : 0.62f);
+        Rp.SetMetallic(m, rubber ? 0f : 0.22f);
         modelMats[key] = m;
         return m;
     }

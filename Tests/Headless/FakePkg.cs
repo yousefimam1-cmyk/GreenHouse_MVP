@@ -67,21 +67,15 @@ namespace UnityEngine.Rendering
     }
     public class Volume : MonoBehaviour { public bool isGlobal; public float priority, weight; public VolumeProfile sharedProfile; }
 }
-namespace UnityEngine.Rendering.Universal
+namespace UnityEngine.Rendering.HighDefinition
 {
     using UnityEngine.Rendering;
-    public enum TonemappingMode { None, Neutral, ACES }
+    public enum TonemappingMode { None, Neutral, ACES, Custom, External }
     public class Tonemapping : VolumeComponent { public VolumeParameter<TonemappingMode> mode; }
     public class Bloom : VolumeComponent { public VolumeParameter<float> intensity, threshold, scatter; }
     public class ColorAdjustments : VolumeComponent { public VolumeParameter<float> postExposure, contrast, saturation; public VolumeParameter<UnityEngine.Color> colorFilter; }
     public class WhiteBalance : VolumeComponent { public VolumeParameter<float> temperature; }
     public class Vignette : VolumeComponent { public VolumeParameter<float> intensity, smoothness; }
-    public partial class UniversalRenderPipelineAsset : RenderPipelineAsset { public int msaaSampleCount, mainLightShadowmapResolution = 2048; public float renderScale, shadowDistance;
-        public override RenderPipeline CreatePipeline() => null; }
-    public enum AntialiasingMode { None, FastApproximateAntialiasing, SubpixelMorphologicalAntiAliasing }
-    public enum AntialiasingQuality { Low, Medium, High }
-    public class UniversalAdditionalCameraData : MonoBehaviour { public bool renderPostProcessing, renderShadows; public AntialiasingMode antialiasing; public AntialiasingQuality antialiasingQuality; }
-    public static class CameraExtensions { public static UniversalAdditionalCameraData GetUniversalAdditionalCameraData(this Camera c) => null; }
 }
 namespace StarterAssets
 {
@@ -265,15 +259,15 @@ namespace UnityEngine.SceneManagement
     }
 }
 // Added for art/audio/touch (DesertWeatherFX, TouchControls)
-namespace UnityEngine.Rendering.Universal
+namespace UnityEngine.Rendering.HighDefinition
 {
     using UnityEngine.Rendering;
     public class LensDistortion : VolumeComponent { public VolumeParameter<float> intensity, scale; }
     public class ChromaticAberration : VolumeComponent { public VolumeParameter<float> intensity; }
     // Settings > Graphics
     public class MotionBlur : VolumeComponent { public VolumeParameter<float> intensity; }
-    public enum DepthOfFieldMode { Off, Gaussian, Bokeh }
-    public class DepthOfField : VolumeComponent { public VolumeParameter<DepthOfFieldMode> mode; public VolumeParameter<float> gaussianStart, gaussianEnd; }
+    public enum DepthOfFieldMode { Off, UsePhysicalCamera, Manual }
+    public class DepthOfField : VolumeComponent { public VolumeParameter<DepthOfFieldMode> focusMode; public VolumeParameter<float> nearFocusStart, nearFocusEnd, farFocusStart, farFocusEnd; }
 }
 namespace UnityEngine.EventSystems { public class EventSystem : UIBehaviour { public static EventSystem current; } }
 namespace UnityEngine.InputSystem.UI { public class InputSystemUIInputModule : UnityEngine.EventSystems.UIBehaviour { } }

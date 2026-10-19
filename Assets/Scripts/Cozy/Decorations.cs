@@ -250,7 +250,7 @@ public class Decorations : MonoBehaviour
                 Build.Part(PrimitiveType.Sphere, t, new Vector3(0, 1.68f, 0), new Vector3(0.34f, 0.2f, 0.34f), metal, "Dome");
                 var l = new GameObject("Light").AddComponent<Light>();
                 l.transform.SetParent(t, false); l.transform.localPosition = new Vector3(0, 1.4f, 0);
-                l.type = LightType.Point; l.range = 5f; l.intensity = 1f; l.color = glow;
+                l.type = LightType.Point; l.range = 5f; Rp.LegacyLight(l, 1f); l.color = glow;
                 break;
             }
             case "decor_fence":

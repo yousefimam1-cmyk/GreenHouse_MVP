@@ -185,8 +185,7 @@ public static class VehicleConfig
         Color c = textured ? Color.Lerp(Color.white, PaintColors[paint], 0.8f) : PaintColors[paint];
         m = new Material(src);
         m.name = (src.name ?? "") + " " + PaintNames[paint];
-        m.SetColor("_BaseColor", c);
-        m.color = c;
+        Rp.SetColor(m, c);
         tinted[key] = m;
         ourPaint.Add(m);
         return m;

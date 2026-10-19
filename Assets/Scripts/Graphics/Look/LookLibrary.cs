@@ -12,7 +12,7 @@ public enum LookMat
     Linen, Wool, Hessian,
     // bark
     PalmBark, Bark, EucBark,
-    // foliage (Mazraa/Foliage shader, alpha cut, wind)
+    // foliage (HDRP/Lit alpha cut, double-sided, instanced)
     LeavesAcacia, LeavesEucalyptus, LeavesSidr, PalmFrond, GrassGreen, GrassDry,
     // transparent
     Glass,
@@ -24,7 +24,7 @@ public enum LookMat
 /// The material library of the graphics makeover. Materials are real .mat assets in Resources/Look/Materials (CC0 Poly
 /// Haven textures, see Assets/ThirdParty/CREDITS.md): shipping them as assets keeps their shader variants (normal map,
 /// occlusion, metallic map, alpha test, instancing) in the build. Runtime code only clones them for tints, so the
-/// variants always exist. When a material is missing (stripped install, headless tests) a plain URP/Lit colour from
+/// variants always exist. When a material is missing (stripped install, headless tests) a plain lit colour (Rp.Lit: HDRP/Lit) from
 /// Build.Mat is used instead, so nothing ever turns pink.
 /// Textures are 1K (masks 512), mipmapped, block-compressed (import settings in their .meta); TextureBytes() estimates
 /// the GPU memory of everything loaded.
@@ -144,7 +144,7 @@ public static class LookLibrary
             if (System.Array.IndexOf(HiResSets, m) >= 0)
             {
                 if (Application.isEditor) { var src = mat; mat = new Material(src); mat.name = src.name; }   // Play mode never edits the .mat asset
-                lowTex[m] = new[] { mat.GetTexture("_BaseMap"), mat.GetTexture("_BumpMap") };
+                lowTex[m] = new[] { Rp.GetBaseMap(mat), Rp.GetNormalMap(mat) };
             }
             cache[m] = mat;
             ApplyRes(m, mat);
@@ -178,17 +178,14 @@ public static class LookLibrary
         if (missing.Contains(m))
         {
             var c = AverageColor(m) * tint; c.a = tint.a;
-            mat.color = c;
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", c);
+            Rp.SetColor(mat, c);
         }
         else
         {
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", tint);
-            mat.color = tint;
+            Rp.SetColor(mat, tint);
         }
-        if (smoothness >= 0f && mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", smoothness);
-        if (tiling.x > 0f && tiling.y > 0f && !missing.Contains(m))
-            foreach (var t in new[] { "_BaseMap", "_BumpMap", "_OcclusionMap", "_MetallicGlossMap" }) if (mat.HasProperty(t)) mat.SetTextureScale(t, tiling);
+        if (smoothness >= 0f) Rp.SetSmoothness(mat, smoothness);
+        if (tiling.x > 0f && tiling.y > 0f && !missing.Contains(m)) Rp.SetTiling(mat, tiling);
         if (!missing.Contains(m)) ApplyRes(m, mat);
         tinted[key] = mat;
         if (IsGround(m)) Remember(mat);
@@ -210,17 +207,17 @@ public static class LookLibrary
         return Build.Mat(AverageColor(m), smooth, m == LookMat.Corrugated ? 0.6f : 0f);
     }
 
-    /// <summary>Foliage uses Mazraa/Foliage; if that shader can't run here, swap to URP Simple Lit cut-out (no wind).</summary>
+    /// <summary>Foliage is HDRP/Lit cut-out; a foliage material on any other lit shader is swapped to the FoliageFallback cut-out copy.</summary>
     private static Material PrepareFoliage(LookMat m, Material mat)
     {
         mat.enableInstancing = true;   // instanced grass (Graphics.RenderMeshInstanced) and many trees
-        if (mat.shader.name == "Mazraa/Foliage") return mat;
+        if (Rp.IsHdrpLit(mat)) return mat;
         var fallback = Resources.Load<Material>(MaterialFolder + "FoliageFallback");
         if (fallback == null) return mat;
         var f = new Material(fallback);
         f.name = mat.name + " (simple)";
-        f.SetTexture("_BaseMap", mat.GetTexture("_BaseMap"));
-        if (mat.HasProperty("_BaseColor")) f.SetColor("_BaseColor", mat.GetColor("_BaseColor"));
+        Rp.SetBaseMap(f, Rp.GetBaseMap(mat));
+        Rp.SetColor(f, Rp.GetColor(mat));
         f.enableInstancing = true;
         return f;
     }
@@ -229,8 +226,8 @@ public static class LookLibrary
     private static void Remember(Material mat)
     {
         if (mat == null || baseColors.ContainsKey(mat)) return;
-        baseColors[mat] = mat.HasProperty("_BaseColor") ? mat.GetColor("_BaseColor") : mat.color;
-        baseSmooth[mat] = mat.HasProperty("_Smoothness") ? mat.GetFloat("_Smoothness") : 0.1f;
+        baseColors[mat] = Rp.GetColor(mat);
+        baseSmooth[mat] = Rp.GetSmoothness(mat, 0.1f);
     }
 
     /// <summary>Darken and gloss every ground material (wet sand / soil after rain); 0 restores them.</summary>
@@ -247,10 +244,9 @@ public static class LookLibrary
             Color c = kv.Value;
             Color wetC = new Color(c.r * 0.62f, c.g * 0.6f, c.b * 0.58f, c.a);
             Color now = Color.Lerp(c, wetC, wet01);
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", now);
-            mat.color = now;
+            Rp.SetColor(mat, now);
             float s;
-            if (baseSmooth.TryGetValue(mat, out s) && mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", Mathf.Lerp(s, Mathf.Max(s, 0.62f), wet01));
+            if (baseSmooth.TryGetValue(mat, out s)) Rp.SetSmoothness(mat, Mathf.Lerp(s, Mathf.Max(s, 0.62f), wet01));
         }
     }
 
@@ -281,12 +277,13 @@ public static class LookLibrary
         string f = m.ToString().ToLowerInvariant();
         Texture d = HighRes ? HiResTexture(f + "_d") : null, n = HighRes ? HiResTexture(f + "_n") : null;
         if (d == null || n == null) { d = low[0]; n = low[1]; }   // 1K (or 2K files missing: stay 1K)
-        if (d != null) { mat.SetTexture("_BaseMap", d); if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", d); }
-        if (n != null) mat.SetTexture("_BumpMap", n);
+        if (d != null) Rp.SetBaseMap(mat, d);
+        if (n != null) Rp.SetNormalMap(mat, n);
     }
 
     /// <summary>
-    /// Sand with parallax occlusion (URP/Lit _PARALLAXMAP, height from the mask) for the open ground and dunes on Ultra;
+    /// Sand for the open ground and dunes on Ultra (GroundParallax.mat; on HDRP a plain HDRP/Lit sand copy, the old URP
+    /// parallax map is not ported);
     /// null when the asset or the sand textures are missing (the plain sand material is used then).
     /// </summary>
     public static Material GroundParallax()
@@ -311,20 +308,20 @@ public static class LookLibrary
         foreach (var mat in cache.Values)
         {
             if (mat == null) continue;
-            foreach (var prop in new[] { "_BaseMap", "_BumpMap", "_OcclusionMap", "_MetallicGlossMap" })
+            foreach (var prop in new[] { "_BaseColorMap", "_NormalMap", "_MaskMap", "_BaseMap", "_BumpMap", "_OcclusionMap", "_MetallicGlossMap" })
             {
                 if (!mat.HasProperty(prop)) continue;
                 var t = mat.GetTexture(prop);
                 if (t == null || !seen.Add(t)) continue;
                 // opaque albedo = BC1 (half a byte per texel); alpha albedo, normals and masks = 1 byte per texel
-                bool halfByte = prop == "_BaseMap" && !IsFoliageTexture(mat);
+                bool halfByte = (prop == "_BaseMap" || prop == "_BaseColorMap") && !IsFoliageTexture(mat);
                 total += EstimateBytes(t.width, t.height, !halfByte);
             }
         }
         return total;
     }
 
-    private static bool IsFoliageTexture(Material mat) => mat.shader != null && (mat.shader.name == "Mazraa/Foliage" || mat.name.Contains("Leaves") || mat.name.Contains("Frond") || mat.name.Contains("Grass"));
+    private static bool IsFoliageTexture(Material mat) => mat.shader != null && (mat.renderQueue == 2450 || mat.name.Contains("Leaves") || mat.name.Contains("Frond") || mat.name.Contains("Grass"));
 
     /// <summary>Compressed size with a full mip chain: BC1 = 0.5 byte/texel, BC3/BC5/BC7 = 1 byte/texel.</summary>
     public static long EstimateBytes(int w, int h, bool fullByte)

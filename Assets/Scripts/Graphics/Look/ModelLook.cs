@@ -6,45 +6,49 @@ using UnityEngine;
 /// feather materials (no plastic shine; sheep and goats get the CC0 wool weave on their fleece), characters get matte
 /// skin and cloth, and every model casts and receives shadows. Replacements are cached per source material, so all
 /// copies of an animal share one material (batching, low RAM). Vehicles and crops are left alone (their own systems).
-/// On High / Ultra the opaque matte materials draw with Mazraa/Character (soft wrapped light, sky / sun rim light);
-/// Refresh swaps them back and forth when the preset changes (MaxLook).
+/// On High / Ultra the opaque matte materials get a character copy (HDRP/Lit with a soft skin / cloth sheen: a little more
+/// smoothness; HDRP's SSAO, contact shadows and sky light do the rest); Refresh swaps them back and forth when the preset
+/// changes (MaxLook). The old hand-written URP Mazraa/Character shader is gone with the HDRP switch.
 /// </summary>
 public static class ModelLook
 {
     private static readonly Dictionary<Material, Material> upgraded = new Dictionary<Material, Material>();
-    // High / Ultra: matte material -> Mazraa/Character copy (soft wrap light + rim), and back
+    // High / Ultra: matte material -> character copy (HDRP/Lit with sheen), and back
     private static readonly Dictionary<Material, Material> styled = new Dictionary<Material, Material>();
     private static readonly Dictionary<Material, Material> unstyled = new Dictionary<Material, Material>();
     private static readonly HashSet<Material> mattes = new HashSet<Material>();
     private static Shader characterShader;
     private static bool shaderTried;
-    public const string CharacterShader = "Mazraa/Character";
+    public const string CharacterShader = Rp.LitName;
+    /// <summary>Extra smoothness of the character copy over the matte material (skin / cloth sheen).</summary>
+    public const float CharacterSheen = 0.12f;
     public static int Upgraded { get; private set; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics() { upgraded.Clear(); styled.Clear(); unstyled.Clear(); mattes.Clear(); characterShader = null; shaderTried = false; Upgraded = 0; }
 
-    /// <summary>The character shader, or null when it is not in the build / not supported (matte URP/Lit is kept).</summary>
+    /// <summary>The character shader (HDRP/Lit), or null when it is not in the build / not supported (the matte material is kept).</summary>
     public static Shader Character()
     {
         if (!shaderTried) { shaderTried = true; var s = Shader.Find(CharacterShader); if (s != null && s.isSupported) characterShader = s; }
         return characterShader;
     }
 
-    /// <summary>The material to draw with for the current preset: the Mazraa/Character copy on High / Ultra.</summary>
+    /// <summary>The material to draw with for the current preset: the character copy on High / Ultra.</summary>
     public static Material Styled(Material matte)
     {
         if (matte == null || !MaxLook.CharactersOn || !mattes.Contains(matte) || Character() == null) return matte;
         Material s;
         if (styled.TryGetValue(matte, out s) && s != null) return s;
         s = new Material(matte);
-        s.shader = Character();     // same property names (_BaseMap, _BaseColor, _Smoothness, _Metallic): values carry over
+        if (s.shader != Character() && (s.shader == null || s.shader.name != CharacterShader)) s.shader = Character();
+        Rp.SetSmoothness(s, Mathf.Min(0.6f, Rp.GetSmoothness(matte, 0.18f) + CharacterSheen));
         s.name = matte.name + " (character)";
         styled[matte] = s; unstyled[s] = matte;
         return s;
     }
 
-    /// <summary>Preset change: swap every upgraded model between matte URP/Lit and Mazraa/Character. Returns swaps.</summary>
+    /// <summary>Preset change: swap every upgraded model between the matte material and its character copy. Returns swaps.</summary>
     public static int Refresh()
     {
         if (mattes.Count == 0) return 0;
@@ -121,15 +125,15 @@ public static class ModelLook
     private static Material Make(Material src, bool animal, bool woolly)
     {
         if (src.shader == null || !src.HasProperty("_Smoothness")) return src;
-        Color c = src.HasProperty("_BaseColor") ? src.GetColor("_BaseColor") : src.color;
+        Color c = Rp.GetColor(src);
         // Fleece (the light, low-saturation parts of sheep / goats): CC0 wool weave tinted with the model's colour.
         if (woolly && c.grayscale > 0.55f && Saturation(c) < 0.25f && LookLibrary.IsTextured(LookMat.Wool) && src.mainTexture == null)
             return LookLibrary.Tinted(LookMat.Wool, new Color(Mathf.Min(1f, c.r * 1.08f), Mathf.Min(1f, c.g * 1.06f), Mathf.Min(1f, c.b * 1.02f)), 0.05f);
         var m = new Material(src);
         m.name = src.name + (animal ? " (fur)" : " (matte)");
-        m.SetFloat("_Smoothness", animal ? 0.08f : 0.18f);
-        if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0f);
-        if (m.renderQueue < 2450) mattes.Add(m);   // opaque only: cut-out / transparent parts keep URP/Lit
+        Rp.SetSmoothness(m, animal ? 0.08f : 0.18f);
+        Rp.SetMetallic(m, 0f);
+        if (m.renderQueue < 2450) mattes.Add(m);   // opaque only: cut-out / transparent parts keep their material
         // (no new shader keywords here: a keyword no shipped material uses has no variant in the build)
         return m;
     }

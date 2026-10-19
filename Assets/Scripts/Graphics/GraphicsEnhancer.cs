@@ -1,11 +1,12 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.HighDefinition;
 
 /// <summary>
-/// Runtime graphics upgrade for URP: a global post-processing volume (ACES tonemapping, bloom, warm grading,
-/// vignette), SMAA, MSAA, longer soft shadows. Three quality presets (Low / Medium / High): shadow distance,
+/// Runtime graphics upgrade (HDRP 17): a global post-processing volume (bloom, warm grading, vignette; ACES and the sky /
+/// exposure live in HdrpLook), SMAA / TAA, longer soft shadows. Each preset is also a quality level with its own HDRP asset
+/// (Assets/Settings/HDRP/MazraaHDRP_Low..Ultra: volumetrics, SSR, shadow map size). Three quality presets (Low / Medium / High): shadow distance,
 /// render scale, MSAA, post-processing on/off and how much desert dressing is placed. G cycles them; a settings
 /// menu can call GraphicsEnhancer.SetPreset(0..3). Saved. Default: High on PC, Low on WebGL and phones.
 /// Ultra (graphics makeover): longest shadows, sharpest shadow map, more LOD detail, 256 px reflection probe and the
@@ -72,9 +73,9 @@ public class GraphicsEnhancer : MonoBehaviour
     private ColorAdjustments brightness;
     private ColorAdjustments grade;      // region colour grade (RegionLook)
     private WhiteBalance balance;
-    // Original URP asset values, restored on exit so Play mode doesn't permanently change project settings.
-    private UniversalRenderPipelineAsset urpAsset;
-    private int origShadowRes = -1;
+    // Pipeline values (HdrpSettings.Current) and the quality level at start, restored on exit.
+    private HdrpSettings urpAsset;
+    private int origShadowRes = -1, origQuality = -1;
     private int origMsaa; private float origScale, origShadow;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -107,8 +108,10 @@ public class GraphicsEnhancer : MonoBehaviour
     private void Start()
     {
         Instance = this;
-        urpAsset = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+        HdrpLook.Ensure();
+        urpAsset = HdrpSettings.Current;
         if (urpAsset != null) { origMsaa = urpAsset.msaaSampleCount; origScale = urpAsset.renderScale; origShadow = urpAsset.shadowDistance; }
+        origQuality = QualitySettings.GetQualityLevel();
         // The Settings menu (GameSettings, PlayerPrefs) is the source of truth; the old save keys are only a fallback.
         int saved = PlayerPrefs.HasKey("mazraa.settings.graphics") ? PlayerPrefs.GetInt("mazraa.settings.graphics") : SaveData.GetInt("mazraa.gfxPreset", -1);
         if (saved < 0) saved = SaveData.GetInt("mazraa.gfxHigh", -1) == 0 ? PresetLow : (SaveData.GetInt("mazraa.gfxHigh", -1) == 1 ? PresetHigh : DefaultPreset());
@@ -121,12 +124,12 @@ public class GraphicsEnhancer : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
+        if (origQuality >= 0 && origQuality != QualitySettings.GetQualityLevel()) QualitySettings.SetQualityLevel(origQuality, true);
         if (urpAsset == null) return;
         urpAsset.msaaSampleCount = origMsaa;
         urpAsset.renderScale = origScale;
         urpAsset.shadowDistance = origShadow;
         if (origShadowRes > 0) urpAsset.mainLightShadowmapResolution = origShadowRes;
-        RestoreAmbientOcclusion();
     }
 
     private void Update()
@@ -163,8 +166,7 @@ public class GraphicsEnhancer : MonoBehaviour
         var profile = ScriptableObject.CreateInstance<VolumeProfile>();
         profile.name = "Mazraa Look (runtime)";
 
-        var tone = profile.Add<Tonemapping>(true);
-        tone.mode.Override(TonemappingMode.ACES);
+        // ACES tonemapping is in HdrpLook's environment volume (weight 1 on every preset, so Low is tonemapped too)
         bloom = profile.Add<Bloom>(true);
         bloom.intensity.Override(BloomIntensity);
         bloom.threshold.Override(BloomThreshold);
@@ -187,9 +189,10 @@ public class GraphicsEnhancer : MonoBehaviour
     {
         var p = presets[Preset];
         if (volume != null) volume.weight = p.volume;
+        SelectQualityLevel(Preset);
         if (urpAsset == null)
         {
-            urpAsset = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+            urpAsset = HdrpSettings.Current;
             if (urpAsset != null) { origMsaa = urpAsset.msaaSampleCount; origScale = urpAsset.renderScale; origShadow = urpAsset.shadowDistance; }
         }
         if (urpAsset != null)
@@ -200,20 +203,42 @@ public class GraphicsEnhancer : MonoBehaviour
         }
         ApplySettingsOverrides();
         foreach (var cam in FindObjectsByType<Camera>(FindObjectsSortMode.None)) { ConfigureCamera(cam); ConfigureView(cam); }
+        ApplyRenderScale();
+        if (HdrpLook.Instance != null) HdrpLook.Instance.MarkDirty();
+    }
+
+    /// <summary>Quality level = preset (Low, Medium, High, Ultra), each with its own HDRP asset. No-op when the project has fewer levels.</summary>
+    public static void SelectQualityLevel(int preset)
+    {
+        var names = QualitySettings.names;
+        if (names == null || names.Length < PresetCount) return;
+        int level = Mathf.Clamp(preset, 0, names.Length - 1);
+        if (QualitySettings.GetQualityLevel() != level) QualitySettings.SetQualityLevel(level, true);
+    }
+
+    private static bool scalerSet;
+    /// <summary>Render scale through HDRP dynamic resolution (enabled in every MazraaHDRP asset, 50..100 %).</summary>
+    private static void ApplyRenderScale()
+    {
+        if (scalerSet) return;
+        scalerSet = true;
+        DynamicResolutionHandler.SetDynamicResScaler(() => Mathf.Clamp(EffectiveRenderScale, 0.5f, 1f) * 100f, DynamicResScalePolicyType.ReturnsPercentage);
     }
 
     /// <summary>Turn on post-processing and anti-aliasing for a camera (also used by the truck camera).</summary>
     public static void ConfigureCamera(Camera cam)
     {
         if (cam == null || cam.targetTexture != null) return;   // minimap / render-texture cameras stay plain
-        var data = cam.GetUniversalAdditionalCameraData();
+        var data = cam.GetComponent<HDAdditionalCameraData>();
+        if (data == null) data = cam.gameObject.AddComponent<HDAdditionalCameraData>();
         if (data == null) return;
-        var p = presets[Preset];
-        data.renderPostProcessing = p.post || Mathf.Abs(GameSettings.Brightness - 1f) > 0.01f;
+        // HDRP always runs post (exposure + tonemapping); Low turns the look volume off instead (weight 0).
         int aa = EffectiveAntialiasing;
-        data.antialiasing = aa >= 2 ? AntialiasingMode.SubpixelMorphologicalAntiAliasing : aa == 1 ? AntialiasingMode.FastApproximateAntialiasing : AntialiasingMode.None;
-        data.antialiasingQuality = aa >= 2 ? AntialiasingQuality.High : AntialiasingQuality.Low;
-        data.renderShadows = GameSettings.ShadowQuality != 0;
+        data.antialiasing = aa >= 3 ? HDAdditionalCameraData.AntialiasingMode.TemporalAntialiasing
+            : aa == 2 ? HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing
+            : aa == 1 ? HDAdditionalCameraData.AntialiasingMode.FastApproximateAntialiasing : HDAdditionalCameraData.AntialiasingMode.None;
+        data.SMAAQuality = HDAdditionalCameraData.SMAAQualityLevel.High;
+        data.allowDynamicResolution = true;
     }
 
     // ================================================================== Settings > Graphics / Display overrides
@@ -265,13 +290,16 @@ public class GraphicsEnhancer : MonoBehaviour
         QualitySettings.shadows = q == 0 ? UnityEngine.ShadowQuality.Disable : q == 1 ? UnityEngine.ShadowQuality.HardOnly : UnityEngine.ShadowQuality.All;
         QualitySettings.shadowResolution = q <= 1 ? UnityEngine.ShadowResolution.Low : q == 2 ? UnityEngine.ShadowResolution.Medium : q == 3 ? UnityEngine.ShadowResolution.High : UnityEngine.ShadowResolution.VeryHigh;
         QualitySettings.shadowDistance = EffectiveShadowDistance;
-        // URP ignores QualitySettings shadow resolution: set the main light shadow map on the pipeline asset.
+        // HDRP ignores QualitySettings shadows: the shadow map size goes on the sun (HDAdditionalLightData), the distance
+        // into HdrpLook's HDShadowSettings, and shadows off turns the sun's shadows off.
         var urp = Instance != null ? Instance.urpAsset : null;
         if (urp != null)
         {
             if (Instance.origShadowRes < 0) Instance.origShadowRes = urp.mainLightShadowmapResolution;
             urp.mainLightShadowmapResolution = q <= 1 ? 1024 : q == 2 ? 2048 : 4096;
+            HdrpLook.SetSunShadowResolution(RenderSettings.sun, urp.mainLightShadowmapResolution);
         }
+        if (q == 0 && RenderSettings.sun != null) RenderSettings.sun.shadows = LightShadows.None;
         if (origLodBias < 0f) origLodBias = QualitySettings.lodBias;
         QualitySettings.lodBias = GameSettings.LodBias > 0 ? GameSettings.LodBias / 100f : origLodBias * presetLodBias[Mathf.Clamp(Preset, 0, PresetCount - 1)];
     }
@@ -283,9 +311,9 @@ public class GraphicsEnhancer : MonoBehaviour
             motionBlur = volume.sharedProfile.Add<MotionBlur>(true);
             motionBlur.intensity.Override(0.25f);
             depthOfField = volume.sharedProfile.Add<DepthOfField>(true);
-            depthOfField.mode.Override(DepthOfFieldMode.Gaussian);
-            depthOfField.gaussianStart.Override(80f);
-            depthOfField.gaussianEnd.Override(300f);
+            depthOfField.focusMode.Override(DepthOfFieldMode.Manual);
+            depthOfField.farFocusStart.Override(80f);
+            depthOfField.farFocusEnd.Override(300f);
         }
         // Brightness works on every preset (its own volume, always weight 1).
         var go = new GameObject("Mazraa Brightness");
@@ -307,7 +335,7 @@ public class GraphicsEnhancer : MonoBehaviour
         if (motionBlur != null) motionBlur.active = MotionBlurOn;
         if (depthOfField != null) depthOfField.active = DepthOfFieldOn;
         if (brightness != null) brightness.postExposure.Override(ExposureFor(Preset, GameSettings.Brightness));
-        SetAmbientOcclusion(urpAsset, GameSettings.AmbientOcclusion);
+        if (HdrpLook.Instance != null) HdrpLook.Instance.MarkDirty();   // SSAO follows Settings > Ambient occlusion there
     }
 
     /// <summary>Settings > Controls > Field of view and Graphics > View distance for perspective game cameras (minimap / menu cameras untouched).</summary>
@@ -318,50 +346,5 @@ public class GraphicsEnhancer : MonoBehaviour
         if (!camOrig.TryGetValue(cam, out orig)) { orig = new Vector2(cam.fieldOfView, cam.farClipPlane); camOrig[cam] = orig; }
         cam.fieldOfView = GameSettings.CameraFov > 0 ? GameSettings.CameraFov : orig.x;
         cam.farClipPlane = GameSettings.ViewDistance > 0 ? GameSettings.ViewDistance : orig.y;
-    }
-
-    private static readonly System.Collections.Generic.Dictionary<object, bool> aoOriginal = new System.Collections.Generic.Dictionary<object, bool>();
-
-    /// <summary>Put SSAO back as it was (in the editor SetActive changes the renderer asset itself).</summary>
-    private static void RestoreAmbientOcclusion()
-    {
-        foreach (var kv in aoOriginal)
-        {
-            try { var set = kv.Key.GetType().GetMethod("SetActive"); if (set != null) set.Invoke(kv.Key, new object[] { kv.Value }); }
-            catch (System.Exception) { }
-        }
-        aoOriginal.Clear();
-    }
-
-    /// <summary>URP's SSAO is a renderer feature: switch it through reflection (the renderer list isn't public), ignore failures.</summary>
-    private static void SetAmbientOcclusion(UniversalRenderPipelineAsset asset, bool on)
-    {
-        if (asset == null) return;
-        try
-        {
-            var f = typeof(UniversalRenderPipelineAsset).GetField("m_RendererDataList", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var list = f != null ? f.GetValue(asset) as System.Array : null;
-            if (list == null) return;
-            foreach (var data in list)
-            {
-                if (data == null) continue;
-                var prop = data.GetType().GetProperty("rendererFeatures");
-                var features = prop != null ? prop.GetValue(data, null) as System.Collections.IEnumerable : null;
-                if (features == null) continue;
-                foreach (var feat in features)
-                    if (feat != null && feat.GetType().Name.Contains("AmbientOcclusion"))
-                    {
-                        var set = feat.GetType().GetMethod("SetActive");
-                        if (set == null) continue;
-                        if (!aoOriginal.ContainsKey(feat))
-                        {
-                            var act = feat.GetType().GetProperty("isActive");
-                            aoOriginal[feat] = act == null || (bool)act.GetValue(feat, null);
-                        }
-                        set.Invoke(feat, new object[] { on });
-                    }
-            }
-        }
-        catch (System.Exception) { }
     }
 }

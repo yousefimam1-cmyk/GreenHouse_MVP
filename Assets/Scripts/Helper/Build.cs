@@ -18,19 +18,12 @@ public static class Build
     {
         string key = ColorUtility.ToHtmlStringRGBA(c) + smooth + metal + (emission.HasValue ? ColorUtility.ToHtmlStringRGB(emission.Value) : "");
         if (cache.TryGetValue(key, out var m) && m != null) return m;
-        if (litShader == null) litShader = Shader.Find("Universal Render Pipeline/Lit");
-        if (litShader == null) litShader = Shader.Find("Standard");
+        if (litShader == null) litShader = Rp.Lit();   // HDRP/Lit (falls back to URP/Lit, then Standard)
         m = new Material(litShader);
-        m.SetColor("_BaseColor", c);
-        m.color = c;
-        m.SetFloat("_Smoothness", smooth);
-        m.SetFloat("_Metallic", metal);
-        if (emission.HasValue)
-        {
-            m.EnableKeyword("_EMISSION");
-            m.SetColor("_EmissionColor", emission.Value);
-            m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
-        }
+        Rp.SetColor(m, c);
+        Rp.SetSmoothness(m, smooth);
+        Rp.SetMetallic(m, metal);
+        if (emission.HasValue) Rp.SetEmission(m, emission.Value);
         cache[key] = m;
         return m;
     }
@@ -55,8 +48,8 @@ public static class Build
     public static GameObject TryModel(string name, Transform parent) => TryModel(name, parent, 0f, 0f);
 
     /// <summary>
-    /// Replace materials that URP cannot draw (built-in Standard / Legacy shaders, missing or error shaders: they render
-    /// bright pink) with URP/Lit materials of the same colour and texture. Replacements are cached per source material,
+    /// Replace materials that HDRP cannot draw (built-in Standard / Legacy / URP shaders, missing or error shaders: they render
+    /// bright pink) with HDRP/Lit materials of the same colour and texture. Replacements are cached per source material,
     /// so many copies of a model share one material (low RAM, batching).
     /// </summary>
     public static void FixPinkMaterials(GameObject go)
@@ -76,7 +69,7 @@ public static class Build
                 {
                     Color c = m != null && m.HasProperty("_Color") ? m.color : MissingMaterialColor;
                     fix = Mat(c, 0.3f);
-                    if (m != null && m.mainTexture != null) fix.SetTexture("_BaseMap", m.mainTexture);
+                    if (m != null && m.mainTexture != null) { fix = new Material(fix) { name = m.name + " (lit)" }; Rp.SetBaseMap(fix, m.mainTexture); }
                     if (m != null) fixedMats[m] = fix;
                 }
                 mats[i] = fix;
@@ -98,7 +91,8 @@ public static class Build
         if (sh == null || !sh.isSupported) return true;
         string n = sh.name ?? "";
         return n == "Hidden/InternalErrorShader" || n == "Standard" || n.StartsWith("Standard (") || n.StartsWith("Legacy Shaders/")
-            || n.StartsWith("Mobile/") || n.StartsWith("Unlit/") || n.StartsWith("Autodesk Interactive");
+            || n.StartsWith("Mobile/") || n.StartsWith("Unlit/") || n.StartsWith("Autodesk Interactive")
+            || n.StartsWith("Universal Render Pipeline/");
     }
 
     /// <summary>

@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 /// <summary>
 /// Instanced grass: thousands of tufts drawn with Graphics.RenderMeshInstanced (no GameObjects), in 32 m chunks that
 /// are frustum-culled, drawn only near the camera and thinned out toward the draw distance. Two materials (green /
-/// dry, Mazraa/Foliage with wind) x four tuft meshes. Draw distance follows the quality preset; how much grass is
+/// dry, HDRP/Lit cut-out) x four tuft meshes. Draw distance follows the quality preset; how much grass is
 /// added follows Settings > Graphics > Foliage (Vegetation.Scatter / ScatterGrass). No shadows are cast (cheap),
 /// shadows are received.
 /// </summary>

@@ -141,8 +141,7 @@ public static class FishSite
         {
             var m = r.material;
             if (m == null) continue;
-            m.color = c;
-            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+            Rp.SetColor(m, c);
         }
     }
 }

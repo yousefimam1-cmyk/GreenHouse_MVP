@@ -45,8 +45,9 @@ public class FarmFieldObject : Interactable
     }
 
     /// <summary>
-    /// URP Lit with the cell texture as base map (field state per cell) and the graphics makeover's tilled-soil PBR texture
-    /// (CC0) as a tiled detail map (albedo x2 + its normal map), so the soil keeps its grain at any field size.
+    /// Lit material with the cell texture as base map (field state per cell). On URP / Built-in the graphics makeover's
+    /// tilled-soil PBR texture (CC0) is a tiled detail map (albedo x2 + its normal map); HDRP/Lit's detail map is a packed
+    /// format, so on HDRP the field uses the cell texture alone (smoothness / colour from the tilled material).
     /// </summary>
     public static Material GroundMaterial(FarmField f, Texture2D cells)
     {
@@ -56,16 +57,18 @@ public class FarmFieldObject : Interactable
             var src = LookLibrary.Get(LookMat.Tilled);
             mat = new Material(src) { name = f.name + " soil" };
             float tile = Mathf.Max(0.5f, LookLibrary.TileSize(LookMat.Tilled) * 0.6f);
-            var soil = src.GetTexture("_BaseMap"); var normal = src.GetTexture("_BumpMap");
-            if (soil != null) { mat.SetTexture("_DetailAlbedoMap", soil); mat.SetTextureScale("_DetailAlbedoMap", new Vector2(f.width / tile, f.depth / tile)); mat.EnableKeyword("_DETAIL_MULX2"); }
-            if (normal != null) { mat.SetTexture("_DetailNormalMap", normal); mat.EnableKeyword("_DETAIL_MULX2"); }
-            mat.SetTexture("_BumpMap", null); mat.DisableKeyword("_NORMALMAP");   // the main normal map would stretch over the whole field
-            mat.SetTextureScale("_BaseMap", Vector2.one);
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
-            mat.color = Color.white;
+            var soil = Rp.GetBaseMap(src); var normal = Rp.GetNormalMap(src);
+            if (!Rp.IsHdrpMaterial(mat))
+            {
+                if (soil != null) { mat.SetTexture("_DetailAlbedoMap", soil); mat.SetTextureScale("_DetailAlbedoMap", new Vector2(f.width / tile, f.depth / tile)); mat.EnableKeyword("_DETAIL_MULX2"); }
+                if (normal != null) { mat.SetTexture("_DetailNormalMap", normal); mat.EnableKeyword("_DETAIL_MULX2"); }
+            }
+            Rp.SetNormalMap(mat, null);   // the main normal map would stretch over the whole field
+            Rp.SetTiling(mat, Vector2.one);
+            Rp.SetColor(mat, Color.white);
         }
         else mat = new Material(Build.Mat(Color.white, 0.08f)) { name = f.name + " soil" };
-        mat.SetTexture("_BaseMap", cells);
+        Rp.SetBaseMap(mat, cells);
         mat.mainTexture = cells;
         return mat;
     }

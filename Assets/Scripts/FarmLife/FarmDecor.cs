@@ -163,7 +163,7 @@ public class FarmDecor : MonoBehaviour
                 Build.Part(PrimitiveType.Cube, t, new Vector3(0, 2.05f, 0), new Vector3(0.3f, 0.4f, 0.3f), Glow(new Color(1f, 0.7f, 0.3f)), "Fanous");
                 var l = new GameObject("Light").AddComponent<Light>();
                 l.transform.SetParent(t, false); l.transform.localPosition = new Vector3(0, 2.2f, 0);
-                l.type = LightType.Point; l.range = 6f; l.intensity = 1.2f; l.color = glow;
+                l.type = LightType.Point; l.range = 6f; Rp.LegacyLight(l, 1.2f); l.color = glow;
                 return new Vector3(1f, 3.2f, 0.6f);
             }
             default:   // "goldlantern"

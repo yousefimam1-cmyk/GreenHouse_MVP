@@ -213,7 +213,7 @@ public class SeasonalEvents : MonoBehaviour
         Build.Part(PrimitiveType.Cylinder, go.transform, new Vector3(0, 2.8f, 0), new Vector3(0.36f, 0.06f, 0.36f), metal, "Cap");
         var l = new GameObject("Light").AddComponent<Light>();
         l.transform.SetParent(go.transform, false); l.transform.localPosition = new Vector3(0, 2.5f, 0);
-        l.type = LightType.Point; l.range = 6f; l.intensity = 1.2f; l.color = glow;
+        l.type = LightType.Point; l.range = 6f; Rp.LegacyLight(l, 1.2f); l.color = glow;
     }
 
     private static readonly Color[] Bulbs = { new Color(1f, 0.3f, 0.3f), new Color(0.3f, 1f, 0.4f), new Color(0.35f, 0.5f, 1f), new Color(1f, 0.85f, 0.3f) };

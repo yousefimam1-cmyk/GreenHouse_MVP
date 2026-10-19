@@ -214,8 +214,8 @@ public static class NpcWardrobe
         if (mats.TryGetValue("shemagh", out m) && m != null) return m;
         m = new Material(Cloth(Color.white, 0.22f));
         m.name = "Shemagh";
-        m.SetTexture("_BaseMap", ShemaghTexture());
-        m.SetTextureScale("_BaseMap", new Vector2(10f, 10f));
+        Rp.SetBaseMap(m, ShemaghTexture());
+        Rp.SetTiling(m, new Vector2(10f, 10f));
         mats["shemagh"] = m;
         return m;
     }

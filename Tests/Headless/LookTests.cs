@@ -1,13 +1,13 @@
 // Graphics makeover (Assets/Scripts/Graphics/Look): PBR look materials and their shipped textures, vegetation with LODs
 // and wind, instanced grass following Settings > Foliage, terrain layers, ground meshes, regional NPC clothing, animal
-// materials, sky / probe / grade by quality preset (incl. Ultra), wet ground after rain and the texture budget.
+// materials (HDRP/Lit), HDRP sky / volumetrics / grade by quality preset (incl. Ultra), wet ground after rain and the texture budget.
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.HighDefinition;
 
 static class LookTests
 {
@@ -33,8 +33,7 @@ static class LookTests
     public static void Run()
     {
         Console.WriteLine("Graphics makeover (look materials, vegetation, grass, terrain, clothing, presets)");
-        var urp = new UniversalRenderPipelineAsset { renderScale = 1f, msaaSampleCount = 4, shadowDistance = 90f };
-        UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline = urp;
+        var urp = HdrpSettings.Current; urp.renderScale = 1f; urp.msaaSampleCount = 4; urp.shadowDistance = 90f;
         GameSettings.FoliageDensity = -1;
         GraphicsEnhancer.SetPreset(GraphicsEnhancer.PresetHigh);
         Boot();
@@ -52,16 +51,16 @@ static class LookTests
             if (m == LookMat.Glass) continue;
             if (LookLibrary.IsFoliage(m))
             {
-                if (mat.shader.name != "Mazraa/Foliage" || mat.GetTexture("_BaseMap") == null || !mat.enableInstancing) untextured.Add(m + " foliage");
+                if (mat.shader.name != "HDRP/Lit" || mat.GetTexture("_BaseColorMap") == null || !mat.enableInstancing) untextured.Add(m + " foliage");
             }
-            else if (mat.shader.name != "Universal Render Pipeline/Lit" || mat.GetTexture("_BaseMap") == null || mat.GetTexture("_BumpMap") == null || mat.GetTexture("_OcclusionMap") == null)
+            else if (mat.shader.name != "HDRP/Lit" || mat.GetTexture("_BaseColorMap") == null || mat.GetTexture("_NormalMap") == null || mat.GetTexture("_MaskMap") == null)
                 untextured.Add(m + " " + mat.shader.name);
         }
-        T.Check("Look: every look material loads from Resources with albedo + normal + mask (foliage: Mazraa/Foliage, instanced)", untextured.Count == 0, string.Join(", ", untextured));
+        T.Check("Look: every look material loads from Resources with albedo + normal + mask on HDRP/Lit (foliage: cut-out, instanced)", untextured.Count == 0, string.Join(", ", untextured));
         var buildings = new[] { LookMat.MudBrick, LookMat.Plaster, LookMat.Concrete, LookMat.Corrugated, LookMat.Metal, LookMat.Wood };
-        T.Check("Look: building materials read metal / smoothness from their mask", buildings.All(b => LookLibrary.Get(b).GetTexture("_MetallicGlossMap") != null));
+        T.Check("Look: building materials read metal / smoothness from their mask", buildings.All(b => LookLibrary.Get(b).GetTexture("_MaskMap") != null));
         var sky = Resources.Load<Material>(AtmosphereLook.SkyMaterial); var terrainMat = Resources.Load<Material>(GroundLook.TerrainMaterial);
-        T.Check("Look: sky (Skybox/Procedural) and terrain (URP Terrain/Lit) materials ship", sky != null && sky.shader.name == "Skybox/Procedural" && terrainMat != null && terrainMat.shader.name == "Universal Render Pipeline/Terrain/Lit");
+        T.Check("Look: sky (Skybox/Procedural) and terrain (HDRP/TerrainLit) materials ship", sky != null && sky.shader.name == "Skybox/Procedural" && terrainMat != null && terrainMat.shader.name == "HDRP/TerrainLit");
 
         // ---- texture budget: every texture <= 2048, all look textures together under the budget
         long bytes = LookLibrary.TextureBytes();
@@ -100,7 +99,7 @@ static class LookTests
         var nearShadows = groups.SelectMany(g => g.GetLODs().Take(1)).SelectMany(l => l.renderers).All(r => r.shadowCastingMode == UnityEngine.Rendering.ShadowCastingMode.On);
         T.Check("Look: near trees cast shadows, far cards don't", farShadows == 0 && nearShadows);
         var treeMats = groups.SelectMany(g => g.GetLODs()[0].renderers).SelectMany(r => r.sharedMaterials).Distinct().ToList();
-        T.Check("Look: trees share a handful of instanced materials (" + treeMats.Count + ")", treeMats.Count <= 12 && treeMats.Where(m => m.shader.name == "Mazraa/Foliage").All(m => m.enableInstancing));
+        T.Check("Look: trees share a handful of instanced materials (" + treeMats.Count + ")", treeMats.Count <= 12 && treeMats.Where(m => m.shader.name == "HDRP/Lit" && m.name.Contains("Leaves")).All(m => m.enableInstancing));
         T.Check("Look: Najd has acacia, ghaf or sidr trees and date palms", groups.Any(g => g.name == "Date Palm") && groups.Any(g => g.name == "Acacia" || g.name == "Ghaf" || g.name == "Sidr"));
         var props = UnityEngine.Object.FindObjectsByType<BoxCollider>(FindObjectsSortMode.None).Where(c => c.name == "Ghaf").ToList();
         T.Check("Look: ghaf trees keep the prop collider layer", props.All(c => c.gameObject.layer == DesertProps.PropLayer));
@@ -111,8 +110,8 @@ static class LookTests
         T.Check("Look: Najd sand mesh uses the sand PBR material, the track compacted gravel", sand != null && sand.sharedMaterial == LookLibrary.Get(LookMat.Sand) && (track == null || track.sharedMaterial == LookLibrary.Get(LookMat.Gravel)));
         var plot = FarmFields.Instance.Fields[0];
         var soil = plot.View.transform.Find("Ground").GetComponent<MeshRenderer>();
-        T.Check("Look: FarmCore fields use the tilled-soil texture (detail map) over the cell texture", soil.sharedMaterial.GetTexture("_DetailAlbedoMap") == LookLibrary.Get(LookMat.Tilled).GetTexture("_BaseMap")
-            && soil.sharedMaterial.GetTexture("_DetailAlbedoMap") != null && soil.sharedMaterial.GetTexture("_BaseMap") == plot.View.GroundTexture);
+        T.Check("Look: FarmCore fields draw the cell texture on the tilled-soil material (HDRP/Lit, no stretched normal map)", soil.sharedMaterial.shader.name == "HDRP/Lit"
+            && soil.sharedMaterial.GetTexture("_BaseColorMap") == plot.View.GroundTexture && soil.sharedMaterial.GetTexture("_NormalMap") == null);
 
         var tgo = new GameObject("Look Test Terrain");
         var terrain = tgo.AddComponent<Terrain>();
@@ -158,49 +157,51 @@ static class LookTests
 
         // ---- presets
         GraphicsEnhancer.SetPreset(GraphicsEnhancer.PresetUltra); FakeEngine.Run(0.2f);
-        var probe = UnityEngine.Object.FindObjectsByType<ReflectionProbe>(FindObjectsSortMode.None).FirstOrDefault();
-        T.Check("Look: Ultra = 150 m shadows, 4 cascades, HDR grading, 256 px realtime reflection probe, longest grass",
-            Math.Abs(urp.shadowDistance - 150f) < 0.01f && urp.shadowCascadeCount == 4 && urp.colorGradingMode == ColorGradingMode.HighDynamicRange && atmo.ProbeActive && probe != null && probe.resolution == 256
-            && probe.refreshMode == UnityEngine.Rendering.ReflectionProbeRefreshMode.ViaScripting && FoliageGrass.DrawDistance >= 140f && QualitySettings.shadowResolution == ShadowResolution.VeryHigh,
-            urp.shadowDistance + " " + urp.shadowCascadeCount + " " + urp.colorGradingMode);
-        int renders = probe != null ? probe.renders : 0;
-        FakeEngine.Run(12f, 0.5f);
-        T.Check("Look: the reflection probe re-renders now and then (not every frame)", probe != null && probe.renders > renders && probe.renders < renders + 6, renders + " -> " + (probe != null ? probe.renders : 0));
+        var hd = HdrpLook.Instance;
+        T.Check("Look: Ultra = 150 m shadows, 4 cascades, HDR grading, Ultra quality level, longest grass",
+            Math.Abs(urp.shadowDistance - 150f) < 0.01f && urp.shadowCascadeCount == 4 && urp.hdrGrading && QualitySettings.GetQualityLevel() == GraphicsEnhancer.PresetUltra
+            && FoliageGrass.DrawDistance >= 140f && QualitySettings.shadowResolution == ShadowResolution.VeryHigh,
+            urp.shadowDistance + " " + urp.shadowCascadeCount + " " + urp.hdrGrading + " " + QualitySettings.GetQualityLevel());
+        float evUltra = hd != null ? hd.AppliedExposureEV : 99f;
+        T.Check("Look: Ultra = HDRP physical sky with volumetric clouds, volumetric fog, SSAO, contact shadows, SSR (no legacy probe)",
+            hd != null && hd.CloudsOn && hd.VolumetricFogOn && hd.SsaoOn && hd.ContactShadowsOn && hd.SsrOn && !atmo.ProbeActive && Math.Abs(evUltra - Rp.ExposureEV) < 0.001f);
         // ---- max look (MaxLook): 2K textures + parallax on Ultra, water and character shaders on High / Ultra
         Func<Texture, int> W = t => t != null ? t.width : 0;
         var sandU = LookLibrary.Get(LookMat.Sand);
         long bytesUltra = LookLibrary.TextureBytes();
-        T.Check("Look: Ultra swaps the 9 main sets to 2K albedo + normal (materials and terrain layers)", LookLibrary.HighRes && W(sandU.GetTexture("_BaseMap")) == 2048 && W(sandU.GetTexture("_BumpMap")) == 2048
-            && LookLibrary.HiResSets.All(m => W(LookLibrary.Get(m).GetTexture("_BaseMap")) == 2048 && W(LookLibrary.Get(m).GetTexture("_BumpMap")) == 2048)
-            && W(GroundLook.Layer(LookMat.Rock).diffuseTexture) == 2048 && W(GroundLook.Layer(LookMat.Rock).normalMapTexture) == 2048 && W(LookLibrary.Get(LookMat.Wood).GetTexture("_BaseMap")) <= 1024,
-            W(sandU.GetTexture("_BaseMap")) + "");
+        T.Check("Look: Ultra swaps the 9 main sets to 2K albedo + normal (materials and terrain layers)", LookLibrary.HighRes && W(sandU.GetTexture("_BaseColorMap")) == 2048 && W(sandU.GetTexture("_NormalMap")) == 2048
+            && LookLibrary.HiResSets.All(m => W(LookLibrary.Get(m).GetTexture("_BaseColorMap")) == 2048 && W(LookLibrary.Get(m).GetTexture("_NormalMap")) == 2048)
+            && W(GroundLook.Layer(LookMat.Rock).diffuseTexture) == 2048 && W(GroundLook.Layer(LookMat.Rock).normalMapTexture) == 2048 && W(LookLibrary.Get(LookMat.Wood).GetTexture("_BaseColorMap")) <= 1024,
+            W(sandU.GetTexture("_BaseColorMap")) + "");
         T.Check("Look: Ultra texture budget (" + (bytesUltra / (1024 * 1024)) + " MB, more than High's " + (bytes / (1024 * 1024)) + " MB)", bytesUltra > bytes && bytesUltra < LookLibrary.TextureBudgetBytesUltra);
         var sandMeshU = UnityEngine.Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).FirstOrDefault(r => r.name == "Sand" && r.transform.IsChildOf(dd.transform));
         var px = LookLibrary.GroundParallax();
-        T.Check("Look: Ultra sand ground is parallax-mapped (URP/Lit + height map, 2K sand)", px != null && sandMeshU != null && sandMeshU.sharedMaterial == px && px.shader.name == "Universal Render Pipeline/Lit"
-            && px.GetTexture("_ParallaxMap") != null && W(px.GetTexture("_BaseMap")) == 2048);
+        T.Check("Look: Ultra sand ground uses the GroundParallax sand material (HDRP/Lit, 2K sand)", px != null && sandMeshU != null && sandMeshU.sharedMaterial == px && px.shader.name == "HDRP/Lit"
+            && W(px.GetTexture("_BaseColorMap")) == 2048);
         var shaderWater = MaxLook.ShaderWater();
         Func<Material, int> usingMat = mat => UnityEngine.Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).Count(r => r.sharedMaterial == mat || (r.sharedMaterials != null && r.sharedMaterials.Contains(mat)));
-        Func<int> characterRenderers = () => UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None).Count(r => r.sharedMaterials != null && r.sharedMaterials.Any(m => m != null && m.shader != null && m.shader.name == ModelLook.CharacterShader));
-        // headless models have no meshes: a stand-in cow with one opaque URP/Lit part
+        Func<int> characterRenderers = () => UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None).Count(r => r.sharedMaterials != null && r.sharedMaterials.Any(m => m != null && m.name != null && m.name.EndsWith("(character)")));
+        // headless models have no meshes: a stand-in cow with one opaque HDRP/Lit part
         var cowGo = new GameObject("Models/cow look test");
         var cowR = Build.Part(PrimitiveType.Cube, cowGo.transform, Vector3.up, Vector3.one, new Material(Build.Mat(new Color(0.6f, 0.5f, 0.4f), 0.5f)), "body").GetComponent<MeshRenderer>();
         cowR.sharedMaterials = new[] { cowR.sharedMaterial };
         ModelLook.Upgrade(cowGo, "Models/cow");
         int waterUltra = usingMat(shaderWater), charsUltra = characterRenderers();
-        T.Check("Look: Mazraa/Water ships and the canals use it (" + waterUltra + " water renderers, " + dd.Canals + " canals)", shaderWater != null && shaderWater.shader.name == "Mazraa/Water" && (dd.Canals == 0 || waterUltra > 0) && usingMat(MaxLook.PlainWater) == 0);
-        T.Check("Look: people and animals draw with Mazraa/Character on Ultra (" + charsUltra + " renderers)", charsUltra > 0 && cowR.sharedMaterials[0].shader.name == ModelLook.CharacterShader);
+        T.Check("Look: the Water material (HDRP/Lit) ships and the canals use it (" + waterUltra + " water renderers, " + dd.Canals + " canals)", shaderWater != null && shaderWater.shader.name == "HDRP/Lit" && shaderWater.name == "Water" && (dd.Canals == 0 || waterUltra > 0) && usingMat(MaxLook.PlainWater) == 0);
+        T.Check("Look: people and animals draw with their character copy on Ultra (" + charsUltra + " renderers)", charsUltra > 0 && cowR.sharedMaterials[0].name.EndsWith("(character)") && cowR.sharedMaterials[0].shader.name == ModelLook.CharacterShader);
         GraphicsEnhancer.SetPreset(GraphicsEnhancer.PresetLow); FakeEngine.Run(0.2f);
         var sandL = LookLibrary.Get(LookMat.Sand);
-        T.Check("Look: Low = 1K textures again, flat water, matte URP/Lit characters, no parallax", !LookLibrary.HighRes && W(sandL.GetTexture("_BaseMap")) == 1024 && W(GroundLook.Layer(LookMat.Rock).diffuseTexture) == 1024
+        T.Check("Look: Low = 1K textures again, flat water, matte characters, plain sand", !LookLibrary.HighRes && W(sandL.GetTexture("_BaseColorMap")) == 1024 && W(GroundLook.Layer(LookMat.Rock).diffuseTexture) == 1024
             && usingMat(shaderWater) == 0 && (dd.Canals == 0 || usingMat(MaxLook.PlainWater) > 0) && characterRenderers() == 0 && usingMat(px) == 0,
             usingMat(shaderWater) + " " + characterRenderers() + " " + usingMat(px));
-        T.Check("Look: Low = the cow is matte URP/Lit (same base colour, smoothness 0.08)", cowR.sharedMaterials[0].shader.name == "Universal Render Pipeline/Lit" && cowR.sharedMaterials[0].name.EndsWith("(fur)"));
-        T.Check("Look: Low = no probe, 1 cascade, LDR grading, no extra grade, hard shadows", !atmo.ProbeActive && urp.shadowCascadeCount == 1 && urp.colorGradingMode == ColorGradingMode.LowDynamicRange && atmo.GradeVolume.weight == 0f
+        T.Check("Look: Low = the cow is matte HDRP/Lit (same base colour, smoothness 0.08)", cowR.sharedMaterials[0].shader.name == "HDRP/Lit" && cowR.sharedMaterials[0].name.EndsWith("(fur)"));
+        T.Check("Look: Low = HDRP Low level: no volumetrics, clouds, SSAO, contact shadows or SSR; same exposure as Ultra", QualitySettings.GetQualityLevel() == GraphicsEnhancer.PresetLow
+            && hd != null && !hd.CloudsOn && !hd.VolumetricFogOn && !hd.SsaoOn && !hd.ContactShadowsOn && !hd.SsrOn && Math.Abs(hd.AppliedExposureEV - evUltra) < 0.001f);
+        T.Check("Look: Low = no probe, 1 cascade, LDR grading, no extra grade, hard shadows", !atmo.ProbeActive && urp.shadowCascadeCount == 1 && !urp.hdrGrading && atmo.GradeVolume.weight == 0f
             && (RenderSettings.sun == null || RenderSettings.sun.shadows == LightShadows.Hard));
         GraphicsEnhancer.SetPreset(GraphicsEnhancer.PresetHigh); FakeEngine.Run(0.2f);
-        T.Check("Look: High = water + character shaders back, 1K textures (2K is Ultra only)", !LookLibrary.HighRes && cowR.sharedMaterials[0].shader.name == ModelLook.CharacterShader && (dd.Canals == 0 || usingMat(shaderWater) > 0) && usingMat(MaxLook.PlainWater) == 0);
-        T.Check("Look: High = probe on, grade on, soft shadows", atmo.ProbeActive && atmo.GradeVolume.weight > 0.9f && urp.shadowCascadeCount == 4 && (RenderSettings.sun == null || RenderSettings.sun.shadows == LightShadows.Soft));
+        T.Check("Look: High = water + character materials back, 1K textures (2K is Ultra only)", !LookLibrary.HighRes && cowR.sharedMaterials[0].name.EndsWith("(character)") && (dd.Canals == 0 || usingMat(shaderWater) > 0) && usingMat(MaxLook.PlainWater) == 0);
+        T.Check("Look: High = Ultra's exposure (never darker), volumetrics + SSR on, grade on, soft shadows", hd != null && Math.Abs(hd.AppliedExposureEV - evUltra) < 0.001f && hd.VolumetricFogOn && hd.SsrOn && hd.CloudsOn && atmo.GradeVolume.weight > 0.9f && urp.shadowCascadeCount == 4 && (RenderSettings.sun == null || RenderSettings.sun.shadows == LightShadows.Soft));
         UnityEngine.Object.Destroy(cowGo);
         T.Check("Look: Ultra / High / Medium / Low names have Arabic", GraphicsEnhancer.PresetNames.All(n => Loc.HasTranslation(n)) && Loc.HasTranslation(GameSettings.PresetName(3)));
 
@@ -241,7 +242,7 @@ static class LookTests
         T.Check("Look: Delta ground mesh is grass, eucalyptus are LOD trees", deltaSand != null && deltaSand.sharedMaterial == LookLibrary.Get(LookMat.Grass)
             && UnityEngine.Object.FindObjectsByType<LODGroup>(FindObjectsSortMode.None).Any(g => g.name == "Eucalyptus" && g.transform.IsChildOf(dd.transform)));
         T.Check("Look: Delta grass is green", grass.InstanceCount > 0);
-        T.Check("Look: Delta canals are Mazraa/Water on High (" + dd.Canals + " canals, " + usingMat(shaderWater) + " water renderers)", dd.Canals > 0 && usingMat(shaderWater) > 0 && usingMat(MaxLook.PlainWater) == 0);
+        T.Check("Look: Delta canals use the Water material on High (" + dd.Canals + " canals, " + usingMat(shaderWater) + " water renderers)", dd.Canals > 0 && usingMat(shaderWater) > 0 && usingMat(MaxLook.PlainWater) == 0);
         Regions.Select("najd"); FakeEngine.Run(2f);
         T.Check("Look: back in Najd the villagers wear thobes again", villagers.All(v => wears(v, "Thobe", "Shemagh")));
         UnityEngine.Object.Destroy(woman);
