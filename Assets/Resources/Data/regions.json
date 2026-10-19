@@ -1,0 +1,30 @@
+{
+ "notes": "Playable regions (maps) of the Arab world. dlc = sold separately (Microsoft Store add-on / Steam DLC); comingSoon = shown locked in the map list. weather: heat = chance multiplier for heatwaves, rain = extra rain chance per day. market = sell price multiplier. ownContent = the map has its own story (missions, campaign, events, quests tagged with its id); startSeeds, marketName/shopName (Loc keys), canalEvery/canalEvent (canal water turn) and look (ground/track/fog colours, dunes, canals, trees, dust, humidity haze, colour grade) make a DLC map its own content pack; a region without them plays like Najd. Selling points (cotton gin, rice mill, village souq) and contract clients of a map are region-gated entries in market.json. currency is shown instead of SAR; prices keep the same numbers so the balance stays the same.",
+ "regions": [
+  {"id": "najd", "nameEn": "Najd Oasis", "nameAr": "واحة نجد", "countryEn": "Saudi Arabia", "countryAr": "السعودية", "dlc": false, "comingSoon": false,
+   "currency": "SAR", "currencyAr": "ريال", "heat": 1.0, "rain": 0.0, "market": 1.0,
+   "descEn": "Desert oasis farm: palms, wheat and greenhouses, scarce groundwater and hot summers.",
+   "descAr": "مزرعة في واحة صحراوية: نخيل وقمح وبيوت محمية، ومياه جوفية شحيحة وصيف حار"},
+  {"id": "nile_delta", "nameEn": "Nile Delta", "nameAr": "دلتا النيل", "countryEn": "Egypt", "countryAr": "مصر", "dlc": true, "comingSoon": false, "storeId": "",
+   "currency": "EGP", "currencyAr": "جنيه", "heat": 0.6, "rain": 0.04, "market": 0.9,
+   "descEn": "Green fields along the Nile canals: rich soil, river water, cotton, rice, onions and busy village markets.",
+   "descAr": "حقول خضراء على ترع النيل: أرض خصبة وماء النهر، قطن وأرز وبصل وأسواق قرى مزدحمة",
+   "ownContent": true, "startSeeds": ["berseem", "berseem"], "marketName": "Village souq", "shopName": "Agricultural cooperative",
+   "canalEvery": 4, "canalEvent": "canal_turn",
+   "look": {"ground": [0.36, 0.47, 0.24], "dune": [0.45, 0.5, 0.3], "track": [0.45, 0.38, 0.27], "fog": [0.74, 0.8, 0.82],
+    "dunes": false, "canals": true, "pigeonTower": true, "trees": "eucalyptus", "treeCount": 30,
+    "dust": 0.2, "wind": 0.6, "fogBase": 0.0045, "humidity": 0.7, "saturation": 18, "temperature": -2}},
+  {"id": "jordan_valley", "nameEn": "Jordan Valley", "nameAr": "غور الأردن", "countryEn": "Jordan", "countryAr": "الأردن", "dlc": true, "comingSoon": true,
+   "currency": "JOD", "currencyAr": "دينار", "heat": 0.9, "rain": 0.02, "market": 1.05,
+   "descEn": "Below sea level: winter vegetables, bananas and dates.", "descAr": "تحت مستوى البحر: خضار شتوية وموز وتمر"},
+  {"id": "souss", "nameEn": "Souss Valley", "nameAr": "سهل سوس", "countryEn": "Morocco", "countryAr": "المغرب", "dlc": true, "comingSoon": true,
+   "currency": "MAD", "currencyAr": "درهم", "heat": 0.8, "rain": 0.05, "market": 1.0,
+   "descEn": "Argan trees, citrus groves and greenhouse tomatoes between the Atlas and the ocean.", "descAr": "شجر الأركان وبساتين الحمضيات وطماطم البيوت المحمية بين الأطلس والمحيط"},
+  {"id": "mesopotamia", "nameEn": "Mesopotamia", "nameAr": "بلاد الرافدين", "countryEn": "Iraq", "countryAr": "العراق", "dlc": true, "comingSoon": true,
+   "currency": "IQD", "currencyAr": "دينار", "heat": 1.1, "rain": 0.02, "market": 1.0,
+   "descEn": "Between the Tigris and Euphrates: dates, wheat, barley and water buffalo.", "descAr": "بين دجلة والفرات: تمر وقمح وشعير وجاموس"},
+  {"id": "batinah", "nameEn": "Al Batinah Coast", "nameAr": "ساحل الباطنة", "countryEn": "Oman", "countryAr": "عُمان", "dlc": true, "comingSoon": true,
+   "currency": "OMR", "currencyAr": "ريال عماني", "heat": 1.0, "rain": 0.01, "market": 1.1,
+   "descEn": "Falaj irrigation, limes, mangoes and fishing along the coast.", "descAr": "ري بالأفلاج وليمون ومانجو وصيد على الساحل"}
+ ]
+}

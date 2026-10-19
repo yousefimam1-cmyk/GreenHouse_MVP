@@ -1,0 +1,1206 @@
+<title>Mazraa Preview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;700;800&family=Readex+Pro:wght@400;500;600&display=swap">
+<style>
+/* Layout: full-bleed 3D farm, HUD cards pinned to the corners like a dashboard in a tractor cab. Single dark look on purpose (game HUD over a lit scene). */
+:root{
+  --panel: rgba(16, 30, 22, .84);
+  --panel-solid: #12201a;
+  --line: rgba(240, 229, 204, .16);
+  --ink: #f2e9d4;
+  --muted: #b8b19c;
+  --wheat: #e8a83a;
+  --leaf: #86c66d;
+  --nile: #4fb3c8;
+  --warn: #e46a4b;
+  --bg: #0d1712;
+  --display: "Baloo Bhaijaan 2", "Readex Pro", system-ui, sans-serif;
+  --body: "Readex Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;-webkit-user-select:none;user-select:none;touch-action:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#hud{position:fixed;inset:0;pointer-events:none;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#hud > *{pointer-events:auto}
+#top{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}
+#top > *{pointer-events:auto}
+#status{padding:10px 14px;min-width:0;flex:0 1 320px;display:grid;gap:4px}
+.money{font-family:var(--display);font-weight:800;font-size:28px;line-height:1;color:var(--wheat);font-variant-numeric:tabular-nums}
+.money small{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.06em}
+.clock{font-size:12.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+.store{font-size:12px;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+.store b{color:var(--ink);font-weight:500}
+#tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.tb{font:600 12px var(--body);color:var(--ink);background:rgba(240,229,204,.08);border:1px solid var(--line);border-radius:8px;padding:5px 9px;cursor:pointer}
+.tb:hover{background:rgba(240,229,204,.16)}
+.tb:focus-visible,.btn:focus-visible{outline:2px solid var(--wheat);outline-offset:2px}
+.tb kbd{font:600 10px var(--body);color:var(--wheat);margin-inline-start:4px}
+#mission{padding:10px 14px;flex:0 1 300px;min-width:0;display:grid;gap:5px}
+.eyebrow{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--wheat);font-weight:600}
+[dir=rtl] .eyebrow{letter-spacing:0}
+.mt{font-family:var(--display);font-weight:700;font-size:18px;line-height:1.15;text-wrap:balance}
+.md{font-size:12.5px;color:var(--muted);line-height:1.45}
+.bar{height:6px;border-radius:3px;background:rgba(240,229,204,.12);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--leaf);border-radius:3px;transition:width .3s}
+.mfoot{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+#vpanel{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));inset-inline-start:max(16px,env(safe-area-inset-left,0px));padding:10px 14px;display:grid;gap:4px;min-width:190px;font-variant-numeric:tabular-nums}
+#vpanel .vt{font-family:var(--display);font-weight:700;font-size:16px}
+#vpanel .row{display:flex;justify-content:space-between;gap:14px;font-size:12.5px;color:var(--muted)}
+#vpanel .row b{color:var(--ink);font-weight:500}
+#prompt{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(120px + env(safe-area-inset-bottom,0px));padding:9px 16px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-weight:500;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}
+#prompt kbd{display:inline-block;min-width:22px;text-align:center;font:700 12px var(--body);background:var(--wheat);color:#1d1406;border-radius:5px;padding:1px 6px;margin-inline-end:8px}
+#toasts{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:grid;gap:6px;justify-items:center;pointer-events:none;width:min(420px,calc(100vw - 32px))}
+.toast{background:var(--panel-solid);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;text-align:center;animation:tin .25s ease-out}
+.toast.good{border-color:rgba(134,198,109,.6)}.toast.gold{border-color:rgba(232,168,58,.7);color:var(--wheat)}.toast.bad{border-color:rgba(228,106,75,.7)}
+@keyframes tin{from{transform:translateY(-6px);opacity:.4}to{transform:none;opacity:1}}
+#marker{position:absolute;pointer-events:none;transform:translate(-50%,-100%);font:700 12px var(--body);color:#1d1406;background:var(--wheat);border-radius:999px;padding:3px 9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+#marker::after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-bottom:0;border-top-color:var(--wheat)}
+/* touch */
+#touch{display:none}
+@media (pointer:coarse){#touch{display:block}#prompt{bottom:calc(170px + env(safe-area-inset-bottom,0px))}#vpanel{bottom:calc(170px + env(safe-area-inset-bottom,0px))}.kbonly{display:none}}
+#joy{position:absolute;left:max(24px,env(safe-area-inset-left,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));width:124px;height:124px;border-radius:50%;background:rgba(16,30,22,.45);border:1px solid var(--line);touch-action:none}
+#knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(240,229,204,.35)}
+#tbtns{position:absolute;right:max(20px,env(safe-area-inset-right,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(2,auto);gap:10px;align-items:end}
+.tbtn{width:58px;height:58px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:700 18px var(--display);touch-action:none}
+.tbtn.big{width:76px;height:76px;background:var(--wheat);color:#1d1406;font-size:24px;grid-row:span 2}
+/* modal */
+#modal{position:fixed;inset:0;display:grid;place-items:center;background:rgba(5,10,7,.45);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-bottom,0px));z-index:5}
+.sheet{background:var(--panel-solid);border:1px solid var(--line);border-radius:14px;width:min(560px,100%);max-height:100%;overflow:auto;padding:18px 20px;position:relative}
+.sheet h2{font-family:var(--display);font-weight:800;font-size:24px;margin:0 0 2px;text-wrap:balance;color:var(--ink)}
+.sheet h3{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--wheat);margin:16px 0 6px;font-weight:600}
+[dir=rtl] .sheet h3{letter-spacing:0}
+.sheet p{color:var(--muted);line-height:1.55;margin:4px 0;max-width:62ch}
+.xbtn{position:absolute;top:10px;inset-inline-end:10px;width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:18px;cursor:pointer}
+.list{display:grid;gap:6px}
+.item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(240,229,204,.03)}
+.item .k{font:700 11px var(--body);color:var(--wheat);min-width:16px;text-align:center}
+.item .n{min-width:0}
+.item .n div:first-child{font-weight:500}
+.item .n div+div{font-size:12px;color:var(--muted)}
+.btn{font:600 13px var(--body);border-radius:8px;border:0;padding:7px 12px;background:var(--wheat);color:#1d1406;cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+table.t{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+table.t td,table.t th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:start}
+table.t th{font-size:11px;color:var(--muted);font-weight:500}
+table.t td.num{text-align:end}
+.pill{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px}
+.pill.ok{background:rgba(134,198,109,.18);color:var(--leaf)}.pill.low{background:rgba(228,106,75,.18);color:#f08a6e}.pill.gold{background:rgba(232,168,58,.18);color:var(--wheat)}
+.mbar{height:6px;border-radius:3px;background:rgba(240,229,204,.12);position:relative;min-width:70px}
+.mbar i{position:absolute;inset-block:0;inset-inline-start:0;border-radius:3px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;color:var(--muted)}
+.keys kbd{font:600 12px var(--body);color:var(--ink);background:rgba(240,229,204,.1);border:1px solid var(--line);border-radius:5px;padding:1px 6px;justify-self:start}
+.row2{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+#intro .brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+#intro .ar{font-family:var(--display);font-size:34px;font-weight:800;color:var(--wheat)}
+#intro .en{font-family:var(--display);font-size:26px;font-weight:700}
+.load{font-size:12px;color:var(--muted)}
+@media (max-width:520px){
+  .money{font-size:22px}.mt{font-size:15px}.md{display:none}#status{padding:8px 10px;flex:1 1 0}#mission{padding:8px 10px;flex:1 1 0}#toasts{top:42%}.tb{padding:4px 7px}
+  .store{font-size:11px}
+}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}.bar i{transition:none}}
+</style>
+
+<canvas id="c" tabindex="0" aria-label="Farm scene"></canvas>
+<div id="hud">
+  <div id="top">
+  <div id="status" class="card">
+    <div class="money"><span id="money">500</span> <small id="cur">EGP</small></div>
+    <div id="clock" class="clock"></div>
+    <div id="store" class="store"></div>
+    <div id="tools">
+      <button class="tb" id="bLang" type="button">عربي<kbd class="kbonly">L</kbd></button>
+      <button class="tb" id="bMarket" type="button"><span data-t="Market">Market</span><kbd class="kbonly">M</kbd></button>
+      <button class="tb" id="bHelp" type="button"><span data-t="Help">Help</span><kbd class="kbonly">H</kbd></button>
+    </div>
+  </div>
+  <div id="mission" class="card"></div>
+  </div>
+  <div id="vpanel" class="card" hidden></div>
+  <div id="prompt" hidden></div>
+  <div id="marker" hidden></div>
+  <div id="toasts" aria-live="polite"></div>
+  <div id="touch">
+    <div id="joy"><div id="knob"></div></div>
+    <div id="tbtns">
+      <button class="tbtn" id="tQ" type="button">Q</button>
+      <button class="tbtn big" id="tE" type="button">E</button>
+      <button class="tbtn" id="tR" type="button">R</button>
+    </div>
+  </div>
+</div>
+<div id="modal" hidden><div class="sheet" role="dialog" aria-modal="true"><button class="xbtn" id="mx" type="button" aria-label="Close">×</button><div id="mbody"></div></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+<script>
+(function(){
+'use strict';
+const DATA = __DATA__;
+const ECO = DATA.economy, CP = DATA.crops, MISSIONS = DATA.missions.missions;
+const GOODS = {}; ECO.goods.forEach(g => GOODS[g.id] = g);
+const ANIM = {}; ECO.animals.forEach(a => ANIM[a.id] = a);
+const FIELD = {}; ECO.fieldCrops.forEach(c => FIELD[c.id] = c);
+const CROP = {}; CP.crops.forEach(c => CROP[c.id] = c);
+// Same thresholds as ConfigurationData.cs (active*Range)
+const TH = { water: 10, nutrients: 15, energy: 12, climate: 9, health: 10, yieldProjection: 5 };
+const STATS = Object.keys(TH);
+const DAY = 360, SEASON_DAYS = 5, SEASONS = ['autumn', 'winter', 'spring', 'summer'];
+const GROW = 45, KG_PER_YIELD = 12, FUEL_PRICE = 3, TOW_PRICE = 150;
+const UPG = { capacity: { price: 1500, en: 'Truck bed upgrade (+200 kg)', ar: 'توسيع صندوق النقل (+200 كجم)' }, growth: { price: 2000, en: 'Growth lamps (+50% greenhouse speed)', ar: 'إضاءة نمو (+50% سرعة الصوبة)' } };
+const IMPL = ['plow', 'seeder', 'harvester'];
+
+// ---------- language ----------
+const AR = {
+  'Market':'السوق','Help':'مساعدة','EGP':'ج.م','Day':'اليوم','Storage':'المخزن','empty':'فارغ','Mission':'المهمة','Reward':'المكافأة',
+  'Free play':'لعب حر','All 25 missions done. Keep growing the farm.':'خلصت الـ25 مهمة. كمّل تكبير المزرعة.',
+  'autumn':'خريف','winter':'شتاء','spring':'ربيع','summer':'صيف','Clear':'صافي','Rain':'مطر',
+  'Start the well':'شغّل البئر','Well running':'البئر شغال','Control station':'محطة التحكم','Greenhouse':'الصوبة',
+  'Harvest':'احصد','Growing':'ينمو','Needs':'يحتاج','Ready':'جاهز','Healthy':'سليم','Low':'ناقص','OK':'تمام',
+  'Optimize':'حسّن','Start the well first':'شغّل البئر الأول','Module':'الوحدة','Value':'القيمة','Beds':'الأحواض',
+  'Plow':'احرث','Plant':'ازرع','Water':'اسقِ','No seeds. Buy some at the Farm Shop.':'مفيش بذور. اشتري من محل المزرعة.',
+  'Choose seeds':'اختار البذور','Field plot':'قطعة أرض','ripe':'ناضج','off-season':'خارج الموسم',
+  'Farm Shop':'محل المزرعة','Seeds':'بذور','Animals':'حيوانات','Upgrades':'تطويرات','Supplies':'مستلزمات','Buy':'اشتري','Owned':'عندك',
+  'Not enough money':'الفلوس مش كفاية','Pen is full for this animal':'الحظيرة مليانة للنوع ده','Bought':'اشتريت',
+  'Get in':'اركب','Truck':'عربية النقل','Tractor':'الجرار','Exit':'انزل','Speed':'السرعة','Fuel':'البنزين','Cargo':'الحمولة','Implement':'المعدّة',
+  'plow':'محراث','seeder':'بذارة','harvester':'حصادة','Load cargo':'حمّل البضاعة','Sell cargo':'بيع الحمولة','Refuel':'فوّل',
+  'Loading bay':'منطقة التحميل','Market pad':'منصة السوق','Nothing in storage to load':'المخزن فاضي','Truck is full':'العربية مليانة',
+  'Loaded':'اتحمّل','Sold for':'اتباع بـ','Cargo is empty':'الحمولة فاضية','Out of fuel':'البنزين خلص','Tow to the farm':'اسحب للمزرعة',
+  'Contracts':'العقود','Today\'s prices':'أسعار النهارده','Good':'الصنف','Price':'السعر','In storage':'في المخزن','In truck':'في العربية',
+  'until day':'لحد يوم','left':'باقي','Contract complete':'العقد اتنفّذ','Water trough':'حوض المياه','Refill water':'املأ المياه',
+  'Feed trough':'المعلف','feed units':'وحدة علف','Buy feed at the Farm Shop':'اشتري علف من المحل','Barn door':'باب الحظيرة','Clean the pen':'نضّف الحظيرة',
+  'Product crate':'صندوق المنتجات','Collect':'اجمع','Nothing to collect yet':'لسه مفيش حاجة','Collected':'اتجمع',
+  'Mission complete':'المهمة خلصت','New season':'موسم جديد','A module broke in':'وحدة عطلت في','It is raining. Fields are watered.':'بتمطر. الحقول اتسقت.',
+  'A new animal was born':'اتولد حيوان جديد','Language':'اللغة','New game':'لعبة جديدة','Resume':'كمّل','Start farming':'ابدأ الزراعة',
+  'Controls':'التحكم','Move':'تحرك','Run':'اجري','Interact / get in or out':'تفاعل / اركب أو انزل','Pad action: load, sell, refuel':'إجراء المنصة: تحميل، بيع، تموين',
+  'Switch tractor implement':'غيّر معدّة الجرار','Market prices and contracts':'أسعار السوق والعقود','Look around':'لف الكاميرا','Drag':'اسحب',
+  'Brake':'فرامل','Tow (when out of fuel)':'سحب (لما البنزين يخلص)','Reset all progress?':'تمسح كل التقدم؟','Yes, start over':'أيوه، من الأول','Cancel':'إلغاء',
+  'Loading models':'تحميل النماذج','This is a browser preview of the Unity game. Same crops, prices, animals and 25 missions, simplified graphics.':'دي نسخة متصفح مبسطة من لعبة يونتي. نفس المحاصيل والأسعار والحيوانات والـ25 مهمة، برسومات أبسط.',
+  'Your grandfather left you a farm in the Delta: two greenhouses, six field plots, an empty animal pen and an old truck. Get the water running, bring the greenhouses back to health, plant the fields and sell at the market in town.':'جدك ساب لك مزرعة في الدلتا: صوبتين، ست قطع أرض، حظيرة فاضية وعربية نقل قديمة. شغّل المياه، رجّع الصوب سليمة، ازرع الأرض وبيع في سوق البلد.',
+  'Market is south, down the dirt road.':'السوق جنوب، آخر الطريق الترابي.','Saved in this browser.':'اتحفظ في المتصفح ده.',
+  'Greenhouse needs':'الصوبة محتاجة','Sell at the market with the truck':'بيع في السوق بالعربية','Animals in pen':'الحيوانات في الحظيرة',
+  'Pen':'الحظيرة','Cleanliness':'النظافة','Feed':'العلف','No animals yet':'لسه مفيش حيوانات','m':'م','Season':'الموسم','to':'إلى',
+  'Free':'ببلاش','Max':'الحد الأقصى','bought':'اتشترى','Wet':'مبلول','Dry':'ناشف','kg':'كجم','Plowed':'محروث','Grass':'نجيلة',
+  'Drive over plots with the hitch. Q switches the implement.':'اعدّي على قطع الأرض بالمعدّة. Q تغيّر المعدّة.',
+  'Park on the green bay and press R to load.':'اركن على المنصة الخضرا ودوس R للتحميل.','Park on the gold market pad and press R to sell.':'اركن على منصة السوق الدهبي ودوس R للبيع.',
+  'Towed to the loading bay':'اتسحبت لمنطقة التحميل','Well started. Irrigation can now be optimized.':'البئر اشتغل. تقدر تحسّن الري دلوقتي.'
+};
+let lang = 'en';
+const T = s => (lang === 'ar' && AR[s]) || s;
+const N = (o, k = 'name') => lang === 'ar' ? (o[k + 'Ar'] || o[k + 'En']) : o[k + 'En'];
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const unit = id => lang === 'ar' ? GOODS[id].unitAr : GOODS[id].unitEn;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+
+// ---------- state ----------
+function randMods() { const m = {}; STATS.forEach(s => m[s] = Math.round(rnd(0, TH[s] * 0.5))); return m; }
+function newState() {
+  const gh = [{ mods: randMods(), beds: [] }, { mods: randMods(), beds: [] }];
+  CP.beds.forEach(b => {
+    const i = b.key.indexOf('GreenHouse-1') === 0 ? 1 : 0;
+    gh[i].beds.push({ crop: b.crop, own: { water: b.water, nutrients: b.nutrients, energy: b.energy, climate: b.climate, health: b.health, yieldProjection: b.yieldProjection }, g: 0 });
+  });
+  return {
+    v: 1, money: 500, day: 1, time: DAY * 0.3, goods: {}, seeds: { wheat: 2 }, feed: 0, animals: [], up: { capacity: 0, growth: 0 }, well: false, gh,
+    plots: Array.from({ length: 6 }, () => ({ s: 'empty', crop: null, g: 0, w: 0 })),
+    pen: { water: 0.6, clean: 0.8, crate: {}, breed: {}, timers: {} },
+    veh: { truck: { x: -2, z: -25, r: Math.PI, fuel: 60, cargo: {} }, tractor: { x: 7, z: -8, r: Math.PI / 2, fuel: 40, impl: 0 } },
+    player: { x: 0, z: 2 }, mi: 0, mp: 0, contracts: [], prices: {}, priceDay: 0, sold: {}, rain: 0, lang: 'en', earned: 0
+  };
+}
+const SAVE_KEY = 'mazraa.preview.v1';
+let S;
+try { const raw = localStorage.getItem(SAVE_KEY); if (raw) { const o = JSON.parse(raw); if (o && o.v === 1) S = Object.assign(newState(), o); } } catch (e) { S = null; }
+if (!S) S = newState();
+lang = S.lang || 'en';
+function save() { try { S.lang = lang; localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+
+const seasonIdx = () => Math.floor((S.day - 1) / SEASON_DAYS) % 4;
+const season = () => SEASONS[seasonIdx()];
+const capacity = () => 200 + 200 * S.up.capacity;
+const cargoKg = () => Object.keys(S.veh.truck.cargo).reduce((a, id) => a + S.veh.truck.cargo[id] * GOODS[id].weight, 0);
+const growMul = () => S.up.growth ? 1.5 : 1;
+const eff = (bed, gh, s) => bed.own[s] >= TH[s] ? bed.own[s] : bed.own[s] + gh.mods[s];
+const bedNeeds = (bed, gh) => STATS.filter(s => eff(bed, gh, s) < TH[s]);
+const bedHealthy = (bed, gh) => bedNeeds(bed, gh).length === 0;
+const ghHealthy = gh => gh.beds.every(b => bedHealthy(b, gh));
+const MODNAME = { water: ['Irrigation', 'الري'], nutrients: ['Nutrients', 'المغذيات'], energy: ['Energy', 'الطاقة'], climate: ['Climate control', 'التحكم في المناخ'], health: ['Plant health', 'صحة النبات'], yieldProjection: ['Yield', 'الإنتاجية'] };
+const modName = s => MODNAME[s][lang === 'ar' ? 1 : 0];
+
+// ---------- markets ----------
+function rollPrices() {
+  S.prices = {};
+  ECO.goods.forEach(g => {
+    let f = rnd(0.85, 1.2); const fc = FIELD[g.id];
+    if (fc) f *= fc.seasons.indexOf(season()) >= 0 ? 0.88 : 1.18;
+    S.prices[g.id] = +(g.price * f).toFixed(2);
+  });
+  S.sold = {}; S.priceDay = S.day;
+  S.contracts = S.contracts.filter(c => c.until >= S.day && c.left > 0);
+  while (S.contracts.length < 2) {
+    const g = pick(['crops', 'wheat', 'potato', 'onion', 'watermelon', 'milk', 'eggs', 'wool']);
+    const kg = g === 'eggs' ? 200 : g === 'wool' ? 20 : g === 'milk' ? 60 : Math.round(rnd(5, 12)) * 10;
+    S.contracts.push({ g, kg, left: kg, mult: +rnd(1.3, 1.7).toFixed(2), until: S.day + 3 });
+  }
+}
+const price = id => (S.prices[id] || GOODS[id].price) * Math.max(0.6, 1 - (S.sold[id] || 0) / 1500);
+if (S.priceDay !== S.day) rollPrices();
+
+// ---------- missions ----------
+function emit(type, n) { const m = MISSIONS[S.mi]; if (m && m.type === type) S.mp += (n == null ? 1 : n); }
+function checkMission() {
+  const m = MISSIONS[S.mi]; if (!m) return;
+  switch (m.type) {
+    case 'healthyGreenhouse': S.mp = S.gh.some(ghHealthy) ? 1 : 0; break;
+    case 'allHealthy': S.mp = S.gh.every(ghHealthy) ? 1 : 0; break;
+    case 'haveMoney': S.mp = S.money; break;
+    case 'reachDay': S.mp = S.day; break;
+    case 'animalTypes': S.mp = new Set(S.animals.map(a => a.t)).size; break;
+  }
+  if (S.mp >= m.target) {
+    S.mi++; S.mp = 0; S.money += m.reward;
+    toast(T('Mission complete') + ': ' + N(m, 'title') + '  +' + fmt(m.reward) + ' ' + T('EGP'), 'gold');
+    hudMission(); save();
+  }
+}
+
+// ---------- three setup ----------
+const canvas = document.getElementById('c');
+const coarse = matchMedia('(pointer:coarse)').matches;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, coarse ? 1.5 : 1.75));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500);
+scene.fog = new THREE.Fog(0x9fd0ea, 70, 210);
+const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x6b5a3a, 0.55); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff1d6, 1.4); sun.castShadow = true;
+const SM = coarse ? 1024 : 2048; sun.shadow.mapSize.set(SM, SM);
+Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 200 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
+scene.add(sun); scene.add(sun.target);
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+const M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.9, metalness: 0 }, o || {}));
+const OB = []; // collision boxes
+function block(x, z, w, d, h, mat, y0) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, (y0 || 0) + h / 2, z);
+  m.castShadow = m.receiveShadow = true; scene.add(m); return m;
+}
+function solid(x, z, w, d) { OB.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2 }); }
+
+// ground with gentle colour variation
+(function ground() {
+  const g = new THREE.PlaneGeometry(300, 300, 100, 100); g.rotateX(-Math.PI / 2);
+  const col = []; const p = g.attributes.position; const c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i); const n = Math.sin(x * 0.11) * Math.cos(z * 0.13) * 0.5 + Math.sin(x * 0.031 + z * 0.047) * 0.5;
+    c.setRGB(0.36 + n * 0.05, 0.52 + n * 0.06, 0.24 + n * 0.03); col.push(c.r, c.g, c.b);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })); m.position.z = -25; m.receiveShadow = true; scene.add(m);
+})();
+const dirt = M(0x9c7a52), dirtDark = M(0x6b4a2f);
+function strip(x0, z0, x1, z1, w, mat, y) {
+  const dx = x1 - x0, dz = z1 - z0, L = Math.hypot(dx, dz);
+  const g = new THREE.PlaneGeometry(w, L); g.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(g, mat); m.rotation.y = Math.atan2(dx, dz);
+  m.position.set((x0 + x1) / 2, y || 0.02, (z0 + z1) / 2); m.receiveShadow = true; scene.add(m); return m;
+}
+// roads
+strip(-2, -36, 0, -88, 6, dirt); strip(-2, -24, -2, 4, 4, dirt, 0.021); strip(-2, 2, 22, 6, 3.5, dirt, 0.022); strip(-2, 2, -14, -11, 3, dirt, 0.023);
+strip(-2, 2, -14, 8, 3, dirt, 0.024); strip(4, -8, 30, -8, 3.5, dirt, 0.025);
+// irrigation canal (the Nile branch that feeds the farm)
+(function canal() {
+  const w = new THREE.Mesh(new THREE.PlaneGeometry(7, 190), new THREE.MeshStandardMaterial({ color: 0x3f8fa3, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.88 }));
+  w.rotation.x = -Math.PI / 2; w.position.set(-49, 0.05, -25); scene.add(w); window.__water = w;
+  strip(-45.2, 70, -45.2, -120, 1.2, dirt, 0.03); strip(-52.8, 70, -52.8, -120, 1.2, dirt, 0.03);
+})();
+
+// ---------- model loading ----------
+const loader = new THREE.GLTFLoader();
+const cache = {}; let loading = 0, loaded = 0;
+const mixers = [];
+function gl(path) {
+  if (!cache[path]) { loading++; cache[path] = new Promise((res, rej) => loader.load(path, g => { loaded++; updLoad(); res(g); }, undefined, e => { loaded++; updLoad(); rej(e); })); }
+  return cache[path];
+}
+function fitInto(o, opt) {
+  const box = new THREE.Box3().setFromObject(o); const sz = box.getSize(new THREE.Vector3());
+  let s = 1;
+  if (opt.h) s = opt.h / Math.max(sz.y, 1e-4); else if (opt.l) s = opt.l / Math.max(sz.x, sz.z, 1e-4);
+  o.scale.multiplyScalar(s);
+  const b2 = new THREE.Box3().setFromObject(o); const c = b2.getCenter(new THREE.Vector3());
+  o.position.x -= c.x; o.position.z -= c.z; o.position.y -= b2.min.y;
+}
+function model(path, opt) {
+  opt = opt || {};
+  const g = new THREE.Group();
+  let fb = null; if (opt.fallback) { fb = opt.fallback(); g.add(fb); }
+  gl(path).then(gltf => {
+    const o = opt.skinned ? THREE.SkeletonUtils.clone(gltf.scene) : gltf.scene.clone(true);
+    o.traverse(m => { if (m.isMesh) { m.castShadow = opt.shadow !== false; m.receiveShadow = true; if (m.isSkinnedMesh) m.frustumCulled = false; } });
+    const pivot = new THREE.Group(); pivot.add(o); fitInto(o, opt); pivot.rotation.y = opt.rotY || 0;
+    if (fb) g.remove(fb);
+    g.add(pivot); g.userData.inner = o;
+    if (opt.skinned && gltf.animations.length) {
+      const mixer = new THREE.AnimationMixer(o); mixers.push(mixer);
+      g.userData.mixer = mixer; g.userData.clips = gltf.animations; g.userData.cur = null;
+      play(g, g.userData.want || opt.anim || 'idle');
+    }
+    if (opt.onLoad) opt.onLoad(o, g);
+  }).catch(() => {});
+  return g;
+}
+function play(g, name) {
+  g.userData.want = name;
+  const ud = g.userData; if (!ud.mixer || ud.curName === name) return;
+  const n = name.toLowerCase();
+  const clip = ud.clips.find(c => c.name.toLowerCase() === n) || ud.clips.find(c => c.name.toLowerCase().indexOf(n) >= 0);
+  if (!clip) return;
+  const a = ud.mixer.clipAction(clip); a.reset().fadeIn(0.2).play();
+  if (ud.cur && ud.cur !== a) ud.cur.fadeOut(0.2);
+  ud.cur = a; ud.curName = name;
+}
+const MP = 'models/';
+const CAR = MP + 'car/', CH = MP + 'chars/', NA = MP + 'nature/', AN = MP + 'animals/';
+
+// ---------- scenery ----------
+const seeded = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+const keepOut = [[-32, -20, 6, 20], [8, -30, 40, 0], [12, 8, 32, 32], [-16, -40, 6, -18], [-12, -110, 12, -86], [-8, -86, 8, -36], [-12, -8, 16, 32], [-46, -120, -40, 70]];
+function freeSpot(x, z) { return !keepOut.some(r => x > r[0] - 3 && x < r[2] + 3 && z > r[1] - 3 && z < r[3] + 3); }
+const treeKinds = ['tree_default.json', 'tree_oak.json'];
+for (let i = 0; i < 70; i++) {
+  const x = -56 + seeded() * 114, z = -114 + seeded() * 172;
+  if (!freeSpot(x, z)) continue;
+  const t = model(NA + treeKinds[i % 2], { h: 5 + seeded() * 3, fallback: () => new THREE.Mesh(new THREE.ConeGeometry(1.6, 5, 6), M(0x3e7a3a)) });
+  t.position.set(x, 0, z); t.rotation.y = seeded() * 6; scene.add(t); solid(x, z, 1, 1);
+}
+for (let z = -110; z < 66; z += 9) {
+  const t = model(NA + 'tree_palm.json', { h: 7 + seeded() * 2.5, fallback: () => new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 7), M(0x8a6a44)) });
+  t.position.set(-41 + seeded() * 1.5, 0, z + seeded() * 3); t.rotation.y = seeded() * 6; scene.add(t);
+}
+
+// Farmhouse with a dovecote tower (burg hamam), the Delta's signature farm building
+(function house() {
+  const mud = M(0xd8b98a), trim = M(0xb88f5c), blue = M(0x2f6f8f);
+  block(-4, 26, 9, 7, 3.6, mud); solid(-4, 26, 9, 7);
+  block(-4, 26, 9.4, 7.4, 0.35, trim, 3.6);
+  block(-4, 22.45, 1.4, 0.1, 2.2, blue);
+  for (const x of [-7, -1]) block(x, 22.45, 1.1, 0.1, 1.0, blue, 1.4);
+  const tw = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2, 6, 14), mud); tw.position.set(4, 3, 27); tw.castShadow = true; scene.add(tw);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(1.7, 2.6, 14), trim); cap.position.set(4, 7.3, 27); cap.castShadow = true; scene.add(cap);
+  for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; const h = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.3, 6), M(0x3a2a1a)); h.rotation.z = Math.PI / 2; h.rotation.y = -a; h.position.set(4 + Math.cos(a) * 1.75, 4.8 + (i % 2) * 0.5, 27 + Math.sin(a) * 1.75); scene.add(h); }
+  solid(4, 27, 4, 4);
+})();
+
+// ---------- greenhouses ----------
+const GH = [{ x: -22, z: -12 }, { x: -22, z: 10 }];
+const CROPCOL = { tomato: 0xd93a2b, cucumber: 0x3f8f3a, pepper: 0xe8b923, strawberry: 0xe0314b, melon: 0xd9c25a, eggplant: 0x5b2a6e, beans: 0x6aa84f, lettuce: 0x9fd36b };
+const INTER = [];
+const bedVis = [];
+const glass = new THREE.MeshStandardMaterial({ color: 0xdff3ff, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false });
+const frameMat = M(0xe8e8e2, { roughness: 0.5, metalness: 0.3 });
+GH.forEach((g, gi) => {
+  const L = 14, W = 9, H = 3.2;
+  // glass walls (east wall has a door gap)
+  const wall = (x, z, w, d) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, H, d), glass); m.position.set(x, H / 2, z); scene.add(m); solid(x, z, w, d); };
+  wall(g.x, g.z - W / 2, L, 0.1); wall(g.x, g.z + W / 2, L, 0.1); wall(g.x - L / 2, g.z, 0.1, W);
+  wall(g.x + L / 2, g.z - 3, 0.1, 3); wall(g.x + L / 2, g.z + 3, 0.1, 3);
+  // arched roof
+  const roof = new THREE.Mesh(new THREE.CylinderGeometry(W / 2, W / 2, L, 24, 1, true, 0, Math.PI), glass); roof.rotation.set(0, 0, Math.PI / 2); roof.scale.set(0.45, 1, 1); roof.position.set(g.x, H, g.z); scene.add(roof);
+  for (let i = -3; i <= 3; i++) { // ribs
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(W / 2, 0.05, 6, 20, Math.PI), frameMat); rib.position.set(g.x + i * L / 6, H, g.z); rib.rotation.y = Math.PI / 2; rib.scale.set(1, 0.45, 1); rib.castShadow = true; scene.add(rib);
+    for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, 0.08), frameMat); p.position.set(g.x + i * L / 6, H / 2, g.z + s * W / 2); scene.add(p); }
+  }
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(L, W), M(0x8f7656)); floor.rotation.x = -Math.PI / 2; floor.position.set(g.x, 0.03, g.z); floor.receiveShadow = true; scene.add(floor);
+  // beds 2x2
+  const st = S.gh[gi];
+  st.beds.forEach((bed, bi) => {
+    const bx = g.x + (bi % 2 === 0 ? -3.3 : 2.1), bz = g.z + (bi < 2 ? -2.6 : 2.6), bl = 4.8, bw = 1.7;
+    block(bx, bz, bl, bw, 0.45, M(0x7a5a3a)); const soil = block(bx, bz, bl - 0.2, bw - 0.2, 0.05, dirtDark, 0.45); soil.castShadow = false;
+    solid(bx, bz, bl, bw);
+    const plants = [], fruits = [];
+    const fmat = M(CROPCOL[bed.crop] || 0xc0392b, { roughness: 0.5 });
+    for (let k = 0; k < 6; k++) {
+      const px = bx - bl / 2 + 0.45 + k * (bl - 0.9) / 5;
+      for (const oz of [-0.4, 0.4]) {
+        const p = model(NA + 'crops_leafsStageB.json', { h: 0.7, shadow: false, fallback: () => new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 5), M(0x4f8f3a)) });
+        p.position.set(px, 0.5, bz + oz); p.rotation.y = k * 1.7 + oz; scene.add(p); plants.push(p);
+        const f = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), fmat); f.position.set(px + 0.08, 0.85, bz + oz + 0.1); scene.add(f); fruits.push(f);
+      }
+    }
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff5544 })); lamp.position.set(bx + bl / 2 - 0.1, 0.75, bz); scene.add(lamp);
+    bedVis.push({ gi, bi, plants, fruits, lamp });
+    INTER.push({
+      dist: (x, z) => Math.hypot(Math.max(Math.abs(x - bx) - bl / 2, 0), Math.max(Math.abs(z - bz) - bw / 2, 0)), r: 1.1,
+      info() {
+        const b = S.gh[gi].beds[bi], gs = S.gh[gi], nm = N(CROP[b.crop] || { nameEn: b.crop, nameAr: b.crop });
+        if (b.g >= 1) return { text: T('Harvest') + ' ' + nm, act: true };
+        const need = bedNeeds(b, gs);
+        if (need.length) return { text: nm + ': ' + T('Needs') + ' ' + need.map(modName).join(', '), act: false };
+        return { text: nm + ': ' + T('Growing') + ' ' + Math.floor(b.g * 100) + '%', act: false };
+      },
+      act() {
+        const b = S.gh[gi].beds[bi]; if (b.g < 1) return;
+        const y = eff(b, S.gh[gi], 'yieldProjection');
+        const kg = Math.round(Math.max(0, y) * KG_PER_YIELD * ((CROP[b.crop] || {}).yieldFactor || 1));
+        b.g = 0; S.goods.crops = (S.goods.crops || 0) + kg; emit('harvestKg', kg);
+        toast('+' + kg + ' ' + T('kg') + ' ' + N(GOODS.crops), 'good'); popFx(bx, 1, bz, 0xffd27a);
+      }
+    });
+  });
+  // control station
+  const sx = g.x + L / 2 + 1.6, sz = g.z - 3.4;
+  block(sx, sz, 0.8, 0.6, 1.1, M(0x37474f, { roughness: 0.4, metalness: 0.5 }));
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.45), new THREE.MeshBasicMaterial({ color: 0x4fb3c8 })); scr.position.set(sx + 0.41, 1.25, sz); scr.rotation.y = Math.PI / 2; scr.rotation.x = 0; scene.add(scr);
+  const scrBox = block(sx, sz, 0.15, 0.8, 0.55, M(0x263238), 1.0); scrBox.position.x = sx + 0.3;
+  solid(sx, sz, 0.8, 0.6);
+  g.station = { x: sx, z: sz }; g.screen = scr;
+  INTER.push({ x: sx, z: sz, r: 2.0, info: () => ({ text: T('Control station') + ' · ' + T('Greenhouse') + ' ' + (gi + 1), act: true }), act: () => openStation(gi) });
+});
+// well
+const WELL = { x: -13.2, z: -5.6 };
+(function well() {
+  const stone = M(0xa39a8a);
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.2, 0.9, 16, 1, true), stone); ring.material.side = THREE.DoubleSide; ring.position.set(WELL.x, 0.45, WELL.z); ring.castShadow = true; scene.add(ring);
+  const wtr = new THREE.Mesh(new THREE.CircleGeometry(1.05, 16), M(0x2b6f80, { roughness: 0.1 })); wtr.rotation.x = -Math.PI / 2; wtr.position.set(WELL.x, 0.3, WELL.z); scene.add(wtr);
+  for (const s of [-1, 1]) block(WELL.x + s * 1.1, WELL.z, 0.15, 0.15, 2.2, M(0x6b4a2f));
+  const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.07, 6, 16), M(0x5a3d27)); wheel.position.set(WELL.x, 2.0, WELL.z); wheel.rotation.y = Math.PI / 2; wheel.castShadow = true; scene.add(wheel);
+  for (let i = 0; i < 4; i++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 0.05), M(0x5a3d27)); sp.rotation.x = i * Math.PI / 4; wheel.add(sp); sp.rotation.set(0, 0, i * Math.PI / 4); }
+  WELL.wheel = wheel; solid(WELL.x, WELL.z, 2.2, 2.2);
+  // pipe to the greenhouses
+  strip(WELL.x, WELL.z, -15, -12, 0.25, M(0x546e7a), 0.06); strip(WELL.x, WELL.z, -15, 10, 0.25, M(0x546e7a), 0.06);
+  INTER.push({ x: WELL.x, z: WELL.z, r: 2.4, info: () => S.well ? { text: T('Well running'), act: false } : { text: T('Start the well'), act: true },
+    act() { if (S.well) return; S.well = true; emit('startWell'); toast(T('Well started. Irrigation can now be optimized.'), 'good'); popFx(WELL.x, 1, WELL.z, 0x7fd3ff); } });
+})();
+
+// ---------- field plots ----------
+const PLOT = 8, PX = [14, 24, 34], PZ = [-14, -24];
+const furrow = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#9a9a9a'; for (let i = 0; i < 64; i += 8) x.fillRect(0, i, 64, 3); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 6); return t; })();
+const plotVis = [];
+const STAGE = { wheat: ['crops_wheatStageA.json', 'crops_wheatStageB.json', 'crops_wheatStageB.json'], potato: ['crops_leafsStageB.json', 'crops_leafsStageB.json', 'crop_carrot.json'], onion: ['crops_cornStageA.json', 'crops_cornStageB.json', 'crop_turnip.json'], watermelon: ['crops_leafsStageB.json', 'crop_melon.json', 'crop_melon.json'] };
+const STAGE_H = { wheat: [0.4, 0.9, 1.1], potato: [0.3, 0.5, 0.45], onion: [0.3, 0.6, 0.4], watermelon: [0.3, 0.45, 0.6] };
+const plotCenter = i => ({ x: PX[i % 3], z: PZ[Math.floor(i / 3)] });
+for (let i = 0; i < 6; i++) {
+  const c = plotCenter(i);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x6f9e4b, roughness: 1, map: null });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(PLOT, PLOT), mat); m.rotation.x = -Math.PI / 2; m.position.set(c.x, 0.04, c.z); m.receiveShadow = true; scene.add(m);
+  const crops = new THREE.Group(); scene.add(crops);
+  plotVis.push({ mat, crops, key: '' });
+  INTER.push({ dist: (x, z) => Math.max(Math.abs(x - c.x) - PLOT / 2, Math.abs(z - c.z) - PLOT / 2, 0), r: 0.6, info: () => plotInfo(i), act: () => plotAct(i) });
+}
+function plotInfo(i) {
+  const p = S.plots[i];
+  if (p.s === 'empty') return { text: T('Plow') + ' · ' + T('Field plot') + ' ' + (i + 1), act: true };
+  if (p.s === 'plowed') return { text: T('Plant') + ' · ' + T('Field plot') + ' ' + (i + 1), act: true };
+  const fc = FIELD[p.crop];
+  if (p.g >= 1) return { text: T('Harvest') + ' ' + N(fc) + ' (' + fc.yieldKg + ' ' + T('kg') + ')', act: true };
+  if (p.w < 0.6) return { text: T('Water') + ' ' + N(fc) + ' · ' + Math.floor(p.g * 100) + '%', act: true };
+  const off = fc.seasons.indexOf(season()) < 0 ? ' · ' + T('off-season') : '';
+  return { text: N(fc) + ': ' + T('Growing') + ' ' + Math.floor(p.g * 100) + '%' + off, act: false };
+}
+function plotAct(i, viaTractor) {
+  const p = S.plots[i];
+  if (p.s === 'empty') { p.s = 'plowed'; p.g = 0; p.w = 0; const c = plotCenter(i); popFx(c.x, 0.5, c.z, 0x8b5a2b); return; }
+  if (p.s === 'plowed') {
+    const owned = Object.keys(S.seeds).filter(k => S.seeds[k] > 0);
+    if (!owned.length) { toast(T('No seeds. Buy some at the Farm Shop.'), 'bad'); return; }
+    if (owned.length === 1) plant(i, owned[0]); else openSeeds(i, owned);
+    return;
+  }
+  if (p.g >= 1) { harvestPlot(i); return; }
+  if (p.w < 0.6) { p.w = 1; const c = plotCenter(i); popFx(c.x, 0.6, c.z, 0x7fd3ff); }
+}
+function plant(i, crop) {
+  if (!(S.seeds[crop] > 0)) return;
+  S.seeds[crop]--; if (!S.seeds[crop]) delete S.seeds[crop];
+  Object.assign(S.plots[i], { s: 'grow', crop, g: 0, w: 0.7 }); emit('plantField');
+  toast(T('Plant') + ': ' + N(FIELD[crop]), 'good');
+}
+function harvestPlot(i) {
+  const p = S.plots[i]; const fc = FIELD[p.crop]; const kg = fc.yieldKg;
+  S.goods[p.crop] = (S.goods[p.crop] || 0) + kg; emit('harvestField', kg);
+  toast('+' + kg + ' ' + T('kg') + ' ' + N(GOODS[p.crop] || fc), 'good');
+  const c = plotCenter(i); popFx(c.x, 1, c.z, 0xffd27a);
+  Object.assign(p, { s: 'empty', crop: null, g: 0, w: 0 });
+  return kg;
+}
+function syncPlots() {
+  S.plots.forEach((p, i) => {
+    const v = plotVis[i];
+    const wet = p.w > 0.3;
+    if (p.s === 'empty') { v.mat.map = null; v.mat.color.set(0x6f9e4b); }
+    else { v.mat.map = furrow; v.mat.color.set(wet ? 0x5a3c25 : 0x7a5434); }
+    v.mat.needsUpdate = true;
+    const stage = p.s === 'grow' ? (p.g >= 1 ? 2 : p.g >= 0.45 ? 1 : 0) : -1;
+    const key = p.s + ':' + p.crop + ':' + stage;
+    if (key === v.key) return; v.key = key;
+    while (v.crops.children.length) v.crops.remove(v.crops.children[0]);
+    if (stage < 0) return;
+    const c = plotCenter(i); const file = STAGE[p.crop][stage]; const h = STAGE_H[p.crop][stage];
+    for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) {
+      const m = model(NA + file, { h: h, shadow: stage > 0, fallback: () => new THREE.Mesh(new THREE.ConeGeometry(0.2, h, 5), M(stage === 2 ? 0xd8b04a : 0x5a9a3a)) });
+      m.position.set(c.x - 3 + a * 2, 0.04, c.z - 3 + b * 2); m.rotation.y = (a * 4 + b) * 1.3; v.crops.add(m);
+    }
+  });
+}
+
+// ---------- shop stall ----------
+const SHOP = { x: 6, z: 11 };
+(function stall() {
+  block(SHOP.x, SHOP.z + 0.6, 4.2, 1, 1, M(0x8a5a32)); solid(SHOP.x, SHOP.z + 0.6, 4.2, 1);
+  for (const s of [-1, 1]) for (const d of [0, 2]) block(SHOP.x + s * 2, SHOP.z + d, 0.12, 0.12, 2.8, M(0x5a3d27));
+  const aw = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.12, 2.8), M(0xc4462f)); aw.position.set(SHOP.x, 2.85, SHOP.z + 1); aw.rotation.x = 0.12; aw.castShadow = true; scene.add(aw);
+  for (let k = 0; k < 4; k++) { const sack = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.55, 8), M([0xd8c9a0, 0xc7b27a, 0xe0d4b4, 0xb89f6a][k])); sack.position.set(SHOP.x - 1.5 + k, 1.28, SHOP.z + 0.6); sack.castShadow = true; scene.add(sack); }
+  const keeper = model(CH + 'character-female-b.json', { h: 1.7, skinned: true, anim: 'idle', fallback: () => new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.6), M(0x8e5a8a)) });
+  keeper.position.set(SHOP.x, 0, SHOP.z + 1.7); keeper.rotation.y = Math.PI; scene.add(keeper);
+  INTER.push({ x: SHOP.x, z: SHOP.z - 0.4, r: 2.4, info: () => ({ text: T('Farm Shop'), act: true }), act: () => openShop() });
+})();
+
+// ---------- animal pen ----------
+const PEN = { x0: 14, x1: 30, z0: 12, z1: 24 };
+const animVis = [];
+(function pen() {
+  const fenceH = 1.1, wood = M(0x8a6a44);
+  const rail = (x0, z0, x1, z1) => {
+    const L = Math.hypot(x1 - x0, z1 - z0), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, horiz = Math.abs(z1 - z0) < 0.01;
+    for (const y of [0.45, 0.9]) block(cx, cz, horiz ? L : 0.08, horiz ? 0.08 : L, 0.1, wood, y);
+    const n = Math.ceil(L / 2); for (let k = 0; k <= n; k++) { const t = k / n; block(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, 0.14, 0.14, fenceH, wood); }
+    solid(cx, cz, horiz ? L : 0.2, horiz ? 0.2 : L);
+  };
+  rail(PEN.x0, PEN.z0, 20, PEN.z0); rail(24, PEN.z0, PEN.x1, PEN.z0); rail(PEN.x0, PEN.z1, PEN.x1, PEN.z1); rail(PEN.x0, PEN.z0, PEN.x0, PEN.z1); rail(PEN.x1, PEN.z0, PEN.x1, PEN.z1);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(16, 12), M(0x9b8a5c)); ground.rotation.x = -Math.PI / 2; ground.position.set(22, 0.035, 18); ground.receiveShadow = true; scene.add(ground);
+  window.__penGround = ground;
+  // barn
+  block(22, 28, 10, 6, 4, M(0x9e3b2c)); solid(22, 28, 10, 6);
+  const rf = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 6.2, 2.2, 4, 1), M(0x4a3a2c)); rf.rotation.y = Math.PI / 4; rf.scale.set(1, 1, 0.62); rf.position.set(22, 5.1, 28); rf.castShadow = true; scene.add(rf);
+  block(22, 24.95, 2.4, 0.1, 2.8, M(0xe8dcc0));
+  // troughs
+  block(16.2, 14.2, 2.2, 0.8, 0.5, M(0x6b7b85)); solid(16.2, 14.2, 2.2, 0.8);
+  const water = new THREE.Mesh(new THREE.BoxGeometry(2, 0.05, 0.6), M(0x3f8fa3, { roughness: 0.1 })); water.position.set(16.2, 0.45, 14.2); scene.add(water); window.__trough = water;
+  block(27.8, 14.2, 2.2, 0.8, 0.5, M(0x7a5a3a)); solid(27.8, 14.2, 2.2, 0.8);
+  const hay = new THREE.Mesh(new THREE.BoxGeometry(2, 0.12, 0.6), M(0xd9c06a)); hay.position.set(27.8, 0.5, 14.2); scene.add(hay); window.__hay = hay;
+  // crate outside the gate
+  block(26, 10.4, 1, 1, 0.8, M(0xb08850)); solid(26, 10.4, 1, 1);
+  INTER.push({ x: 16.2, z: 14.2, r: 1.8, info: () => S.pen.water < 0.95 ? { text: T('Refill water') + ' · ' + Math.round(S.pen.water * 100) + '%', act: true } : { text: T('Water trough') + ' · 100%', act: false },
+    act() { S.pen.water = 1; popFx(16.2, 0.8, 14.2, 0x7fd3ff); } });
+  INTER.push({ x: 27.8, z: 14.2, r: 1.8, info: () => ({ text: T('Feed trough') + ' · ' + S.feed.toFixed(1) + ' ' + T('feed units') + (S.feed <= 0 ? ' · ' + T('Buy feed at the Farm Shop') : ''), act: false }), act() {} });
+  INTER.push({ x: 22, z: 23.6, r: 1.8, info: () => ({ text: T('Clean the pen') + ' · ' + Math.round(S.pen.clean * 100) + '%', act: S.pen.clean < 0.98 }),
+    act() { if (S.pen.clean >= 0.98) return; S.pen.clean = 1; emit('cleanPen'); popFx(22, 0.8, 22.5, 0xffffff); toast(T('Clean the pen') + ' ✓', 'good'); } });
+  INTER.push({ x: 26, z: 10.4, r: 1.8, info: () => { const n = Object.keys(S.pen.crate).reduce((a, k) => a + Math.floor(S.pen.crate[k]), 0); return n > 0 ? { text: T('Collect') + ' · ' + crateText(), act: true } : { text: T('Product crate') + ' · ' + T('Nothing to collect yet'), act: false }; },
+    act() {
+      let n = 0; for (const k in S.pen.crate) { const q = Math.floor(S.pen.crate[k]); if (q > 0) { S.goods[k] = (S.goods[k] || 0) + q; S.pen.crate[k] -= q; n += q; } }
+      if (n) { emit('collectProducts', n); toast(T('Collected') + ' ' + n, 'good'); popFx(26, 1, 10.4, 0xffd27a); }
+    } });
+})();
+function crateText() { return Object.keys(S.pen.crate).filter(k => S.pen.crate[k] >= 1).map(k => Math.floor(S.pen.crate[k]) + ' ' + N(GOODS[k])).join(', '); }
+const ANIM_MODEL = { cow: { f: 'cow.json', l: 2.2, walk: 'walk' }, sheep: { f: 'sheep.json', l: 1.3, walk: 'idle' }, chicken: { f: 'chicken.json', h: 0.5, walk: 'walk' } };
+function spawnAnimalVis(a) {
+  const d = ANIM_MODEL[a.t];
+  const g = model(AN + d.f, { l: d.l, h: d.h, skinned: true, anim: 'idle', fallback: () => new THREE.Mesh(new THREE.BoxGeometry(d.l ? d.l * 0.45 : 0.3, d.l ? d.l * 0.5 : 0.4, d.l || 0.4), M(a.t === 'cow' ? 0xf2f2f2 : a.t === 'sheep' ? 0xeee8dc : 0xffffff)) });
+  const x = rnd(PEN.x0 + 1.5, PEN.x1 - 1.5), z = rnd(PEN.z0 + 2.5, PEN.z1 - 1.5);
+  g.position.set(x, 0, z); scene.add(g);
+  animVis.push({ a, g, tx: x, tz: z, wait: rnd(0, 4), walk: d.walk, spd: a.t === 'chicken' ? 0.9 : 1.1 });
+}
+function addAnimal(t) { const a = { t, id: Date.now() + Math.random() }; S.animals.push(a); spawnAnimalVis(a); }
+S.animals.forEach(spawnAnimalVis);
+
+// ---------- loading bay, shed and market ----------
+const BAY = { x: -2, z: -32, w: 7, d: 9 }, MKT = { x: 0, z: -93, w: 8, d: 8 };
+(function pads() {
+  const pad = (p, col) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.d), new THREE.MeshStandardMaterial({ color: col, roughness: 0.6, emissive: col, emissiveIntensity: 0.25 })); m.rotation.x = -Math.PI / 2; m.position.set(p.x, 0.06, p.z); m.receiveShadow = true; scene.add(m); return m; };
+  BAY.mesh = pad(BAY, 0x3f9e4a); MKT.mesh = pad(MKT, 0xd9a23a);
+  block(-11.5, -32, 7, 8, 3.6, M(0xb79a72)); solid(-11.5, -32, 7, 8);
+  block(-11.5, -32, 7.6, 8.6, 0.3, M(0x6b5a46), 3.6);
+  for (let k = 0; k < 3; k++) { const c = block(-7.4, -34.5 + k * 1.4, 1, 1, 1, M(0xb08850)); solid(-7.4, -34.5 + k * 1.4, 1, 1); }
+  // market stalls
+  const cols = [0xc4462f, 0x2f6f8f, 0xd9a23a, 0x5a8f3a];
+  [[-9, -98], [9, -98], [-9, -88], [9, -88]].forEach((p, k) => {
+    block(p[0], p[1], 4, 1, 1, M(0x8a5a32)); solid(p[0], p[1], 4, 1);
+    const aw = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.12, 2.6), M(cols[k])); aw.position.set(p[0], 2.7, p[1]); aw.castShadow = true; scene.add(aw);
+    for (const s of [-1, 1]) block(p[0] + s * 2.1, p[1], 0.1, 0.1, 2.7, M(0x5a3d27));
+    for (let q = 0; q < 5; q++) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), M([0xd93a2b, 0xe8b923, 0x3f8f3a, 0xe07b2a, 0x5b2a6e][(q + k) % 5])); f.position.set(p[0] - 1.4 + q * 0.7, 1.15, p[1]); scene.add(f); }
+  });
+  const sign = block(0, -101, 6, 0.2, 1.2, M(0x2f4a3a), 2.4); for (const s of [-1, 1]) block(s * 2.8, -101, 0.15, 0.15, 3.6, M(0x5a3d27));
+  const buyer = model(CH + 'character-male-a.json', { h: 1.7, skinned: true, anim: 'idle', fallback: () => new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.6), M(0x2f6f8f)) });
+  buyer.position.set(5, 0, -96); buyer.rotation.y = -0.6; scene.add(buyer);
+})();
+const onPad = (p, x, z) => Math.abs(x - p.x) < p.w / 2 + 0.5 && Math.abs(z - p.z) < p.d / 2 + 0.5;
+
+// ---------- player, vehicles, ambient ----------
+const player = model(CH + 'character-male-a.json', { h: 1.75, skinned: true, anim: 'idle', fallback: () => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.7, 10), M(0x3a7bd5)); m.position.y = 0.85; return m; } });
+player.position.set(S.player.x, 0, S.player.z); scene.add(player);
+const P = { yaw: 0, spd: 0, inV: null };
+function spinWheels(o, g) { const w = []; o.traverse(n => { if (/wheel/i.test(n.name)) w.push(n); }); g.userData.wheels = w; }
+function tintBody(col) { const c = new THREE.Color(col); return (o, g) => { spinWheels(o, g); o.traverse(m => { if (!m.isMesh) return; let p = m, wheel = false; while (p) { if (/wheel/i.test(p.name)) wheel = true; p = p.parent; } if (wheel) return; m.material = m.material.clone(); m.material.color.multiply(c); }); }; }
+const truckG = model(CAR + 'truck-flat.json', { l: 5.6, onLoad: tintBody(0xff7a2a), fallback: () => { const m = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2, 5.4), M(0xe07b2a)); m.position.y = 1; return m; } });
+const tractorG = model(CAR + 'tractor.json', { l: 3.6, onLoad: tintBody(0xff4a3a), fallback: () => { const m = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2, 3.4), M(0xc4302b)); m.position.y = 1; return m; } });
+scene.add(truckG, tractorG);
+const VSPEC = { truck: { g: truckG, max: 17, acc: 7, turn: 1.6, rad: 1.7, burn: 0.012, tank: 60, name: 'Truck' }, tractor: { g: tractorG, max: 8, acc: 5, turn: 1.9, rad: 1.4, burn: 0.02, tank: 40, name: 'Tractor' } };
+const VEL = { truck: 0, tractor: 0 };
+// implement on the tractor hitch
+const implG = new THREE.Group(); tractorG.add(implG);
+const implMats = [M(0x8a8a8a, { metalness: 0.6, roughness: 0.4 }), M(0x2f6f8f), M(0xd9a23a)];
+const implMesh = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 0.8), implMats[0]); implMesh.position.set(0, 0.35, -2.4); implMesh.castShadow = true; implG.add(implMesh);
+// cargo boxes on the truck bed
+const cargoG = new THREE.Group(); truckG.add(cargoG);
+for (let k = 0; k < 8; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.7), M(0xb08850)); b.position.set(-0.4 + (k % 2) * 0.8, 1.2 + Math.floor(k / 4) * 0.52, -1.9 + (Math.floor(k / 2) % 2) * 0.9); b.castShadow = true; b.visible = false; cargoG.add(b); }
+for (const id in VSPEC) INTER.push({ pos: () => S.veh[id], r: 3.2, info: () => ({ text: T('Get in') + ' ' + T(VSPEC[id].name), act: true }), act: () => enter(id) });
+function placeVehicles() { for (const id in VSPEC) { const v = S.veh[id]; VSPEC[id].g.position.set(v.x, 0, v.z); VSPEC[id].g.rotation.y = v.r; } }
+placeVehicles();
+// dog follows you around, horses graze east of the pen
+const dog = model(AN + 'dog.json', { l: 0.95, skinned: true, anim: 'idle', fallback: () => new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.8), M(0x9a6a3a)) });
+dog.position.set(1.5, 0, 0); scene.add(dog);
+const horses = [0, 1].map(k => { const h = model(AN + 'horse.json', { l: 2.4, skinned: true, anim: 'idle', fallback: () => new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.4, 2.2), M(0x7a4a2a)) }); h.position.set(42 + k * 4, 0, 10 + k * 6); scene.add(h); return { g: h, tx: 42, tz: 10, wait: k * 3 }; });
+// objective beacon
+const beacon = new THREE.Group();
+const bm = new THREE.MeshBasicMaterial({ color: 0xe8a83a, transparent: true, opacity: 0.9 });
+const diamond = new THREE.Mesh(new THREE.OctahedronGeometry(0.45), bm); diamond.position.y = 4; beacon.add(diamond);
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 4, 6), new THREE.MeshBasicMaterial({ color: 0xe8a83a, transparent: true, opacity: 0.35 })); beam.position.y = 2; beacon.add(beam);
+scene.add(beacon);
+// rain
+const RAIN_N = coarse ? 900 : 1800;
+const rainGeo = new THREE.BufferGeometry(); const rp = new Float32Array(RAIN_N * 3);
+for (let i = 0; i < RAIN_N; i++) { rp[i * 3] = rnd(-30, 30); rp[i * 3 + 1] = rnd(0, 22); rp[i * 3 + 2] = rnd(-30, 30); }
+rainGeo.setAttribute('position', new THREE.BufferAttribute(rp, 3));
+const rain = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0xaecbe0, size: 0.09, transparent: true, opacity: 0.7 })); rain.visible = false; scene.add(rain);
+// little burst effect
+const fx = [];
+function popFx(x, y, z, col) {
+  for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), new THREE.MeshBasicMaterial({ color: col, transparent: true })); m.position.set(x, y, z); scene.add(m); fx.push({ m, vx: rnd(-2, 2), vy: rnd(2, 4.5), vz: rnd(-2, 2), t: 0 }); }
+}
+
+// ---------- input ----------
+const keys = {}; const joy = { x: 0, y: 0 };
+let modalOpen = false;
+addEventListener('keydown', e => {
+  if (e.repeat) { if (!modalOpen) keys[e.code] = true; return; }
+  keys[e.code] = true;
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.code) >= 0 && document.activeElement === canvas) e.preventDefault();
+  onKey(e.code);
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+const k = c => !modalOpen && !!keys[c];
+function onKey(c) {
+  if (c === 'Escape') { closeModal(); return; }
+  if (c === 'KeyL') { toggleLang(); return; }
+  if (modalOpen) {
+    if (modalKey && /^Digit\d$/.test(c)) modalKey(+c.slice(5));
+    if (c === 'KeyM' && modalKind === 'market') closeModal();
+    if (c === 'KeyH' && modalKind === 'help') closeModal();
+    return;
+  }
+  if (c === 'KeyE') interact();
+  else if (c === 'KeyR') padAction();
+  else if (c === 'KeyQ') cycleImpl();
+  else if (c === 'KeyM') openMarket();
+  else if (c === 'KeyH') openHelp();
+  else if (c === 'KeyT') tow();
+}
+// camera orbit by drag
+let drag = null, lastDrag = -10;
+const CAM = { yaw: Math.PI * 0.85, pitch: 0.42, dist: 8 };
+canvas.addEventListener('pointerdown', e => { canvas.focus(); drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', e => {
+  if (!drag || drag.id !== e.pointerId) return;
+  CAM.yaw -= (e.clientX - drag.x) * 0.006; CAM.pitch = clamp(CAM.pitch + (e.clientY - drag.y) * 0.004, 0.1, 1.25);
+  drag.x = e.clientX; drag.y = e.clientY; lastDrag = clockT;
+});
+canvas.addEventListener('pointerup', () => drag = null); canvas.addEventListener('pointercancel', () => drag = null);
+canvas.addEventListener('wheel', e => { CAM.dist = clamp(CAM.dist + e.deltaY * 0.01, 4, 22); e.preventDefault(); }, { passive: false });
+// touch joystick
+(function joystick() {
+  const el = document.getElementById('joy'), kn = document.getElementById('knob'); let id = null, cx = 0, cy = 0;
+  el.addEventListener('pointerdown', e => { id = e.pointerId; const r = el.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; el.setPointerCapture(id); mv(e); });
+  el.addEventListener('pointermove', e => { if (e.pointerId === id) mv(e); });
+  const end = () => { id = null; joy.x = joy.y = 0; kn.style.transform = ''; };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  function mv(e) { let dx = e.clientX - cx, dy = e.clientY - cy; const L = Math.hypot(dx, dy), m = 46; if (L > m) { dx *= m / L; dy *= m / L; } joy.x = dx / m; joy.y = -dy / m; kn.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; }
+  const tb = (bid, fn) => document.getElementById(bid).addEventListener('pointerdown', e => { e.preventDefault(); if (!modalOpen) fn(); });
+  tb('tE', interact); tb('tR', padAction); tb('tQ', cycleImpl);
+})();
+document.getElementById('bLang').onclick = toggleLang;
+document.getElementById('bMarket').onclick = () => modalKind === 'market' ? closeModal() : openMarket();
+document.getElementById('bHelp').onclick = () => openHelp();
+
+// ---------- interaction ----------
+let focus = null;
+function nearest() {
+  const px = player.position.x, pz = player.position.z; let best = null, bd = 1e9;
+  for (const it of INTER) {
+    let d; if (it.dist) d = it.dist(px, pz); else { const p = it.pos ? it.pos() : it; d = Math.hypot(px - p.x, pz - p.z); }
+    if (d < it.r && d < bd) { bd = d; best = it; }
+  }
+  return best;
+}
+function interact() {
+  if (P.inV) { exitVehicle(); return; }
+  focus = nearest();
+  if (focus) { const inf = focus.info(); if (inf.act) { focus.act(); refreshHud(); save(); } }
+}
+function enter(id) { P.inV = id; player.visible = false; emit('enterVehicle'); CAM.dist = id === 'truck' ? 12 : 10; refreshHud(); }
+function exitVehicle() {
+  const id = P.inV, v = S.veh[id]; P.inV = null; VEL[id] = 0;
+  const side = { x: Math.cos(v.r) * 2.6, z: -Math.sin(v.r) * 2.6 };
+  player.position.set(v.x + side.x, 0, v.z + side.z); resolve(player.position, 0.4); player.visible = true; CAM.dist = 8; refreshHud();
+}
+function cycleImpl() {
+  if (P.inV !== 'tractor') return;
+  const t = S.veh.tractor; t.impl = (t.impl + 1) % 3; implMesh.material = implMats[t.impl];
+  toast(T('Implement') + ': ' + T(IMPL[t.impl]));
+  refreshHud();
+}
+implMesh.material = implMats[S.veh.tractor.impl || 0];
+function padAction() {
+  if (P.inV !== 'truck' && P.inV !== 'tractor') return;
+  const v = S.veh[P.inV], spec = VSPEC[P.inV];
+  const atBay = onPad(BAY, v.x, v.z), atMkt = onPad(MKT, v.x, v.z);
+  if (!atBay && !atMkt) return;
+  // refuel first
+  const need = spec.tank - v.fuel;
+  if (need > 0.5) { const cost = Math.min(S.money, Math.ceil(need * FUEL_PRICE)); v.fuel += cost / FUEL_PRICE; S.money -= cost; if (cost) toast(T('Refuel') + ' −' + cost + ' ' + T('EGP')); }
+  if (P.inV !== 'truck') { refreshHud(); return; }
+  if (atBay) loadCargo(); else sellCargo();
+  refreshHud(); save();
+}
+function loadCargo() {
+  const cap = capacity(); let used = cargoKg(), moved = 0; const c = S.veh.truck.cargo;
+  const ids = Object.keys(S.goods).filter(id => S.goods[id] > 0);
+  if (!ids.length) { toast(T('Nothing in storage to load'), 'bad'); return; }
+  for (const id of ids) {
+    const w = GOODS[id].weight, room = cap - used; if (room < w) break;
+    const n = Math.min(S.goods[id], Math.floor(room / w + 1e-6)); if (n <= 0) continue;
+    S.goods[id] -= n; if (!S.goods[id]) delete S.goods[id]; c[id] = (c[id] || 0) + n; used += n * w; moved += n * w;
+  }
+  if (moved <= 0) { toast(T('Truck is full'), 'bad'); return; }
+  emit('loadKg', moved); toast(T('Loaded') + ' ' + fmt(moved) + ' ' + T('kg') + ' · ' + fmt(used) + '/' + cap, 'good');
+}
+function sellCargo() {
+  const c = S.veh.truck.cargo; let total = 0, kg = 0;
+  const ids = Object.keys(c).filter(id => c[id] > 0);
+  if (!ids.length) { toast(T('Cargo is empty'), 'bad'); return; }
+  for (const id of ids) {
+    let n = c[id]; const p = price(id);
+    for (const ct of S.contracts) {
+      if (ct.g === id && ct.left > 0 && n > 0) {
+        const d = Math.min(n, ct.left); total += d * p * ct.mult; ct.left -= d; n -= d;
+        if (ct.left <= 0) { emit('completeContract'); toast(T('Contract complete') + ': ' + N(GOODS[id]) + ' ×' + ct.mult, 'gold'); }
+      }
+    }
+    total += n * p; S.sold[id] = (S.sold[id] || 0) + c[id]; kg += c[id] * GOODS[id].weight; delete c[id];
+  }
+  total = Math.round(total); S.money += total; S.earned += total;
+  emit('deliverKg', kg); emit('earnMoney', total);
+  toast(T('Sold for') + ' ' + fmt(total) + ' ' + T('EGP'), 'gold'); popFx(MKT.x, 1.5, MKT.z, 0xffd27a);
+}
+function tow() {
+  if (!P.inV) return; const v = S.veh[P.inV]; if (v.fuel > 0.2) return;
+  S.money = Math.max(0, S.money - TOW_PRICE); v.fuel = 10; VEL[P.inV] = 0;
+  v.x = BAY.x + (P.inV === 'tractor' ? 6 : 0); v.z = BAY.z + 2; v.r = Math.PI; toast(T('Towed to the loading bay') + ' −' + TOW_PRICE + ' ' + T('EGP'), 'bad'); refreshHud();
+}
+
+// ---------- collisions ----------
+function resolve(p, r) {
+  for (const b of OB) {
+    const cx = clamp(p.x, b.x0, b.x1), cz = clamp(p.z, b.z0, b.z1);
+    let dx = p.x - cx, dz = p.z - cz; const d = Math.hypot(dx, dz);
+    if (d < r) {
+      if (d < 1e-5) { // centre inside: push out along the smallest side
+        const o = [[b.x0 - r - p.x, 0], [b.x1 + r - p.x, 0], [0, b.z0 - r - p.z], [0, b.z1 + r - p.z]].sort((a, c) => Math.abs(a[0] + a[1]) - Math.abs(c[0] + c[1]))[0];
+        p.x += o[0]; p.z += o[1];
+      } else { p.x = cx + dx / d * r; p.z = cz + dz / d * r; }
+      p.hit = true;
+    }
+  }
+  p.x = clamp(p.x, -43.5, 58); p.z = clamp(p.z, -112, 58);
+}
+
+// ---------- simulation ----------
+let clockT = 0, hudT = 0, saveT = 0, lastDayBreak = S.day;
+function newDay() {
+  S.day++; S.time -= DAY;
+  const prevSeason = SEASONS[Math.floor((S.day - 2) / SEASON_DAYS) % 4];
+  rollPrices();
+  if (season() !== prevSeason) toast(T('New season') + ': ' + T(season()), 'gold');
+  if (Math.random() < 0.35) { const gi = Math.random() < 0.5 ? 0 : 1, s = pick(STATS); S.gh[gi].mods[s] = Math.round(rnd(0, TH[s] * 0.4)); toast(T('A module broke in') + ' ' + T('Greenhouse') + ' ' + (gi + 1) + ': ' + modName(s), 'bad'); }
+  const rainP = { autumn: 0.2, winter: 0.35, spring: 0.15, summer: 0.03 }[season()];
+  if (Math.random() < rainP) S.rain = rnd(60, 150);
+  save();
+}
+function simulate(dt) {
+  S.time += dt; if (S.time >= DAY) newDay();
+  if (S.rain > 0) { if (!S._rainToast) { toast(T('It is raining. Fields are watered.')); S._rainToast = true; } S.rain -= dt; if (S.rain <= 0) { S.rain = 0; S._rainToast = false; } }
+  // greenhouse growth (only healthy beds grow)
+  S.gh.forEach(g => g.beds.forEach(b => { if (b.g < 1 && bedHealthy(b, g)) b.g = Math.min(1, b.g + dt * growMul() / GROW); }));
+  // fields
+  S.plots.forEach(p => {
+    if (S.rain > 0 && p.s !== 'empty') p.w = 1;
+    p.w = Math.max(0, p.w - dt / 150);
+    if (p.s === 'grow' && p.g < 1) {
+      const fc = FIELD[p.crop]; const sf = fc.seasons.indexOf(season()) >= 0 ? 1 : 0.35;
+      p.g = Math.min(1, p.g + dt / fc.growSeconds * sf * (p.w > 0.02 ? 1 : 0));
+    }
+  });
+  // animals
+  const n = S.animals.length, pen = S.pen;
+  if (n) {
+    pen.water = Math.max(0, pen.water - dt * 0.0012 * n);
+    pen.clean = Math.max(0, pen.clean - dt * 0.0009 * n);
+    const prod = 0.5 + 0.5 * pen.clean;
+    S.animals.forEach(a => {
+      const d = ANIM[a.t]; a.tm = (a.tm || 0) + dt;
+      if (a.tm >= d.interval) {
+        a.tm = 0;
+        if (S.feed >= d.feedPerCycle && pen.water > 0.02) { S.feed = +(S.feed - d.feedPerCycle).toFixed(3); pen.crate[d.product] = (pen.crate[d.product] || 0) + d.amount * prod; }
+      }
+    });
+    // breeding: a fed, watered, clean pair produces young
+    const cnt = {}; S.animals.forEach(a => cnt[a.t] = (cnt[a.t] || 0) + 1);
+    for (const t in cnt) {
+      if (cnt[t] >= 2 && cnt[t] < ANIM[t].max && S.feed > 0 && pen.water > 0.3 && pen.clean > 0.5) {
+        pen.breed[t] = (pen.breed[t] || 0) + dt;
+        if (pen.breed[t] >= 150) { pen.breed[t] = 0; addAnimal(t); emit('animalBorn'); toast(T('A new animal was born') + ': ' + N(ANIM[t]), 'gold'); }
+      } else pen.breed[t] = Math.max(0, (pen.breed[t] || 0) - dt * 0.5);
+    }
+  }
+}
+const tmpV = new THREE.Vector3();
+function updatePlayer(dt) {
+  let ix = (k('KeyD') || k('ArrowRight') ? 1 : 0) - (k('KeyA') || k('ArrowLeft') ? 1 : 0) + joy.x;
+  let iy = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0) + joy.y;
+  if (modalOpen) ix = iy = 0;
+  const L = Math.hypot(ix, iy); if (L > 1) { ix /= L; iy /= L; }
+  const fx = -Math.sin(CAM.yaw), fz = -Math.cos(CAM.yaw);
+  const mx = fx * iy + (-fz) * ix, mz = fz * iy + fx * ix;
+  const run = k('ShiftLeft') || k('ShiftRight') || Math.hypot(joy.x, joy.y) > 0.92;
+  const sp = (run ? 7 : 4.2) * Math.min(1, Math.hypot(ix, iy));
+  const p = player.position;
+  if (sp > 0.05) {
+    p.x += mx * sp * dt; p.z += mz * sp * dt; resolve(p, 0.4);
+    const want = Math.atan2(mx, mz); let d = want - player.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); player.rotation.y += d * Math.min(1, dt * 12);
+    play(player, run ? 'sprint' : 'walk');
+  } else play(player, 'idle');
+  S.player.x = p.x; S.player.z = p.z;
+}
+function updateVehicle(dt) {
+  const id = P.inV, v = S.veh[id], spec = VSPEC[id];
+  let thr = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0) + joy.y;
+  let st = (k('KeyA') || k('ArrowLeft') ? 1 : 0) - (k('KeyD') || k('ArrowRight') ? 1 : 0) - joy.x;
+  thr = clamp(thr, -1, 1); st = clamp(st, -1, 1);
+  if (v.fuel <= 0) { thr = 0; v.fuel = 0; }
+  let s = VEL[id];
+  if (thr) s += thr * spec.acc * dt * (Math.sign(thr) !== Math.sign(s) && Math.abs(s) > 0.5 ? 1.8 : 1); else s *= Math.max(0, 1 - 1.2 * dt);
+  if (k('Space')) s *= Math.max(0, 1 - 4 * dt);
+  s = clamp(s, -spec.max * 0.4, spec.max);
+  v.r += st * dt * spec.turn * clamp(s / 4, -1, 1);
+  const pos = { x: v.x + Math.sin(v.r) * s * dt, z: v.z + Math.cos(v.r) * s * dt };
+  resolve(pos, spec.rad); if (pos.hit) s *= 0.3;
+  v.x = pos.x; v.z = pos.z; VEL[id] = s;
+  v.fuel = Math.max(0, v.fuel - Math.abs(s) * dt * spec.burn);
+  spec.g.position.set(v.x, 0, v.z); spec.g.rotation.y = v.r;
+  (spec.g.userData.wheels || []).forEach(w => w.rotation.x += s * dt / 0.4);
+  player.position.set(v.x, 0, v.z);
+  S.player.x = v.x; S.player.z = v.z;
+  if (id === 'tractor' && Math.abs(s) > 0.3) tractorWork(v);
+}
+function tractorWork(v) {
+  const hx = v.x - Math.sin(v.r) * 2.4, hz = v.z - Math.cos(v.r) * 2.4;
+  for (let i = 0; i < 6; i++) {
+    const c = plotCenter(i); if (Math.abs(hx - c.x) > PLOT / 2 || Math.abs(hz - c.z) > PLOT / 2) continue;
+    const p = S.plots[i], impl = IMPL[v.impl];
+    if (impl === 'plow' && p.s === 'empty') { p.s = 'plowed'; emit('tractorPlow'); emit('tractorWork'); popFx(c.x, 0.5, c.z, 0x8b5a2b); toast(T('plow') + ' ✓ ' + T('Field plot') + ' ' + (i + 1)); }
+    else if (impl === 'seeder' && p.s === 'plowed') {
+      const owned = Object.keys(S.seeds).filter(q => S.seeds[q] > 0).sort((a, b) => (FIELD[b].seasons.indexOf(season()) >= 0) - (FIELD[a].seasons.indexOf(season()) >= 0));
+      if (owned.length) { plant(i, owned[0]); emit('tractorWork'); }
+    } else if (impl === 'harvester' && p.s === 'grow' && p.g >= 1) { harvestPlot(i); emit('tractorHarvest'); emit('tractorWork'); }
+  }
+}
+function updateAnimals(dt) {
+  animVis.forEach(o => {
+    const g = o.g; const dx = o.tx - g.position.x, dz = o.tz - g.position.z, d = Math.hypot(dx, dz);
+    if (o.wait > 0) { o.wait -= dt; play(g, 'idle'); if (o.wait <= 0) { o.tx = rnd(PEN.x0 + 1.2, PEN.x1 - 1.2); o.tz = rnd(PEN.z0 + 1.2, PEN.z1 - 1.2); } return; }
+    if (d < 0.2) { o.wait = rnd(2, 7); return; }
+    g.position.x += dx / d * o.spd * dt; g.position.z += dz / d * o.spd * dt;
+    g.rotation.y = Math.atan2(dx, dz); play(g, o.walk);
+    if (o.walk === 'idle') g.position.y = Math.abs(Math.sin(clockT * 9)) * 0.06;
+  });
+  // dog stays near the player
+  const pp = player.position, dd = Math.hypot(pp.x - dog.position.x, pp.z - dog.position.z);
+  if (dd > 3.2) { const s = Math.min(dd - 2.5, P.inV ? 9 : 6) * dt * 1.4; dog.position.x += (pp.x - dog.position.x) / dd * s * 2; dog.position.z += (pp.z - dog.position.z) / dd * s * 2; dog.rotation.y = Math.atan2(pp.x - dog.position.x, pp.z - dog.position.z); play(dog, 'walk'); }
+  else play(dog, 'idle');
+  if (dd > 40) dog.position.set(pp.x + 2, 0, pp.z + 2);
+  horses.forEach(h => {
+    const g = h.g; const dx = h.tx - g.position.x, dz = h.tz - g.position.z, d = Math.hypot(dx, dz);
+    if (h.wait > 0) { h.wait -= dt; play(g, 'idle'); if (h.wait <= 0) { h.tx = rnd(36, 54); h.tz = rnd(2, 34); } return; }
+    if (d < 0.3) { h.wait = rnd(4, 10); return; }
+    g.position.x += dx / d * 1.3 * dt; g.position.z += dz / d * 1.3 * dt; g.rotation.y = Math.atan2(dx, dz); play(g, 'walk');
+  });
+}
+function objective() {
+  const m = MISSIONS[S.mi]; if (!m) return null;
+  const st = (i) => GH[i].station, field = { x: 24, z: -19 }, crate = { x: 26, z: 10.4 };
+  const inTruck = P.inV === 'truck', cargo = cargoKg() > 0;
+  switch (m.type) {
+    case 'startWell': return WELL;
+    case 'optimize': return st(0);
+    case 'healthyGreenhouse': case 'allHealthy': { const i = S.gh.findIndex(g => !ghHealthy(g)); return st(i < 0 ? 0 : i); }
+    case 'harvestKg': { for (let gi = 0; gi < 2; gi++) { const bi = S.gh[gi].beds.findIndex(b => b.g >= 1); if (bi >= 0) return { x: GH[gi].x + (bi % 2 === 0 ? -3.3 : 2.1), z: GH[gi].z + (bi < 2 ? -2.6 : 2.6) }; } const i = S.gh.findIndex(g => !ghHealthy(g)); return st(i < 0 ? 0 : i); }
+    case 'plantField': case 'harvestField': return Object.keys(S.seeds).length || m.type === 'harvestField' ? field : SHOP;
+    case 'tractorPlow': case 'tractorWork': case 'tractorHarvest': return P.inV === 'tractor' ? field : S.veh.tractor;
+    case 'enterVehicle': return S.veh.truck;
+    case 'loadKg': return inTruck ? BAY : S.veh.truck;
+    case 'deliverKg': case 'earnMoney': case 'completeContract': return !inTruck ? S.veh.truck : cargo ? MKT : BAY;
+    case 'buyFeed': case 'buyAnimal': case 'buyUpgrade': case 'animalTypes': return SHOP;
+    case 'collectProducts': return crate;
+    case 'cleanPen': return { x: 22, z: 23.6 };
+    case 'animalBorn': return { x: 22, z: 18 };
+    default: return null;
+  }
+}
+
+// ---------- sky / day-night ----------
+const skyDay = new THREE.Color(0x9fd0ea), skyDusk = new THREE.Color(0xf0a868), skyNight = new THREE.Color(0x1a2a4a), skyRain = new THREE.Color(0x7d8a94), tmpC = new THREE.Color();
+function updateSky() {
+  const f = S.time / DAY; const el = Math.sin((f - 0.25) * Math.PI * 2);
+  const az = (f - 0.25) * Math.PI * 2;
+  const c = player.position;
+  sun.position.set(c.x + Math.cos(az) * 60, Math.max(8, el * 80), c.z + Math.sin(az) * 25 + 20);
+  sun.target.position.set(c.x, 0, c.z);
+  const day = clamp(el * 2.2 + 0.25, 0, 1), dusk = clamp(1 - Math.abs(el) * 4, 0, 1);
+  tmpC.copy(skyNight).lerp(skyDay, day).lerp(skyDusk, dusk * 0.55 * (el > -0.2 ? 1 : 0));
+  if (S.rain > 0) tmpC.lerp(skyRain, 0.55);
+  scene.background = tmpC; scene.fog.color.copy(tmpC);
+  sun.intensity = (S.rain > 0 ? 0.55 : 1.45) * clamp(el * 3, 0, 1);
+  sun.color.setHSL(0.1, 0.6, 0.6 + 0.3 * clamp(el, 0, 1));
+  hemi.intensity = 0.38 + 0.3 * day; hemi.color.setHex(day > 0.3 ? 0xcfe8ff : 0x9db4e0);
+  renderer.toneMappingExposure = 1.0 + 0.1 * day;
+}
+
+// ---------- HUD ----------
+const $ = id => document.getElementById(id);
+function toast(msg, cls) {
+  const t = document.createElement('div'); t.className = 'toast ' + (cls || ''); t.textContent = msg; $('toasts').prepend(t);
+  while ($('toasts').children.length > 4) $('toasts').lastChild.remove();
+  setTimeout(() => t.remove(), 3800);
+}
+function hh() { const m = Math.floor(S.time / DAY * 24 * 60); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+function hudMission() {
+  const m = MISSIONS[S.mi], el = $('mission');
+  if (!m) { el.innerHTML = '<div class="eyebrow">' + T('Free play') + '</div><div class="mt">' + T('All 25 missions done. Keep growing the farm.') + '</div>'; return; }
+  const pct = clamp(S.mp / m.target, 0, 1) * 100;
+  const tgt = objective(); let dist = '';
+  if (tgt) { const d = Math.hypot(player.position.x - tgt.x, player.position.z - tgt.z); if (d > 4) dist = Math.round(d) + ' ' + T('m'); }
+  el.innerHTML = '<div class="eyebrow">' + T('Mission') + ' ' + (S.mi + 1) + '/' + MISSIONS.length + '</div><div class="mt">' + esc(N(m, 'title')) + '</div><div class="md">' + esc(N(m, 'desc')) + '</div><div class="bar"><i style="width:' + pct + '%"></i></div><div class="mfoot"><span>' + fmt(Math.min(S.mp, m.target)) + ' / ' + fmt(m.target) + (dist ? ' · ' + dist : '') + '</span><span>' + T('Reward') + ' ' + fmt(m.reward) + ' ' + T('EGP') + '</span></div>';
+}
+function refreshHud() {
+  $('money').textContent = fmt(S.money); $('cur').textContent = T('EGP');
+  $('clock').textContent = T('Day') + ' ' + S.day + ' · ' + T(season()) + ' · ' + hh() + ' · ' + (S.rain > 0 ? T('Rain') : T('Clear'));
+  const g = Object.keys(S.goods).filter(k => S.goods[k] > 0).map(id => '<b>' + fmt(S.goods[id]) + '</b> ' + esc(N(GOODS[id]))).join(' · ');
+  const sd = Object.keys(S.seeds).map(id => '<b>' + S.seeds[id] + '</b> ' + esc(N(FIELD[id]))).join(' · ');
+  $('store').innerHTML = T('Storage') + ': ' + (g || T('empty')) + (sd ? '<br>' + T('Seeds') + ': ' + sd : '') + (S.feed > 0 ? '<br>' + T('Feed') + ': <b>' + S.feed.toFixed(1) + '</b>' : '');
+  hudMission();
+  const vp = $('vpanel');
+  if (P.inV) {
+    const v = S.veh[P.inV], spec = VSPEC[P.inV];
+    let h = '<div class="vt">' + T(spec.name) + '</div>';
+    h += '<div class="row"><span>' + T('Speed') + '</span><b>' + Math.round(Math.abs(VEL[P.inV]) * 3.6) + ' km/h</b></div>';
+    h += '<div class="row"><span>' + T('Fuel') + '</span><b>' + v.fuel.toFixed(1) + ' / ' + spec.tank + ' L</b></div>';
+    if (P.inV === 'truck') h += '<div class="row"><span>' + T('Cargo') + '</span><b>' + fmt(cargoKg()) + ' / ' + capacity() + ' ' + T('kg') + '</b></div>';
+    else h += '<div class="row"><span>' + T('Implement') + '</span><b>' + T(IMPL[v.impl]) + ' (Q)</b></div>';
+    vp.innerHTML = h; vp.hidden = false;
+  } else vp.hidden = true;
+}
+function updatePrompt() {
+  const el = $('prompt'); let html = '';
+  if (modalOpen) { el.hidden = true; return; }
+  if (P.inV) {
+    const v = S.veh[P.inV];
+    if (v.fuel <= 0.2) html = '<kbd>T</kbd>' + T('Out of fuel') + ': ' + T('Tow to the farm') + ' −' + TOW_PRICE + ' ' + T('EGP');
+    else if (onPad(BAY, v.x, v.z)) html = '<kbd>R</kbd>' + (P.inV === 'truck' ? T('Load cargo') + ' · ' : '') + T('Refuel');
+    else if (onPad(MKT, v.x, v.z)) html = '<kbd>R</kbd>' + (P.inV === 'truck' ? T('Sell cargo') + ' · ' : '') + T('Refuel');
+    else html = '<kbd>E</kbd>' + T('Exit');
+  } else {
+    focus = nearest();
+    if (focus) { const inf = focus.info(); html = (inf.act ? '<kbd>E</kbd>' : '') + esc(inf.text); }
+  }
+  if (html) { if (el.innerHTML !== html) el.innerHTML = html; el.hidden = false; } else el.hidden = true;
+}
+function updateMarker() {
+  const tgt = objective(); const el = $('marker');
+  if (!tgt) { beacon.visible = false; el.hidden = true; return; }
+  const near = Math.hypot(player.position.x - tgt.x, player.position.z - tgt.z) < 3.5;
+  beacon.visible = !near; beacon.position.set(tgt.x, 0, tgt.z); diamond.rotation.y = clockT * 2; diamond.position.y = 4 + Math.sin(clockT * 3) * 0.25;
+  tmpV.set(tgt.x, 4.8, tgt.z).project(camera);
+  const onScreen = tmpV.z < 1 && Math.abs(tmpV.x) < 1.05 && Math.abs(tmpV.y) < 1.05;
+  if (near || !onScreen) { el.hidden = true; return; }
+  el.hidden = false; el.style.left = ((tmpV.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - tmpV.y) / 2 * innerHeight) + 'px';
+  const d = Math.round(Math.hypot(player.position.x - tgt.x, player.position.z - tgt.z)) + ' ' + T('m');
+  if (el.textContent !== d) el.textContent = d;
+}
+function syncVisuals() {
+  bedVis.forEach(v => {
+    const g = S.gh[v.gi], b = g.beds[v.bi], ok = bedHealthy(b, g);
+    v.lamp.material.color.set(b.g >= 1 ? 0xffc23a : ok ? 0x6fe36f : 0xff5544);
+    const s = 0.45 + 0.75 * (ok ? Math.max(b.g, 0.15) : 0.15);
+    v.plants.forEach(p => p.scale.set(s, s, s));
+    v.fruits.forEach(f => { f.visible = b.g > 0.45; const fs = clamp((b.g - 0.45) * 2, 0.2, 1); f.scale.set(fs, fs, fs); f.position.y = 0.5 + 0.55 * s; });
+  });
+  GH.forEach((g, i) => g.screen.material.color.set(ghHealthy(S.gh[i]) ? 0x6fe36f : 0xff7755));
+  syncPlots();
+  window.__trough.scale.y = 1; window.__trough.position.y = 0.12 + 0.33 * S.pen.water; window.__trough.visible = S.pen.water > 0.02;
+  window.__hay.visible = S.feed > 0;
+  window.__penGround.material.color.setRGB(0.61 - 0.15 * (1 - S.pen.clean), 0.54 - 0.17 * (1 - S.pen.clean), 0.36 - 0.12 * (1 - S.pen.clean));
+  const ck = cargoKg(), boxes = Math.ceil(ck / capacity() * 8); cargoG.children.forEach((b, i) => b.visible = i < boxes);
+}
+
+// ---------- panels ----------
+let modalKey = null, modalKind = '';
+function openModal(html, kind, onKeyFn) {
+  $('mbody').innerHTML = html; $('modal').hidden = false; modalOpen = true; modalKind = kind || ''; modalKey = onKeyFn || null;
+  for (const k in keys) keys[k] = false; joy.x = joy.y = 0;
+  applyDir();
+}
+function closeModal() { if (!modalOpen) return; $('modal').hidden = true; modalOpen = false; modalKind = ''; modalKey = null; canvas.focus(); refreshHud(); save(); }
+$('mx').onclick = closeModal;
+$('modal').addEventListener('pointerdown', e => { if (e.target.id === 'modal') closeModal(); });
+let curStation = 0;
+function openStation(gi) {
+  curStation = gi;
+  const g = S.gh[gi];
+  let h = '<h2>' + T('Control station') + ' · ' + T('Greenhouse') + ' ' + (gi + 1) + '</h2>';
+  h += '<p>' + T('Greenhouse needs') + ': ' + (STATS.filter(s => g.beds.some(b => b.own[s] < TH[s] && g.mods[s] < TH[s])).map(modName).join(', ') || T('OK')) + '</p>';
+  h += '<h3>' + T('Module') + '</h3><div class="list">';
+  STATS.forEach((s, i) => {
+    const v = g.mods[s], ok = v >= TH[s], blocked = s === 'water' && !S.well;
+    const pct = clamp(v / TH[s], 0, 1) * 100;
+    h += '<div class="item"><span class="k">' + (i + 1) + '</span><div class="n"><div>' + modName(s) + ' <span class="pill ' + (ok ? 'ok' : 'low') + '">' + (ok ? T('OK') : T('Low')) + '</span></div><div style="display:flex;align-items:center;gap:8px"><span class="mbar" style="flex:1"><i style="width:' + pct + '%;background:' + (ok ? 'var(--leaf)' : 'var(--warn)') + '"></i></span><span>' + v + ' / ' + TH[s] + '</span></div></div>' +
+      (ok ? '<span class="pill ok">✓</span>' : '<button class="btn" data-opt="' + s + '"' + (blocked ? ' disabled title="' + T('Start the well first') + '"' : '') + '>' + (blocked ? T('Start the well first') : T('Optimize')) + '</button>') + '</div>';
+  });
+  h += '</div><h3>' + T('Beds') + '</h3><table class="t"><tbody>';
+  g.beds.forEach(b => {
+    const ok = bedHealthy(b, g), need = bedNeeds(b, g);
+    h += '<tr><td>' + esc(N(CROP[b.crop] || { nameEn: b.crop, nameAr: b.crop })) + '</td><td>' + (b.g >= 1 ? '<span class="pill gold">' + T('Ready') + '</span>' : ok ? '<span class="pill ok">' + T('Healthy') + '</span>' : '<span class="pill low">' + need.map(modName).join(', ') + '</span>') + '</td><td class="num">' + Math.floor(b.g * 100) + '%</td></tr>';
+  });
+  h += '</tbody></table>';
+  const doOpt = s => {
+    if (g.mods[s] >= TH[s] || (s === 'water' && !S.well)) return;
+    g.mods[s] = TH[s]; emit('optimize'); refreshHud(); openStation(gi);
+  };
+  openModal(h, 'station', d => { const s = STATS[d - 1]; if (s) doOpt(s); });
+  $('mbody').querySelectorAll('[data-opt]').forEach(b => b.onclick = () => doOpt(b.dataset.opt));
+}
+function shopItems() {
+  const it = [];
+  ECO.fieldCrops.forEach(c => it.push({ g: 'Seeds', name: N(c), sub: c.yieldKg + ' ' + T('kg') + ' · ' + c.seasons.map(T).join(', ') + (S.seeds[c.id] ? ' · ' + T('Owned') + ' ' + S.seeds[c.id] : ''), price: c.seedPrice, buy() { S.seeds[c.id] = (S.seeds[c.id] || 0) + 1; } }));
+  it.push({ g: 'Supplies', name: N(ECO.feed), sub: T('Owned') + ' ' + S.feed.toFixed(1), price: ECO.feed.price, buy() { S.feed += ECO.feed.units; emit('buyFeed'); } });
+  ECO.animals.forEach(a => { const n = S.animals.filter(x => x.t === a.id).length; it.push({ g: 'Animals', name: N(a), sub: a.amount + ' ' + N(GOODS[a.product]) + ' / ' + a.interval + 's · ' + T('Owned') + ' ' + n + '/' + a.max, price: a.price, full: n >= a.max, buy() { addAnimal(a.id); emit('buyAnimal'); } }); });
+  ['capacity', 'growth'].forEach(u => it.push({ g: 'Upgrades', name: lang === 'ar' ? UPG[u].ar : UPG[u].en, sub: S.up[u] ? T('bought') : '', price: UPG[u].price, full: !!S.up[u], buy() { S.up[u] = 1; emit('buyUpgrade'); } }));
+  return it;
+}
+function openShop() {
+  const items = shopItems(); let h = '<h2>' + T('Farm Shop') + '</h2>'; let grp = '';
+  items.forEach((x, i) => {
+    if (x.g !== grp) { if (grp) h += '</div>'; grp = x.g; h += '<h3>' + T(grp) + '</h3><div class="list">'; }
+    const key = i < 9 ? String(i + 1) : '';
+    h += '<div class="item"><span class="k">' + key + '</span><div class="n"><div>' + esc(x.name) + '</div><div>' + esc(x.sub) + '</div></div><button class="btn" data-i="' + i + '"' + (x.full || S.money < x.price ? ' disabled' : '') + '>' + (x.full ? T('Max') : fmt(x.price) + ' ' + T('EGP')) + '</button></div>';
+  });
+  h += '</div>';
+  const buy = i => { const x = items[i]; if (!x) return; if (x.full) { toast(T('Pen is full for this animal'), 'bad'); return; } if (S.money < x.price) { toast(T('Not enough money'), 'bad'); return; } S.money -= x.price; x.buy(); toast(T('Bought') + ': ' + x.name, 'good'); refreshHud(); save(); openShop(); };
+  openModal(h, 'shop', d => buy(d - 1));
+  $('mbody').querySelectorAll('[data-i]').forEach(b => b.onclick = () => buy(+b.dataset.i));
+}
+function openSeeds(i, owned) {
+  let h = '<h2>' + T('Choose seeds') + '</h2><div class="list">';
+  owned.forEach((id, n) => { const fc = FIELD[id], inS = fc.seasons.indexOf(season()) >= 0; h += '<div class="item"><span class="k">' + (n + 1) + '</span><div class="n"><div>' + esc(N(fc)) + ' ×' + S.seeds[id] + '</div><div>' + (inS ? T(season()) + ' ✓' : T('off-season')) + '</div></div><button class="btn" data-s="' + id + '">' + T('Plant') + '</button></div>'; });
+  h += '</div>';
+  const go = id => { if (!id) return; plant(i, id); closeModal(); };
+  openModal(h, 'seeds', d => go(owned[d - 1]));
+  $('mbody').querySelectorAll('[data-s]').forEach(b => b.onclick = () => go(b.dataset.s));
+}
+function openMarket() {
+  let h = '<h2>' + T('Market') + '</h2><p>' + T('Market is south, down the dirt road.') + ' ' + T('Sell at the market with the truck') + '.</p>';
+  h += '<h3>' + T('Contracts') + '</h3><div class="list">';
+  S.contracts.forEach(c => { h += '<div class="item"><span class="k">×' + c.mult + '</span><div class="n"><div>' + fmt(c.kg) + ' ' + unit(c.g) + ' ' + esc(N(GOODS[c.g])) + '</div><div>' + T('left') + ' ' + fmt(c.left) + ' · ' + T('until day') + ' ' + c.until + '</div></div><span class="pill gold">' + fmt(price(c.g) * c.mult) + '/' + unit(c.g) + '</span></div>'; });
+  h += '</div><h3>' + T('Today\'s prices') + '</h3><div style="overflow-x:auto"><table class="t"><thead><tr><th>' + T('Good') + '</th><th class="num" style="text-align:end">' + T('Price') + '</th><th class="num" style="text-align:end">' + T('In storage') + '</th><th class="num" style="text-align:end">' + T('In truck') + '</th></tr></thead><tbody>';
+  ECO.goods.forEach(g => { const base = g.price, p = price(g.id), up = p >= base; h += '<tr><td>' + esc(N(g)) + '</td><td class="num" style="color:' + (up ? 'var(--leaf)' : '#f08a6e') + '">' + p.toFixed(1) + ' ' + T('EGP') + '/' + unit(g.id) + '</td><td class="num">' + fmt(S.goods[g.id] || 0) + '</td><td class="num">' + fmt(S.veh.truck.cargo[g.id] || 0) + '</td></tr>'; });
+  h += '</tbody></table></div>';
+  openModal(h, 'market');
+}
+function openHelp(first) {
+  let h = '<div id="intro"><div class="brand"><span class="ar">المزرعة</span><span class="en">Mazraa</span></div>';
+  h += '<p>' + T('Your grandfather left you a farm in the Delta: two greenhouses, six field plots, an empty animal pen and an old truck. Get the water running, bring the greenhouses back to health, plant the fields and sell at the market in town.') + '</p>';
+  h += '<p>' + T('This is a browser preview of the Unity game. Same crops, prices, animals and 25 missions, simplified graphics.') + '</p>';
+  h += '<h3>' + T('Controls') + '</h3><div class="keys">';
+  const rows = coarse ? [['◎', 'Move'], [T('Drag'), 'Look around'], ['E', 'Interact / get in or out'], ['R', 'Pad action: load, sell, refuel'], ['Q', 'Switch tractor implement']]
+    : [['WASD', 'Move'], ['Shift', 'Run'], [T('Drag'), 'Look around'], ['E', 'Interact / get in or out'], ['R', 'Pad action: load, sell, refuel'], ['Q', 'Switch tractor implement'], ['Space', 'Brake'], ['T', 'Tow (when out of fuel)'], ['M', 'Market prices and contracts'], ['L', 'Language']];
+  rows.forEach(r => h += '<kbd>' + r[0] + '</kbd><span>' + T(r[1]) + '</span>');
+  h += '</div><div class="row2"><button class="btn" id="go">' + (first ? T('Start farming') : T('Resume')) + '</button><button class="btn ghost" id="lng">' + (lang === 'ar' ? 'English' : 'عربي') + '</button><button class="btn ghost" id="reset">' + T('New game') + '</button></div>';
+  h += '<p class="load" id="loadtxt"></p><p class="load">' + T('Saved in this browser.') + ' 3D models: Kenney, Quaternius (CC0).</p></div>';
+  openModal(h, 'help');
+  $('go').onclick = closeModal; $('lng').onclick = () => { toggleLang(); openHelp(first); };
+  $('reset').onclick = () => {
+    $('mbody').querySelector('.row2').innerHTML = '<span style="align-self:center">' + T('Reset all progress?') + '</span><button class="btn" id="yes">' + T('Yes, start over') + '</button><button class="btn ghost" id="no">' + T('Cancel') + '</button>';
+    $('yes').onclick = () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} S = null; location.reload(); };
+    $('no').onclick = () => openHelp(first);
+  };
+  updLoad();
+}
+function updLoad() { const el = document.getElementById('loadtxt'); if (el) el.textContent = loading ? T('Loading models') + ' ' + loaded + '/' + loading : ''; }
+function applyDir() {
+  const d = lang === 'ar' ? 'rtl' : 'ltr';
+  ['top', 'vpanel', 'mbody', 'prompt', 'toasts'].forEach(id => $(id).dir = d);
+  document.documentElement.lang = lang;
+  $('bLang').firstChild.textContent = lang === 'ar' ? 'English' : 'عربي';
+  document.querySelectorAll('[data-t]').forEach(e => e.textContent = T(e.dataset.t));
+}
+function toggleLang() {
+  lang = lang === 'ar' ? 'en' : 'ar'; applyDir(); refreshHud(); save();
+  if (modalOpen) { if (modalKind === 'market') openMarket(); else if (modalKind === 'shop') openShop(); else if (modalKind === 'station') openStation(curStation); }
+}
+
+// ---------- main loop ----------
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; clockT += dt;
+  if (!modalOpen || modalKind !== 'help') simulate(dt);
+  if (P.inV) updateVehicle(dt); else updatePlayer(dt);
+  updateAnimals(dt);
+  mixers.forEach(m => m.update(dt));
+  // camera
+  const tgt = P.inV ? VSPEC[P.inV].g.position : player.position;
+  if (P.inV && clockT - lastDrag > 1.5) { const want = S.veh[P.inV].r + Math.PI; let d = want - CAM.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); CAM.yaw += d * Math.min(1, dt * 2.5); }
+  const cd = CAM.dist;
+  camera.position.set(tgt.x + Math.sin(CAM.yaw) * Math.cos(CAM.pitch) * cd, 1.6 + Math.sin(CAM.pitch) * cd, tgt.z + Math.cos(CAM.yaw) * Math.cos(CAM.pitch) * cd);
+  camera.lookAt(tgt.x, 1.4, tgt.z);
+  // effects
+  if (S.well) WELL.wheel.rotation.x += dt * 2;
+  window.__water.material.color.setHSL(0.53, 0.45, 0.4 + Math.sin(clockT) * 0.02);
+  rain.visible = S.rain > 0;
+  if (rain.visible) { const a = rainGeo.attributes.position.array; for (let i = 0; i < RAIN_N; i++) { a[i * 3 + 1] -= dt * 18; if (a[i * 3 + 1] < 0) a[i * 3 + 1] += 22; } rainGeo.attributes.position.needsUpdate = true; rain.position.set(tgt.x, 0, tgt.z); }
+  for (let i = fx.length - 1; i >= 0; i--) { const f = fx[i]; f.t += dt; f.vy -= 9 * dt; f.m.position.x += f.vx * dt; f.m.position.y += f.vy * dt; f.m.position.z += f.vz * dt; f.m.material.opacity = 1 - f.t / 0.9; if (f.t > 0.9) { scene.remove(f.m); fx.splice(i, 1); } }
+  updateSky();
+  updatePrompt(); updateMarker();
+  hudT += dt; if (hudT > 0.25) { hudT = 0; checkMission(); syncVisuals(); refreshHud(); }
+  saveT += dt; if (saveT > 6) { saveT = 0; save(); }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+window.MZ = { get S() { return S; }, emit, P, tractorWork, updateVehicle, sellCargo, loadCargo, plant, harvestPlot, interact, padAction, enter, exitVehicle, plotAct, openShop, player, VSPEC, VEL, simulate, checkMission };
+applyDir(); syncVisuals(); refreshHud();
+openHelp(true);
+requestAnimationFrame(frame);
+})();
+</script>

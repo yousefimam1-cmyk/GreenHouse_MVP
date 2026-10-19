@@ -1,0 +1,77 @@
+{
+  "notes": "Random farm events (EventDirector). Each morning, with chance dailyChance, one event allowed in tomorrow's season is picked by weight and announced a day ahead. type: heat | haboob | flood | frost | locust | waterBan | demand | buyer. startHour = clock hour (day starts 06:00); hours = length (0 = all day); days = whole days (demand). fieldDry / penWater = drying and water-use multipliers; growth = growth multiplier for 'crops' (frost); priceMul for 'goods' (demand); fog = dust-storm fog density; lossChance = share of field crops lost (locust, no pesticide); plots / fertility = flooded plots and their next-harvest multiplier; bonus / amount = big buyer contract price multiplier and size.",
+  "dailyChance": 0.3,
+  "events": [
+    {
+      "id": "heat", "type": "heat", "seasons": ["summer", "spring"], "weight": 3, "minDay": 2,
+      "fieldDry": 2.0, "penWater": 2.0,
+      "nameEn": "Extreme heat", "nameAr": "موجة حر شديدة",
+      "warnEn": "Above 48 C tomorrow: fields dry twice as fast and the animals drink twice as much.",
+      "warnAr": "بكرة فوق 48 درجة: الحقول تنشف أسرع مرتين والحلال يشرب ضعف.",
+      "startEn": "Extreme heat! Water the fields and fill the trough often.",
+      "startAr": "حر شديد! اسقِ الحقول وعبّ الحوض كل شوي."
+    },
+    {
+      "id": "haboob", "type": "haboob", "seasons": ["spring", "summer"], "weight": 2, "minDay": 3,
+      "startHour": 14, "hours": 4, "fog": 0.045, "fieldDry": 1.5,
+      "nameEn": "Haboob dust storm", "nameAr": "عاصفة غبار (هبوب)",
+      "warnEn": "A haboob is coming tomorrow at 14:00. Close the greenhouse vents (switch by each control station)!",
+      "warnAr": "بكرة الساعة 2 الظهر جاية عاصفة غبار. سكّر فتحات البيوت المحمية (المفتاح جنب محطة التحكم)!",
+      "startEn": "Haboob! A wall of dust covers the farm.",
+      "startAr": "هبوب! الغبار غطى المزرعة."
+    },
+    {
+      "id": "flood", "type": "flood", "seasons": ["winter", "spring"], "weight": 1, "minDay": 4,
+      "startHour": 9, "hours": 3, "plots": 2, "fertility": 1.4,
+      "nameEn": "Flash flood in the wadi", "nameAr": "سيل في الوادي",
+      "warnEn": "Heavy rain up the wadi: a flash flood may reach the low plots tomorrow morning.",
+      "warnAr": "مطر غزير فوق الوادي: يمكن السيل يوصل للقطع الواطية بكرة الصبح.",
+      "startEn": "The wadi is flowing! Water covers the low plots.",
+      "startAr": "الوادي سال! الموية غطت القطع الواطية."
+    },
+    {
+      "id": "frost", "type": "frost", "seasons": ["winter"], "weight": 2, "minDay": 2,
+      "startHour": 22, "hours": 8, "growth": 0.3, "crops": ["watermelon", "potato"],
+      "nameEn": "Frost night", "nameAr": "ليلة صقيع",
+      "warnEn": "Frost tomorrow night: watermelon and potato will barely grow.",
+      "warnAr": "بكرة بالليل صقيع: الحبحب والبطاطس بالكاد تنمو.",
+      "startEn": "Frost! Sensitive crops have slowed down.",
+      "startAr": "صقيع! المحاصيل الحساسة بطّأت."
+    },
+    {
+      "id": "locust", "type": "locust", "seasons": ["spring", "winter"], "weight": 0.4, "minDay": 6,
+      "startHour": 11, "hours": 3, "lossChance": 0.5,
+      "nameEn": "Desert locust swarm", "nameAr": "سرب جراد صحراوي",
+      "warnEn": "A locust swarm was seen nearby. Buy pesticide at the Farm Shop (Supplies) before tomorrow!",
+      "warnAr": "شافوا سرب جراد قريب. اشترِ مبيد من محل المزرعة (مستلزمات) قبل بكرة!",
+      "startEn": "Locusts! The swarm lands on the fields.",
+      "startAr": "جراد! السرب نزل على الحقول."
+    },
+    {
+      "id": "waterban", "type": "waterBan", "seasons": ["summer", "autumn"], "weight": 1.5, "minDay": 3,
+      "nameEn": "Water restriction day", "nameAr": "يوم تقنين الموية",
+      "warnEn": "Tomorrow the ministry limits pumping: no irrigation all day. Water your fields today.",
+      "warnAr": "بكرة الوزارة توقف الضخ: ما فيه سقي طول اليوم. اسقِ حقولك اليوم.",
+      "startEn": "Water restriction: no irrigation until tomorrow.",
+      "startAr": "تقنين الموية: ما فيه سقي لين بكرة."
+    },
+    {
+      "id": "ramadan", "type": "demand", "seasons": [], "weight": 0.6, "minDay": 5, "days": 3,
+      "priceMul": 1.5, "goods": ["dates", "laban", "milk"],
+      "nameEn": "Ramadan demand boom", "nameAr": "طلب رمضان",
+      "warnEn": "Ramadan is near: dates, laban and milk sell for 50% more for 3 days.",
+      "warnAr": "رمضان قرّب: التمر واللبن والحليب يتباعون بزيادة 50% لمدة 3 أيام.",
+      "startEn": "Ramadan Kareem! Dates, laban and milk prices are up.",
+      "startAr": "رمضان كريم! أسعار التمر واللبن والحليب ارتفعت."
+    },
+    {
+      "id": "buyer", "type": "buyer", "seasons": [], "weight": 1.2, "minDay": 3,
+      "bonus": 1.9, "amount": 150, "buyerEn": "Big buyer from Riyadh", "buyerAr": "تاجر كبير من الرياض",
+      "nameEn": "Big buyer visit", "nameAr": "زيارة تاجر كبير",
+      "warnEn": "A big buyer from Riyadh visits the market tomorrow: one day only, top prices.",
+      "warnAr": "بكرة يزور السوق تاجر كبير من الرياض: يوم واحد بس، وبأعلى سعر.",
+      "startEn": "The big buyer is at the market today!",
+      "startAr": "التاجر الكبير بالسوق اليوم!"
+    }
+  ]
+}

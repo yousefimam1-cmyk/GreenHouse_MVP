@@ -1,0 +1,28 @@
+{
+ "entries": [
+  {
+   "en": "Supplies",
+   "ar": "مستلزمات"
+  },
+  {
+   "en": "Seeds",
+   "ar": "بذور"
+  },
+  {
+   "en": "Animals",
+   "ar": "حيوانات"
+  },
+  {
+   "en": "Upgrades",
+   "ar": "ترقيات"
+  },
+  {
+   "en": "Other",
+   "ar": "أخرى"
+  },
+  {
+   "en": "[0-9] or click to buy   [<- ->] page   [Esc] close",
+   "ar": "[0-9] أو اضغط للشراء   [<- ->] الصفحة   [Esc] إغلاق"
+  }
+ ]
+}

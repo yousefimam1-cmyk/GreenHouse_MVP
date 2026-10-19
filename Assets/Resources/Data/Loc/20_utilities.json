@@ -1,0 +1,296 @@
+{
+ "entries": [
+  {
+   "en": "Power",
+   "ar": "الكهرباء"
+  },
+  {
+   "en": "Water",
+   "ar": "الماء"
+  },
+  {
+   "en": "Buy a diesel generator first",
+   "ar": "اشترِ مولد ديزل أول"
+  },
+  {
+   "en": "Not enough tank space",
+   "ar": "ما فيه مكان كافي في الخزانات"
+  },
+  {
+   "en": "The fuel tank is full",
+   "ar": "خزان الوقود مليان"
+  },
+  {
+   "en": "Biogas digester",
+   "ar": "هاضم الغاز الحيوي"
+  },
+  {
+   "en": "Deep aquifer well",
+   "ar": "بئر ارتوازية عميقة"
+  },
+  {
+   "en": "Diesel generator",
+   "ar": "مولد ديزل"
+  },
+  {
+   "en": "SEC grid connection",
+   "ar": "عداد الشركة السعودية للكهرباء"
+  },
+  {
+   "en": "Center pivot",
+   "ar": "رشاش محوري"
+  },
+  {
+   "en": "Water tank",
+   "ar": "خزان ماء"
+  },
+  {
+   "en": "Solar panels",
+   "ar": "ألواح شمسية"
+  },
+  {
+   "en": "Treated wastewater line",
+   "ar": "خط مياه معالجة"
+  },
+  {
+   "en": "Small wind turbine",
+   "ar": "توربين رياح صغير"
+  },
+  {
+   "en": "Utilities",
+   "ar": "الخدمات"
+  },
+  {
+   "en": "Field irrigation:",
+   "ar": "ري الحقول:"
+  },
+  {
+   "en": "[E] Utilities",
+   "ar": "[E] الخدمات"
+  },
+  {
+   "en": "active",
+   "ar": "شغّال"
+  },
+  {
+   "en": "fields watered automatically",
+   "ar": "الحقول تنسقى تلقائي"
+  },
+  {
+   "en": "! Generator fuel is low",
+   "ar": "! وقود المولد قليل"
+  },
+  {
+   "en": "! Not enough power: greenhouse cooling pads slow down and beds stop growing",
+   "ar": "! الكهرباء ما تكفي: خلايا التبريد في البيت المحمي تضعف والأحواض توقف نمو"
+  },
+  {
+   "en": "! Not enough water: greenhouse beds slow down and fields dry out faster",
+   "ar": "! الماء ما يكفي: أحواض البيت المحمي يبطى نموها والحقول تنشف أسرع"
+  },
+  {
+   "en": "! Save water: drip irrigation uses about half the water",
+   "ar": "! رشّد الماء: الري بالتنقيط يصرف تقريبًا نص الماء"
+  },
+  {
+   "en": "! Solar panels are dusty - clean them with E",
+   "ar": "! الألواح الشمسية عليها غبار - نظفها بـ E"
+  },
+  {
+   "en": "80% of today's water allowance used ({0}/{1} m3). Save water!",
+   "ar": "استهلكت 80% من حصة الماء اليوم ({0}/{1} م3). رشّد الماء!"
+  },
+  {
+   "en": "Bill so far today: {0} SAR   Daily cost now: about {1} SAR",
+   "ar": "فاتورة اليوم للحين: {0} ريال   التكلفة اليومية الحين: تقريبًا {1} ريال"
+  },
+  {
+   "en": "Biogas digester - manure {0} kg  [E] Utilities",
+   "ar": "هاضم الغاز الحيوي - سماد {0} كجم  [E] الخدمات"
+  },
+  {
+   "en": "Biogas: {0} kW (manure {1} kg)",
+   "ar": "غاز حيوي: {0} كيلوواط (سماد {1} كجم)"
+  },
+  {
+   "en": "Buy equipment at a Farm Shop (Power and Water pages)   [U] / [Esc] close",
+   "ar": "اشترِ المعدات من محل المزرعة (صفحة الكهرباء والماء)   [U] / [Esc] إغلاق"
+  },
+  {
+   "en": "Daily water limit reached ({0} m3). Save water - drip irrigation uses far less!",
+   "ar": "وصلت حد الماء اليومي ({0} م3). رشّد الماء - الري بالتنقيط يصرف أقل بكثير!"
+  },
+  {
+   "en": "Days in a row with enough power: {0}",
+   "ar": "أيام ورا بعض والكهرباء كافية: {0}"
+  },
+  {
+   "en": "Deep aquifer well: {0} m3/day (needs power)",
+   "ar": "البئر الارتوازية: {0} م3/يوم (تحتاج كهرباء)"
+  },
+  {
+   "en": "Diesel generator: {0} kW (fuel {1} L)",
+   "ar": "مولد الديزل: {0} كيلوواط (وقود {1} لتر)"
+  },
+  {
+   "en": "Farm well: stopped - start the well",
+   "ar": "بئر المزرعة: واقفة - شغّل البئر"
+  },
+  {
+   "en": "Farm well: {0} m3/day",
+   "ar": "بئر المزرعة: {0} م3/يوم"
+  },
+  {
+   "en": "Generator refuelled: {0} L for {1} SAR",
+   "ar": "عبّيت المولد: {0} لتر بـ {1} ريال"
+  },
+  {
+   "en": "Over today's water limit ({0} m3)",
+   "ar": "تعديت حد الماء اليوم ({0} م3)"
+  },
+  {
+   "en": "Power is short! Greenhouse cooling is failing - press U",
+   "ar": "الكهرباء ناقصة! تبريد البيت المحمي يتعطل - اضغط U"
+  },
+  {
+   "en": "Power short: {0}/{1} kW  [U]",
+   "ar": "نقص كهرباء: {0}/{1} كيلوواط  [U]"
+  },
+  {
+   "en": "Power: demand {0} kW, supplied {1} kW (capacity {2} kW)",
+   "ar": "الكهرباء: الطلب {0} كيلوواط، المتوفر {1} كيلوواط (القدرة {2} كيلوواط)"
+  },
+  {
+   "en": "SEC electricity bill: {0} SAR",
+   "ar": "فاتورة الكهرباء: {0} ريال"
+  },
+  {
+   "en": "SEC grid: {0} of {1} kW",
+   "ar": "شبكة الكهرباء: {0} من {1} كيلوواط"
+  },
+  {
+   "en": "Solar ({0} x 10 kWp): {1} kW, dust {2}%",
+   "ar": "شمسي ({0} × 10 كيلوواط): {1} كيلوواط، غبار {2}%"
+  },
+  {
+   "en": "Solar panels are clean",
+   "ar": "الألواح الشمسية نظيفة"
+  },
+  {
+   "en": "Solar panels cleaned - full power from the sun",
+   "ar": "نظفت الألواح - طاقة الشمس كاملة"
+  },
+  {
+   "en": "Treated wastewater: {0} m3/day (fodder fields only)",
+   "ar": "مياه معالجة: {0} م3/يوم (للأعلاف بس)"
+  },
+  {
+   "en": "Uses: greenhouse beds {0}, fields {1}, animals {2} m3/day",
+   "ar": "الاستهلاك: أحواض البيت المحمي {0}، الحقول {1}، الحيوانات {2} م3/يوم"
+  },
+  {
+   "en": "Uses: greenhouse cooling {0} kW, pumps {1} kW, irrigation {2} kW, farm {3} kW",
+   "ar": "الاستهلاك: تبريد البيت المحمي {0} كيلوواط، المضخات {1}، الري {2}، المزرعة {3} كيلوواط"
+  },
+  {
+   "en": "Utilities - Power & Water",
+   "ar": "الخدمات - الكهرباء والماء"
+  },
+  {
+   "en": "Water is short! Crops are drying - press U",
+   "ar": "الماء ناقص! الزرع ينشف - اضغط U"
+  },
+  {
+   "en": "Water short: {0}% supplied  [U]",
+   "ar": "نقص ماء: متوفر {0}%  [U]"
+  },
+  {
+   "en": "Water stored {0}/{1} m3  [E] Utilities",
+   "ar": "الماء المخزن {0}/{1} م3  [E] الخدمات"
+  },
+  {
+   "en": "Water tanker delivered {0} m3 of desalinated water",
+   "ar": "وايت الماء جاب {0} م3 ماء محلّى"
+  },
+  {
+   "en": "Water used today: {0} / {1} m3 (daily limit)",
+   "ar": "الماء المستهلك اليوم: {0} / {1} م3 (الحد اليومي)"
+  },
+  {
+   "en": "Water: demand {0} m3/day, supply {1} m3/day, stored {2}/{3} m3",
+   "ar": "الماء: الطلب {0} م3/يوم، المتوفر {1} م3/يوم، المخزن {2}/{3} م3"
+  },
+  {
+   "en": "Wind ({0} x 5 kW): {1} kW",
+   "ar": "رياح ({0} × 5 كيلوواط): {1} كيلوواط"
+  },
+  {
+   "en": "[E] Clean solar panels (dust {0}%)",
+   "ar": "[E] نظّف الألواح الشمسية (غبار {0}%)"
+  },
+  {
+   "en": "[E] Refuel generator: 100 L for {0} SAR (tank {1} L)",
+   "ar": "[E] عبّ المولد: 100 لتر بـ {0} ريال (الخزان {1} لتر)"
+  },
+  {
+   "en": "Biogas digester 8 kW (manure)",
+   "ar": "هاضم غاز حيوي 8 كيلوواط (سماد)"
+  },
+  {
+   "en": "Deep aquifer well 60 m3/day",
+   "ar": "بئر ارتوازية عميقة 60 م3/يوم"
+  },
+  {
+   "en": "Diesel 200 L",
+   "ar": "ديزل 200 لتر"
+  },
+  {
+   "en": "Drip irrigation lines",
+   "ar": "خطوط ري بالتنقيط"
+  },
+  {
+   "en": "Diesel generator 30 kW",
+   "ar": "مولد ديزل 30 كيلوواط"
+  },
+  {
+   "en": "SEC grid upgrade",
+   "ar": "رفع قدرة عداد الكهرباء"
+  },
+  {
+   "en": "Solar panels 10 kW",
+   "ar": "ألواح شمسية 10 كيلوواط"
+  },
+  {
+   "en": "Sprinklers for the fields",
+   "ar": "رشاشات للحقول"
+  },
+  {
+   "en": "Water tank 50 m3",
+   "ar": "خزان ماء 50 م3"
+  },
+  {
+   "en": "Desalinated water tanker 20 m3",
+   "ar": "وايت ماء محلّى 20 م3"
+  },
+  {
+   "en": "Treated wastewater line (fodder fields)",
+   "ar": "خط مياه معالجة (حقول الأعلاف)"
+  },
+  {
+   "en": "Small wind turbine 5 kW",
+   "ar": "توربين رياح صغير 5 كيلوواط"
+  },
+  {
+   "en": "By hand",
+   "ar": "يدوي"
+  },
+  {
+   "en": "Drip lines",
+   "ar": "تنقيط"
+  },
+  {
+   "en": "Sprinklers",
+   "ar": "رشاشات"
+  }
+ ]
+}

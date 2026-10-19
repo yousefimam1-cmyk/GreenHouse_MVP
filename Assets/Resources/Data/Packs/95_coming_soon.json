@@ -1,0 +1,9 @@
+{
+ "notes": "DLC roadmap (docs/GDD.md, DLC section). Each becomes active when comingSoon is false and the region in regions.json is playable.",
+ "packs": [
+  {"id": "jordan_valley", "nameEn": "Jordan Valley", "nameAr": "غور الأردن", "version": "0.1", "regions": ["jordan_valley"], "dlcId": "jordan_valley", "requires": ["base"], "filePrefixes": ["94j_"], "comingSoon": true},
+  {"id": "souss", "nameEn": "Souss Valley", "nameAr": "سهل سوس", "version": "0.1", "regions": ["souss"], "dlcId": "souss", "requires": ["base"], "filePrefixes": ["94m_"], "comingSoon": true},
+  {"id": "mesopotamia", "nameEn": "Mesopotamia", "nameAr": "بلاد الرافدين", "version": "0.1", "regions": ["mesopotamia"], "dlcId": "mesopotamia", "requires": ["base"], "filePrefixes": ["94i_"], "comingSoon": true},
+  {"id": "batinah", "nameEn": "Al Batinah Coast", "nameAr": "ساحل الباطنة", "version": "0.1", "regions": ["batinah"], "dlcId": "batinah", "requires": ["base"], "filePrefixes": ["94o_"], "comingSoon": true}
+ ]
+}

@@ -1,0 +1,13 @@
+{
+  "notes": "Egypt Nile Delta DLC field crops for FarmCore: paddy rice (flood: grows in standing water, waterMin 0.9 = needs the field kept flooded; Egyptian average ~9.5 t/ha), Egyptian cotton (seed cotton ~3 t/ha), berseem / Egyptian clover (legume, 4 cuts a season, ~20 t/ha fresh per cut), summer maize (~8 t/ha). Agronomy from soil.json (FAO-29 salt tolerance, FAO-56 / FAO-33 water, Egyptian MALR N rates).",
+  "crops": [
+    { "id": "rice", "family": "grain", "yieldT": 9.5, "growDays": 5, "harvestDays": 3, "seedBagHa": 0.01, "flood": true, "waterMin": 0.9,
+      "n": 150, "p": 30, "k": 70, "rn": 95, "rp": 20, "rk": 30, "phMin": 5.0, "phMax": 8.5, "ecT": 3.0, "ecS": 12, "tBase": 10, "tOptLo": 25, "tOptHi": 33, "tMax": 38, "et": 1000, "ky": 1.8, "residue": 1.0 },
+    { "id": "cotton", "family": "fiber", "yieldT": 3.2, "growDays": 6, "harvestDays": 4, "seedBagHa": 0.01, "rows": true,
+      "n": 140, "p": 35, "k": 90, "rn": 60, "rp": 15, "rk": 40, "phMin": 5.5, "phMax": 8.5, "ecT": 7.7, "ecS": 5.2, "tBase": 15, "tOptLo": 25, "tOptHi": 32, "tMax": 38, "et": 750, "ky": 0.85, "residue": 0.6 },
+    { "id": "berseem", "family": "legume", "yieldT": 20, "growDays": 2.5, "harvestDays": 3, "seedBagHa": 0.01, "cuts": 4, "regrowFrom": 0.55, "feedPerKg": 0.1, "forage": true,
+      "n": 0, "p": 25, "k": 80, "rn": 0, "rp": 6, "rk": 25, "fix": 35, "phMin": 6.0, "phMax": 8.5, "ecT": 1.5, "ecS": 5.7, "tBase": 5, "tOptLo": 15, "tOptHi": 25, "tMax": 32, "et": 160, "ky": 1.0, "residue": 0.3 },
+    { "id": "maize", "family": "grain", "yieldT": 8, "growDays": 4.5, "harvestDays": 3, "seedBagHa": 0.01, "rows": true, "feedPerKg": 0.05,
+      "n": 180, "p": 35, "k": 90, "rn": 110, "rp": 20, "rk": 30, "phMin": 5.5, "phMax": 8.3, "ecT": 1.7, "ecS": 12, "tBase": 10, "tOptLo": 25, "tOptHi": 32, "tMax": 38, "et": 600, "ky": 1.25, "residue": 1.0 }
+  ]
+}

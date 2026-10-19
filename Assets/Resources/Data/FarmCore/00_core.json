@@ -1,0 +1,109 @@
+{
+  "notes": "FarmCore (Assets/Scripts/FarmCore): field farming and irrigation. Packs in Resources/Data/FarmCore load in file-name order; later packs add or replace entries by id. crops: yieldT = fresh t/ha at 100% (Najd centre-pivot wheat 6-7 t/ha, potato 30-40, onion 35-45, watermelon 35-45, alfalfa ~12 t/ha fresh per cut, sorghum 4-6, millet 2-3, open-field tomato 50-70), growDays = in-game days from sowing to ripe at optimum temperature, harvestDays = days a ripe crop stays harvestable before it withers (Settings > Withering), seedBagHa = area one seed bag sows, cuts / regrowFrom = multi-cut forage, forage = mower + baler instead of the combine, rows = row crop. Agronomy (n/p/k need kg/ha, rn/rp/rk removal at 100% yield, fix = legume N, pH range, ecT/ecS = Maas-Hoffman salt threshold dS/m and % loss per dS/m, cardinal temperatures, et = seasonal crop water use mm, ky = FAO-33 yield response to water, residue = straw left) ported from soil.json (FAO-56, FAO-29, FAO-33, Saudi MEWA / Egyptian MALR fertiliser guides). regions: temp / et0 per season (spring, summer, autumn, winter), rainMm per rainy day, capacityMm = plant-available water of the root zone at field capacity (sandy Najd soil ~70 mm, Delta clay ~140 mm), ecWater = irrigation water salinity, gw* = aquifer: start depth m, well limits, metres of drawdown per m3 pumped, recharge m/day in winter and rainy days (Saq aquifer under Qassim falls 2-3 m a year), canal = canal water turns (nobat el-mayya). emitters: eff = share of the water that reaches the roots, salt = salt left behind per mm, evapDay / evapNight = spray and surface losses by day and night (night watering loses less), flowHa = design flow m3/h per hectare covered, headM = pressure head the pump must lift on top of the groundwater depth. pipes: carrying capacity by diameter (PE pipe, ~1.5 m/s). amendments: bagHa = area one bag covers.",
+  "kitPrice": 25,
+  "leachMm": 150,
+  "sameFamilyMult": 0.9,
+  "otherFamilyMult": 1.1,
+  "seedM2PerBag": 100,
+  "crops": [
+    { "id": "wheat", "family": "grain", "yieldT": 6.5, "growDays": 5, "harvestDays": 3, "seedBagHa": 0.01,
+      "n": 100, "p": 25, "k": 60, "rn": 50, "rp": 12, "rk": 20, "phMin": 5.5, "phMax": 8.5, "ecT": 6.0, "ecS": 7.1, "tBase": 3, "tOptLo": 15, "tOptHi": 24, "tMax": 32, "et": 450, "ky": 1.05, "residue": 1.0 },
+    { "id": "potato", "family": "nightshade", "yieldT": 35, "growDays": 4, "harvestDays": 3, "seedBagHa": 0.01, "rows": true,
+      "n": 120, "p": 35, "k": 150, "rn": 60, "rp": 15, "rk": 80, "phMin": 5.0, "phMax": 8.2, "ecT": 1.7, "ecS": 12, "tBase": 5, "tOptLo": 15, "tOptHi": 22, "tMax": 29, "et": 500, "ky": 1.1, "residue": 0.4 },
+    { "id": "onion", "family": "allium", "yieldT": 40, "growDays": 5, "harvestDays": 4, "seedBagHa": 0.01, "rows": true,
+      "n": 90, "p": 30, "k": 90, "rn": 40, "rp": 10, "rk": 40, "phMin": 6.0, "phMax": 8.0, "ecT": 1.2, "ecS": 16, "tBase": 6, "tOptLo": 14, "tOptHi": 25, "tMax": 32, "et": 400, "ky": 1.1, "residue": 0.2 },
+    { "id": "watermelon", "family": "cucurbit", "yieldT": 40, "growDays": 3, "harvestDays": 2, "seedBagHa": 0.01, "rows": true,
+      "n": 90, "p": 30, "k": 120, "rn": 40, "rp": 12, "rk": 60, "phMin": 5.5, "phMax": 8.0, "ecT": 2.0, "ecS": 9, "tBase": 12, "tOptLo": 24, "tOptHi": 32, "tMax": 38, "et": 450, "ky": 1.1, "residue": 0.5 },
+    { "id": "alfalfa", "family": "legume", "yieldT": 12, "growDays": 2.5, "harvestDays": 3, "seedBagHa": 0.01, "cuts": 6, "regrowFrom": 0.6, "feedPerKg": 0.1, "forage": true,
+      "n": 0, "p": 30, "k": 120, "rn": 0, "rp": 8, "rk": 30, "fix": 25, "phMin": 6.2, "phMax": 8.3, "ecT": 2.0, "ecS": 7.3, "tBase": 5, "tOptLo": 18, "tOptHi": 30, "tMax": 38, "et": 180, "ky": 1.1, "residue": 0.2 },
+    { "id": "sorghum", "family": "grain", "yieldT": 5, "growDays": 4, "harvestDays": 3, "seedBagHa": 0.01, "feedPerKg": 0.05,
+      "n": 90, "p": 20, "k": 60, "rn": 45, "rp": 10, "rk": 30, "phMin": 5.5, "phMax": 8.5, "ecT": 6.8, "ecS": 16, "tBase": 10, "tOptLo": 26, "tOptHi": 34, "tMax": 40, "et": 500, "ky": 0.9, "residue": 1.0 },
+    { "id": "millet", "family": "grain", "yieldT": 2.5, "growDays": 3, "harvestDays": 3, "seedBagHa": 0.01, "feedPerKg": 0.05,
+      "n": 60, "p": 15, "k": 40, "rn": 30, "rp": 8, "rk": 20, "phMin": 5.0, "phMax": 8.5, "ecT": 6.0, "ecS": 10, "tBase": 12, "tOptLo": 28, "tOptHi": 36, "tMax": 42, "et": 400, "ky": 0.8, "residue": 1.0 },
+    { "id": "tomato", "family": "nightshade", "yieldT": 60, "growDays": 4, "harvestDays": 2, "seedBagHa": 0.01, "rows": true,
+      "n": 120, "p": 35, "k": 150, "rn": 55, "rp": 15, "rk": 90, "phMin": 5.5, "phMax": 8.0, "ecT": 2.5, "ecS": 9.9, "tBase": 10, "tOptLo": 20, "tOptHi": 28, "tMax": 34, "et": 550, "ky": 1.05, "residue": 0.5 }
+  ],
+  "regions": [
+    { "id": "najd", "temp": [25, 36, 28, 15], "et0": [6.5, 9.5, 6.0, 3.5], "rainMm": 8, "capacityMm": 70, "ecWater": 1.6, "waterCost": 0.12, "drainage": 1.4, "stones": 0.3,
+      "gwStart": 110, "gwWellMax": 180, "gwDeepMax": 450, "gwDrawPerM3": 0.001, "gwRecharge": 0.02, "canal": false, "canalFee": 0,
+      "start": { "n": 220, "p": 60, "k": 250, "ph": 7.9, "om": 0.6, "ec": 1.5, "compaction": 0.15 } },
+    { "id": "nile_delta", "temp": [22, 30, 25, 15], "et0": [5.0, 7.0, 4.5, 2.5], "rainMm": 6, "capacityMm": 140, "ecWater": 0.9, "waterCost": 0.03, "drainage": 0.6, "stones": 0.05,
+      "gwStart": 3, "gwWellMax": 40, "gwDeepMax": 120, "gwDrawPerM3": 0.00002, "gwRecharge": 0.05, "canal": true, "canalFee": 0.01,
+      "start": { "n": 200, "p": 55, "k": 380, "ph": 7.9, "om": 1.8, "ec": 2.4, "compaction": 0.3 } }
+  ],
+  "tools": [
+    { "id": "Plough", "width": 2.4, "speedKmh": 12, "draft": 9000, "mass": 900 },
+    { "id": "Cultivator", "width": 3.0, "speedKmh": 14, "draft": 6000, "mass": 800 },
+    { "id": "Seeder", "width": 3.0, "speedKmh": 15, "draft": 3000, "mass": 1100 },
+    { "id": "Spreader", "width": 12, "speedKmh": 18, "draft": 1200, "mass": 700 },
+    { "id": "Sprayer", "width": 12, "speedKmh": 16, "draft": 1000, "mass": 900 },
+    { "id": "Roller", "width": 4, "speedKmh": 15, "draft": 2500, "mass": 1500 },
+    { "id": "Mulcher", "width": 3, "speedKmh": 12, "draft": 4000, "mass": 900 },
+    { "id": "Harvester", "width": 3, "speedKmh": 10, "draft": 4000, "mass": 1400, "tankKg": 2500 },
+    { "id": "Mower", "width": 3, "speedKmh": 15, "draft": 1500, "mass": 600 },
+    { "id": "Baler", "width": 3, "speedKmh": 12, "draft": 2000, "mass": 1800 },
+    { "id": "Hoe", "width": 1.6, "speedKmh": 3, "draft": 0, "mass": 0 },
+    { "id": "HandSow", "width": 1.6, "speedKmh": 3, "draft": 0, "mass": 0 },
+    { "id": "HandHarvest", "width": 1.6, "speedKmh": 3, "draft": 0, "mass": 0 },
+    { "id": "WateringCan", "width": 1.6, "speedKmh": 3, "draft": 0, "mass": 0 }
+  ],
+  "emitters": [
+    { "id": "Pivot", "eff": 0.85, "salt": 0.8, "leach": 0.1, "evapDay": 0.15, "evapNight": 0.05, "flowHa": 8, "headM": 25, "price": 8000, "pricePerM": 150, "size": 30, "minSize": 10, "maxSize": 60, "revHours": 24 },
+    { "id": "Linear", "eff": 0.87, "salt": 0.8, "leach": 0.1, "evapDay": 0.15, "evapNight": 0.05, "flowHa": 8, "headM": 20, "price": 9000, "pricePerM": 150, "size": 30, "minSize": 10, "maxSize": 80, "revHours": 12 },
+    { "id": "Sprinkler", "eff": 0.75, "salt": 0.85, "leach": 0.12, "evapDay": 0.25, "evapNight": 0.08, "flowHa": 10, "headM": 35, "price": 400, "pricePerM": 0, "size": 9, "minSize": 6, "maxSize": 15 },
+    { "id": "Drip", "eff": 0.92, "salt": 0.5, "leach": 0.18, "evapDay": 0.03, "evapNight": 0.02, "flowHa": 4, "headM": 12, "price": 300, "pricePerM": 2, "size": 0 },
+    { "id": "Flood", "eff": 0.55, "salt": 1.0, "leach": 0.25, "evapDay": 0.1, "evapNight": 0.05, "flowHa": 30, "headM": 0, "price": 150, "pricePerM": 0, "size": 0, "waterlog": true }
+  ],
+  "sources": [
+    { "id": "Well", "capacity": 6, "price": 3000, "depthLimit": "well" },
+    { "id": "DeepWell", "capacity": 20, "price": 9000, "depthLimit": "deep" },
+    { "id": "Canal", "capacity": 40, "price": 800 },
+    { "id": "Tank", "capacity": 20, "storage": 50, "price": 1500 },
+    { "id": "Sensor", "price": 250 },
+    { "id": "Junction", "price": 20 }
+  ],
+  "power": [
+    { "id": "Grid", "price": 0, "kwp": 0, "dieselLPerKwh": 0 },
+    { "id": "Solar", "price": 2500, "kwp": 5, "dieselLPerKwh": 0 },
+    { "id": "Diesel", "price": 1500, "kwp": 0, "dieselLPerKwh": 0.3 }
+  ],
+  "pipes": [
+    { "diameterMm": 50, "capacity": 6, "pricePerM": 4 },
+    { "diameterMm": 75, "capacity": 14, "pricePerM": 7 },
+    { "diameterMm": 110, "capacity": 35, "pricePerM": 12 },
+    { "diameterMm": 160, "capacity": 75, "pricePerM": 20 }
+  ],
+  "amendments": [
+    { "id": "urea", "nameEn": "Urea (46% N)", "nameAr": "يوريا (46% نيتروجين)", "price": 60, "bagHa": 0.25, "n": 80, "ec": 0.05, "growing": true, "spread": true, "spray": true },
+    { "id": "superphosphate", "nameEn": "Superphosphate (P)", "nameAr": "سوبر فوسفات", "price": 55, "bagHa": 0.25, "p": 60, "spread": true },
+    { "id": "potash", "nameEn": "Potassium sulfate (K)", "nameAr": "سلفات البوتاسيوم", "price": 65, "bagHa": 0.25, "k": 100, "ec": 0.08, "spread": true },
+    { "id": "compost", "nameEn": "Compost (from your animals' manure)", "nameAr": "سماد عضوي (كمبوست من روث حيواناتك)", "price": 15, "bagHa": 0.05, "manureKg": 250, "n": 20, "p": 12, "k": 30, "om": 0.35, "spread": true },
+    { "id": "gypsum", "nameEn": "Gypsum", "nameAr": "جبس زراعي", "price": 45, "bagHa": 0.1, "ec": -1.2, "ph": -0.1, "compaction": -0.05, "spread": true },
+    { "id": "sulfur", "nameEn": "Agricultural sulfur", "nameAr": "كبريت زراعي", "price": 50, "bagHa": 0.25, "ph": -0.4, "spread": true },
+    { "id": "lime", "nameEn": "Agricultural lime", "nameAr": "جير زراعي", "price": 40, "bagHa": 0.1, "ph": 0.6, "spread": true },
+    { "id": "herbicide", "nameEn": "Herbicide", "nameAr": "مبيد أعشاب", "price": 45, "bagHa": 1.0, "herbicide": true, "growing": true, "spray": true },
+    { "id": "mulch", "nameEn": "Straw mulch", "nameAr": "تغطية بالقش", "price": 30, "bagHa": 0.02, "mulch": true, "growing": true, "spread": true },
+    { "id": "fertilizer", "nameEn": "Fertilizer (NPK)", "nameAr": "سماد كيماوي", "price": 80, "bagHa": 0.25, "shop": false, "careId": "fertilizer", "n": 45, "p": 45, "k": 45, "ec": 0.05, "growing": true, "spread": true },
+    { "id": "manure", "nameEn": "Manure", "nameAr": "سماد بلدي", "price": 50, "bagHa": 0.05, "shop": false, "careId": "manure", "n": 25, "p": 15, "k": 35, "om": 0.2, "ec": 0.1, "spread": true },
+    { "id": "pesticide", "nameEn": "Pesticide", "nameAr": "مبيد", "price": 60, "bagHa": 1.0, "shop": false, "careId": "pesticide", "pesticide": true, "growing": true, "spray": true },
+    { "id": "neem", "nameEn": "Neem spray", "nameAr": "رش زيت النيم", "price": 40, "bagHa": 1.0, "shop": false, "careId": "neem", "pesticide": true, "growing": true, "spray": true }
+  ],
+  "rotation": [
+    { "prev": "legume", "next": "grain", "mult": 1.2 },
+    { "prev": "legume", "next": "nightshade", "mult": 1.15 },
+    { "prev": "legume", "next": "cucurbit", "mult": 1.15 },
+    { "prev": "legume", "next": "allium", "mult": 1.15 },
+    { "prev": "legume", "next": "legume", "mult": 0.95 },
+    { "prev": "grain", "next": "legume", "mult": 1.1 },
+    { "prev": "grain", "next": "nightshade", "mult": 1.15 },
+    { "prev": "grain", "next": "allium", "mult": 1.12 },
+    { "prev": "grain", "next": "cucurbit", "mult": 1.12 },
+    { "prev": "grain", "next": "grain", "mult": 1.0 },
+    { "prev": "nightshade", "next": "grain", "mult": 1.15 },
+    { "prev": "nightshade", "next": "nightshade", "mult": 0.85 },
+    { "prev": "cucurbit", "next": "cucurbit", "mult": 0.85 },
+    { "prev": "allium", "next": "allium", "mult": 0.85 },
+    { "prev": "legume", "next": "fiber", "mult": 1.2 },
+    { "prev": "fiber", "next": "fiber", "mult": 0.85 }
+  ]
+}

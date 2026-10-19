@@ -1,0 +1,27 @@
+{
+  "models": [
+    { "id": "Barn", "path": "TP_KenneyCityKitIndustrial/building-h", "fit": 5.2, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "Utilities/SolarPanel", "path": "TP_KenneyCityKitIndustrial/solar-panel-landscape-group", "fit": 4.4, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "Utilities/WaterTank", "path": "TP_KenneyCityKitIndustrial/detail-tank", "fit": 3, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "Utilities/Biogas", "path": "TP_KenneyCityKitIndustrial/detail-tank-large", "fit": 3.6, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "FarmWaterTower", "path": "TP_KenneyCityKitIndustrial/water-tower", "fit": 4, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "StorageContainerA", "path": "TP_KenneyCityKitIndustrial/shipping-container-a", "fit": 6.1, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "StorageContainerB", "path": "TP_KenneyCityKitIndustrial/shipping-container-b", "fit": 6.1, "yaw": 0, "pack": "KenneyCityKitIndustrial" },
+    { "id": "TownSedan", "path": "TP_KenneyCarKitTown/sedan", "fit": 4.6, "yaw": 0, "fallback": "Truck", "group": "town_car", "pack": "KenneyCarKitTown" },
+    { "id": "TownSuv", "path": "TP_KenneyCarKitTown/suv", "fit": 4.8, "yaw": 0, "fallback": "Truck", "group": "town_car", "pack": "KenneyCarKitTown" },
+    { "id": "TownVan", "path": "TP_KenneyCarKitTown/van", "fit": 5.0, "yaw": 0, "fallback": "Truck", "group": "town_car", "pack": "KenneyCarKitTown" },
+    { "id": "TownHatchback", "path": "TP_KenneyCarKitTown/hatchback-sports", "fit": 4.2, "yaw": 0, "fallback": "Truck", "group": "town_car", "pack": "KenneyCarKitTown" },
+    { "id": "TownDelivery", "path": "TP_KenneyCarKitTown/delivery", "fit": 5.4, "yaw": 0, "fallback": "Truck", "group": "town_car", "pack": "KenneyCarKitTown" },
+    { "id": "CoveredCar", "path": "TP_PolyHavenFarmProps/covered_car", "fit": 4.4, "yaw": 0, "fallback": "TownSedan", "pack": "PolyHavenFarmProps" },
+    { "id": "Utilities/Generator", "path": "TP_PolyHavenFarmProps/portable_generator", "fit": 0.82, "yaw": 0, "pack": "PolyHavenFarmProps" },
+    { "id": "Utilities/PowerPole", "path": "TP_PolyHavenFarmProps/electricity_pole", "fit": 0, "yaw": 0, "pack": "PolyHavenFarmProps" },
+    { "id": "Props/OilDrum", "path": "TP_PolyHavenFarmProps/oil_drum", "fit": 0, "yaw": 0, "pack": "PolyHavenFarmProps" },
+    { "id": "Props/WoodenCrate", "path": "TP_PolyHavenFarmProps/wooden_crate", "fit": 0, "yaw": 0, "pack": "PolyHavenFarmProps" },
+    { "id": "Props/PlasticCrate", "path": "TP_PolyHavenFarmProps/plastic_crate", "fit": 0, "yaw": 0, "pack": "PolyHavenFarmProps" },
+    { "id": "Props/Jerrycan", "path": "TP_PolyHavenFarmProps/jerrycan", "fit": 0, "yaw": 0, "pack": "PolyHavenFarmProps" },
+    { "id": "Props/CementBag", "path": "TP_PolyHavenFarmProps/cement_bag", "fit": 0, "yaw": 0, "pack": "PolyHavenFarmProps" },
+    { "id": "Shrub", "path": "TP_PolyHavenFarmProps/shrub", "fit": 1.6, "yaw": 0, "pack": "PolyHavenFarmProps" },
+    { "id": "DryShrub", "path": "TP_PolyHavenFarmProps/dry_bush", "fit": 1.1, "yaw": 0, "pack": "PolyHavenFarmProps" },
+    { "id": "cow", "path": "TP_OGARealtimeRanchers/cow_realtime", "fit": 2.3, "yaw": 0, "pack": "OGARealtimeRanchers" }
+  ]
+}

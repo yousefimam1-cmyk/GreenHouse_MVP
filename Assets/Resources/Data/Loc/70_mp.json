@@ -1,0 +1,244 @@
+{
+ "entries": [
+  {
+   "en": "Cancel",
+   "ar": "إلغاء"
+  },
+  {
+   "en": "Chat",
+   "ar": "دردشة"
+  },
+  {
+   "en": "Co-op (F8)",
+   "ar": "اللعب الجماعي (F8)"
+  },
+  {
+   "en": "Co-op Farm",
+   "ar": "مزرعة جماعية"
+  },
+  {
+   "en": "Connected - you are on the host's farm",
+   "ar": "تم الاتصال - أنت الحين في مزرعة المضيف"
+  },
+  {
+   "en": "Connecting...",
+   "ar": "جاري الاتصال..."
+  },
+  {
+   "en": "Could not connect - check the IP address",
+   "ar": "ما قدرنا نتصل - تأكد من عنوان IP"
+  },
+  {
+   "en": "Could not connect - check the IP address and firewall",
+   "ar": "ما قدرنا نتصل - تأكد من عنوان IP والجدار الناري"
+  },
+  {
+   "en": "Could not host - is port 7777 already in use?",
+   "ar": "ما قدرنا نستضيف - يمكن المنفذ 7777 مستخدم؟"
+  },
+  {
+   "en": "Disconnected from the host",
+   "ar": "انقطع الاتصال بالمضيف"
+  },
+  {
+   "en": "Gift for {0} (from the farm storage):",
+   "ar": "هدية لـ {0} (من مخزن المزرعة):"
+  },
+  {
+   "en": "Gift sent to {0}",
+   "ar": "انرسلت الهدية لـ {0}"
+  },
+  {
+   "en": "Gifts from your friends are in your farm storage",
+   "ar": "هدايا خويانك صارت في مخزن مزرعتك"
+  },
+  {
+   "en": "Gifts to take home",
+   "ar": "هدايا تاخذها معك"
+  },
+  {
+   "en": "Host IP address",
+   "ar": "عنوان IP للمضيف"
+  },
+  {
+   "en": "Host a farm",
+   "ar": "استضف مزرعتك"
+  },
+  {
+   "en": "Hosting on port 7777 - friends join with your IP address",
+   "ar": "تستضيف على المنفذ 7777 - خويانك يدخلون بعنوان IP حقك"
+  },
+  {
+   "en": "Join",
+   "ar": "انضم"
+  },
+  {
+   "en": "Leave the farm",
+   "ar": "اطلع من المزرعة"
+  },
+  {
+   "en": "Multiplayer needs the Netcode package (see Documentation.txt)",
+   "ar": "اللعب الجماعي يحتاج حزمة Netcode (شوف Documentation.txt)"
+  },
+  {
+   "en": "Not enough in the farm storage",
+   "ar": "الكمية ما تكفي في مخزن المزرعة"
+  },
+  {
+   "en": "Not ready yet on the host's farm",
+   "ar": "مو جاهز للحصاد في مزرعة المضيف"
+  },
+  {
+   "en": "Port 7777 (UDP) - allow the game in your firewall",
+   "ar": "المنفذ 7777 (UDP) - اسمح للعبة في الجدار الناري"
+  },
+  {
+   "en": "Stand next to a visiting player to give a gift",
+   "ar": "وقف جنب لاعب زائر عشان تعطيه هدية"
+  },
+  {
+   "en": "Stand next to the player to give a gift",
+   "ar": "وقف جنب اللاعب عشان تعطيه الهدية"
+  },
+  {
+   "en": "Stop hosting",
+   "ar": "أوقف الاستضافة"
+  },
+  {
+   "en": "Stopped hosting",
+   "ar": "وقفت الاستضافة"
+  },
+  {
+   "en": "Wait a moment before the next gift",
+   "ar": "انتظر شوي قبل الهدية الجاية"
+  },
+  {
+   "en": "You",
+   "ar": "أنت"
+  },
+  {
+   "en": "You are hosting - friends join with your IP address",
+   "ar": "أنت المضيف - خويانك يدخلون بعنوان IP حقك"
+  },
+  {
+   "en": "You are visiting a friend's farm",
+   "ar": "أنت زائر في مزرعة خويك"
+  },
+  {
+   "en": "You left the farm - back on your own farm",
+   "ar": "طلعت من المزرعة - رجعت لمزرعتك"
+  },
+  {
+   "en": "Your name",
+   "ar": "اسمك"
+  },
+  {
+   "en": "[1-4] emotes   [Enter] chat   [F8] close",
+   "ar": "[1-4] تعابير   [Enter] دردشة   [F8] إغلاق"
+  },
+  {
+   "en": "host",
+   "ar": "المضيف"
+  },
+  {
+   "en": "you",
+   "ar": "أنت"
+  },
+  {
+   "en": "{0} gave you {1} {2} to take home",
+   "ar": "{0} عطاك {1} {2} تاخذها لمزرعتك"
+  },
+  {
+   "en": "{0} joined the farm",
+   "ar": "{0} دخل المزرعة"
+  },
+  {
+   "en": "{0} left the farm",
+   "ar": "{0} طلع من المزرعة"
+  },
+  {
+   "en": "{0} sold goods for {1} SAR",
+   "ar": "{0} باع بضاعة بـ {1} ريال"
+  },
+  {
+   "en": "{0} spent {1} SAR at the shop",
+   "ar": "{0} صرف {1} ريال في المتجر"
+  },
+  {
+   "en": "Hello!",
+   "ar": "هلا والله!"
+  },
+  {
+   "en": "Dance time!",
+   "ar": "وقت الدحّة!"
+  },
+  {
+   "en": "Yalla, well done!",
+   "ar": "يلا، كفو!"
+  },
+  {
+   "en": "Thank you!",
+   "ar": "تسلم يدك!"
+  },
+  {
+   "en": "Chat is off (Co-op menu > Chat)",
+   "ar": "الدردشة متوقفة (قائمة اللعب الجماعي > الدردشة)"
+  },
+  {
+   "en": "{0} is blocked",
+   "ar": "تم حظر {0}"
+  },
+  {
+   "en": "Report saved - thank you. {0} is blocked",
+   "ar": "تم حفظ البلاغ - شكراً لك. تم حظر {0}"
+  },
+  {
+   "en": "{0} is blocked and can't join your farm",
+   "ar": "{0} محظور ولا يمكنه دخول مزرعتك"
+  },
+  {
+   "en": "{0} can't join: only friends can join your farm",
+   "ar": "لا يمكن لـ {0} الدخول: الأصدقاء فقط يمكنهم دخول مزرعتك"
+  },
+  {
+   "en": "Friend",
+   "ar": "صديق"
+  },
+  {
+   "en": "Unfriend",
+   "ar": "إزالة صديق"
+  },
+  {
+   "en": "Block",
+   "ar": "حظر"
+  },
+  {
+   "en": "Unblock",
+   "ar": "إلغاء الحظر"
+  },
+  {
+   "en": "Report",
+   "ar": "إبلاغ"
+  },
+  {
+   "en": "Who can join",
+   "ar": "من يمكنه الدخول"
+  },
+  {
+   "en": "Everyone",
+   "ar": "الجميع"
+  },
+  {
+   "en": "Friends only",
+   "ar": "الأصدقاء فقط"
+  },
+  {
+   "en": "Off",
+   "ar": "إيقاف"
+  },
+  {
+   "en": "Anyone",
+   "ar": "أي أحد"
+  }
+ ]
+}

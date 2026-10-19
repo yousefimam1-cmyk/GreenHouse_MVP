@@ -1,0 +1,74 @@
+{
+ "notes": "Egypt Nile Delta DLC campaign (CampaignFile; region = map id). Chapters group the Egypt missions in Resources/Data/Missions/93_egypt.json (fromMission is 1-based within that chain). Arabic is Egyptian colloquial. On this map chapter 1's intro is also the opening story card.",
+ "region": "nile_delta",
+ "narratorEn": "Am Hassan",
+ "narratorAr": "عم حسن",
+ "chapters": [
+  {
+   "id": "eg_land",
+   "fromMission": 1,
+   "reward": 0,
+   "titleEn": "The Land by the Canal",
+   "titleAr": "الأرض اللي على الترعة",
+   "introEn": "Your grandmother's five feddans near Kafr El-Sheikh have waited since she passed. Am Hassan, who farmed beside her for forty years, opens the gate: 'The land is good, son. Give it water and clover first, and it will give you everything back.'",
+   "introAr": "الخمس فدادين بتوع ستك جنب كفر الشيخ مستنيينك من ساعة ما ماتت. عم حسن، اللي زرع جنبها أربعين سنة، فتح البوابة: «الأرض طيبة يا ابني. اديها مية وبرسيم الأول، وهي هترجعلك كل حاجة.»",
+   "outroEn": "The pump hums, the berseem is green and the animals are fed. The farm is awake again.",
+   "outroAr": "الماكينة بتدور، والبرسيم أخضر، والبهايم واكلة. الأرض صحيت تاني."
+  },
+  {
+   "id": "eg_water",
+   "fromMission": 5,
+   "reward": 600,
+   "titleEn": "Nobat el-Mayya",
+   "titleAr": "نوبة المية",
+   "introEn": "'On the Delta the water is shared,' says Am Hassan. 'Every village has its turn on the canal. Miss your turn and your rice goes thirsty.' Summer is rice time: flood the paddy and wait for the turn.",
+   "introAr": "«في الدلتا المية بالدور،» بيقول عم حسن. «كل بلد ليها نوبة على الترعة. لو فاتتك نوبتك الرز يعطش.» الصيف موسم الرز: غرّق الغيط واستنى النوبة.",
+   "outroEn": "Your first rice is in the sacks and the souq knows your name.",
+   "outroAr": "أول رز في الشكاير، والسوق بقى عارف اسمك."
+  },
+  {
+   "id": "eg_cotton",
+   "fromMission": 9,
+   "reward": 900,
+   "titleEn": "White Gold",
+   "titleAr": "الدهب الأبيض",
+   "introEn": "Egyptian cotton made this Delta famous: long fibres, sold from Alexandria to the world. Sow it after berseem, guard it from the leafworm, and the whole village will come for the picking.",
+   "introAr": "القطن المصري هو اللي شهّر الدلتا دي: تيلة طويلة بتتباع من إسكندرية للدنيا كلها. ازرعه بعد البرسيم، واحميه من الدودة، والبلد كلها هتيجي في الجني.",
+   "outroEn": "The cotton gin weighed your bales and paid well. Am Hassan smiles: 'Just like the old days.'",
+   "outroAr": "المحلج وزن القطن بتاعك ودفع كويس. عم حسن ابتسم: «زي أيام زمان بالظبط.»"
+  },
+  {
+   "id": "eg_export",
+   "fromMission": 13,
+   "reward": 1200,
+   "titleEn": "The Export Contract",
+   "titleAr": "عقد التصدير",
+   "introEn": "Summer maize in the dry fields, rice in the wet ones, and a letter from an Alexandria exporter: they want Delta rice. A big contract needs a big harvest.",
+   "introAr": "درة صيفي في الأرض الناشفة، ورز في الأرض المغمورة، وجواب من مُصدّر في إسكندرية: عايزين رز الدلتا. العقد الكبير عايز محصول كبير.",
+   "outroEn": "The contract is filled and the bank account is growing. The farm feeds more than the family now.",
+   "outroAr": "العقد اتسلّم والحساب في البنك بيكبر. الأرض بقت بتأكّل أكتر من العيلة."
+  },
+  {
+   "id": "eg_nile",
+   "fromMission": 17,
+   "reward": 2000,
+   "titleEn": "The Nile Gives",
+   "titleAr": "خير النيل",
+   "introEn": "'The river gives to those who are patient,' Am Hassan says, watching the high water in the canals. Winter clover, summer rice, cotton in the autumn sun: farm the whole year of the Nile.",
+   "introAr": "«النيل بيدّي للي بيصبر،» بيقول عم حسن وهو بيبص على المية العالية في الترع. برسيم الشتا، ورز الصيف، وقطن تحت شمس الخريف: ازرع سنة النيل كلها.",
+   "outroEn": "The best farm in the Delta, from five quiet feddans. Your grandmother would be proud. Mabrouk!",
+   "outroAr": "أحسن أرض في الدلتا، من خمس فدادين كانوا ساكتين. ستك كانت هتبقى فخورة بيك. مبروك!"
+  },
+  {
+   "id": "eg_road",
+   "fromMission": 21,
+   "reward": 1200,
+   "titleEn": "The Canal Road",
+   "titleAr": "طريق الترعة",
+   "introEn": "'Don't sell everything to the middleman at the gate,' says Am Hassan. 'The gin, the rice mill, the village souq and the bandar all pay their own price. Take the canal road, and look at the land next to ours - the owner wants to sell.'",
+   "introAr": "«ماتبيعش كل حاجة للتاجر اللي على الباب،» بيقول عم حسن. «المحلج ومضرب الرز وسوق القرية والبندر كل واحد بسعره. خد طريق الترعة، وبص على الأرض اللي جنبنا - صاحبها عايز يبيع.»",
+   "outroEn": "Every driver on the canal road waves at your truck now. The farm has grown beyond the old bund.",
+   "outroAr": "كل سواق على طريق الترعة بيشاورلك دلوقتي. الغيط كبر وعدّى الجسر القديم."
+  }
+ ]
+}

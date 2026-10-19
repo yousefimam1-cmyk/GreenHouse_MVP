@@ -36,3 +36,359 @@ The formulaes for these calculations are simple as when optimizing, we are setti
 
 CROPBED DATA:
 Each cropbed has it's own unique data that is hardcoded (for now) some of the cropbeds are already satisfied in some attributes and needs optimizing in some attributes.
+
+==================== UPDATE (Oct 2026) ====================
+
+NEW SCRIPTS
+--- Localization/Loc.cs          English/Arabic text. English strings are the keys. Press L in game to switch (saved).
+--- Localization/ArabicShaper.cs Joins Arabic letters + right-to-left order for TextMeshPro. Font: Resources/Fonts/Tajawal-Bold.ttf (OFL).
+--- Data/CropProfiles.cs         Loads Resources/Data/crop_profiles.json (crop types, reference growing ranges, bed starting values).
+--- UI/GameHUD.cs                HUD built from code: harvest total, healthy beds per greenhouse, crop info panel, help (H).
+--- Managers/GameManager.cs      Created automatically. Harvest totals (saved in PlayerPrefs), language/help keys, "all beds healthy" goal.
+
+GAMEPLAY
+- Healthy (green) beds grow over ConfigurationData.growthSeconds. When grown, the prompt becomes "[E] Harvest".
+- Harvest kg = yield projection x harvestKgPerYieldPoint x crop yieldFactor.
+- Esc / Tab closes panels. H = help. L = Arabic/English.
+
+DATA
+- Bed values now come from crop_profiles.json (key = GreenhouseName/CropbedName). Values match the scene.
+  Turn off with ConfigurationData.useCropProfilesFile to use the inspector values again.
+- Bed value = bed's own value + sum of the greenhouse modules (if the bed's own value is already satisfied it is kept).
+- Modules are copied at runtime, so Play mode no longer overwrites the Module .asset files.
+
+IMPORTANT FOR GIT
+- .meta files must be committed. The old .gitignore ignored "*.meta", so 190+ assets had no meta on GitHub
+  and their scene references broke on a fresh clone. The .gitignore is fixed.
+
+TRAINING SCENARIOS (idea from team chat: simulation-based training)
+--- Managers/ScenarioManager.cs  Resources/Data/scenarios.json. T = start/stop, B = next scenario.
+    Objectives: allHealthy or harvestKg, with a time limit; setup can re-roll modules or break one module
+    (pump failure, heatwave). Graded Gold/Silver/Bronze; best times saved.
+
+PARTNER / SPONSOR SLOTS (idea from team chat: in-game brand placement)
+--- Resources/Data/sponsors.json  One partner slot per module, shown beside the Control Station panel.
+    Placeholders only - fill with real partners once agreed.
+
+FARMING SIM LAYER (chat #0 of the Chat Splitter plan)
+Architecture: Base/GameEvents.cs is an event bus (Observer pattern). Gameplay raises events
+(WellStarted, ModuleOptimized, Harvested, CargoLoaded, Delivered, UpgradeBought, ProductsCollected...);
+Missions, Economy, HUD and FeedbackFX only listen. GameManager auto-creates every system at scene load.
+--- Managers/EconomyManager.cs  Resources/Data/economy.json: goods + prices (SAR), animals, feed. Money, farm storage,
+    truck capacity and growth upgrades. Starts with 500 SAR.
+--- Managers/MissionManager.cs  Resources/Data/missions.json: 14-mission chain with rewards.
+--- Vehicle/FarmTruck.cs        Drivable truck (E in/out, WASD, Space brake, R reset). Ground-following arcade physics.
+--- Vehicle/VehicleSpawner.cs   Builds truck + green loading bay near the player start, animal pen + farm shop,
+    and a gold market pad (with a shop) ~120 m away. Place empty objects named TruckSpawn / AnimalPenSpot /
+    MarketSpot in the scene to move them. The truck ignores collisions with objects named "*Fence*".
+--- Farming/AnimalPen.cs, FarmAnimal.cs, PenCrate.cs  Chickens, sheep, cows eat feed and make eggs, wool, milk;
+    collect at the crate; products go to storage and are sold with the truck.
+--- UI/ShopUI.cs + Farming/ShopStall.cs  Shop: feed, animals, upgrades (keys 1-9 or click).
+--- Graphics/GraphicsEnhancer.cs  Post-processing (ACES, bloom, grading, vignette), SMAA/MSAA, shadows. G = High/Low.
+--- Graphics/FeedbackFX.cs  Floating +kg / +SAR text and harvest pop.
+--- Helper/Build.cs  Placeholder geometry. Drop a prefab at Resources/Models/Truck, ShopStall, cow, sheep or chicken
+    (e.g. free CC0 Quaternius / Kenney models) and it is used instead of the placeholder automatically.
+Keys: P pause menu (New game is in the menu), G graphics, H help, L language, T training.
+
+CHATS 1-6 (open fields, economy, vehicles, animals, missions, graphics)
+--- Farming/WorldClock.cs + FieldManager.cs + FieldPlot.cs  Days, seasons, weather (rain waters fields); 6 field plots:
+    plow / plant (seeds from shop) / water (well must run) / harvest. Field crops in economy.json (fieldCrops).
+--- Base/SaveData.cs  All progress in one JSON file (persistentDataPath/mazraa_save.json). New game: pause menu.
+--- Managers/MarketManager.cs  Daily prices (drift, season, supply) + buyer contracts. M = price board.
+--- Vehicle/Vehicle.cs (base), FarmTruck.cs, Tractor.cs  Fuel, refuel on the green pad, R = reset/tow.
+    Tractor: Q cycles plow / seeder / harvester; drive over plots to work them.
+--- Farming/AnimalPen.cs, PenTask.cs  Water trough + cleaning at the barn door, health, breeding.
+--- UI/ObjectiveMarker.cs, StoryIntro.cs; Resources/Data/missions.json (25 missions).
+--- Graphics/DayNightCycle.cs  Sun follows the clock, night dimming, headlights and pad lamps.
+--- Real models: Kenney CC0 truck, tractor, crops (Assets/ThirdParty/CREDITS.md). Build.TryModel scales any model to fit.
+
+FISH FEATURE GROUP (fishing, aquaculture, processing, Saudi animals) - Scripts/Fish/
+--- FishingManager.cs  Farm reservoir (~22 m right, 18 m behind the start; scene object "FishPondSpot" moves it).
+    E at the water casts (uses the best bait), random wait, the bobber dips + HUD/alert "BITE!", E within the window
+    reels in. Species in Resources/Data/fish.json: tilapia, catfish, carp, plus coast fish hamour and najil (carbon rod
+    + shrimp bait, sold ~4x higher). Season and time-of-day rules use WorldClock (dawn/day/dusk/night).
+    Shop page "Fishing": bamboo / carbon rod (catch chance + longer bite window), worm / shrimp bait.
+--- AquaFarm.cs        Aquaculture tanks next to the reservoir ("FishTankSpot"). Buy 100 tilapia fingerlings (shop),
+    E feeds once per day (1 feed), grows over 3 fed days, unfed days lose 20% of the stock, E harvests kg of tilapia.
+--- ProcessingYard.cs  Shop page "Processing": date packing house (dates -> packed dates), dairy (milk/goat/camel milk ->
+    laban, milk -> cheese, alternating), flour mill (wheat -> flour), juice press (any fruit good -> juice).
+    Built in a row behind the start ("ProcessingSpot"). E starts a batch from storage; output goes to storage when done.
+    Recipes in Resources/Data/processing.json.
+--- SaudiAnimals.cs    Camel (camel milk, max 2) and Ardi goat (goat milk) are pen animals from the Economy pack; bodies via
+    the FarmAnimal.CustomBody hook (horse model tinted sandy + hump, sheep model tinted black, primitive fallbacks).
+--- HiveFarm.cs        Bee hives (shop "Animals", max 6) make Sidr honey with no feed, fastest in autumn; E collects.
+--- Dovecote.cs        Pigeon tower (shop "Animals") + pigeon pairs; eat a little feed, give squab + manure, breed daily.
+--- FishSpot.cs        Small Interactable with a prompt/action delegate used by all of the above. FishData.cs: data + rules.
+Data: Resources/Data/Economy/10_fish.json (fish, dates, processed goods, honey, squab, manure, camel, goat),
+      Resources/Data/Missions/10_fish.json (catchFish, harvestTank, processBatch, ownCamel), Resources/Data/Loc/10_fish.json.
+Custom mission events: catchFish, catchFishKg, catchCoastFish, harvestTank, harvestTankKg, feedFish, processBatch,
+      process_<good>, collectHoney, collectPigeons. State missions: ownCamel, ownGoats. Save keys: mazraa.fish.*
+
+POWER & WATER UTILITIES (Scripts/Utilities, feat/utilities)
+--- Utilities/UtilityGrid.cs   [MazraaSystem(40)] Supply vs demand every in-game hour (WorldClock), SEC bill each morning,
+    shop pages "Power" and "Water", HUD warning when short, daily water limit (45 m3) messages, 3 missions. Saves "mazraa.util.*".
+--- Utilities/UtilityModel.cs  Pure calculation (tested headless). Power in kW, dispatched cheapest first:
+    solar (10 kWp arrays, follows the sun, -50% cloudy, -75% rain, dust builds up daily: E on a panel cleans it),
+    wind (5 kW, gusty), biogas (8 kW, burns "manure" that animals add to storage), SEC grid (20/50/100 kW, fee + 0.18 SAR/kWh,
+    surplus renewables credited 0.07 SAR/kWh), diesel generator (30 kW, 0.3 L/kWh, diesel 1.66 SAR/L: shop "Diesel 200 L" or E on it).
+    Demand: greenhouse evaporative cooling (season + Heatwave + daytime), deep-well pump, irrigation, farm base load.
+    Water in m3/day: farm well 25 (when running), deep Saq aquifer well 60 (needs 15 kW), treated wastewater 30 (fields only),
+    reservoir 20 m3 + tanks 50 m3 (buffer), desalinated water tanker 20 m3 (12 SAR/m3).
+    Irrigation: by hand (x1.3 water), sprinklers (x1.0), center pivot (x0.85, 10 kW), drip (x0.55, also slower drying).
+--- Utilities/UtilityHooks.cs  Static hooks read by existing code: Cropbed growth x GreenhouseGrowth (min of power and water
+    supply ratios, 0 below 20%); FieldPlot dries x FieldDryFactor and stays wet while FieldsAutoWatered.
+--- Utilities/UtilityYard.cs   Builds the equipment (place an object named "UtilitiesSpot" to move the yard); drip lines / sprinklers
+    on the plots, rotating center pivot over the fields. Optional models: Resources/Models/Utilities/{PowerPole,Generator,Biogas,SolarPanel,DeepWell,WaterTank}.
+--- Utilities/UtilityPart.cs, UtilitiesUI.cs  E on equipment; U = utilities panel (sources, demand, stored water, today's use, cost, warnings).
+Data: Resources/Data/Loc/20_utilities.json, Missions/20_utilities.json (installSolar, powerPositiveDays, installEfficientIrrigation),
+Economy/20_utilities.json (manure).
+
+SAUDI CROPS, ORCHARD, SOIL AND PESTS (feat/crops)
+--- Crops/CropsData.cs        Reads the extra sections of Resources/Data/Economy/30_crops.json (cropMeta, trees, pests, cures).
+    The same file adds goods + field crops: alfalfa (برسيم), sorghum, millet, field tomato; dates (Sukkari/Khalas/Ajwa),
+    olives, pomegranates, grapes, lemons. Real data + scale factors: DATA_SOURCES.md (repo root).
+--- Crops/CropCareManager.cs  [MazraaSystem(30)] Soil fertility per field plot (harvests use it up, more for the same crop
+    family twice; alfalfa adds nitrogen; fertilizer/manure restore it with E on a plowed field), +15% rotation bonus,
+    daily pests by season/weather/family (aphids, whitefly, blight, rare desert locust swarms) that slow growth and
+    damage yield until treated (E with ladybugs / neem / pesticide; protects a few days). Whitefly in greenhouse beds too.
+    Alfalfa is cut 6 times (regrows) and every cut also adds animal feed (sorghum/millet straw too).
+    Shop page "Crop care". Buying seeds makes that crop the next one planted (FieldPlot.PreferredSeed).
+--- Crops/OrchardManager.cs + TreeSlot.cs  [MazraaSystem(31)] 6 tree slots right of the fields (or at "OrchardSpot").
+    Saplings on the shop page "Orchard". Trees age 1 per season, fruit once a year when mature; date palms need hand
+    pollination in spring (E, otherwise 30% crop) and ripen in late summer; red palm weevil -> palm weevil trap.
+    Models: Resources/Models/Trees/palm|olive|pomegranate|grape|lemon if present, else primitive trunk + fronds/crown.
+--- Hooks added: FieldPlot.GrowthModifiers / YieldModifiers / PromptExtras / PromptOverrides / InteractHandlers /
+    RegrowHooks, FieldPlot.ReduceGrowth(); Cropbed.YieldModifiers / PromptExtras / InteractHandlers.
+--- Missions/30_crops.json: plant alfalfa, cure a pest, rotate crops, first date harvest. Text: Loc/30_crops.json.
+    Save keys mazraa.crops.*; reset on GameEvents.NewGameStarted.
+WORKERS, LAND, BANK, RANDOM EVENTS (feat/eventsfin)
+--- Finance/WorkerManager.cs  Shop page "Workers": field hand (harvests, waters, plows, replants), greenhouse worker
+    (harvests ripe beds, closes vents before a haboob), herder (trough, cleaning, collects products), driver (takes a
+    storage load to the market on a 60 s trip, pays the sale minus a 15% fee). Daily wage (SAR) every morning; a worker
+    you can't pay leaves with a warning. Visible Actor NPCs (Worker mode) walk to the task; logic works without them.
+--- Finance/LandOffice.cs + LandOfficeSign.cs  Sign beside the fields (E = "Land" shop page): 3 parcels of 2 plots,
+    then a large 6-plot block (used instead of a third greenhouse: a greenhouse needs scene-authored beds/modules/crop
+    profiles). New plots come from FieldManager.AddPlot(row, col) and save as mazraa.plot.N like the others.
+--- Finance/BankManager.cs + BankSign.cs  Loans 10k / 25k / 50k SAR on the "Bank" shop page, limit = 5,000 + 80% of farm
+    value (cash, stock, animals, upgrades, plots, greenhouses). 1.5% interest a day. Repay with E at the bank sign by the
+    market (pays what you can), the Bank page (5,000 / all) or the auto-repay toggle (10% a morning, min 500).
+    No loans while the "have X SAR" mission is active. Debt is shown on the HUD.
+--- Events/EventDirector.cs + Resources/Data/events.json  Each morning a 30% chance to forecast an event for tomorrow's
+    season (alert + orange HUD line), then it runs at its hour: extreme heat, haboob (fog, beds in greenhouses with open
+    vents lose growth; switch beside each control station = Events/VentSwitch.cs), flash flood (2 plots lost, next
+    harvest there +40%), frost night (watermelon/potato x0.3 growth), locusts (buy pesticide under Supplies), water
+    restriction day (no irrigation), Ramadan demand (dates/laban/milk x1.5 for 3 days), big buyer (one-day x1.9 contract).
+--- Events/FarmModifiers.cs  Static hooks set by the EventDirector and read by existing code:
+    FieldPlot.Update (FieldDry, FieldGrowth), FieldPlot.Interact (IrrigationBanned), AnimalPen.Update (PenWaterUse),
+    MarketManager.Price (Price). FieldPlot.AddWater() was added for workers / storms.
+Missions: Resources/Data/Missions/40_eventsfin.json (hireWorker, buyLand, repayLoan, surviveDustStorm).
+Text: Resources/Data/Loc/40_eventsfin.json. Save keys mazraa.fin.* and mazraa.events.*; all reset on a new game.
+CO-OP MULTIPLAYER (host + up to 3 friends on one farm, LAN or internet IP)
+--- Multiplayer/NetSession.cs        What the game knows about multiplayer (no Netcode dependency): NetSession.IsHost /
+                                     IsClient / IsOnline, the hooks below, INetBackend interface, LocalBackend (single player).
+--- Multiplayer/NetProtocol.cs       Message format (one string per message) + NetSyncState (farm state sent every second).
+--- Multiplayer/NetIds.cs            Stable object ids = hierarchy path ("GreenHouse/CropA"), same on every machine.
+--- Multiplayer/MultiplayerManager.cs [MazraaSystem(70)] Host/Join/Leave, applies client requests on the host, sync,
+                                     remote players, vehicles, emotes, chat, gifts, client save isolation.
+--- Multiplayer/MultiplayerPanel.cs  [MazraaSystem(71)] F8 menu (IMGUI because it needs text fields) + chat line.
+--- Multiplayer/RemotePlayer.cs      Other players: character model (Resources/Models/Characters) + name tag + bubble.
+--- Multiplayer/NetcodeBackend.cs    The only Netcode code, inside #if MAZRAA_NETCODE. Netcode for GameObjects 2.11.2 +
+                                     Unity Transport 2.6.0 (Packages/manifest.json). NetworkManager is created in code;
+                                     no prefabs, no NetworkObjects, no scene management: everything is one named message.
+--- Resources/Data/Loc/70_mp.json    Arabic texts.
+
+HOW TO PLAY
+- Host: F8 > type your name > "Host a farm". Your farm (your save) is the shared farm. Tell friends your IP: the menu
+  shows your LAN address; over the internet use your public IP and forward UDP port 7777 on the router.
+- Join: F8 > name > type the host's IP > "Join". While you visit, your own save file is NOT changed (SaveData session).
+  When you leave you are back on your own farm exactly as you left it, plus any gifts you received.
+- F8 or Esc closes the menu. In the pause menu (P) a "Co-op (F8)" button appears top-right.
+- Keys while online: 1-4 emotes (hello, dance, "yalla, well done", thank you) shown above your head for others,
+  Enter = quick chat (Enter sends, Esc cancels), gifts in the F8 menu when you stand next to a visiting player.
+- Port: 7777 UDP. Windows Firewall asks the first time you host - allow "Private networks" (and Public if needed).
+  Join on the same PC with 127.0.0.1 (two copies of the game) to test.
+
+WHAT IS SYNCED (the host is authoritative)
+- Every second (and right after any request): money, farm storage (all goods), day + time + weather, mission index +
+  progress, well running, all 6 field plots (state, crop, growth, water).
+- Clients send requests, the host applies them through the normal systems: E on field plots / well / animal crate /
+  water trough / barn door / ready crop beds, shop purchases, sales at the market (sold from the farm storage at the
+  host's prices), tractor work on plots, gifts. Greenhouse modules optimized at a control station are copied to everyone.
+- Positions ~10/s, owner-authoritative (each player sends its own). Vehicles: whoever gets in drives it; the others
+  see it move with the driver character inside and cannot enter it until the driver gets out.
+
+SHARED FILES CHANGED (small hooks, all no-ops in single player)
+- InteractionController: if (!NetSession.HandleInteract(target)) target.Interact();
+- EconomyManager: TryBuy/SellAll forward on a client; ApplyRemote(money, goods).
+- FieldPlot: TryPlow/TrySeed/TryHarvest forward on a client (tractor); ApplyRemote(state...).
+- WorldClock: FollowRemote + ApplyRemote(day, progress, weather). MissionManager: ApplyRemote(index, progress).
+- Vehicle: RemoteDriven, SetRemoteDriven, ApplyRemotePose; no driving keys while typing. Actor: ActorMode.Remote,
+  driver shown when RemoteDriven. UIManager: NetSession.OnOptimized after Optimize.
+- SaveData: BeginSession/EndSession (client writes go to a throwaway copy; the file keeps your own farm).
+- GameManager (L/H), GameHUD (P/M/Backspace), GraphicsEnhancer (G): ignore keys while NetSession.Typing.
+
+IF THE NETCODE PACKAGE FAILS TO INSTALL OR COMPILE
+- Remove MAZRAA_NETCODE: Edit > Project Settings > Player > (PC) Other Settings > Scripting Define Symbols, or delete
+  ";MAZRAA_NETCODE" from the Standalone line in ProjectSettings/ProjectSettings.asset. Optionally remove the two
+  packages from Packages/manifest.json. The game then runs single player; the F8 menu says Netcode is missing.
+- Only Standalone (Windows/Mac/Linux) has the define. WebGL stays single player.
+
+KNOWN LIMITS
+- Not synced (each machine keeps its own): animals in the pen, feed, upgrades, market prices/contracts, truck cargo,
+  vehicle fuel, crop bed growth timers (harvests ARE synced: a harvested bed resets for everyone), greenhouse module
+  values other than optimizations, training scenarios. Animals bought by a client are added on the host's farm.
+- A client's truck load is checked against the host storage when sold (no duplicates); the client's storage display
+  refills from the host every second. Fuel and tow fees on a client are not charged to the shared money.
+- Two players entering the same vehicle in the same instant: both drive their own copy until one gets out.
+- Arabic typed in the IMGUI text fields shows unjoined while typing; bubbles, name tags and chat log show it joined.
+- The Netcode file was written against the NGO 2.x API but could not be compiled or run here (no package/editor):
+  test hosting/joining in the editor first (two builds, or a build + the editor, 127.0.0.1).
+- Headless tests cover the rest with a fake backend (Tests/Headless, "Co-op" sections).
+
+NOTE (merge): MAZRAA_NETCODE is OFF by default so the project always compiles. To try network co-op, open the
+project, wait for the Netcode packages to import, then menu Mazraa > Co-op > Enable Netcode. If NetcodeBackend.cs
+shows compile errors, use Mazraa > Co-op > Disable Netcode (single player keeps working either way).
+COZY EXTRAS, SPONSORS, LEARN MODE, ANALYTICS (Oct 2026)
+All in new files, added automatically through [MazraaSystem]. Keys: C look, J collection book (journal), K learn, X place stored decor (B is training, V is first/third person).
+--- Cozy/PetSystem.cs       The AmbientLife dog becomes a saluki: E to pet once per in-game day (hearts + random gift:
+    seeds, feed or 10-30 SAR). Falcon perch next to the farmhouse: E flies the falcon (eagle model circles, lands,
+    20-50 SAR once a day; 5 flights = Falconer achievement +150 SAR).
+--- Cozy/Appearance.cs + AppearancePanel.cs  Static Appearance data (thobe colour + red shemagh / white ghutra, or abaya
+    colour + headscarf), saved and kept on a new game. Appearance.ApplyTo(model) tints the model and adds headwear;
+    applied to a third-person player model (SkinnedMeshRenderer under the player) and to the vehicle drivers.
+    The other Characters/* models (shopkeepers, workers, buyers, villagers) are dressed in thobes/abayas too.
+--- Cozy/DailyQuests.cs     Board at the market (E): 3 random quests a day from Resources/Data/quests.json
+    (deliver X kg of Y from the farm store at the board, collect eggs, earn N SAR, harvest, plant, pet, falcon, chat).
+--- Cozy/SeasonalEvents.cs  Calendar events: Ramadan night market (end of winter, +20% prices at night, lanterns),
+    Eid al-Fitr (first spring day after a Ramadan: 300 SAR + feed, lights), Saudi National Day (first autumn day:
+    green flags, +10% prices, 250 SAR), Buraidah date festival (last 2 summer days: dates x1.6 + festival contract).
+    Decorations are built in code and removed afterwards. Date palm grove by the farmhouse: E picks dates (new good
+    "dates" in Resources/Data/Economy/60_cozy.json) in summer/autumn every 2 days.
+--- Cozy/Decorations.cs     Shop page "Decor": majlis tent (bait al-sha'ar), lantern, palm-frond fence, flower pot.
+    After buying, a preview follows the player: E places, Esc keeps it in storage, V places a stored piece,
+    E on a placed piece picks it up. Positions saved.
+--- Cozy/CollectionBook.cs  B: crops, animals, fish (GameEvents.Custom "catchFish" or "catchFish:<species>"),
+    sponsors met, feats; % complete. Other features can call CollectionBook.Record(category, id).
+--- Cozy/Villagers.cs       Abu Saleh (shopkeeper), Abu Fahad (market buyer), Abu Nasser (neighbour farmer). E to chat
+    once a day = +1 heart (max 5). 3/5 hearts: shop cash back 10%/15%, market prices +5%/+10%, kleija recipe card /
+    daily seed gift.
+--- Sponsors/SponsorManager.cs  sponsors.json now also has "brands" and "products" (sample placeholder brands):
+    shop page "Sponsors" (seed packs, fertilizer charges +25% field harvest, drip kit +10% fields, solar fans +10%
+    greenhouse), 4 billboards along the farm-market road, sponsor met when you pass a billboard or buy.
+--- Learn/LearnMode.cs      K: tip cards from Resources/Data/Learn/*.json (drip irrigation, crop rotation, water saving,
+    date palms, greenhouse climate, wheat, hens, sheep/cows, kleija, soil), unlocked by playing; 3-question quiz each
+    ([1] start, 1-3 answer, 2/3 to pass, small reward once). LearnMode.Trigger("id") unlocks cards from other code.
+--- Learn/CozyAnalytics.cs  Opt-in (0 in the learn panel, default off): session length, missions done and sponsor
+    purchases written ONLY to persistentDataPath/mazraa_analytics.json. Nothing counted while off; off deletes the file.
+--- Missions: Resources/Data/Missions/60_cozy.json (pet the saluki, daily quest, 3 hearts, quiz, sponsor item).
+    Arabic texts: Resources/Data/Loc/60_cozy.json. Save keys: mazraa.cozy.*, mazraa.sponsor.*, mazraa.learn.*.
+--- Hooks in shared files: MarketManager.PriceMultipliers (static list of per-good multipliers used by Price()),
+    EconomyManager.AddSeeds(cropId, count).
+UI, CONTROLLERS, MENUS AND SAVES (feat/ui)
+--- Input/GameInput.cs       Farm actions as an Input System action map built in code: Interact E, Vehicle reset R,
+    Tractor implement Q, Brake Space, Pause P, Map N, Inventory I, Farm stats O, Camera view V (+ gamepad buttons).
+    Keyboard keys are rebindable (Settings > Controls, Input System interactive rebinding); overrides saved with
+    SaveBindingOverridesAsJson in PlayerPrefs "mazraa.settings.bindings". Tracks keyboard vs gamepad and PlayStation vs Xbox.
+--- Input/Glyphs.cs          Glyphs.Apply("[E] Harvest") -> "[A] Harvest" / "[cross] Harvest" / "[F] Harvest" (rebound).
+    Used by InteractionPromptUI, the HUD hints, truck panel, shop footer and menus. Write new prompts with [E], [R], [Q]...
+--- Input/MenuNav.cs         Shared menu keys: arrows/WS/D-pad/stick, Enter/Space/A confirm, Esc/B back, LB/RB pages, digits.
+--- Input/GamepadBridge.cs   Mouse/stick sensitivity + invert Y on StarterAssetsInputs.look, A doesn't jump while it
+    interacts or confirms, applies saved audio/graphics settings. StarterAssets already binds left stick move, right stick
+    look, A jump, LT sprint (StarterAssets.inputactions has the Gamepad scheme, nothing to add).
+--- Input/GameSettings.cs    PlayerPrefs "mazraa.settings.*": master/music/SFX volume, graphics Low/Medium/High,
+    sensitivities, invert Y, third person. Not touched by New Game. (GraphicsEnhancer.SetPreset, AudioManager.SetVolumes.)
+--- Input/ThirdPersonView.cs V / right stick press: third-person camera behind the capsule with the
+    Characters/character-male-a model (idle/walk/sprint). First person (StarterAssets) stays the default.
+--- UI/Minimap.cs + MinimapIcon.cs  Round minimap top centre (orthographic RenderTexture camera, UI layer culled, turns
+    with the view) with icons; N / View(Share) = full north-up map with legend. Features: MinimapIcon.Add(go, kind, color).
+--- UI/GameMenu.cs           Main menu at start (Continue, New game, Load slot 1-3, Tutorial, Settings, Quit) and pause menu
+    (P / Start): Resume, Save / Load slots, Tutorial, Settings (+ Controls), New game, Main menu, Quit. Pauses the game.
+--- UI/SaveSlots.cs          3 slots = copies of mazraa_save.json (mazraa_slot1-3.json). Loading copies the slot back and reloads
+    the scene. Autosave every in-game day (save file + the slot last saved/loaded). Slot summaries in PlayerPrefs "mazraa.ui.*".
+--- UI/FarmInfoScreen.cs     I = inventory (goods, cargo, seeds, feed, animals), O = farm stats (money earned, kg, days, missions).
+--- UI/TutorialOverlay.cs    Replayable hints for the first 6 missions (menu "Tutorial"); ticks off as you do them,
+    Enter / D-pad right next, Backspace / D-pad down close. Mission progress is not changed.
+--- UI/MenuKit.cs, MenuClick.cs, UiText.cs  Code-built menu lists; Arabic for UI texts in Resources/Data/Loc/50_ui.json.
+Gamepad (PlayStation / Xbox): left stick move, right stick look, A/Cross interact (and jump), B/Circle back / exit vehicle /
+close panels, X/Square vehicle reset, Y/Triangle tractor implement, RT throttle, LT brake/reverse, LB/RB shop pages,
+D-pad menus and shop rows (A buys), Start/Options pause, Select/View/Share map, R3 camera view.
+Keys: P menu, N map, I inventory, O stats, V camera view, B next training scenario (N moved to the map).
+
+ART, SOUND, QUALITY, ANDROID, CI (feat/artci)
+--- Graphics/CropVisuals.cs   Crop models by growth stage. Original FarmCrops plants (stages _01-_04 = seedling..ripe;
+    _05-_07 in the pack are harvested produce) copied to Resources/Models/FarmCrops (FBX + .meta with new GUIDs; the
+    .meta keeps the material remap to Assets/FarmCrops/Materials, so textures/shader graphs come along in builds).
+    CropVisuals.Get(cropId, growth01) -> model path ("FarmCrops/Tomato_03"), Kenney placeholder if the crop has none,
+    null = primitives. Spawn() places it (real size, capped 1.15 m across), TryGetMesh() gives mesh + materials.
+    Crops: wheat potato onion watermelon tomato cucumber corn cabbage pumpkin carrot (+ aliases melon, lettuce, garlic...).
+    FieldPlot calls CropVisuals.Spawn in its plant loop (one-line hook).
+--- Graphics/CropbedVisuals.cs   Greenhouse beds swap each living plant's mesh to the stage for the bed's growth
+    (bed crop if FarmCrops has it, else the plant's own kind). Size limited to 1.3x the original plant.
+--- Graphics/DesertDressing.cs (+ DesertProps.cs, ProcMesh.cs)   Al-Qassim look built at runtime 1.6 s after start:
+    sand ground around the farm, low dunes (with colliders) along the terrain edges, compacted-sand track from the
+    loading bay to the market lined with date palms, palm grove + Najdi mud-brick farmhouse (triangle vents, crenellations,
+    decorated door) near the start, acacia and sidr trees, evaporative cooling pads + exhaust fans on the greenhouse walls.
+    Keep-out circles around plots, zones, pen, stalls, greenhouses, vehicles, interactables and every scene collider.
+    Prop colliders are on layer 2 (Ignore Raycast) so ground raycasts never land on them. Primitive parts are merged
+    into a few meshes per material. Drop a model at Resources/Models/DatePalm, Acacia, Sidr or NajdiHouse to replace one.
+--- Graphics/DesertWeatherFX.cs   Blowing dust particles (Cloudy = windy, Heatwave = strong), sandy fog (thicker in dust,
+    dark at night), heat haze volume on hot afternoons. DesertWeatherFX.Wind01 / Heat01 for other systems.
+    ProjectSettings/GraphicsSettings: fog variants are kept in builds (the scene itself has fog off).
+--- Graphics/GraphicsEnhancer.cs   Quality presets Low / Medium / High (shadow distance, render scale, MSAA, post on/off,
+    SMAA, dressing density). G cycles. Settings menus: GraphicsEnhancer.SetPreset(0..2), Preset, PresetChanged event.
+    Default Low on phones and WebGL, High on PC. Saved as mazraa.gfxPreset (kept on New Game).
+--- Audio/ProceduralAudio.cs, AmbientAudio.cs, MazraaAudio.cs   Procedural sounds (no files): engine (pitch follows
+    speed, tractor lower), footsteps walk/sprint, wind (louder in dust), birds by day, crickets at night, cow / sheep /
+    goat / camel / chicken calls when you are within 32 m of the animals. A clip at Resources/Sounds/<name> (engine,
+    wind, crickets, birds, step0-3, cow, sheep, goat, camel, chicken) replaces the synthesised one.
+    Volumes: MazraaAudio.SetMaster / SetAmbience / SetEffects (0..1, saved; Master = AudioListener.volume).
+--- UI/TouchControls.cs   On phones only (Application.isMobilePlatform, or TouchControls.ForceShow): Input System
+    OnScreenStick (move = gamepad left stick, look = right stick) and OnScreenButtons (E, Jump, Run; W/A/S/D, Brake,
+    Reset, Tool while driving; Pause).
+--- Editor/MazraaBuild.cs   Mazraa > Build Android (.apk): IL2CPP, ARM64, build/Android/Mazraa.apk.
+--- .github/workflows/tests.yml   Push/PR to mazraa-dev: headless tests + static checks; Unity EditMode tests with
+    game-ci (skipped with a notice if the UNITY_LICENSE secret is empty). android.yml: APK artifact "Mazraa-Android".
+--- Tests/unused_assets.py -> Tests/UNUSED_ASSETS.md   Assets nothing in the build uses, with sizes (nothing deleted).
+
+INTEGRATION FIXES (Oct 16 2026) - all 607 headless checks and 16/16 static checks pass.
+- Haboob fog wins over the desert haze: EventDirector sets DesertWeatherFX.FogOverridden while the storm runs.
+- CropVisuals aliases: alfalfa/millet -> wheat stages, sorghum -> corn stages.
+- DesertDressing ignores its own (and a previous, being-destroyed) dressing when re-placing props; GraphicsEnhancer.SetPreset
+  only fires PresetChanged on a real change (settings saves used to rebuild the desert every time).
+- Keys: collection book moved B -> J, stored decor X (B = next training scenario, V = first/third person).
+- Headless test order: art checks run before the sections that rebuild the world.
+
+MAZRAA ACADEMY - CONTROLS TUTORIAL + AUDIT FIXES (Oct 16 2026)
+--- UI/ControlsTutorial.cs [MazraaSystem(66)] Branded controls tutorial (Mazraa palette: palm green, sand, gold; Tajawal
+    font in English and Arabic). 11 steps that tick off by themselves: look, walk 10 m, sprint, jump, V view, N map, E interact,
+    get in the tractor (distance shown), drive 25 m, brake, get out (vehicle steps hidden when no vehicle). Progress bar,
+    step dots, timer, cheers ("Mashallah!"), medal by time (gold < 2 min, silver < 4 min), first finish = +150 SAR and the
+    "Mazraa Academy" feat in the collection book. Starts by itself the first time the farm is played (save key
+    mazraa.academy.seen), and from the main/pause menu "Controls tutorial". [Enter]/D-pad right skips, [Backspace]/D-pad down
+    closes. The mission tutorial and the academy close each other. Text: Resources/Data/Loc/75_academy.json.
+--- Audit fixes: FarmCrops textures capped at 1024 (MetallicSmoothness 512), Old Water Well textures 1024, UI sprites
+    256/512, FarmMusic streamed + Vorbis, Gridbox demo materials no longer in a Resources folder (renamed DemoOnly),
+    VSync on (was uncapped), URP opaque texture off, fog stripping custom (keeps linear/exp/exp2 so haboob/runtime fog
+    show in builds), minimap camera without shadows/post FX, billboards ignore render-texture cameras, rain follows any
+    driven vehicle, U ignored while typing in chat, no per-frame arrays in MenuNav.Digit / emote keys.
+--- UI/MainMenuScene.cs [MazraaSystem(61)] Main menu in the style of modern farming sims: slow camera orbit around the
+    farm behind the menu, MAZRAA / مزرعة wordmark, menu column on the left (GameMenu moves its list there in Main mode,
+    pause menu stays centred), "Your farms" cards on the right for the 3 save slots (day, money, saved date, playing).
+    SaveSlots.Info(slot, out day, out money, out saved) feeds the cards.
+--- Oct 16 playtest fixes: Settings > Day length (6/12/24/48 real minutes, default 24; was 6) via GameSettings.DayMinutes,
+    moonlit nights (soft blue light from above, brighter ambient/sky at night), status panel wider (mission text no longer
+    breaks mid-name), training box moved to the top-right, third-person player dressed with Appearance (thobe + shemagh),
+    sample sponsor brands renamed to dummy Mazraa / Almadarek brands (Mazraa Seeds, Mazraa Fert, Mazraa Drip,
+    Almadarek Solar). Headless tests keep the old 6-minute day (GameSettings.DefaultDayMinutes = 6).
+--- Pink tractor fix: Build.FixPinkMaterials(go) runs on every model loaded through Build.TryModel and swaps missing
+    materials and URP-incompatible shaders (Standard, Legacy, Mobile, Unlit, error shader) for cached URP/Lit copies with the
+    same colour/texture. Tractor.fbx had a missing material (showed bright pink); it now falls back to tractor red
+    (Build.MissingMaterialColor). The main menu hides the HUD/minimap canvases while it is open and always shapes the
+    Arabic wordmark.
+--- Managers/CampaignManager.cs [MazraaSystem(36)] + Resources/Data/campaign.json: 7-chapter story campaign over the
+    mission chain (The Inheritance, Iron and Wheels, Life on the Farm, Growing Ambitions, Desert Wisdom, The Big Farm,
+    Heart of the Village), narrated by Abu Saleh, EN/AR. A new chapter shows a chapter card (does not pause, Enter/A or
+    auto-close); finishing a chapter shows its closing line and pays the chapter reward once (save keys mazraa.campaign.*).
+--- Pause menu (P): same left-column look as the main menu over the lightly dimmed game, HUD hidden, live Farm overview
+    on the right (day, season, time, weather, money, chapter %, current mission). New rows: Map, Farm overview, Inventory,
+    Campaign (chapter list with progress; Enter replays an unlocked chapter's story).

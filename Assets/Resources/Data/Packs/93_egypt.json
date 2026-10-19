@@ -1,0 +1,6 @@
+{
+ "packs": [
+  {"id": "nile_delta", "nameEn": "Nile Delta", "nameAr": "دلتا النيل", "version": "1.0", "regions": ["nile_delta"], "dlcId": "nile_delta", "storeId": "",
+   "requires": ["base"], "filePrefixes": ["93_"], "comingSoon": false, "minSchema": 1}
+ ]
+}

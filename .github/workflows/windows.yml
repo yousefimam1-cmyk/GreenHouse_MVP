@@ -1,0 +1,49 @@
+# Builds Mazraa.exe for Windows plus the release zip and the Microsoft Store .msix, uploaded as downloads.
+# (The Inno Setup installer needs Windows, so it is only made by the local Unity menu build.)
+# One-time setup (repo Settings > Secrets and variables > Actions):
+#   UNITY_LICENSE (contents of your Unity_v20xx.ulf), UNITY_EMAIL, UNITY_PASSWORD.
+# Then: Actions tab > "Windows build" > Run workflow. When it finishes, download "Mazraa-Windows"
+# from the run page, unzip, double-click Mazraa.exe.
+name: Windows build
+on:
+  workflow_dispatch:
+  push:
+    branches: [mazraa-dev]
+    paths: ['Assets/**', 'Packages/**', 'ProjectSettings/**']
+concurrency:
+  group: windows-${{ github.ref }}   # per branch: a run on another branch never cancels this one
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Win-${{ hashFiles('Packages/packages-lock.json') }}
+          restore-keys: Library-Win-
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: StandaloneWindows64
+          buildMethod: MazraaRelease.BuildAllBatch
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mazraa-Windows
+          path: build/Windows/Mazraa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mazraa-Store-MSIX
+          path: release/*.msix
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mazraa-Release-Zip
+          path: release/*.zip

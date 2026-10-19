@@ -1,0 +1,63 @@
+{
+  "notes": "Market (MarketManager). Selling points: 'accepts' lists good ids ('*' = every good, so goods added later in economy packs sell at least at the souq); a point whose goods don't exist in this game is hidden. Price at a point = good base price x daily trend x season curve x point mul x goodMul x (1 - supply glut) x demand event x feature hooks. Selling raises the point's glut by amount / saturation (up to maxGlut); it recovers by 'recovery' every day. haul = transport cost per kg of weight, taken from the sale. Simulated AI farmers add supply every day (more for crops in their main season). seasonCurves: spring, summer, autumn, winter multipliers (goods not listed: field crops sell 0.9x in their growing season and 1.3x out of it). Contracts: board offers from NPC clients (deliver goods for a fixed unit price + completion bonus, or tractor field work); accept up to maxActive; a missed deadline costs the penalty. Points and clients can be region-gated: 'regions' = only on these maps, 'exceptRegions' = not on these maps (a map with its own clients uses only those); 'building' points are built as small buildings with signs next to the market pad on their map (DesertDressing). More points/clients can be added in Resources/Data/Market/*.json packs. Prices in SAR (game balance).",
+  "points": [
+    { "id": "souq", "nameEn": "Central souq", "nameAr": "السوق المركزي", "accepts": ["*"], "mul": 1.0, "haul": 0, "saturation": 2000, "recovery": 0.12, "maxGlut": 0.4 },
+    { "id": "village", "nameEn": "Village souq", "nameAr": "سوق القرية", "exceptRegions": ["nile_delta"], "mul": 1.1, "haul": 0, "saturation": 400, "recovery": 0.25, "maxGlut": 0.5,
+      "accepts": ["crops", "tomato", "onion", "potato", "watermelon", "eggs", "milk", "laban", "cheese", "honey", "squab", "dates", "dates_sukkari", "dates_khalas", "pomegranate", "grapes", "lemons", "olives", "flour", "juice", "goat_milk", "camel_milk", "fish_tilapia", "fish_catfish", "fish_carp", "olive_oil", "tomato_paste"] },
+    { "id": "village", "nameEn": "Village souq", "nameAr": "سوق القرية", "regions": ["nile_delta"], "building": true, "r": 0.62, "g": 0.42, "b": 0.3, "mul": 1.05, "haul": 0, "saturation": 400, "recovery": 0.25, "maxGlut": 0.5,
+      "accepts": ["onion", "potato", "tomato", "watermelon", "eggs", "milk", "crops", "laban", "cheese", "berseem", "olive_oil", "tomato_paste"] },
+    { "id": "mill", "nameEn": "Grain silo", "nameAr": "صوامع الغلال", "mul": 1.12, "haul": 0.15, "saturation": 6000, "recovery": 0.1, "maxGlut": 0.35,
+      "accepts": ["wheat", "sorghum", "millet", "barley", "corn"] },
+    { "id": "ricemill", "nameEn": "Rice mill", "nameAr": "مضرب الأرز", "regions": ["nile_delta"], "building": true, "r": 0.78, "g": 0.68, "b": 0.5, "mul": 1.1, "haul": 0, "saturation": 6000, "recovery": 0.1, "maxGlut": 0.35,
+      "accepts": ["rice", "maize"] },
+    { "id": "gin", "nameEn": "Cotton gin", "nameAr": "محلج القطن", "regions": ["nile_delta"], "building": true, "r": 0.93, "g": 0.92, "b": 0.88, "mul": 1.15, "haul": 0, "saturation": 4000, "recovery": 0.1, "maxGlut": 0.35,
+      "accepts": ["cotton"] },
+    { "id": "dairy", "nameEn": "Dairy co-op", "nameAr": "جمعية الألبان التعاونية", "mul": 1.1, "haul": 0.1, "saturation": 1500, "recovery": 0.15, "maxGlut": 0.4,
+      "accepts": ["milk", "goat_milk", "camel_milk", "laban", "cheese"] },
+    { "id": "fodder", "nameEn": "Fodder traders", "nameAr": "تجار الأعلاف", "mul": 1.12, "haul": 0.1, "saturation": 3000, "recovery": 0.12, "maxGlut": 0.4,
+      "accepts": ["alfalfa", "berseem", "sorghum", "millet", "manure", "barley"] },
+    { "id": "port", "nameEn": "Export port", "nameAr": "ميناء التصدير", "mul": 1.25, "haul": 0.6, "saturation": 8000, "recovery": 0.08, "maxGlut": 0.35,
+      "accepts": ["dates", "dates_sukkari", "dates_khalas", "dates_ajwa", "packed_dates", "onion", "potato", "olive_oil", "orange", "citrus", "grapes", "pomegranate", "fish_hamour", "fish_najil", "honey", "cheese", "juice", "flour", "tomato_paste"],
+      "goodMul": [ { "good": "packed_dates", "mul": 1.1 }, { "good": "olive_oil", "mul": 1.1 } ] }
+  ],
+  "seasonCurves": [
+    { "good": "dates", "mul": [1.1, 1.0, 0.85, 1.05] },
+    { "good": "packed_dates", "mul": [1.05, 1.0, 0.95, 1.1] },
+    { "good": "milk", "mul": [1.0, 1.1, 1.0, 0.95] },
+    { "good": "eggs", "mul": [1.0, 1.05, 1.0, 1.0] },
+    { "good": "wool", "mul": [0.95, 0.9, 1.05, 1.15] },
+    { "good": "honey", "mul": [0.95, 1.0, 1.05, 1.1] }
+  ],
+  "events": { "chancePerDay": 0.45, "minBoost": 1.25, "maxBoost": 1.6, "minDays": 2, "maxDays": 4 },
+  "ai": { "dailyChance": 0.6, "minGlut": 0.02, "maxGlut": 0.08, "inSeasonGlut": 0.05 },
+  "contracts": {
+    "maxOffers": 6, "maxActive": 3, "offerDays": 3, "minDays": 3, "maxDays": 7, "offerChance": 0.85,
+    "minPremium": 1.15, "maxPremium": 1.45, "rewardShare": 0.15, "penaltyShare": 0.3, "minValue": 400, "maxValue": 2500,
+    "fieldChance": 0.25, "fieldMin": 4, "fieldMax": 10, "fieldPayMin": 90, "fieldPayMax": 140,
+    "clients": [
+      { "en": "Riyadh Central Market", "ar": "سوق الرياض المركزي" },
+      { "en": "Qassim Hotel Kitchen", "ar": "مطبخ فندق القصيم" },
+      { "en": "Najd Food Factory", "ar": "مصنع نجد للأغذية" },
+      { "en": "Jeddah Exporters", "ar": "مصدّرين جدة" },
+      { "en": "School Meals Program", "ar": "برنامج وجبات المدارس" },
+      { "en": "Dammam Supermarket", "ar": "سوبرماركت الدمام" },
+      { "en": "Abu Khalid's Restaurant", "ar": "مطعم أبو خالد" },
+      { "en": "Al-Baraka Bakery", "ar": "مخبز البركة" },
+      { "en": "Hajj Season Caterers", "ar": "متعهدو تموين موسم الحج" },
+      { "en": "Gulf Fresh Trading", "ar": "الخليج للتجارة الطازجة" },
+      { "en": "Alexandria Cotton Exporters", "ar": "شركة إسكندرية لتصدير الأقطان", "region": "nile_delta" },
+      { "en": "Kafr El-Sheikh Rice Mill", "ar": "مضرب أرز كفر الشيخ", "region": "nile_delta" },
+      { "en": "Obour Wholesale Market", "ar": "سوق العبور", "region": "nile_delta" },
+      { "en": "Mansoura Dairy", "ar": "ألبان المنصورة", "region": "nile_delta" },
+      { "en": "Tanta Food Factory", "ar": "مصنع أغذية طنطا", "region": "nile_delta" },
+      { "en": "Damietta Exporters", "ar": "مصدّرين دمياط", "region": "nile_delta" }
+    ],
+    "fieldClients": [
+      { "en": "Neighbour Abu Saleh", "ar": "الجار أبو صالح" },
+      { "en": "Neighbour Umm Fahad", "ar": "الجارة أم فهد" },
+      { "en": "Village farmers' co-op", "ar": "جمعية مزارعي القرية" },
+      { "en": "Hajj Mahmoud's farm", "ar": "غيط الحاج محمود", "region": "nile_delta" },
+      { "en": "Neighbour Abu Ali", "ar": "الجار أبو علي", "region": "nile_delta" }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "notes": "Edit this file to change crops and starting bed values without opening the scene. Bed key = GreenhouseObjectName/CropbedObjectName. Bed values below match the original scene values. Crop ranges are general greenhouse reference values (day/night air temp C, relative humidity, nutrient solution EC in mS/cm, pH, water per plant per day, days from transplant to first harvest) - replace with Mazraa's own agronomy data.",
+  "crops": [
+    { "id": "tomato",     "nameEn": "Tomato",       "nameAr": "طماطم",       "dayTempC": "21-27", "nightTempC": "16-18", "humidity": "60-80%", "ec": "2.0-3.5", "ph": "5.5-6.5", "waterPerPlant": "1.0-2.5 L", "cycleDays": "70-90",  "yieldFactor": 1.2 },
+    { "id": "cucumber",   "nameEn": "Cucumber",     "nameAr": "خيار",        "dayTempC": "24-28", "nightTempC": "18-20", "humidity": "70-90%", "ec": "1.7-2.5", "ph": "5.5-6.5", "waterPerPlant": "1.5-3.0 L", "cycleDays": "45-60",  "yieldFactor": 1.3 },
+    { "id": "pepper",     "nameEn": "Sweet Pepper", "nameAr": "فلفل بارد",   "dayTempC": "21-25", "nightTempC": "16-18", "humidity": "65-80%", "ec": "2.0-3.0", "ph": "5.5-6.5", "waterPerPlant": "1.0-2.0 L", "cycleDays": "75-90",  "yieldFactor": 0.9 },
+    { "id": "strawberry", "nameEn": "Strawberry",   "nameAr": "فراولة",      "dayTempC": "18-24", "nightTempC": "10-13", "humidity": "60-75%", "ec": "1.0-1.8", "ph": "5.5-6.5", "waterPerPlant": "0.2-0.5 L", "cycleDays": "60-90",  "yieldFactor": 0.6 },
+    { "id": "melon",      "nameEn": "Cantaloupe",   "nameAr": "كانتالوب",    "dayTempC": "25-30", "nightTempC": "18-20", "humidity": "60-70%", "ec": "2.0-2.5", "ph": "6.0-6.8", "waterPerPlant": "1.5-3.0 L", "cycleDays": "70-90",  "yieldFactor": 1.0 },
+    { "id": "eggplant",   "nameEn": "Eggplant",     "nameAr": "باذنجان",     "dayTempC": "22-28", "nightTempC": "18-20", "humidity": "60-75%", "ec": "2.5-3.5", "ph": "5.5-6.5", "waterPerPlant": "1.0-2.5 L", "cycleDays": "70-90",  "yieldFactor": 1.0 },
+    { "id": "beans",      "nameEn": "Green Beans",  "nameAr": "فاصوليا خضراء", "dayTempC": "20-27", "nightTempC": "15-18", "humidity": "60-70%", "ec": "1.8-2.5", "ph": "6.0-6.5", "waterPerPlant": "0.5-1.0 L", "cycleDays": "50-60",  "yieldFactor": 0.7 },
+    { "id": "lettuce",    "nameEn": "Lettuce",      "nameAr": "خس",          "dayTempC": "18-22", "nightTempC": "10-15", "humidity": "50-70%", "ec": "0.8-1.4", "ph": "5.5-6.5", "waterPerPlant": "0.2-0.3 L", "cycleDays": "45-60",  "yieldFactor": 0.5 }
+  ],
+  "beds": [
+    { "key": "GreenHouse/CropA",   "crop": "tomato",     "water": 10, "nutrients": 0,  "energy": 12, "climate": 0, "health": 10, "yieldProjection": 0 },
+    { "key": "GreenHouse/CropB",   "crop": "cucumber",   "water": 10, "nutrients": 0,  "energy": 0,  "climate": 9, "health": 0,  "yieldProjection": 5 },
+    { "key": "GreenHouse/CropC",   "crop": "pepper",     "water": 0,  "nutrients": 0,  "energy": 12, "climate": 9, "health": 0,  "yieldProjection": 0 },
+    { "key": "GreenHouse/CropD",   "crop": "strawberry", "water": 0,  "nutrients": 15, "energy": 0,  "climate": 0, "health": 10, "yieldProjection": 0 },
+    { "key": "GreenHouse-1/CropA", "crop": "melon",      "water": 4,  "nutrients": 0,  "energy": 2,  "climate": 0, "health": 5,  "yieldProjection": 0 },
+    { "key": "GreenHouse-1/CropB", "crop": "eggplant",   "water": 4,  "nutrients": 0,  "energy": 0,  "climate": 6, "health": 0,  "yieldProjection": 2 },
+    { "key": "GreenHouse-1/CropC", "crop": "beans",      "water": 0,  "nutrients": 0,  "energy": 3,  "climate": 6, "health": 0,  "yieldProjection": 0 },
+    { "key": "GreenHouse-1/CropD", "crop": "lettuce",    "water": 0,  "nutrients": 2,  "energy": 0,  "climate": 0, "health": 4,  "yieldProjection": 0 }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "notes": "Processed goods made by the production buildings added with the market update (processing.json): olive oil and tomato paste (raw cotton, rice and maize sell at the Delta's cotton gin and rice mill). Prices in SAR (game balance).",
+  "goods": [
+    { "id": "olive_oil",     "nameEn": "Olive oil",     "nameAr": "زيت زيتون",  "unitEn": "L",  "unitAr": "لتر", "price": 65, "weight": 0.9 },
+    { "id": "tomato_paste",  "nameEn": "Tomato paste",  "nameAr": "صلصة طماطم", "unitEn": "kg", "unitAr": "كجم", "price": 55, "weight": 1 }
+  ]
+}

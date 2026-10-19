@@ -1,0 +1,308 @@
+{
+ "entries": [
+  {
+   "en": "Age",
+   "ar": "العمر"
+  },
+  {
+   "en": "Animal medicine (1 dose)",
+   "ar": "دواء بيطري (جرعة واحدة)"
+  },
+  {
+   "en": "Animal records",
+   "ar": "سجل الحيوانات"
+  },
+  {
+   "en": "Bare hands",
+   "ar": "اليدان"
+  },
+  {
+   "en": "Change tool",
+   "ar": "تغيير الأداة"
+  },
+  {
+   "en": "Crouch / rest",
+   "ar": "انحناء / استراحة"
+  },
+  {
+   "en": "Digestive upset",
+   "ar": "اضطراب هضمي"
+  },
+  {
+   "en": "Field plowed by hand",
+   "ar": "حُرث الحقل يدويًا"
+  },
+  {
+   "en": "Field watered by hand",
+   "ar": "سُقي الحقل يدويًا"
+  },
+  {
+   "en": "Food",
+   "ar": "الطعام"
+  },
+  {
+   "en": "Genetics",
+   "ar": "الوراثة"
+  },
+  {
+   "en": "Groomed",
+   "ar": "تم تمشيط"
+  },
+  {
+   "en": "Grooming brush",
+   "ar": "فرشاة التمشيط"
+  },
+  {
+   "en": "Happiness",
+   "ar": "السعادة"
+  },
+  {
+   "en": "Hay bale",
+   "ar": "بالة تبن"
+  },
+  {
+   "en": "Hay bale spread in the pen - the animals are fed",
+   "ar": "فُرشت بالة التبن في الحظيرة - أُطعمت الحيوانات"
+  },
+  {
+   "en": "Heat",
+   "ar": "الحر"
+  },
+  {
+   "en": "Heat stress",
+   "ar": "الإجهاد الحراري"
+  },
+  {
+   "en": "Heat stroke",
+   "ar": "ضربة شمس"
+  },
+  {
+   "en": "Heat today",
+   "ar": "حرارة اليوم"
+  },
+  {
+   "en": "Herd",
+   "ar": "القطيع"
+  },
+  {
+   "en": "Hoe",
+   "ar": "المعزقة"
+  },
+  {
+   "en": "Medicine",
+   "ar": "الدواء"
+  },
+  {
+   "en": "Medicine given - cured",
+   "ar": "أُعطي الدواء - شُفي"
+  },
+  {
+   "en": "Misting fans",
+   "ar": "مراوح الرذاذ"
+  },
+  {
+   "en": "Misting fans for the pen",
+   "ar": "مراوح رذاذ للحظيرة"
+  },
+  {
+   "en": "Mucked out part of the pen",
+   "ar": "نُظف جزء من الحظيرة"
+  },
+  {
+   "en": "Next tool",
+   "ar": "الأداة التالية"
+  },
+  {
+   "en": "No animal close enough",
+   "ar": "لا يوجد حيوان قريب بما يكفي"
+  },
+  {
+   "en": "No animals yet - buy them at the Farm Shop",
+   "ar": "لا توجد حيوانات بعد - اشترها من متجر المزرعة"
+  },
+  {
+   "en": "No medicine - buy it at the Farm Shop or call the vet",
+   "ar": "لا يوجد دواء - اشتره من متجر المزرعة أو اتصل بالبيطري"
+  },
+  {
+   "en": "No sick animals - the vet is not needed",
+   "ar": "لا توجد حيوانات مريضة - لا حاجة للبيطري"
+  },
+  {
+   "en": "Not enough money for the vet",
+   "ar": "لا يكفي المال لأجرة البيطري"
+  },
+  {
+   "en": "Nothing to do here - pick a tool with [,] [.]",
+   "ar": "لا شيء لتفعله هنا - اختر أداة بـ [,] [.]"
+  },
+  {
+   "en": "Nothing to hoe here - stand on an untilled field",
+   "ar": "لا شيء للعزق هنا - قف على حقل غير محروث"
+  },
+  {
+   "en": "Nothing to pick up here",
+   "ar": "لا شيء لحمله هنا"
+  },
+  {
+   "en": "Nothing to shovel here - muck out the animal pen",
+   "ar": "لا شيء للجرف هنا - نظف حظيرة الحيوانات"
+  },
+  {
+   "en": "Nothing to water here",
+   "ar": "لا شيء لسقيه هنا"
+  },
+  {
+   "en": "Pick up / put down",
+   "ar": "حمل / وضع"
+  },
+  {
+   "en": "Picked up",
+   "ar": "حملت"
+  },
+  {
+   "en": "Poured water into the trough",
+   "ar": "سُكب الماء في الحوض"
+  },
+  {
+   "en": "Pregnant",
+   "ar": "حامل"
+  },
+  {
+   "en": "Press [R] again to sell for",
+   "ar": "اضغط [R] مرة أخرى للبيع بـ"
+  },
+  {
+   "en": "Previous tool",
+   "ar": "الأداة السابقة"
+  },
+  {
+   "en": "Produce crate",
+   "ar": "صندوق محاصيل"
+  },
+  {
+   "en": "Productivity",
+   "ar": "الإنتاجية"
+  },
+  {
+   "en": "Put down",
+   "ar": "ضع"
+  },
+  {
+   "en": "Respiratory infection",
+   "ar": "عدوى تنفسية"
+  },
+  {
+   "en": "Shade",
+   "ar": "الظل"
+  },
+  {
+   "en": "Shade canopy for the pen",
+   "ar": "مظلة للحظيرة"
+  },
+  {
+   "en": "Shovel",
+   "ar": "المجرفة"
+  },
+  {
+   "en": "Sold for",
+   "ar": "بيع بـ"
+  },
+  {
+   "en": "The pen is already clean",
+   "ar": "الحظيرة نظيفة بالفعل"
+  },
+  {
+   "en": "The vet treated the sick animals",
+   "ar": "عالج البيطري الحيوانات المريضة"
+  },
+  {
+   "en": "The watering can is empty - fill it at the well",
+   "ar": "المرشة فارغة - املأها من البئر"
+  },
+  {
+   "en": "This animal is healthy",
+   "ar": "هذا الحيوان سليم"
+  },
+  {
+   "en": "Too heavy to carry",
+   "ar": "ثقيل جدًا لحمله"
+  },
+  {
+   "en": "Use",
+   "ar": "استخدم"
+  },
+  {
+   "en": "Use hand tool",
+   "ar": "استخدام الأداة اليدوية"
+  },
+  {
+   "en": "Watering can",
+   "ar": "المرشة"
+  },
+  {
+   "en": "Watering can filled",
+   "ar": "امتلأت المرشة"
+  },
+  {
+   "en": "You drink cool water",
+   "ar": "تشرب ماءً باردًا"
+  },
+  {
+   "en": "Young",
+   "ar": "صغير"
+  },
+  {
+   "en": "[E] Animal records",
+   "ar": "[E] سجل الحيوانات"
+  },
+  {
+   "en": "[Enter] Give medicine   [R] Sell   [Q] Call the vet",
+   "ar": "[Enter] أعطِ الدواء   [R] بيع   [Q] اتصل بالبيطري"
+  },
+  {
+   "en": "[Esc] Close",
+   "ar": "[Esc] إغلاق"
+  },
+  {
+   "en": "days",
+   "ar": "أيام"
+  },
+  {
+   "en": "days left",
+   "ar": "أيام متبقية"
+  },
+  {
+   "en": "female",
+   "ar": "أنثى"
+  },
+  {
+   "en": "genetics",
+   "ar": "الوراثة"
+  },
+  {
+   "en": "male",
+   "ar": "ذكر"
+  },
+  {
+   "en": "needs shade",
+   "ar": "يحتاج إلى ظل"
+  },
+  {
+   "en": "no",
+   "ar": "لا"
+  },
+  {
+   "en": "no water",
+   "ar": "لا ماء"
+  },
+  {
+   "en": "on",
+   "ar": "تعمل"
+  },
+  {
+   "en": "yes",
+   "ar": "نعم"
+  }
+ ]
+}

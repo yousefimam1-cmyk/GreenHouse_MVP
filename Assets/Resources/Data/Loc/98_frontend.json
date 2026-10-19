@@ -1,0 +1,252 @@
+{
+ "entries": [
+  {
+   "en": "Career",
+   "ar": "المسيرة المهنية"
+  },
+  {
+   "en": "Multiplayer",
+   "ar": "اللعب الجماعي"
+  },
+  {
+   "en": "Free play",
+   "ar": "اللعب الحر"
+  },
+  {
+   "en": "Challenge",
+   "ar": "تحدٍّ"
+  },
+  {
+   "en": "CHALLENGE",
+   "ar": "تحدٍّ"
+  },
+  {
+   "en": "The story of your family farm: chapters, missions and rewards guide you.",
+   "ar": "قصة مزرعة عائلتك: فصول ومهام ومكافآت ترشدك."
+  },
+  {
+   "en": "Sandbox: no story or missions, pick your money, everything unlocked.",
+   "ar": "وضع حر: بلا قصة ولا مهام، اختر مالك، وكل شيء مفتوح."
+  },
+  {
+   "en": "A hard start and a goal against the clock. Can you make it?",
+   "ar": "بداية صعبة وهدف في سباق مع الوقت. هل تستطيع؟"
+  },
+  {
+   "en": "Desert start",
+   "ar": "بداية في الصحراء"
+  },
+  {
+   "en": "Market master",
+   "ar": "سيد السوق"
+  },
+  {
+   "en": "Only the land and 150 in the bank, a hard market. Build a fortune.",
+   "ar": "الأرض فقط و150 في البنك وسوق صعب. اصنع ثروة."
+  },
+  {
+   "en": "A farm manager's start and one year to prove yourself at the market.",
+   "ar": "بداية مدير مزرعة وسنة واحدة لتثبت نفسك في السوق."
+  },
+  {
+   "en": "Goal: {0} {1} within {2} in-game years",
+   "ar": "الهدف: {0} {1} خلال {2} سنوات في اللعبة"
+  },
+  {
+   "en": "Challenge complete!",
+   "ar": "اكتمل التحدي!"
+  },
+  {
+   "en": "Challenge failed",
+   "ar": "فشل التحدي"
+  },
+  {
+   "en": "Days used: {0}",
+   "ar": "الأيام المستخدمة: {0}"
+  },
+  {
+   "en": "Keep farming as long as you like",
+   "ar": "واصل الزراعة كما تشاء"
+  },
+  {
+   "en": "Free play - unlimited money",
+   "ar": "لعب حر - مال غير محدود"
+  },
+  {
+   "en": "{0} days left",
+   "ar": "باقي {0} يوم"
+  },
+  {
+   "en": "{0} h {1} min",
+   "ar": "{0} س {1} د"
+  },
+  {
+   "en": "{0} min",
+   "ar": "{0} د"
+  },
+  {
+   "en": "My farm",
+   "ar": "مزرعتي"
+  },
+  {
+   "en": "Choose a challenge",
+   "ar": "اختر تحديًا"
+  },
+  {
+   "en": "Choose a slot: a saved farm to load or delete, an empty one to start a new farm.",
+   "ar": "اختر خانة: مزرعة محفوظة لتحميلها أو حذفها، أو خانة فارغة لبدء مزرعة جديدة."
+  },
+  {
+   "en": "Campaign, free play or a challenge, on any map you own.",
+   "ar": "حملة أو لعب حر أو تحدٍّ، على أي خريطة تملكها."
+  },
+  {
+   "en": "Connect",
+   "ar": "اتصال"
+  },
+  {
+   "en": "Could not delete",
+   "ar": "تعذر الحذف"
+  },
+  {
+   "en": "Delete",
+   "ar": "حذف"
+  },
+  {
+   "en": "Delete this farm?",
+   "ar": "حذف هذه المزرعة؟"
+  },
+  {
+   "en": "Economy",
+   "ar": "الاقتصاد"
+  },
+  {
+   "en": "Egypt: Nile Delta DLC",
+   "ar": "مصر: محتوى دلتا النيل الإضافي"
+  },
+  {
+   "en": "Empty slot - start a new farm",
+   "ar": "خانة فارغة - ابدأ مزرعة جديدة"
+  },
+  {
+   "en": "Farm deleted",
+   "ar": "تم حذف المزرعة"
+  },
+  {
+   "en": "Farm name",
+   "ar": "اسم المزرعة"
+  },
+  {
+   "en": "Farm together with up to 3 friends - stay tuned!",
+   "ar": "ازرعوا معًا مع حتى 3 أصدقاء - ترقبوا!"
+  },
+  {
+   "en": "Game mode",
+   "ar": "نمط اللعب"
+  },
+  {
+   "en": "Host a game",
+   "ar": "استضافة لعبة"
+  },
+  {
+   "en": "Host address, part",
+   "ar": "عنوان المضيف، الجزء"
+  },
+  {
+   "en": "Host your farm, or join a friend's farm with their IP address.",
+   "ar": "استضف مزرعتك، أو انضم إلى مزرعة صديق بعنوان IP الخاص به."
+  },
+  {
+   "en": "Join a game",
+   "ar": "الانضمام إلى لعبة"
+  },
+  {
+   "en": "Last played",
+   "ar": "آخر لعب"
+  },
+  {
+   "en": "Last saved",
+   "ar": "آخر حفظ"
+  },
+  {
+   "en": "Load",
+   "ar": "تحميل"
+  },
+  {
+   "en": "Multiplayer is coming in a future update",
+   "ar": "اللعب الجماعي قادم في تحديث قادم"
+  },
+  {
+   "en": "Multiplayer settings",
+   "ar": "إعدادات اللعب الجماعي"
+  },
+  {
+   "en": "Name your farm",
+   "ar": "سمِّ مزرعتك"
+  },
+  {
+   "en": "New farm",
+   "ar": "مزرعة جديدة"
+  },
+  {
+   "en": "News and tips",
+   "ar": "أخبار ونصائح"
+  },
+  {
+   "en": "No farm yet - open Career to start one",
+   "ar": "لا توجد مزرعة بعد - افتح المسيرة المهنية لتبدأ واحدة"
+  },
+  {
+   "en": "No, keep it",
+   "ar": "لا، أبقها"
+  },
+  {
+   "en": "Not owned",
+   "ar": "غير مملوك"
+  },
+  {
+   "en": "Play time",
+   "ar": "مدة اللعب"
+  },
+  {
+   "en": "Press [Enter] to start",
+   "ar": "اضغط [Enter] للبدء"
+  },
+  {
+   "en": "Press any key to start",
+   "ar": "اضغط أي زر للبدء"
+  },
+  {
+   "en": "Rice, cotton and berseem on the canals of the Delta, with its own story.",
+   "ar": "الأرز والقطن والبرسيم على ترع الدلتا، مع قصتها الخاصة."
+  },
+  {
+   "en": "Start",
+   "ar": "البداية"
+  },
+  {
+   "en": "Start farming",
+   "ar": "ابدأ الزراعة"
+  },
+  {
+   "en": "Start money",
+   "ar": "المال الأولي"
+  },
+  {
+   "en": "Unlimited money",
+   "ar": "مال غير محدود"
+  },
+  {
+   "en": "Yes, delete it for good",
+   "ar": "نعم، احذفها نهائيًا"
+  },
+  {
+   "en": "[<- ->] Change   LB / RB +-10   [Enter] Choose   [Esc] Back",
+   "ar": "[<- ->] تغيير   LB / RB ±10   [Enter] اختيار   [Esc] رجوع"
+  },
+  {
+   "en": "[<- ->] Other name   [Enter] Start farming   [Esc] Back",
+   "ar": "[<- ->] اسم آخر   [Enter] ابدأ الزراعة   [Esc] رجوع"
+  }
+ ]
+}

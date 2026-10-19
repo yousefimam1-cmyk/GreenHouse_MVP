@@ -1,0 +1,95 @@
+{
+ "notes": "Campaign chapters over the mission chain (Resources/Data/missions.json + Missions/*.json, in order). fromMission is 1-based. Chapter 1's intro is the opening StoryIntro card.",
+ "narratorEn": "Abu Saleh",
+ "narratorAr": "أبو صالح",
+ "chapters": [
+  {
+   "id": "inheritance",
+   "fromMission": 1,
+   "reward": 0,
+   "titleEn": "The Inheritance",
+   "titleAr": "الإرث",
+   "introEn": "Your grandfather's farm outside Buraidah has been quiet for years. The well is dry, the greenhouse dusty. Abu Saleh, his old friend, hands you the keys: 'He always said this land would feed the family again.'",
+   "introAr": "مزرعة جدك برّا بريدة صار لها سنين ساكتة. البير ناشف والبيت المحمي مغبّر. أبو صالح، صديقه القديم، يعطيك المفاتيح: «دايم يقول هالأرض بترجع تأكّل العيلة.»",
+   "outroEn": "Water runs, the beds are green and the first crates are full. The farm is breathing again.",
+   "outroAr": "الموية تمشي، والأحواض خضرا، وأول الصناديق امتلت. المزرعة رجعت تتنفّس."
+  },
+  {
+   "id": "wheels",
+   "fromMission": 7,
+   "reward": 500,
+   "titleEn": "Iron and Wheels",
+   "titleAr": "حديد وعجلات",
+   "introEn": "Hand tools won't feed a city. Grandfather's old tractor still starts on the third try, and the farm truck is waiting at the loading bay. Time to sell at the market.",
+   "introAr": "عدّة اليد ما تأكّل مدينة. تراكتور جدك القديم يشتغل من ثالث محاولة، وشاحنة المزرعة تنتظر عند منطقة التحميل. وقت البيع في السوق.",
+   "outroEn": "The market buyers know your name now. A contract kept is worth more than one crop.",
+   "outroAr": "تجّار السوق صاروا يعرفون اسمك. العقد اللي تلتزم فيه أغلى من أي محصول."
+  },
+  {
+   "id": "animals",
+   "fromMission": 13,
+   "reward": 600,
+   "titleEn": "Life on the Farm",
+   "titleAr": "حياة المزرعة",
+   "introEn": "'A farm without animals is only a field,' says Abu Saleh. Feed, water and a clean pen: look after them and they will look after you.",
+   "introAr": "«مزرعة بلا حلال مجرد حقل،» يقول أبو صالح. علف وموية وحظيرة نظيفة: اهتم فيهم ويهتمون فيك.",
+   "outroEn": "Eggs every morning and healthy animals in the pen. The whole farm is thriving.",
+   "outroAr": "بيض كل صباح وحلال بصحة في الحظيرة. المزرعة كلها مزدهرة."
+  },
+  {
+   "id": "ambition",
+   "fromMission": 18,
+   "reward": 1000,
+   "titleEn": "Growing Ambitions",
+   "titleAr": "طموح يكبر",
+   "introEn": "Neighbours are talking about the young farmer who brought the old place back. Invest, supply the big buyers and make it through the seasons.",
+   "introAr": "الجيران يسولفون عن المزارع الشاب اللي رجّع المكان القديم. استثمر، وورّد للتجار الكبار، واصمد على مدار المواسم.",
+   "outroEn": "The finest farm in Al-Qassim. Grandfather would be proud.",
+   "outroAr": "أفضل مزرعة في القصيم. جدك بيكون فخور فيك."
+  },
+  {
+   "id": "desert",
+   "fromMission": 26,
+   "reward": 1500,
+   "titleEn": "Desert Wisdom",
+   "titleAr": "حكمة الصحراء",
+   "introEn": "Every drop of water in Najd comes from deep under the sand, and it does not come back. Fish tanks, camels, solar power, drip lines and date palms: farm like the desert teaches.",
+   "introAr": "كل نقطة موية في نجد طالعة من تحت الرمل، وما ترجع. أحواض سمك وإبل وطاقة شمسية وتنقيط ونخل: ازرع مثل ما تعلّمك الصحراء.",
+   "outroEn": "The first dates of the season, grown on sun and saved water. This is real Saudi farming.",
+   "outroAr": "أول تمر الموسم، من الشمس والموية الموفّرة. هذي الزراعة السعودية الحقيقية."
+  },
+  {
+   "id": "bigfarm",
+   "fromMission": 37,
+   "reward": 2000,
+   "titleEn": "The Big Farm",
+   "titleAr": "المزرعة الكبيرة",
+   "introEn": "More land, more hands and a loan from the bank. Big farms face big storms: keep your nerve when the haboob rolls in.",
+   "introAr": "أرض أكثر وأيدي أكثر وقرض من البنك. المزارع الكبيرة تواجه عواصف كبيرة: اثبت لما يجي الهبوب.",
+   "outroEn": "Debt cleared and the haboob survived. The farm stands strong.",
+   "outroAr": "الدين انسدّ والهبوب عدّى. المزرعة واقفة بقوة."
+  },
+  {
+   "id": "village",
+   "fromMission": 41,
+   "reward": 2500,
+   "titleEn": "Heart of the Village",
+   "titleAr": "قلب القرية",
+   "introEn": "A farm is also its people: the saluki at the gate, the neighbours at the majlis, the partners at the market. Become the heart of the village.",
+   "introAr": "المزرعة أهلها كمان: السلوقي عند الباب، والجيران في المجلس، والشركاء في السوق. كن قلب القرية.",
+   "outroEn": "From a dry well to the heart of the village. Grandfather's land feeds the family again. Mabrook!",
+   "outroAr": "من بير ناشف إلى قلب القرية. أرض جدك رجعت تأكّل العيلة. مبروك!"
+  },
+  {
+   "id": "open_road",
+   "fromMission": 46,
+   "reward": 1500,
+   "titleEn": "The Open Road",
+   "titleAr": "الطريق المفتوح",
+   "introEn": "'The farm is only the start,' Abu Saleh says, pointing past the gate. 'The highway runs to the town, the silos, the dairy and the dry port. Every buyer pays his own price - drive your crops to the one who pays best, and keep an eye on the land for sale next door.'",
+   "introAr": "«المزرعة بس البداية،» يقول أبو صالح ويأشّر ورا البوابة. «الخط يودّي للبلدة والصوامع وجمعية الألبان والميناء الجاف. كل تاجر له سعره - ودّ محصولك للي يدفع أكثر، وعينك على الأرض المعروضة للبيع جنبك.»",
+   "outroEn": "Your truck is known on every road around Buraidah, and your fields now reach past the old fence.",
+   "outroAr": "شاحنتك صارت معروفة في كل طرق بريدة، ومزارعك صارت تتعدّى السياج القديم."
+  }
+ ]
+}

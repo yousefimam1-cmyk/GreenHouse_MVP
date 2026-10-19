@@ -1,0 +1,45 @@
+{
+  "notes": "Saudi crops missions (GameEvents.RaiseCustom types raised by Scripts/Crops). Rewards in SAR.",
+  "missions": [
+    {
+      "id": "crops_alfalfa",
+      "type": "cropsPlantAlfalfa",
+      "target": 1,
+      "reward": 300,
+      "titleEn": "Green fodder",
+      "titleAr": "علف أخضر",
+      "descEn": "Buy alfalfa (barseem) seeds and plant a field. Every cut gives hay and animal feed.",
+      "descAr": "اشترِ بذور برسيم وازرع حقل. كل حشّة تعطيك برسيم وعلف للحلال."
+    },
+    {
+      "id": "crops_cure",
+      "type": "cropsCurePest",
+      "target": 1,
+      "reward": 250,
+      "titleEn": "Pest control",
+      "titleAr": "مكافحة الآفات",
+      "descEn": "Treat a pest on a field, bed or palm with a cure from the shop (Crop care).",
+      "descAr": "عالج آفة في حقل أو حوض أو نخلة بعلاج من المحل (العناية بالمحاصيل)."
+    },
+    {
+      "id": "crops_rotate",
+      "type": "cropsRotate",
+      "target": 1,
+      "reward": 300,
+      "titleEn": "Crop rotation",
+      "titleAr": "الدورة الزراعية",
+      "descEn": "After a harvest, plant a different crop family on the same field (+15% yield, healthier soil).",
+      "descAr": "بعد الحصاد ازرع عائلة محصول ثانية في نفس الحقل (+15% إنتاج وتربة أصح)."
+    },
+    {
+      "id": "crops_dates",
+      "type": "cropsDateHarvest",
+      "target": 1,
+      "reward": 800,
+      "titleEn": "First date harvest",
+      "titleAr": "أول صرام تمر",
+      "descEn": "Plant a date palm in the orchard, pollinate it in spring and pick its dates in late summer.",
+      "descAr": "ازرع نخلة في البستان، لقّحها في الربيع واصرم تمرها في آخر الصيف."
+    }
+  ]
+}
