@@ -27,7 +27,6 @@ MonoBehaviour:
     supportDecals: 1
     supportMotionVectors: 1
     supportRayTracing: 0
-    supportRuntimeDebugDisplay: 0
     supportDitheringCrossFade: 0
     supportTerrainHole: 0
     hdShadowInitParams:

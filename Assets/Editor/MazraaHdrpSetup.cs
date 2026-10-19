@@ -107,7 +107,6 @@ public static class MazraaHdrpSetup
         Set(so, S + "supportVolumetrics", high);
         Set(so, S + "supportVolumetricClouds", level >= 1);
         Set(so, S + "supportDitheringCrossFade", false);
-        Set(so, S + "supportRuntimeDebugDisplay", false);
         Set(so, S + "dynamicResolutionSettings.enabled", true);
         Set(so, S + "dynamicResolutionSettings.minPercentage", 50f);
         Set(so, S + "dynamicResolutionSettings.maxPercentage", 100f);
