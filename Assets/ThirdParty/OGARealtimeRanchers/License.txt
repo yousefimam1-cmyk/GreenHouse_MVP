@@ -1,0 +1,2 @@
+"Realtime Rancher's 3D Model Pack" (cow) by LD (opengameart.org/content/realtime-ranchers-3d-model-pack), CC0 1.0 Universal (public domain).
+Converted for Mazraa with Blender: FBX, turned to face +Z, textures repacked (2K albedo+alpha, normal, mask with the pack's AO).

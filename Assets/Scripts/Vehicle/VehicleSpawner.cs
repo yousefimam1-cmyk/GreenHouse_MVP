@@ -296,6 +296,17 @@ public class VehicleSpawner : MonoBehaviour
             Build.Part(PrimitiveType.Cube, barn.transform, new Vector3(0, 1.2f, 2.29f), new Vector3(2.1f, 0.12f, 0.03f), trim, "Brace", new Vector3(0, 0, 50));
             Build.Part(PrimitiveType.Cube, barn.transform, new Vector3(0, 1.2f, 2.29f), new Vector3(2.1f, 0.12f, 0.03f), trim, "Brace", new Vector3(0, 0, -50));
         }
+        // Yard clutter beside the barn (CC0 Poly Haven props; skipped when the pack is missing)
+        string[] yardIds = { "Props/OilDrum", "Props/OilDrum", "Props/WoodenCrate", "Props/PlasticCrate", "Props/CementBag", "Props/CementBag", "Props/Jerrycan" };
+        Vector3[] yardPos = { new Vector3(3.0f, 0, -1.6f), new Vector3(3.15f, 0, -0.95f), new Vector3(3.1f, 0, 0.4f), new Vector3(3.0f, 0.46f, 0.35f),
+                              new Vector3(-3.0f, 0, -1.2f), new Vector3(-3.05f, 0.18f, -1.15f), new Vector3(2.9f, 0, 1.3f) };
+        float[] yardYaw = { 10f, 75f, 92f, 80f, 15f, 40f, 200f };
+        for (int i = 0; i < yardIds.Length; i++)
+        {
+            var h = new GameObject(yardIds[i].Substring(6)); h.transform.SetParent(barn.transform, false);
+            h.transform.localPosition = yardPos[i]; h.transform.localRotation = Quaternion.Euler(0f, yardYaw[i], 0f);
+            if (Build.TryModel(yardIds[i], h.transform, 0f, 0f) == null) Object.Destroy(h);
+        }
         var walls = barn.AddComponent<BoxCollider>(); walls.center = new Vector3(0, 1.6f, 0); walls.size = new Vector3(5f, 3.2f, 4.5f);
         barn.layer = 2; // Ignore Raycast: still solid, but never treated as ground
         var door = new GameObject("Barn Door");
@@ -318,7 +329,7 @@ public class VehicleSpawner : MonoBehaviour
         root.transform.SetPositionAndRotation(Build.OnGround(pos, 0.9f), rot);
         root.AddComponent<Rigidbody>();
         var col = root.AddComponent<BoxCollider>();
-        col.center = new Vector3(0, 0.75f, 0.2f); col.size = new Vector3(2.0f, 1.6f, 3.4f);
+        col.center = new Vector3(0, 0.95f, 0.25f); col.size = new Vector3(2.5f, 2.0f, 4.25f);   // ~4.5 m tractor (real-world size)
         col.material = new PhysicsMaterial("Tractor") { dynamicFriction = 0f, staticFriction = 0f, frictionCombine = PhysicsMaterialCombine.Minimum };
         Transform t = root.transform;
         Transform bodyRoot = new GameObject("Body").transform; bodyRoot.SetParent(t, false);
@@ -332,7 +343,7 @@ public class VehicleSpawner : MonoBehaviour
         var wheels = new Transform[4];
         VehicleVisuals.Layout layout;
         Build.MissingMaterialColor = new Color(0.72f, 0.12f, 0.08f);     // tractor red if the model's material is missing
-        var tractorModel = Build.TryModel("Tractor", bodyRoot, 3.6f, -0.75f);
+        var tractorModel = Build.TryModel("Tractor", bodyRoot, 4.5f, -0.75f);
         Build.MissingMaterialColor = new Color(0.6f, 0.6f, 0.6f);
         if (tractorModel != null)
         {

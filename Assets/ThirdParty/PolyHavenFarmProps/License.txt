@@ -1,0 +1,3 @@
+Models and textures from Poly Haven (https://polyhaven.com), CC0 1.0 Universal (public domain).
+https://polyhaven.com/license
+Converted for Mazraa with Blender: single-object FBX, decimated where noted in CREDITS.md, textures repacked (_d albedo, _n OpenGL normal, _m mask R metal G AO A smoothness), 1K.

@@ -11,7 +11,7 @@ on:
     branches: [mazraa-dev]
     paths: ['Assets/**', 'Packages/**', 'ProjectSettings/**']
 concurrency:
-  group: windows
+  group: windows-${{ github.ref }}   # per branch: a run on another branch never cancels this one
   cancel-in-progress: true
 jobs:
   build:
