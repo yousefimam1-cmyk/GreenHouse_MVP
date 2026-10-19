@@ -54,7 +54,7 @@ public class StoryIntro : MonoBehaviour
         if (text == null) return;
         Loc.ApplyFont(text);
         text.alignment = Loc.IsArabic ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
-        text.text = "<size=150%><color=#FF9A3C><b>" + Loc.T("Mazraa") + "</b></color></size>\n\n" + Body() +
+        text.text = "<size=150%><color=#F2A93B><b>" + Loc.T("Mazraa") + "</b></color></size>\n\n" + Body() +
                     "\n\n<size=80%><color=#BBBBBB>" + Loc.T("[Enter] Start   [L] Arabic / English") + "</color></size>";
     }
 

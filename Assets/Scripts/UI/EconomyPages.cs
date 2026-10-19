@@ -18,7 +18,7 @@ public static class EconomyPages
     private static string Price(float v) => v.ToString("F1");
     private static string Line(string s) => "\n" + Loc.Display(s);
     private static string Hint(string s) => "\n<size=80%><color=#BBBBBB>" + s + "</color></size>";
-    private static string Sel(bool on, string s) => on ? "<color=#FF9A3C>> " + s + "</color>" : "  " + s;
+    private static string Sel(bool on, string s) => on ? "<color=#F2A93B>> " + s + "</color>" : "  " + s;
 
     // ---------------- rows ----------------
 
@@ -230,7 +230,7 @@ public static class EconomyPages
                 for (int a = 0; a < ProductionActions.Length; a++)
                 {
                     string label = Loc.Raw(ProductionActions[a]) + (a == 3 ? ": " + Loc.Raw(p.auto ? "on" : "off") : "");
-                    acts.Append(a == action ? "<color=#FF9A3C>[" + Loc.Display(label) + "]</color>  " : Loc.Display(label) + "  ");
+                    acts.Append(a == action ? "<color=#F2A93B>[" + Loc.Display(label) + "]</color>  " : Loc.Display(label) + "  ");
                 }
                 sb.Append("\n").Append(acts);
             }

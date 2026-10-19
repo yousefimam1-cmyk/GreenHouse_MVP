@@ -67,7 +67,7 @@ public static class FieldsPage
         return Adjust(1);
     }
 
-    private static string Sel(int row, string text) => row == Row ? "<color=#FF9A3C>> " + text + "</color>" : "  " + text;
+    private static string Sel(int row, string text) => row == Row ? "<color=#F2A93B>> " + text + "</color>" : "  " + text;
 
     public static string Text()
     {

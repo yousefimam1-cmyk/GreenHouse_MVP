@@ -18,8 +18,10 @@ public class GameHUD : MonoBehaviour
 {
     public static GameHUD Instance { get; private set; }
 
-    private static readonly Color PanelColor = new Color(0.06f, 0.09f, 0.05f, 0.72f);
-    private static readonly Color Accent = new Color(0.55f, 0.85f, 0.35f, 1f);
+    private static readonly Color PanelColor = UiTheme.Glass;
+    private static readonly Color Accent = UiTheme.Accent;
+    /// <summary>Anchor offset of HUD panels: the screen margin minus the shadow margin baked into the panel sprite.</summary>
+    private const float Edge = UiTheme.Margin - UiTheme.ShadowInset;
 
     private Canvas canvas;
     private RectTransform statusPanel, infoPanel, hintPanel, helpPanel, trainingPanel, partnerPanel, truckPanel;
@@ -29,6 +31,12 @@ public class GameHUD : MonoBehaviour
     private RectTransform fuelFill, damageFill, loadFill, rpmFill;
     private TextMeshProUGUI fuelLabel, damageLabel, loadLabel, rpmLabel;
     private GameObject loadRow;
+    // design-system HUD pieces: speed dial, clock block cells
+    private Image speedArc, rpmArc, weatherIcon, moneyIcon;
+    private TextMeshProUGUI speedValue, speedUnit, gearValue, timeLabel, dayLabel, weatherLabel, moneyLabel;
+    private RectTransform dial, barsBox, clockTop, clockMoney;
+    private readonly List<RectTransform> barRows = new List<RectTransform>();
+    private string contextRaw = "";
     private int glyphVersion = -1;
     private GreenhouseManager partnerGreenhouse;
     private SponsorFile sponsors;
@@ -98,12 +106,12 @@ public class GameHUD : MonoBehaviour
     private void StackRightColumn()
     {
         if (clockPanel == null) return;
-        float y = -24f;
+        float y = -Edge;
         foreach (var rt in new[] { clockPanel, statusPanel, trainingPanel })
         {
             if (rt == null || !rt.gameObject.activeSelf) continue;
             rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, y);
-            y -= rt.rect.height + 10f;
+            y -= rt.rect.height - 2f * UiTheme.ShadowInset + UiTheme.S3;   // shadows overlap, visible gap 12 px
         }
     }
 
@@ -225,10 +233,11 @@ public class GameHUD : MonoBehaviour
         RefreshGauges(v);
         if (v is Tractor tractor)
         {
+            // speed, gear, rpm, fuel and damage are on the dial and bars: the text says only what they cannot
             var tb = new StringBuilder();
-            tb.Append(SpeedLine(tractor));
-            tb.Append('\n').Append(Loc.Display(Loc.Raw("Implement") + ": " + Tractor.ImplementName(tractor.ActiveImplement) + ImplementState(tractor)));
-            tb.Append('\n').Append(FuelLine(tractor));
+            tb.Append(Loc.Display(Tractor.ImplementName(tractor.ActiveImplement) + ImplementState(tractor)));
+            string cruise = CruiseLine(tractor);
+            if (cruise != null) tb.Append('\n').Append(cruise);
             truckText.text = tb.ToString();
             var db = new StringBuilder();
             DriveLines(tractor, db);
@@ -241,10 +250,10 @@ public class GameHUD : MonoBehaviour
         float dist = target != null ? Vector3.Distance(target.transform.position, truck.transform.position) : 0f;
         string where = target == DeliveryZone.Market ? Loc.Raw("Market") : Loc.Raw("Loading bay");
         var sb = new StringBuilder();
-        sb.Append(SpeedLine(truck));
-        sb.Append('\n').Append(Loc.T("Cargo {0}/{1} kg", truck.CargoWeight.ToString("F0"), (eco != null ? eco.TruckCapacity : 0f).ToString("F0")));
-        if (target != null) sb.Append('\n').Append(Loc.Display(where + ": " + dist.ToString("F0") + " m"));
-        sb.Append('\n').Append(FuelLine(truck));
+        sb.Append(Loc.T("Cargo {0}/{1} kg", truck.CargoWeight.ToString("F0"), (eco != null ? eco.TruckCapacity : 0f).ToString("F0")));
+        if (target != null) sb.Append('\n').Append("<color=").Append(UiTheme.DimHex).Append('>').Append(Loc.Display(where + ": " + dist.ToString("F0") + " m")).Append("</color>");
+        string tc = CruiseLine(truck);
+        if (tc != null) sb.Append('\n').Append(tc);
         truckText.text = sb.ToString();
         var detail = new StringBuilder();
         DriveLines(truck, detail);
@@ -260,6 +269,14 @@ public class GameHUD : MonoBehaviour
         if (v.Assist.Cruise == CruiseMode.Cruise) kmh += "   <color=#8CD95A>" + Loc.T("Cruise {0} km/h", Vehicle.Kmh(v.Assist.CruiseSpeed)) + "</color>";
         else if (v.Assist.Cruise == CruiseMode.Limiter) kmh += "   <color=#8CD95A>" + Loc.T("Limiter {0} km/h", Vehicle.Kmh(v.Assist.CruiseSpeed)) + "</color>";
         return kmh;
+    }
+
+    /// <summary>Cruise / limiter setting in the accent colour, or null when off.</summary>
+    private static string CruiseLine(Vehicle v)
+    {
+        if (v.Assist.Cruise == CruiseMode.Cruise) return "<color=" + UiTheme.AccentHex + ">" + Loc.T("Cruise {0} km/h", Vehicle.Kmh(v.Assist.CruiseSpeed)) + "</color>";
+        if (v.Assist.Cruise == CruiseMode.Limiter) return "<color=" + UiTheme.AccentHex + ">" + Loc.T("Limiter {0} km/h", Vehicle.Kmh(v.Assist.CruiseSpeed)) + "</color>";
+        return null;
     }
 
     /// <summary>" (lowered)", " (raised, folded)" ... for the attached implement (translated, unshaped).</summary>
@@ -281,9 +298,17 @@ public class GameHUD : MonoBehaviour
     {
         if (fuelFill == null) return;
         float fuel = FuelFraction(v), dmg = DamageFraction(v), rpm = RpmFraction(v);
-        SetBar(fuelFill, fuel, fuel < 0.15f ? new Color(1f, 0.42f, 0.36f) : fuel < 0.35f ? new Color(0.95f, 0.72f, 0.3f) : new Color(0.55f, 0.85f, 0.35f));
-        SetBar(damageFill, dmg, dmg > 0.5f ? new Color(1f, 0.42f, 0.36f) : dmg > 0.2f ? new Color(0.95f, 0.72f, 0.3f) : new Color(0.6f, 0.6f, 0.6f));
-        SetBar(rpmFill, rpm, rpm > 0.9f ? new Color(1f, 0.42f, 0.36f) : new Color(0.62f, 0.83f, 1f));
+        SetBar(fuelFill, fuel, fuel < 0.15f ? UiTheme.Bad : fuel < 0.35f ? UiTheme.Warn : UiTheme.Good);
+        SetBar(damageFill, dmg, dmg > 0.5f ? UiTheme.Bad : dmg > 0.2f ? UiTheme.Warn : UiTheme.TextMuted);
+        SetBar(rpmFill, rpm, rpm > 0.9f ? UiTheme.Bad : UiTheme.Info);
+        // speed dial: 270 degree arc (top speed of this vehicle = full), rpm on the thin inner ring, gear underneath
+        float kmh = Mathf.Abs(v.Speed) * 3.6f, top = Mathf.Max(10f, v.maxSpeed * 3.6f);
+        UiKit.SetArc(speedArc, kmh / top);
+        UiKit.SetArc(rpmArc, rpm);
+        if (rpmArc != null) rpmArc.color = rpm > 0.9f ? UiTheme.Bad : UiTheme.Info;
+        if (speedValue != null) speedValue.text = Vehicle.Kmh(v.Speed);
+        if (speedUnit != null) { Loc.ApplyFont(speedUnit); speedUnit.text = Loc.T("km/h"); }
+        if (gearValue != null) gearValue.text = v.Drive.EngineOn ? v.Drive.GearLabel : "-";
         fuelLabel.text = Loc.T("Fuel {0}%", Mathf.RoundToInt(fuel * 100f));
         damageLabel.text = Loc.Display(Loc.Raw("Damage") + " " + Mathf.RoundToInt(dmg * 100f) + "%");
         rpmLabel.text = v.Drive.EngineOn ? Loc.Display(Loc.Raw("Gear") + " " + v.Drive.GearLabel + "   " + Mathf.RoundToInt(v.Drive.Rpm / 10f) * 10 + " rpm") : Loc.T("Engine off");
@@ -293,7 +318,7 @@ public class GameHUD : MonoBehaviour
         if (showLoad)
         {
             float load = Mathf.Clamp01(truck.CargoWeight / eco.TruckCapacity);
-            SetBar(loadFill, load, new Color(1f, 0.76f, 0.3f));
+            SetBar(loadFill, load, UiTheme.Accent);
             loadLabel.text = Loc.Display(Loc.Raw("Load") + " " + Mathf.RoundToInt(load * 100f) + "%");
         }
         foreach (var l in new[] { fuelLabel, damageLabel, rpmLabel, loadLabel })
@@ -332,18 +357,36 @@ public class GameHUD : MonoBehaviour
         if (clockText == null) return;
         Loc.ApplyFont(clockText);
         clockText.alignment = Loc.IsArabic ? TextAlignmentOptions.TopLeft : TextAlignmentOptions.TopRight;
-        clockText.text = ClockText();
+        clockText.text = ClockText();   // kept (hidden) as the plain-text version; the block shows the cells below
+        var clock = WorldClock.Instance; var eco = EconomyManager.Instance;
+        foreach (var l in new[] { timeLabel, dayLabel, weatherLabel, moneyLabel }) Loc.ApplyFont(l);
+        if (clock != null)
+        {
+            timeLabel.text = clock.TimeText();
+            dayLabel.text = Loc.Display(Loc.Raw("Day") + " " + clock.Day + "  " + clock.SeasonName());
+            weatherLabel.text = Mathf.RoundToInt(WorldClock.Temperature(clock.Season, clock.Weather).x) + "\u00B0";
+            UiKit.SetIcon(weatherIcon, clock.Weather == Weather.Rain ? "weather_rain" : clock.Weather == Weather.Cloudy ? "weather_cloud" : clock.Weather == Weather.Heatwave ? "weather_heat" : "weather_sun", UiTheme.TextDim);
+        }
+        moneyLabel.text = eco != null ? Loc.Display(eco.Money.ToString("N0") + " " + Loc.Raw("SAR")) : "";
+        LayoutClock(Loc.IsArabic);
     }
 
     private void RefreshContext()
     {
         if (hintText == null || !hintPanel.gameObject.activeSelf) return;
         Loc.ApplyFont(hintText);
-        hintText.text = ContextHelp.Text();
+        SetContext(ContextHelp.Text());
     }
 
     /// <summary>Context help text shown now (tests).</summary>
-    public string ContextText => hintText != null ? hintText.text : "";
+    public string ContextText => hintText != null ? contextRaw : "";
+
+    /// <summary>Context help: keys drawn as keycaps, one action per line.</summary>
+    private void SetContext(string raw)
+    {
+        contextRaw = raw ?? "";
+        hintText.text = UiKit.Keycaps(contextRaw);
+    }
     /// <summary>The gauge cluster is showing (in a vehicle).</summary>
     public bool GaugesVisible => truckPanel != null && truckPanel.gameObject.activeSelf;
     /// <summary>Fuel bar fill now (0..1).</summary>
@@ -355,23 +398,29 @@ public class GameHUD : MonoBehaviour
     /// <summary>A labelled bar row of the gauge cluster; returns the fill (its anchorMax.x is the value).</summary>
     private RectTransform MakeBar(Transform parent, string name, out TextMeshProUGUI label, out GameObject row)
     {
-        var r = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(LayoutElement));
-        r.transform.SetParent(parent, false);
-        r.GetComponent<LayoutElement>().preferredHeight = 24f;
-        var bg = r.GetComponent<Image>(); bg.color = new Color(1f, 1f, 1f, 0.12f); bg.raycastTarget = false;
-        var f = new GameObject("Fill", typeof(RectTransform), typeof(Image));
-        f.transform.SetParent(r.transform, false);
-        var frt = (RectTransform)f.transform;
+        // one row of the bar stack beside the dial: small label on top, a thin pill bar underneath
+        var r = MenuKit.Rect(name, parent);
+        r.anchorMin = new Vector2(0f, 1f); r.anchorMax = new Vector2(1f, 1f); r.pivot = new Vector2(0.5f, 1f);
+        r.sizeDelta = new Vector2(0f, 36f);
+        r.anchoredPosition = new Vector2(0f, -barRows.Count * 40f - 6f);
+        barRows.Add(r);
+        var track = MenuKit.Rect("Track", r, typeof(Image));
+        track.anchorMin = new Vector2(0f, 0f); track.anchorMax = new Vector2(1f, 0f); track.pivot = new Vector2(0.5f, 0f);
+        track.sizeDelta = new Vector2(0f, 6f); track.anchoredPosition = Vector2.zero;
+        var ti = track.GetComponent<Image>(); ti.raycastTarget = false;
+        if (!UiKit.Sliced(ti, "bar_track", Color.white)) ti.color = UiTheme.Track;
+        ti.pixelsPerUnitMultiplier = 4f;   // 6 px tall: keep the pill ends round
+        var frt = MenuKit.Rect("Fill", track, typeof(Image));
         frt.anchorMin = Vector2.zero; frt.anchorMax = new Vector2(1f, 1f); frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero; frt.pivot = new Vector2(0f, 0.5f);
-        var fi = f.GetComponent<Image>(); fi.color = Accent; fi.raycastTarget = false;
-        var lgo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        lgo.transform.SetParent(r.transform, false);
-        var lrt = (RectTransform)lgo.transform;
-        lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one; lrt.offsetMin = new Vector2(8f, 0f); lrt.offsetMax = new Vector2(-8f, 0f);
-        label = lgo.GetComponent<TextMeshProUGUI>();
-        label.fontSize = 17; label.color = Color.white; label.raycastTarget = false; label.alignment = TextAlignmentOptions.Left;
-        Loc.ExcludeFromScene(label);
-        row = r;
+        var fi = frt.GetComponent<Image>(); fi.raycastTarget = false;
+        if (!UiKit.Sliced(fi, "bar_fill_white", Accent)) fi.color = Accent;
+        fi.pixelsPerUnitMultiplier = 4f;
+        label = MenuKit.Text(r, UiTheme.Caption, UiTheme.TextDim, "Label");
+        var lrt = label.rectTransform;
+        lrt.anchorMin = new Vector2(0f, 0f); lrt.anchorMax = new Vector2(1f, 1f); lrt.offsetMin = new Vector2(0f, 10f); lrt.offsetMax = Vector2.zero;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.alignment = TextAlignmentOptions.Left;
+        row = r.gameObject;
         return frt;
     }
 
@@ -395,27 +444,38 @@ public class GameHUD : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920, 1080);
         scaler.matchWidthOrHeight = 0.5f;
 
-        clockPanel = MakePanel("Clock", new Vector2(1, 1), new Vector2(-24, -24), new Vector2(330, 0), out clockText, 24);
-        statusPanel = MakePanel("Status", new Vector2(1, 1), new Vector2(-24, -170), new Vector2(460, 0), out statusText, 21);
-        infoPanel = MakePanel("CropInfo", new Vector2(0, 0.5f), new Vector2(24, 0), new Vector2(480, 0), out infoText, 22);
-        hintPanel = MakePanel("Context help", new Vector2(0, 1), new Vector2(24, -24), new Vector2(430, 0), out hintText, 19);   // FS: top-left key help
-        helpPanel = MakePanel("Help", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 0), out helpText, 26);
-        // Below the minimap (top centre).
-        trainingPanel = MakePanel("Training", new Vector2(1, 1), new Vector2(-24, -84), new Vector2(400, 0), out trainingText, 18);   // top-right, under Co-op: keeps the view clear
-        partnerPanel = MakePanel("Partners", new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(460, 0), out partnerText, 20);
-        truckPanel = MakePanel("Gauges", new Vector2(1, 0), new Vector2(-24, 24), new Vector2(420, 0), out truckText, 21);   // FS: bottom-right gauge cluster
+        // Layout (1920x1080 reference, scaled 1280x720 .. 4K): clock + money top-right with the farm status under it, key
+        // help top-left, vehicle cluster bottom-right, minimap bottom-left (Minimap). Small type, few words.
+        clockPanel = MakePanel("Clock", new Vector2(1, 1), new Vector2(-Edge, -Edge), new Vector2(300, 0), out clockText, UiTheme.Body);
+        clockText.gameObject.SetActive(false);
+        BuildClock();
+        statusPanel = MakePanel("Status", new Vector2(1, 1), new Vector2(-Edge, -170), new Vector2(400, 0), out statusText, UiTheme.Small);
+        infoPanel = MakePanel("CropInfo", new Vector2(0, 0.5f), new Vector2(Edge, 0), new Vector2(460, 0), out infoText, UiTheme.Body);
+        hintPanel = MakePanel("Context help", new Vector2(0, 1), new Vector2(Edge, -Edge), new Vector2(380, 0), out hintText, UiTheme.Small);   // top-left key help
+        hintText.lineSpacing = 12f;   // room for the keycap plates
+        helpPanel = MakePanel("Help", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 0), out helpText, UiTheme.Lead);
+        trainingPanel = MakePanel("Training", new Vector2(1, 1), new Vector2(-Edge, -84), new Vector2(400, 0), out trainingText, UiTheme.Small);
+        partnerPanel = MakePanel("Partners", new Vector2(1, 0.5f), new Vector2(-Edge, 0), new Vector2(440, 0), out partnerText, UiTheme.Body);
+        truckPanel = MakePanel("Gauges", new Vector2(1, 0), new Vector2(-Edge, Edge), new Vector2(440, 0), out truckText, UiTheme.Body);   // bottom-right vehicle cluster
         truckText.alignment = TextAlignmentOptions.TopLeft;
-        truckPanel.GetComponent<VerticalLayoutGroup>().spacing = 6f;
-        rpmFill = MakeBar(truckPanel, "Rpm", out rpmLabel, out _);
-        fuelFill = MakeBar(truckPanel, "Fuel", out fuelLabel, out _);
-        damageFill = MakeBar(truckPanel, "Damage", out damageLabel, out _);
-        loadFill = MakeBar(truckPanel, "Load", out loadLabel, out loadRow);
+        truckPanel.GetComponent<VerticalLayoutGroup>().spacing = UiTheme.S2;
+        // dial row: speed dial on the outer side, bar stack (rpm, fuel, damage, load) beside it
+        var dialRow = MenuKit.Rect("Dial row", truckPanel, typeof(LayoutElement));
+        dialRow.GetComponent<LayoutElement>().preferredHeight = 168f;
+        dialRow.SetAsFirstSibling();
+        BuildDial(dialRow);
+        barsBox = MenuKit.Rect("Bars", dialRow);
+        rpmFill = MakeBar(barsBox, "Rpm", out rpmLabel, out _);
+        fuelFill = MakeBar(barsBox, "Fuel", out fuelLabel, out _);
+        damageFill = MakeBar(barsBox, "Damage", out damageLabel, out _);
+        loadFill = MakeBar(barsBox, "Load", out loadLabel, out loadRow);
         var dgo = new GameObject("Detail", typeof(RectTransform), typeof(TextMeshProUGUI));
         dgo.transform.SetParent(truckPanel, false);
         gaugeDetail = dgo.GetComponent<TextMeshProUGUI>();
-        gaugeDetail.fontSize = 16; gaugeDetail.color = new Color(0.86f, 0.86f, 0.86f); gaugeDetail.raycastTarget = false; gaugeDetail.richText = true;
+        gaugeDetail.fontSize = UiTheme.Caption; gaugeDetail.color = UiTheme.TextDim; gaugeDetail.raycastTarget = false; gaugeDetail.richText = true;
         gaugeDetail.textWrappingMode = TextWrappingModes.Normal;
         Loc.ExcludeFromScene(gaugeDetail);
+        dgo.SetActive(false);   // minimal text: slip / tyres / key list stay out of the cluster (context help has the keys)
         // Direction arrow (two bars forming a chevron) above the truck panel.
         var holder = new GameObject("Arrow", typeof(RectTransform));
         holder.transform.SetParent(canvas.transform, false);
@@ -429,12 +489,12 @@ public class GameHUD : MonoBehaviour
             rt.sizeDelta = new Vector2(12, 46);
             rt.anchoredPosition = new Vector2(a > 0 ? -14 : 14, 0);
             rt.localRotation = Quaternion.Euler(0, 0, a);
-            var img = bar.GetComponent<Image>(); img.color = new Color(1f, 0.6f, 0.15f, 0.95f); img.raycastTarget = false;
+            var img = bar.GetComponent<Image>(); img.color = UiTheme.Accent; img.raycastTarget = false;
         }
         arrow.SetParent(truckPanel, false);
-        arrow.anchorMin = arrow.anchorMax = new Vector2(0.5f, 1f); arrow.anchoredPosition = new Vector2(0, 56);
+        arrow.anchorMin = arrow.anchorMax = new Vector2(0.5f, 1f); arrow.anchoredPosition = new Vector2(0, 40);
         holder.AddComponent<LayoutElement>().ignoreLayout = true;
-        pricePanel = MakePanel("Prices", new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(440, 0), out priceText, 20);
+        pricePanel = MakePanel("Prices", new Vector2(1, 0.5f), new Vector2(-Edge, 0), new Vector2(440, 0), out priceText, UiTheme.Small);
         pricePanel.gameObject.SetActive(false);
         truckPanel.gameObject.SetActive(false);
         infoPanel.gameObject.SetActive(false);
@@ -450,10 +510,12 @@ public class GameHUD : MonoBehaviour
         rt.anchorMin = rt.anchorMax = rt.pivot = anchor;
         rt.anchoredPosition = offset;
         rt.sizeDelta = size;
-        panel.GetComponent<Image>().color = PanelColor;
-        panel.GetComponent<Image>().raycastTarget = false;
+        var pimg = panel.GetComponent<Image>();
+        if (!UiKit.Sliced(pimg, "panel")) pimg.color = PanelColor;
+        pimg.raycastTarget = false;
         var layout = panel.GetComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(18, 18, 14, 14);
+        int padX = (int)(UiTheme.ShadowInset + UiTheme.S4), padY = (int)(UiTheme.ShadowInset + UiTheme.S3);
+        layout.padding = new RectOffset(padX, padX, padY, padY);
         layout.childControlWidth = layout.childControlHeight = true;
         layout.childForceExpandWidth = true;
         layout.childForceExpandHeight = false;
@@ -464,7 +526,7 @@ public class GameHUD : MonoBehaviour
         tgo.transform.SetParent(panel.transform, false);
         text = tgo.GetComponent<TextMeshProUGUI>();
         text.fontSize = fontSize;
-        text.color = Color.white;
+        text.color = UiTheme.Text;
         text.raycastTarget = false;
         text.richText = true;
         text.textWrappingMode = TextWrappingModes.Normal;
@@ -486,6 +548,7 @@ public class GameHUD : MonoBehaviour
         Mirror(infoPanel, rtl);
         Mirror(hintPanel, rtl);
         Mirror(partnerPanel, !rtl);
+        LayoutCluster(rtl);
         foreach (var t in new[] { statusText, infoText, hintText, helpText, partnerText, gaugeDetail })
         {
             Loc.ApplyFont(t);
@@ -496,7 +559,7 @@ public class GameHUD : MonoBehaviour
         truckText.alignment = rtl ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
         trainingText.alignment = TextAlignmentOptions.Top;
         glyphVersion = GameInput.Version;
-        hintText.text = ContextHelp.Text();
+        SetContext(ContextHelp.Text());
         RefreshClock();
         helpText.text = Title(Loc.T("HELP")) + "\n" + Loc.T("HELP_BODY");
         RefreshStatus();
@@ -570,7 +633,101 @@ public class GameHUD : MonoBehaviour
         rt.anchorMin = new Vector2(x, rt.anchorMin.y);
         rt.anchorMax = new Vector2(x, rt.anchorMax.y);
         rt.pivot = new Vector2(x, rt.pivot.y);
-        rt.anchoredPosition = new Vector2(rtl ? -24f : 24f, rt.anchoredPosition.y);
+        rt.anchoredPosition = new Vector2(rtl ? -Edge : Edge, rt.anchoredPosition.y);
+    }
+
+    // ---------------------------------------------------------------- clock block and speed dial
+
+    private TextMeshProUGUI Cell(RectTransform parent, string name, float size, Color color, bool bold)
+    {
+        var t = MenuKit.Text(parent, size, color, name);
+        t.textWrappingMode = TextWrappingModes.NoWrap;
+        if (bold) t.fontStyle = FontStyles.Bold;
+        return t;
+    }
+
+    /// <summary>Clock block: big time with day / season under it, weather icon + temperature, then money.</summary>
+    private void BuildClock()
+    {
+        clockTop = MenuKit.Rect("Time row", clockPanel, typeof(LayoutElement));
+        clockTop.GetComponent<LayoutElement>().preferredHeight = 64f;
+        timeLabel = Cell(clockTop, "Time", UiTheme.Heading + 4f, UiTheme.Text, true);
+        dayLabel = Cell(clockTop, "Day", UiTheme.Caption, UiTheme.TextDim, false);
+        weatherIcon = UiKit.IconImage(clockTop, "weather_sun", 30f, UiTheme.TextDim, "Weather icon");
+        weatherLabel = Cell(clockTop, "Temperature", UiTheme.Body, UiTheme.Text, false);
+        var rule = MenuKit.Rect("Hairline", clockPanel, typeof(Image), typeof(LayoutElement));
+        rule.GetComponent<LayoutElement>().preferredHeight = 1f;
+        var ri = rule.GetComponent<Image>(); ri.color = UiTheme.Stroke; ri.raycastTarget = false;
+        clockMoney = MenuKit.Rect("Money row", clockPanel, typeof(LayoutElement));
+        clockMoney.GetComponent<LayoutElement>().preferredHeight = 34f;
+        moneyIcon = UiKit.IconImage(clockMoney, "coins", 24f, UiTheme.Accent, "Money icon");
+        moneyLabel = Cell(clockMoney, "Money", UiTheme.Lead, UiTheme.AccentHi, true);
+    }
+
+    /// <summary>Place the clock cells for the reading direction (time on the outer edge side, weather inside).</summary>
+    private void LayoutClock(bool rtl)
+    {
+        if (clockTop == null) return;
+        float outer = rtl ? 0f : 1f, inner = 1f - outer;
+        var al = rtl ? TextAlignmentOptions.TopLeft : TextAlignmentOptions.TopRight;
+        Place(timeLabel.rectTransform, outer, new Vector2(0f, 0f), new Vector2(170f, 40f), 1f);
+        Place(dayLabel.rectTransform, outer, new Vector2(0f, -42f), new Vector2(200f, 22f), 1f);
+        timeLabel.alignment = dayLabel.alignment = al;
+        Place(weatherIcon.rectTransform, inner, new Vector2(rtl ? -60f : 60f, -4f), new Vector2(30f, 30f), 1f);
+        Place(weatherLabel.rectTransform, inner, new Vector2(rtl ? -60f : 60f, -36f), new Vector2(60f, 26f), 1f);
+        weatherLabel.alignment = TextAlignmentOptions.Top;
+        weatherIcon.rectTransform.pivot = weatherLabel.rectTransform.pivot = new Vector2(0.5f, 1f);
+        Place(moneyLabel.rectTransform, outer, Vector2.zero, new Vector2(230f, 34f), 0.5f);
+        moneyLabel.alignment = rtl ? TextAlignmentOptions.MidlineLeft : TextAlignmentOptions.MidlineRight;
+        Place(moneyIcon.rectTransform, inner, Vector2.zero, new Vector2(24f, 24f), 0.5f);
+    }
+
+    /// <summary>Anchor a cell to one side (x 0 or 1) at a vertical anchor y, offset by pos.</summary>
+    private static void Place(RectTransform rt, float side, Vector2 pos, Vector2 size, float y)
+    {
+        rt.anchorMin = rt.anchorMax = new Vector2(side, y);
+        rt.pivot = new Vector2(side, y);
+        rt.sizeDelta = size;
+        rt.anchoredPosition = pos;
+    }
+
+    /// <summary>Speed dial: dark disc, 270 degree speed arc (accent), thin rpm ring inside, km/h in the middle, gear below.</summary>
+    private void BuildDial(RectTransform row)
+    {
+        dial = MenuKit.Rect("Dial", row);
+        dial.sizeDelta = new Vector2(164f, 164f);
+        var disc = MenuKit.Rect("Disc", dial, typeof(Image));
+        MenuKit.Stretch(disc);
+        var di = disc.GetComponent<Image>(); di.raycastTarget = false;
+        var ds = UiKit.Kit("disc");
+        if (ds != null) { di.sprite = ds; di.color = Color.white; } else di.color = new Color(0f, 0f, 0f, 0f);
+        var track = UiKit.Arc(dial, "Speed track", 138f, UiTheme.Track);
+        UiKit.SetArc(track, 1f);
+        speedArc = UiKit.Arc(dial, "Speed", 138f, UiTheme.Accent);
+        rpmArc = UiKit.Arc(dial, "Rpm ring", 112f, UiTheme.Info, 0.3f);
+        speedValue = Cell(dial, "Speed value", UiTheme.Display + 4f, UiTheme.Text, true);
+        speedValue.alignment = TextAlignmentOptions.Center;
+        Place(speedValue.rectTransform, 0.5f, new Vector2(0f, 6f), new Vector2(120f, 56f), 0.5f);
+        speedValue.rectTransform.anchorMin = speedValue.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+        speedUnit = Cell(dial, "Unit", UiTheme.Caption, UiTheme.TextDim, false);
+        speedUnit.alignment = TextAlignmentOptions.Center;
+        Place(speedUnit.rectTransform, 0.5f, new Vector2(0f, -26f), new Vector2(100f, 20f), 0.5f);
+        speedUnit.rectTransform.anchorMin = speedUnit.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+        gearValue = Cell(dial, "Gear", UiTheme.Lead, UiTheme.Accent, true);
+        gearValue.alignment = TextAlignmentOptions.Center;
+        Place(gearValue.rectTransform, 0.5f, new Vector2(0f, 4f), new Vector2(60f, 30f), 0f);
+        gearValue.rectTransform.anchorMin = gearValue.rectTransform.anchorMax = new Vector2(0.5f, 0f);
+    }
+
+    /// <summary>Dial on the outer side, bars on the inner side (mirrors in Arabic).</summary>
+    private void LayoutCluster(bool rtl)
+    {
+        if (dial == null) return;
+        float side = rtl ? 0f : 1f;
+        dial.anchorMin = dial.anchorMax = dial.pivot = new Vector2(side, 0.5f);
+        dial.anchoredPosition = Vector2.zero;
+        barsBox.anchorMin = Vector2.zero; barsBox.anchorMax = Vector2.one;
+        barsBox.offsetMin = new Vector2(rtl ? 184f : 0f, 0f); barsBox.offsetMax = new Vector2(rtl ? 0f : -184f, 0f);
     }
 
     private static string Title(string s) => "<color=#" + ColorUtility.ToHtmlStringRGB(Accent) + "><b>" + s + "</b></color>";

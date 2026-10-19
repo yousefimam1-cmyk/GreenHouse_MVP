@@ -7,10 +7,11 @@ using UnityEngine.UI;
 /// <summary>Small helpers to build screen-space UI from code (canvas, panels, texts, buttons).</summary>
 public static class MenuKit
 {
-    public static readonly Color PanelColor = new Color(0.07f, 0.06f, 0.05f, 0.95f);
-    public static readonly Color RowColor = new Color(1f, 1f, 1f, 0.06f);
-    public static readonly Color RowSelected = new Color(1f, 0.55f, 0.15f, 0.35f);
-    public static readonly Color Orange = new Color(1f, 0.55f, 0.15f);
+    // Colours come from the design tokens (UiTheme in UiKit.cs)
+    public static readonly Color PanelColor = UiTheme.GlassStrong;
+    public static readonly Color RowColor = UiTheme.Row;
+    public static readonly Color RowSelected = UiTheme.Accent;
+    public static readonly Color Orange = UiTheme.Accent;
     // Settings > Accessibility > High-contrast menus
     public static readonly Color PanelHighContrast = new Color(0f, 0f, 0f, 1f);
     public static readonly Color RowHighContrast = new Color(1f, 1f, 1f, 0.16f);
@@ -50,7 +51,7 @@ public static class MenuKit
         var rt = Rect("Backdrop", parent, typeof(Image));
         Stretch(rt);
         var img = rt.GetComponent<Image>();
-        img.color = new Color(0.02f, 0.02f, 0.015f, alpha);
+        var c = UiTheme.Scrim; c.a = alpha; img.color = c;
         img.raycastTarget = true;
         return img;
     }
@@ -64,7 +65,8 @@ public static class MenuKit
         var pimg = rt.GetComponent<Image>();
         if (!UiKit.Sliced(pimg, "panel")) pimg.color = PanelColor;   // kit frame (Resources/UI/Kit) or the flat colour
         var vl = rt.GetComponent<VerticalLayoutGroup>();
-        vl.padding = new RectOffset(28, 28, 22, 22); vl.spacing = 8;
+        // padding = baked shadow margin (UiTheme.ShadowInset) + 24 px inside the glass
+        vl.padding = new RectOffset(38, 38, 34, 34); vl.spacing = UiTheme.S3;
         vl.childControlWidth = vl.childControlHeight = true; vl.childForceExpandWidth = true; vl.childForceExpandHeight = false;
         rt.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         return rt;
@@ -87,6 +89,7 @@ public static class MenuKit
         var rt = Rect(name, parent, typeof(Image), typeof(MenuClick));
         bg = rt.GetComponent<Image>();
         if (!UiKit.Sliced(bg, "button")) bg.color = RowColor;
+        bg.pixelsPerUnitMultiplier = 1.4f;   // slightly tighter corner radius on the 52 px rows
         bg.raycastTarget = true;
         var click = rt.GetComponent<MenuClick>();
         click.onClick = onClick;
@@ -102,7 +105,7 @@ public static class MenuKit
         return true;
     }
 
-    public static string Title(string s) => "<color=#FF9A3C><b>" + s + "</b></color>";
+    public static string Title(string s) => "<color=" + UiTheme.AccentHex + "><b>" + s + "</b></color>";
 }
 
 /// <summary>One line of a code-built menu: a button, or a setting changed with left / right.</summary>
@@ -114,7 +117,11 @@ public class MenuRow
     public Action<int> adjust;          // Left / Right (-1 / +1); also the < > buttons
     public Func<bool> enabled;          // greyed out and skipped when false
     public Func<Color> accent;          // optional colour bar on the reading side (Career slot cards: the map's flag colour)
-    public float height;                // optional row height (0 = automatic: 50, or 84 for two-line rows)
+    public float height;                // optional row height (0 = automatic: 52, or 84 for two-line rows)
+    public string icon;                 // optional UiKit icon on the reading side (main menu entries)
+
+    /// <summary>Give the row an icon (UiKit icon name); returns the row for chaining.</summary>
+    public MenuRow WithIcon(string name) { icon = name; return this; }
 
     public static MenuRow Button(Func<string> label, Action confirm) => new MenuRow { label = label, confirm = confirm };
     public static MenuRow Setting(Func<string> label, Func<string> value, Action<int> adjust) => new MenuRow { label = label, value = value, adjust = adjust, confirm = () => adjust(1) };
@@ -124,7 +131,8 @@ public class MenuRow
     internal TextMeshProUGUI text, valueText;
     internal MenuClick button;
     internal RectTransform minus, plus;
-    internal Image accentBar;
+    internal Image accentBar, iconImg;
+    internal TextMeshProUGUI minusText, plusText;
     public bool IsEnabled => enabled == null || enabled();
 }
 
@@ -140,18 +148,22 @@ public class MenuList
     public IReadOnlyList<MenuRow> Rows => rows;
 
     private readonly TextMeshProUGUI title, footer;
+    private readonly Image titleRule;
     private readonly RectTransform list;
     private readonly List<MenuRow> rows = new List<MenuRow>();
     private Func<string> titleText, footerText;
+    private string shownTitle;
 
     public MenuList(Transform parent, float width)
     {
         Panel = MenuKit.Panel("Menu", parent, width);
-        title = MenuKit.Text(Panel, 36, MenuKit.Orange, "Title");
+        title = MenuKit.Text(Panel, UiTheme.Heading + 4f, UiTheme.Text, "Title");
+        titleRule = UiKit.Rule(title.rectTransform);
         list = MenuKit.Rect("Rows", Panel, typeof(VerticalLayoutGroup));
         var ll = list.GetComponent<VerticalLayoutGroup>();
-        ll.spacing = 6; ll.childControlWidth = ll.childControlHeight = true; ll.childForceExpandWidth = true; ll.childForceExpandHeight = false;
-        footer = MenuKit.Text(Panel, 19, new Color(0.8f, 0.78f, 0.74f), "Footer");
+        ll.spacing = UiTheme.S1 + 2f; ll.childControlWidth = ll.childControlHeight = true; ll.childForceExpandWidth = true; ll.childForceExpandHeight = false;
+        ll.padding = new RectOffset(0, 0, (int)UiTheme.S3, 0);
+        footer = MenuKit.Text(Panel, UiTheme.Small, UiTheme.TextDim, "Footer");
     }
 
     public void Show(Func<string> titleText, List<MenuRow> newRows, Func<string> footerText, int select = 0)
@@ -164,6 +176,9 @@ public class MenuList
         Selected = Mathf.Clamp(select, 0, Mathf.Max(0, rows.Count - 1));
         if (rows.Count > 0 && !rows[Selected].IsEnabled) Move(1);
         Refresh();
+        string t = title.text;
+        if (t != shownTitle) UiMotion.Play(Panel);   // a new screen fades / scales the panel in (not a rebuild of the same one)
+        shownTitle = t;
     }
 
     private void BuildRow(MenuRow r)
@@ -172,29 +187,30 @@ public class MenuList
         r.button = MenuKit.Button(list, "Row " + index, () => { Selected = rows.IndexOf(r); if (r.IsEnabled && r.confirm != null) r.confirm(); Refresh(); }, out r.bg);
         r.button.onHover = () => { int i = rows.IndexOf(r); if (i >= 0 && i != Selected && r.IsEnabled) { Selected = i; Refresh(); } };
         r.rt = (RectTransform)r.button.transform;
-        r.rt.gameObject.AddComponent<LayoutElement>().minHeight = r.height > 0f ? r.height : r.label != null && r.label().Contains("\n") ? 84 : 50;   // two-line rows (map / start choice)
+        r.rt.gameObject.AddComponent<LayoutElement>().minHeight = r.height > 0f ? r.height : r.label != null && r.label().Contains("\n") ? 84 : 52;   // two-line rows (map / start choice)
         if (r.accent != null)
         {
             var bar = MenuKit.Rect("Accent", r.rt, typeof(Image));
             r.accentBar = bar.GetComponent<Image>();
             r.accentBar.raycastTarget = false;
         }
-        r.text = MenuKit.Text(r.rt, 24, Color.white, "Label");
-        if (r.value != null || r.adjust != null) r.valueText = MenuKit.Text(r.rt, 24, new Color(1f, 0.85f, 0.6f), "Value");
+        if (!string.IsNullOrEmpty(r.icon) && UiKit.HasIcon(r.icon)) r.iconImg = UiKit.IconImage(r.rt, r.icon, 26f, UiTheme.TextDim);
+        r.text = MenuKit.Text(r.rt, UiTheme.Lead - 1f, UiTheme.Text, "Label");
+        if (r.value != null || r.adjust != null) r.valueText = MenuKit.Text(r.rt, UiTheme.Lead - 2f, UiTheme.AccentHi, "Value");
         if (r.adjust != null)
         {
-            r.minus = SmallButton(r.rt, "<", () => { Selected = rows.IndexOf(r); r.adjust(-1); Refresh(); });
-            r.plus = SmallButton(r.rt, ">", () => { Selected = rows.IndexOf(r); r.adjust(1); Refresh(); });
+            r.minus = SmallButton(r.rt, "<", () => { Selected = rows.IndexOf(r); r.adjust(-1); Refresh(); }, out r.minusText);
+            r.plus = SmallButton(r.rt, ">", () => { Selected = rows.IndexOf(r); r.adjust(1); Refresh(); }, out r.plusText);
         }
     }
 
-    private static RectTransform SmallButton(RectTransform row, string label, Action click)
+    private static RectTransform SmallButton(RectTransform row, string label, Action click, out TextMeshProUGUI t)
     {
         Image bg;
         var b = MenuKit.Button(row, "Adjust " + label, click, out bg);
         bg.color = new Color(1f, 1f, 1f, 0.12f);
         var rt = (RectTransform)b.transform;
-        var t = MenuKit.Text(rt, 24, Color.white);
+        t = MenuKit.Text(rt, 24, Color.white);
         MenuKit.Stretch(t.rectTransform);
         t.alignment = TextAlignmentOptions.Center;
         t.text = label;
@@ -211,7 +227,8 @@ public class MenuList
         Loc.ApplyFont(title); Loc.ApplyFont(footer);
         title.text = titleText != null ? titleText() : "";
         title.alignment = rtl ? TextAlignmentOptions.Right : TextAlignmentOptions.Left;
-        footer.text = footerText != null ? Glyphs.Apply(footerText()) : "";
+        UiKit.PlaceRule(titleRule != null ? titleRule.rectTransform : null, rtl);
+        footer.text = footerText != null ? UiKit.Keycaps(Glyphs.Apply(footerText())) : "";
         footer.alignment = title.alignment;
         // Long lists (achievements, controls) show a window of rows around the selection, so they always fit on screen
         // and scroll with the keyboard / D-pad / stick.
@@ -223,13 +240,26 @@ public class MenuList
             if (r.rt != null && r.rt.gameObject.activeSelf != visible) r.rt.gameObject.SetActive(visible);
             bool on = r.IsEnabled;
             Loc.ApplyFont(r.text);
-            string num = i < 9 ? "<color=#FF9A3C>" + (i + 1) + "</color>" : "";
+            bool sel = i == Selected;
+            // selected row: solid amber plate with dark ink text (focus reads at a glance, also on a TV with a pad)
+            bool ink = sel && on && !hc;
+            string num = i < 9 && r.iconImg == null ? "<color=" + (ink ? "#12141799" : UiTheme.MutedHex) + "><size=80%>" + (i + 1) + "</size></color>" : "";
             string lbl = r.label != null ? r.label() : "";
             r.text.text = num == "" ? lbl : rtl ? lbl + "   " + num : num + "   " + lbl;
-            bool sel = i == Selected;
-            r.text.color = hc && sel ? Color.black : on ? Color.white : new Color(1f, 1f, 1f, hc ? 0.6f : 0.4f);
+            r.text.color = hc && sel ? Color.black : ink ? UiTheme.Ink : on ? UiTheme.Text : new Color(1f, 1f, 1f, hc ? 0.6f : 0.35f);
             if (!MenuKit.RowStyle(r.bg, sel, hc)) r.bg.color = hc ? (sel ? MenuKit.RowSelectedHighContrast : MenuKit.RowHighContrast) : sel ? MenuKit.RowSelected : MenuKit.RowColor;
-            if (r.valueText != null) r.valueText.color = hc ? (sel ? Color.black : Color.white) : new Color(1f, 0.85f, 0.6f);
+            if (r.valueText != null) r.valueText.color = hc ? (sel ? Color.black : Color.white) : ink ? UiTheme.Ink : UiTheme.AccentHi;
+            foreach (var at in new[] { r.minusText, r.plusText }) if (at != null) at.color = hc && sel ? Color.black : ink ? UiTheme.Ink : UiTheme.Text;
+            float iconPad = 0f;
+            if (r.iconImg != null)
+            {
+                var irt = r.iconImg.rectTransform;
+                float iside = rtl ? 1f : 0f;
+                irt.anchorMin = irt.anchorMax = irt.pivot = new Vector2(iside, 0.5f);
+                irt.anchoredPosition = new Vector2(rtl ? -18f : 18f, 0f);
+                r.iconImg.color = hc && sel ? Color.black : ink ? UiTheme.Ink : on ? UiTheme.TextDim : UiTheme.TextMuted;
+                iconPad = 40f;
+            }
             var lrt = r.text.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
             if (r.accentBar != null)
@@ -242,7 +272,7 @@ public class MenuList
                 var ac = r.accent(); if (!on) ac.a *= 0.4f;
                 r.accentBar.color = ac;
             }
-            if (r.valueText == null) { lrt.offsetMin = new Vector2(r.accentBar != null && !rtl ? 30 : 16, 4); lrt.offsetMax = new Vector2(r.accentBar != null && rtl ? -30 : -16, -4); }
+            if (r.valueText == null) { lrt.offsetMin = new Vector2((r.accentBar != null && !rtl ? 30 : 18) + (rtl ? 0f : iconPad), 4); lrt.offsetMax = new Vector2(-(r.accentBar != null && rtl ? 30 : 18) - (rtl ? iconPad : 0f), -4); }
             else
             {
                 // label on the reading side, [<  value  >] on the other side

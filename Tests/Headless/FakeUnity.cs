@@ -262,6 +262,7 @@ namespace UnityEngine
         internal IEnumerable<Transform> AllChildren() { foreach (var c in children.ToList()) { yield return c; foreach (var d in c.AllChildren()) yield return d; } }
         public void SetParent(Transform p) => SetParent(p, true);
         public void SetAsLastSibling() { if (_parent != null) { _parent.children.Remove(this); _parent.children.Add(this); } }
+        public void SetAsFirstSibling() { if (_parent != null) { _parent.children.Remove(this); _parent.children.Insert(0, this); } }
         public void SetParent(Transform p, bool worldStays)
         {
             Vector3 wp = position; Quaternion wr = rotation;

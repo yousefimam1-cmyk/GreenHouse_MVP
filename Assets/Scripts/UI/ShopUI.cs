@@ -264,7 +264,7 @@ public class ShopUI : MonoBehaviour
             else if (id == "growth") detail = " (x" + EconomyManager.GrowthSpeed.ToString("F2") + ")";
             else if (extra != null && extra.detail != null) detail = " " + extra.detail();
             string priceText = price < 0 ? Loc.Raw("Fully upgraded") : price.ToString("N0") + " " + Loc.Raw("SAR");
-            label.text = "<color=#FF9A3C>" + ((i + 1) % 10) + "</color>   " + Loc.Display(Name(id) + detail + "   " + priceText);
+            label.text = "<color=#F2A93B>" + ((i + 1) % 10) + "</color>   " + Loc.Display(Name(id) + detail + "   " + priceText);
             label.alignment = Loc.IsArabic ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
             bool affordable = price >= 0 && eco.Money >= price;
             btn.interactable = affordable;

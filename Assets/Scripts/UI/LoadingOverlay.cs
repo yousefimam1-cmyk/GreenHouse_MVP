@@ -29,7 +29,7 @@ public class LoadingOverlay : MonoBehaviour
 
         var bg = MenuKit.Rect("Background", canvas.transform, typeof(Image));
         MenuKit.Stretch(bg);
-        Img(bg, new Color(0.07f, 0.16f, 0.09f, 1f));
+        Img(bg, UiTheme.Scrim);
         // Golden-hour farm illustration in parallax layers (slightly oversized so they can drift). Missing files: flat bands below.
         for (int i = 0; i < art.Length; i++)
         {

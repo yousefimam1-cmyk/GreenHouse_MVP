@@ -57,42 +57,42 @@ public class MainMenuScene : MonoBehaviour
     {
         canvas = MenuKit.Canvas("Main Menu Scene UI", transform, 91);
 
-        // Shading so text reads over the moving farm: a column on the reading side and a palm-green bottom bar.
+        // Backdrop over the moving farm: one flat dark column behind the menu (no gradients) and a thin status bar.
         leftShade = MenuKit.Rect("Left Shade", canvas.transform, typeof(Image));
-        leftShade.anchorMin = new Vector2(0f, 0f); leftShade.anchorMax = new Vector2(0.42f, 1f);
-        leftShade.offsetMin = leftShade.offsetMax = Vector2.zero;
-        Img(leftShade, new Color(0.04f, 0.07f, 0.04f, 0.55f));
+        leftShade.anchorMin = new Vector2(0f, 0f); leftShade.anchorMax = new Vector2(0f, 1f); leftShade.pivot = new Vector2(0f, 0.5f);
+        leftShade.offsetMin = Vector2.zero; leftShade.offsetMax = new Vector2(700f, 0f);
+        Scrim(leftShade, 0.72f);
         var bottom = MenuKit.Rect("Bottom Bar", canvas.transform, typeof(Image));
         bottom.anchorMin = new Vector2(0f, 0f); bottom.anchorMax = new Vector2(1f, 0f);
         bottom.pivot = new Vector2(0.5f, 0f);
-        bottom.sizeDelta = new Vector2(0f, 56f);
-        Img(bottom, new Color(0.09f, 0.2f, 0.11f, 0.92f));
-        var stripe = MenuKit.Rect("Gold Stripe", bottom, typeof(Image));
+        bottom.sizeDelta = new Vector2(0f, 48f);
+        Scrim(bottom, 0.8f);
+        var stripe = MenuKit.Rect("Hairline", bottom, typeof(Image));
         stripe.anchorMin = new Vector2(0f, 1f); stripe.anchorMax = new Vector2(1f, 1f);
         stripe.pivot = new Vector2(0.5f, 1f);
-        stripe.sizeDelta = new Vector2(0f, 3f);
-        Img(stripe, ControlsTutorial.Gold);
+        stripe.sizeDelta = new Vector2(0f, 1f);
+        Img(stripe, UiTheme.Stroke);
 
-        brand = Label(canvas.transform, "Brand", 76, ControlsTutorial.Sand, new Vector2(0f, 1f), new Vector2(64f, -48f), new Vector2(700f, 100f));
+        brand = Label(canvas.transform, "Brand", 76, UiTheme.Text, new Vector2(0f, 1f), new Vector2(64f, -48f), new Vector2(700f, 100f));
         // Logo image (English / Arabic lockup, 512 px each); the text wordmark stays as a fallback.
         var lr = MenuKit.Rect("Logo", canvas.transform, typeof(RawImage));
         logo = lr.GetComponent<RawImage>();
         logo.raycastTarget = false;
-        tagline = Label(canvas.transform, "Tagline", 24, new Color(1f, 1f, 1f, 0.8f), new Vector2(0f, 1f), new Vector2(68f, -140f), new Vector2(700f, 36f));
-        version = Label(canvas.transform, "Version", 16, new Color(1f, 1f, 1f, 0.7f), new Vector2(0f, 0f), new Vector2(24f, 16f), new Vector2(1200f, 24f));
-        prompt = Label(canvas.transform, "Press Start", 34, ControlsTutorial.Sand, new Vector2(0.5f, 0f), new Vector2(0f, 120f), new Vector2(1000f, 50f));
+        tagline = Label(canvas.transform, "Tagline", UiTheme.Lead, UiTheme.TextDim, new Vector2(0f, 1f), new Vector2(68f, -140f), new Vector2(700f, 36f));
+        version = Label(canvas.transform, "Version", UiTheme.Caption, UiTheme.TextMuted, new Vector2(0f, 0f), new Vector2(UiTheme.S6, 12f), new Vector2(1200f, 24f));
+        prompt = Label(canvas.transform, "Press Start", UiTheme.Heading, UiTheme.Text, new Vector2(0.5f, 0f), new Vector2(0f, 120f), new Vector2(1000f, 50f));
         prompt.alignment = TextAlignmentOptions.Center;
 
         // Right side: news / tips, the DLC card, and an info panel (Career slot, wizard summary, multiplayer).
-        newsBg = Panel("News", new Vector2(-64f, -170f), new Vector2(520f, 330f), out news, 21);
-        dlcBg = Panel("DLC Card", new Vector2(-64f, -516f), new Vector2(520f, 130f), out dlc, 21);
+        newsBg = Panel("News", new Vector2(-64f, -170f), new Vector2(540f, 350f), out news, UiTheme.Body);
+        dlcBg = Panel("DLC Card", new Vector2(-64f, -530f), new Vector2(540f, 156f), out dlc, UiTheme.Body);
         var bar = MenuKit.Rect("Flag", dlcBg.rectTransform, typeof(Image));
         bar.anchorMin = new Vector2(0f, 0f); bar.anchorMax = new Vector2(0f, 1f); bar.pivot = new Vector2(0f, 0.5f);
-        bar.sizeDelta = new Vector2(10f, 0f);
+        bar.offsetMin = new Vector2(UiTheme.ShadowInset + 10f, UiTheme.ShadowInset + 16f); bar.offsetMax = new Vector2(UiTheme.ShadowInset + 14f, -UiTheme.ShadowInset - 16f);
         dlcBar = Img(bar, GameMenu.FlagColor("nile_delta"));
-        infoBg = Panel("Info", new Vector2(-64f, -170f), new Vector2(520f, 480f), out info, 22);
+        infoBg = Panel("Info", new Vector2(-64f, -170f), new Vector2(540f, 500f), out info, UiTheme.Body + 1f);
         // Pause menu: live farm overview on the right.
-        overviewBg = Panel("Farm Overview", new Vector2(-64f, -170f), new Vector2(520f, 560f), out overview, 22);
+        overviewBg = Panel("Farm Overview", new Vector2(-64f, -170f), new Vector2(540f, 580f), out overview, UiTheme.Body + 1f);
         foreach (var t in new[] { brand, tagline, version, prompt }) Brand(t);
         canvas.gameObject.SetActive(false);
     }
@@ -103,13 +103,22 @@ public class MainMenuScene : MonoBehaviour
         rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1f, 1f);
         rt.sizeDelta = size;
         rt.anchoredPosition = pos;
-        var bg = Img(rt, ControlsTutorial.GreenDark);
-        text = MenuKit.Text(rt, fontSize, Color.white, "Text");
+        var bg = rt.GetComponent<Image>(); bg.raycastTarget = false;
+        if (!UiKit.Sliced(bg, "card")) bg.color = UiTheme.Glass;   // glass card with the amber top rule
+        text = MenuKit.Text(rt, fontSize, UiTheme.Text, "Text");
         var trt = text.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
-        trt.offsetMin = new Vector2(28f, 18f); trt.offsetMax = new Vector2(-24f, -18f);
+        float pad = UiTheme.ShadowInset + UiTheme.S5;
+        trt.offsetMin = new Vector2(pad + 4f, pad - 4f); trt.offsetMax = new Vector2(-pad, -pad);
         Brand(text);
         return bg;
+    }
+
+    /// <summary>Flat scrim in the theme colour.</summary>
+    private static void Scrim(RectTransform rt, float alpha)
+    {
+        var img = rt.GetComponent<Image>(); img.raycastTarget = false;
+        var c = UiTheme.Scrim; c.a = alpha; img.color = c;
     }
 
     private static Image Img(RectTransform rt, Color c)
@@ -235,21 +244,21 @@ public class MainMenuScene : MonoBehaviour
     public static string OverviewText()
     {
         var sb = new StringBuilder(512);
-        sb.Append("<size=120%><b><color=#E9D8B4>").Append(Loc.T("Farm overview")).Append("</color></b></size>\n");
+        sb.Append("<size=120%><b><color=#F5F2EB>").Append(Loc.T("Farm overview")).Append("</color></b></size>\n");
         sb.Append("<size=85%><color=#FFFFFFAA>").Append(Loc.Display(GameModes.CurrentFarmNameRaw + "  -  " + Loc.Raw(GameModes.ModeName(GameModes.Current)))).Append("</color></size>\n\n");
         var clock = WorldClock.Instance;
         if (clock != null)
             sb.Append(Loc.T("Day")).Append(' ').Append(clock.Day).Append("  -  ").Append(Loc.Display(clock.SeasonName())).Append("  -  ")
               .Append(clock.TimeText()).Append("  -  ").Append(Loc.Display(clock.WeatherName())).Append('\n');
         if (EconomyManager.Instance != null)
-            sb.Append(Loc.T("Money")).Append(": <color=#9BE07A>").Append(EconomyManager.Instance.Money.ToString("N0")).Append(' ').Append(Loc.T("SAR")).Append("</color>\n");
+            sb.Append(Loc.T("Money")).Append(": <color=#7CCB6B>").Append(EconomyManager.Instance.Money.ToString("N0")).Append(' ').Append(Loc.T("SAR")).Append("</color>\n");
         var ch0 = GameModes.CurrentChallenge;
-        if (ch0 != null) sb.Append("\n<color=#FAC240><b>").Append(Loc.T(ch0.name)).Append("</b></color>\n<size=90%>").Append(GameModes.GoalText(ch0)).Append("</size>\n");
+        if (ch0 != null) sb.Append("\n<color=#F2A93B><b>").Append(Loc.T(ch0.name)).Append("</b></color>\n<size=90%>").Append(GameModes.GoalText(ch0)).Append("</size>\n");
         var cm = CampaignManager.Instance;
         if (cm != null && cm.Chapters.Length > 0)
         {
             int ch = cm.CurrentChapter;
-            sb.Append("\n<color=#FAC240><b>").Append(Loc.T("CHAPTER")).Append(' ').Append(ch + 1).Append(": ")
+            sb.Append("\n<color=#F2A93B><b>").Append(Loc.T("CHAPTER")).Append(' ').Append(ch + 1).Append(": ")
               .Append(Loc.Display(CampaignManager.Title(cm.Chapters[ch]))).Append("</b></color>  ")
               .Append(Mathf.RoundToInt(cm.ChapterProgress(ch) * 100f)).Append("%\n");
         }
@@ -300,7 +309,7 @@ public class MainMenuScene : MonoBehaviour
         }
         brand.enabled = logoTex == null;
         string arName = ArabicShaper.Shape("مزرعة");   // always shaped, also in English
-        brand.text = ar ? arName + "  <size=55%><color=#FAC240>MAZRAA</color></size>" : "MAZRAA  <size=55%><color=#FAC240>" + arName + "</color></size>";
+        brand.text = ar ? arName + "  <size=55%><color=#F2A93B>MAZRAA</color></size>" : "MAZRAA  <size=55%><color=#F2A93B>" + arName + "</color></size>";
         tagline.text = Loc.T("Grow, trade and build your farm");
         version.text = "Almadarek Games  -  " + Loc.T("Early access") + "  -  v" + Application.version;
         version.alignment = ar ? TextAlignmentOptions.Right : TextAlignmentOptions.Left;
@@ -313,7 +322,7 @@ public class MainMenuScene : MonoBehaviour
         bool ar = Loc.IsArabic;
         var align = ar ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
         news.alignment = dlc.alignment = info.alignment = overview.alignment = align;
-        prompt.text = GameInput.UsingGamepad ? Glyphs.Apply(Loc.T("Press [Enter] to start")) : Loc.T("Press any key to start");
+        prompt.text = GameInput.UsingGamepad ? UiKit.Keycaps(Glyphs.Apply(Loc.T("Press [Enter] to start"))) : Loc.T("Press any key to start");
         switch (Layout)
         {
             case GameMenu.FrontScreen.Main: news.text = NewsPanelText(tipIndex); dlc.text = DlcCardText(); dlcBar.color = Dlc.Owns("nile_delta") ? GameMenu.FlagColor("nile_delta") : new Color(1f, 1f, 1f, 0.3f); break;
@@ -327,9 +336,9 @@ public class MainMenuScene : MonoBehaviour
     public static string NewsPanelText(int tip)
     {
         var sb = new StringBuilder(512);
-        sb.Append("<size=115%><b><color=#E9D8B4>").Append(Loc.T("News and tips")).Append("</color></b></size>\n\n");
-        sb.Append("<color=#FAC240><b>").Append(Loc.T("Tip")).Append("</b></color>  ").Append(Loc.T(LoadingScreen.Tips[((tip % LoadingScreen.Tips.Length) + LoadingScreen.Tips.Length) % LoadingScreen.Tips.Length])).Append("\n\n");
-        sb.Append("<color=#FAC240><b>").Append(Loc.T("Last played")).Append("</b></color>\n");
+        sb.Append("<size=115%><b><color=#F5F2EB>").Append(Loc.T("News and tips")).Append("</color></b></size>\n\n");
+        sb.Append("<color=#F2A93B><b>").Append(Loc.T("Tip")).Append("</b></color>  ").Append(Loc.T(LoadingScreen.Tips[((tip % LoadingScreen.Tips.Length) + LoadingScreen.Tips.Length) % LoadingScreen.Tips.Length])).Append("\n\n");
+        sb.Append("<color=#F2A93B><b>").Append(Loc.T("Last played")).Append("</b></color>\n");
         int slot = SaveSlots.ActiveSlot;
         SaveSlots.Summary s;
         if (slot > 0 && SaveSlots.Info(slot, out s))
@@ -347,7 +356,7 @@ public class MainMenuScene : MonoBehaviour
     public static string DlcCardText()
     {
         bool owned = Dlc.Owns("nile_delta");
-        return "<b>" + Loc.T("Egypt: Nile Delta DLC") + "</b>   <size=80%>" + (owned ? "<color=#9BE07A>" + Loc.T("Owned") + "</color>" : "<color=#FFB070>" + Loc.T("Not owned") + "</color>")
+        return "<b>" + Loc.T("Egypt: Nile Delta DLC") + "</b>   <size=80%>" + (owned ? "<color=#7CCB6B>" + Loc.T("Owned") + "</color>" : "<color=#FFB070>" + Loc.T("Not owned") + "</color>")
              + "</size>\n<size=85%><color=#FFFFFFCC>" + Loc.T("Rice, cotton and berseem on the canals of the Delta, with its own story.") + "</color></size>";
     }
 
@@ -357,21 +366,21 @@ public class MainMenuScene : MonoBehaviour
         var gm = GameMenu.Instance;
         if (gm == null) return "";
         int slot = gm.PageName == "Career" ? gm.List.Selected + 1 : gm.SelectedSlot;
-        if (slot < 1 || slot > SaveSlots.Count) return "<b><color=#E9D8B4>" + Loc.T("Career") + "</color></b>\n\n" + Loc.T("Choose a slot: a saved farm to load or delete, an empty one to start a new farm.");
+        if (slot < 1 || slot > SaveSlots.Count) return "<b><color=#F5F2EB>" + Loc.T("Career") + "</color></b>\n\n" + Loc.T("Choose a slot: a saved farm to load or delete, an empty one to start a new farm.");
         var sb = new StringBuilder(512);
         SaveSlots.Summary s;
         if (!SaveSlots.Info(slot, out s))
         {
-            sb.Append("<b><color=#E9D8B4>").Append(Loc.Display(Loc.Raw("Farm") + " " + slot)).Append("</color></b>\n\n").Append(Loc.T("Empty slot - start a new farm")).Append("\n\n")
+            sb.Append("<b><color=#F5F2EB>").Append(Loc.Display(Loc.Raw("Farm") + " " + slot)).Append("</color></b>\n\n").Append(Loc.T("Empty slot - start a new farm")).Append("\n\n")
               .Append("<size=90%>").Append(Loc.T("Campaign, free play or a challenge, on any map you own.")).Append("</size>");
             return sb.ToString();
         }
         var map = s.Map;
-        sb.Append("<size=115%><b><color=#E9D8B4>").Append(s.FarmName).Append("</color></b></size>\n");
+        sb.Append("<size=115%><b><color=#F5F2EB>").Append(s.FarmName).Append("</color></b></size>\n");
         sb.Append(Loc.Display(Regions.Name(map) + " - " + Regions.Country(map))).Append('\n');
-        sb.Append("<color=#FAC240>").Append(Loc.T(GameModes.ModeName(s.mode))).Append("</color>\n\n");
+        sb.Append("<color=#F2A93B>").Append(Loc.T(GameModes.ModeName(s.mode))).Append("</color>\n\n");
         sb.Append(Loc.T("Day")).Append(' ').Append(s.day).Append('\n');
-        sb.Append(Loc.T("Money")).Append(": <color=#9BE07A>").Append(s.money.ToString("N0")).Append("</color>\n");
+        sb.Append(Loc.T("Money")).Append(": <color=#7CCB6B>").Append(s.money.ToString("N0")).Append("</color>\n");
         sb.Append(Loc.T("Play time")).Append(": ").Append(GameModes.FormatPlayTime(s.playSeconds)).Append('\n');
         if (!string.IsNullOrEmpty(s.saved)) sb.Append(Loc.T("Last saved")).Append(": ").Append(s.saved).Append('\n');
         return sb.ToString();
@@ -380,7 +389,7 @@ public class MainMenuScene : MonoBehaviour
     private static string MultiplayerInfo()
     {
         var sb = new StringBuilder(256);
-        sb.Append("<b><color=#E9D8B4>").Append(Loc.T("Multiplayer")).Append("</color></b>\n\n");
+        sb.Append("<b><color=#F5F2EB>").Append(Loc.T("Multiplayer")).Append("</color></b>\n\n");
         var mp = MultiplayerManager.Instance;
         if (!GameMenu.MultiplayerAvailable || mp == null)
         {
@@ -390,7 +399,7 @@ public class MainMenuScene : MonoBehaviour
         if (NetSession.IsHost && mp.IsOnlineSession)
         {
             // The join code, big: friends read it off the screen (Multiplayer > Join with a code).
-            sb.Append(Loc.T("Join code")).Append("\n<size=260%><b><color=#FAC240>").Append(JoinCodes.Pretty(mp.JoinCode)).Append("</color></b></size>\n\n");
+            sb.Append(Loc.T("Join code")).Append("\n<size=260%><b><color=#F2A93B>").Append(JoinCodes.Pretty(mp.JoinCode)).Append("</color></b></size>\n\n");
             sb.Append(Loc.Display(Loc.Raw("Players") + ": " + mp.Players.Count + "/" + MultiplayerManager.MaxPlayers)).Append('\n');
             sb.Append(Loc.Display(Loc.Raw("Who can join") + ": " + Loc.Raw(MultiplayerManager.VisibilityLabel(MultiplayerManager.Visibility)))).Append('\n');
             sb.Append(Loc.Display(Loc.Raw("Chat") + ": " + Loc.Raw(ChatSafety.ChatModeLabel(ChatSafety.Chat)))).Append("\n\n<size=85%>");
@@ -404,7 +413,7 @@ public class MainMenuScene : MonoBehaviour
             return sb.ToString();
         }
         if (mp.Busy != MultiplayerManager.OnlineStep.Idle || !string.IsNullOrEmpty(mp.Status))
-            sb.Append("<color=#FAC240>").Append(Mp.Tr(mp.Status)).Append("</color>\n\n");
+            sb.Append("<color=#F2A93B>").Append(Mp.Tr(mp.Status)).Append("</color>\n\n");
         if (GameMenu.OnlineAvailable)
             sb.Append(Loc.T("Online: host your farm and give friends the 6-letter join code, or join with a friend's code. Public farms can be browsed."))
               .Append("\n\n");

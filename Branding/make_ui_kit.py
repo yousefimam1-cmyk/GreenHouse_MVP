@@ -22,100 +22,101 @@ def save_kit(name, im, border, max_size=256):
 
 
 # ------------------------------------------------------------------ 9-slice panels and buttons
-def corner_motif(im, inset, r, color, alpha):
-    """Small eight-point stars in the four corners of a panel (the Mazraa frame signature)."""
-    d = ImageDraw.Draw(im)
-    for cx, cy in [(inset, inset), (im.width - inset, inset), (inset, im.height - inset), (im.width - inset, im.height - inset)]:
-        d.polygon(star8(cx, cy, r, r * 0.6), fill=rgba(color, alpha))
-        d.polygon(star8(cx, cy, r * 0.45, r * 0.3), fill=rgba(PALM_DARK, alpha))
+# Design system (UiTheme in UiKit.cs): flat, near-opaque charcoal surfaces, a faint hairline, a small soft shadow,
+# one warm amber accent. No gradients, no gloss. Radii: panels 10, buttons 6, bars fully round.
+import numpy as _np
+AMBER = (242, 169, 59); AMBER_HI = (255, 200, 110); INK = (16, 19, 23)
 
 
-def panel(size=192, radius=22, fill=(16, 46, 26, 236), line=GOLD, line_a=170, motif=True, inner=(255, 255, 255, 14)):
+def _mask_min(im, mask):
+    a = _np.minimum(_np.array(im.split()[3]), _np.array(mask))
+    im.putalpha(Image.fromarray(a.astype('uint8')))
+    return im
+
+
+def glass(w, h, radius, fill=(20, 22, 25, 232), stroke=(255, 255, 255, 18), top=None, shadow_px=0, shadow_a=90):
+    """Rounded glass rect: flat translucent fill, a faint top sheen, 1 px light hairline; optional soft shadow baked
+    into a transparent margin (shadow_px on every side, a little deeper below)."""
+    ss = 4; m = shadow_px
+    iw, ih = w - 2 * m, h - 2 * m
+    S = Image.new('RGBA', (iw * ss, ih * ss), (0, 0, 0, 0)); d = ImageDraw.Draw(S)
+    d.rounded_rectangle([0, 0, iw * ss - 1, ih * ss - 1], radius=radius * ss, fill=fill)
+    mask = Image.new('L', S.size, 0); ImageDraw.Draw(mask).rounded_rectangle([0, 0, iw * ss - 1, ih * ss - 1], radius=radius * ss, fill=255)
+    if top:
+        band = vgrad(iw * ss, ih * ss, [(0, top), (min(0.9, 40.0 / ih), top[:3] + (0,)), (1, (0, 0, 0, 0))])
+        S.alpha_composite(_mask_min(band, mask))
+    if stroke:
+        d.rounded_rectangle([0, 0, iw * ss - 1, ih * ss - 1], radius=radius * ss, outline=stroke, width=ss)
+    S = S.resize((iw, ih), Image.LANCZOS)
+    out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    if m:
+        sh = Image.new('L', (w, h), 0)
+        ImageDraw.Draw(sh).rounded_rectangle([m, m + m // 4, w - m - 1, h - m - 1 + m // 4], radius=radius, fill=shadow_a)
+        sh = sh.filter(ImageFilter.GaussianBlur(m / 2.2))
+        so = Image.new('RGBA', (w, h), (0, 0, 0, 0)); so.putalpha(sh)
+        out.alpha_composite(so)
+    out.alpha_composite(S, (m, m))
+    return out
+
+
+def btn(w=128, h=64, radius=6, fill=(255, 255, 255, 13), stroke=None, top=None, grad=None):
     ss = 4
-    S = size * ss
-    im = Image.new('RGBA', (S, S), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
-    d.rounded_rectangle([0, 0, S - 1, S - 1], radius=radius * ss, fill=fill)
-    # soft inner top-light: a translucent band along the top edge
-    # (kept inside the top 9-slice border so it never stretches into a hard line)
-    band = vgrad(S, S, [(0, inner), (0.24, (inner[0], inner[1], inner[2], 0)), (1, (0, 0, 0, 0))])
-    mask = Image.new('L', (S, S), 0); ImageDraw.Draw(mask).rounded_rectangle([0, 0, S - 1, S - 1], radius=radius * ss, fill=255)
-    band.putalpha(Image.fromarray(__import__('numpy').minimum(__import__('numpy').array(band.split()[3]), __import__('numpy').array(mask))))
-    im.alpha_composite(band)
-    # frame: outline + thin gold rule inside
-    d.rounded_rectangle([0, 0, S - 1, S - 1], radius=radius * ss, outline=rgba(OUT, 200), width=2 * ss)
-    d.rounded_rectangle([5 * ss, 5 * ss, S - 1 - 5 * ss, S - 1 - 5 * ss], radius=(radius - 5) * ss, outline=rgba(line, line_a), width=int(1.5 * ss))
-    im = im.resize((size, size), Image.LANCZOS)
-    if motif:
-        corner_motif(im, 15, 7, line, 230)
-    return im
+    im = Image.new('RGBA', (w * ss, h * ss), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    mask = Image.new('L', im.size, 0); ImageDraw.Draw(mask).rounded_rectangle([0, 0, w * ss - 1, h * ss - 1], radius=radius * ss, fill=255)
+    if grad:
+        g = vgrad(w * ss, h * ss, grad); im.alpha_composite(_mask_min(g, mask))
+    else:
+        d.rounded_rectangle([0, 0, w * ss - 1, h * ss - 1], radius=radius * ss, fill=fill)
+    if top:
+        g = vgrad(w * ss, h * ss, [(0, top), (0.5, top[:3] + (0,)), (1, (0, 0, 0, 0))]); im.alpha_composite(_mask_min(g, mask))
+    if stroke:
+        d.rounded_rectangle([0, 0, w * ss - 1, h * ss - 1], radius=radius * ss, outline=stroke[:4], width=int(stroke[4] if len(stroke) > 4 else 1) * ss)
+    return im.resize((w, h), Image.LANCZOS)
 
 
-def button(w=128, h=64, radius=12, fill=(255, 255, 255, 18), outline=(255, 255, 255, 60), ow=1, glow=None, top=None):
-    im = rounded(w, h, radius, fill, outline, ow)
-    if top:   # highlight gradient on the upper half (selected / pressed buttons)
-        g = vgrad(w, h, [(0, top), (0.3, (top[0], top[1], top[2], 0)), (1, (0, 0, 0, 0))])
-        mask = rounded(w, h, radius, (255, 255, 255, 255)).split()[3]
-        g.putalpha(Image.fromarray(__import__('numpy').minimum(__import__('numpy').array(g.split()[3]), __import__('numpy').array(mask))))
-        im.alpha_composite(g)
-    if glow:
-        im = shadow(im, 6, 0, 0, glow[3], glow[:3])
-        im = im.crop(((im.width - w) // 2, (im.height - h) // 2, (im.width - w) // 2 + w, (im.height - h) // 2 + h))
-    return im
-
-
-# panels
-save_kit('panel', panel(), (56, 56, 56, 56))
-save_kit('panel_plain', panel(motif=False, line_a=110), (40, 40, 40, 40))
-save_kit('panel_light', panel(fill=(233, 216, 180, 245), line=(90, 58, 28), line_a=200, motif=True, inner=(255, 255, 255, 60)), (56, 56, 56, 56))
-save_kit('tooltip', panel(128, 12, fill=(12, 30, 18, 240), line_a=120, motif=False), (28, 28, 28, 28))
-# card: a panel with a gold header band (top border tall so the band stays crisp)
-card = panel(192, 22, motif=False, line_a=140)
-cd = ImageDraw.Draw(card); cd.rounded_rectangle([3, 3, 188, 44], radius=18, fill=rgba(GOLD, 255)); cd.rectangle([3, 30, 188, 44], fill=rgba(GOLD, 255))
-cd.line([(6, 44), (186, 44)], fill=rgba(OUT, 200), width=2)
-save_kit('card', card, (56, 56, 56, 60))
-# buttons
-save_kit('button', button(), (24, 24, 24, 24))
-save_kit('button_hover', button(fill=(255, 255, 255, 34), outline=(250, 194, 64, 120)), (24, 24, 24, 24))
-sel = button(fill=(255, 150, 40, 210), outline=OUT + (220,), ow=2, top=(255, 236, 140, 110), glow=(255, 170, 60, 110))
-save_kit('button_selected', sel, (24, 24, 24, 24))
-save_kit('button_disabled', button(fill=(255, 255, 255, 8), outline=(255, 255, 255, 22)), (24, 24, 24, 24))
-save_kit('button_primary', button(fill=(46, 140, 70, 235), outline=OUT + (220,), ow=2, top=(255, 255, 255, 70)), (24, 24, 24, 24))
-save_kit('button_danger', button(fill=(200, 50, 46, 230), outline=OUT + (220,), ow=2, top=(255, 255, 255, 60)), (24, 24, 24, 24))
-save_kit('button_hc', button(fill=(255, 217, 0, 255), outline=(0, 0, 0, 255), ow=3), (24, 24, 24, 24))   # high-contrast selection
-# selection highlight ring (drawn around the selected row)
-ring = Image.new('RGBA', (128, 64), (0, 0, 0, 0))
-rr = rounded(128, 64, 14, (0, 0, 0, 0), (250, 194, 64, 255), 3)
-ring = shadow(rr, 5, 0, 0, 140, GOLD); ring = ring.crop(((ring.width - 128) // 2, (ring.height - 64) // 2, (ring.width - 128) // 2 + 128, (ring.height - 64) // 2 + 64))
-save_kit('highlight', ring, (30, 30, 30, 30))
-# tabs
-tab = Image.new('RGBA', (128, 64), (0, 0, 0, 0)); td = ImageDraw.Draw(tab)
-td.rounded_rectangle([0, 0, 127, 90], radius=16, fill=(255, 255, 255, 22), outline=(255, 255, 255, 50), width=1)
-save_kit('tab', tab, (24, 8, 24, 24))
-tab = Image.new('RGBA', (128, 64), (0, 0, 0, 0)); td = ImageDraw.Draw(tab)
-td.rounded_rectangle([0, 0, 127, 90], radius=16, fill=(233, 216, 180, 255), outline=rgba(OUT, 220), width=2)
-td.rectangle([10, 56, 117, 60], fill=rgba(GOLD, 255))
+# panels (shadow baked into a 14 px margin: the 9-slice border covers margin + corner radius)
+save_kit('panel', glass(192, 192, 10, shadow_px=14), (28, 28, 28, 28))
+save_kit('panel_plain', glass(192, 192, 10, fill=(20, 22, 25, 200)), (16, 16, 16, 16))
+save_kit('panel_light', glass(192, 192, 10, fill=(240, 236, 228, 250), stroke=(0, 0, 0, 30), shadow_px=14), (28, 28, 28, 28))
+save_kit('tooltip', glass(128, 128, 8, fill=(14, 16, 19, 242), shadow_px=10), (20, 20, 20, 20))
+# card: glass with a thin amber rule along the top edge
+card = glass(192, 192, 10, shadow_px=14)
+ImageDraw.Draw(card).rectangle([14 + 10, 14, 192 - 14 - 10, 16], fill=AMBER + (255,))
+save_kit('card', card, (28, 28, 28, 28))
+# buttons / menu rows
+save_kit('button', btn(), (24, 24, 24, 24))
+save_kit('button_hover', btn(fill=(255, 255, 255, 26), stroke=(255, 255, 255, 40, 1)), (24, 24, 24, 24))
+save_kit('button_selected', btn(fill=AMBER + (255,)), (24, 24, 24, 24))
+save_kit('button_disabled', btn(fill=(255, 255, 255, 6)), (24, 24, 24, 24))
+save_kit('button_primary', btn(fill=AMBER + (255,)), (24, 24, 24, 24))
+save_kit('button_danger', btn(fill=(214, 74, 60, 240)), (24, 24, 24, 24))
+save_kit('button_hc', btn(fill=(255, 217, 0, 255), stroke=(0, 0, 0, 255, 3)), (24, 24, 24, 24))   # high-contrast selection
+# focus ring (controller focus around a card / tile)
+save_kit('highlight', btn(fill=(0, 0, 0, 0), stroke=AMBER + (255, 3), radius=8), (30, 30, 30, 30))
+# tabs: inactive = nothing but a faint hover plate; active = light plate with an amber underline
+save_kit('tab', btn(fill=(255, 255, 255, 0)), (24, 8, 24, 24))
+tab = btn(fill=(255, 255, 255, 22))
+ImageDraw.Draw(tab).rounded_rectangle([16, 58, 111, 63], radius=2, fill=AMBER + (255,))
 save_kit('tab_active', tab, (24, 8, 24, 24))
-# progress bars
-save_kit('bar_track', rounded(64, 24, 11, (0, 0, 0, 120), (255, 255, 255, 50), 1), (12, 11, 12, 11))
-fill = rounded(64, 24, 11, (250, 194, 64, 255), OUT + (200,), 1)
-hl = vgrad(64, 24, [(0, (255, 255, 255, 110)), (0.5, (255, 255, 255, 0)), (1, (0, 0, 0, 40))])
-hl.putalpha(Image.fromarray(__import__('numpy').minimum(__import__('numpy').array(hl.split()[3]), __import__('numpy').array(fill.split()[3]))))
-fill.alpha_composite(hl)
-save_kit('bar_fill', fill, (12, 11, 12, 11))
-save_kit('bar_fill_green', rounded(64, 24, 11, (120, 200, 90, 255), OUT + (200,), 1), (12, 11, 12, 11))
-save_kit('bar_fill_blue', rounded(64, 24, 11, (80, 170, 230, 255), OUT + (200,), 1), (12, 11, 12, 11))
-save_kit('bar_fill_red', rounded(64, 24, 11, (226, 80, 60, 255), OUT + (200,), 1), (12, 11, 12, 11))
-# divider: gold rule with a small diamond in the middle
-div = Image.new('RGBA', (256, 16), (0, 0, 0, 0)); dd = ImageDraw.Draw(div)
-dd.line([(0, 8), (256, 8)], fill=rgba(GOLD, 150), width=2)
-dd.polygon([(128, 1), (135, 8), (128, 15), (121, 8)], fill=rgba(GOLD, 255))
+# progress bars: pill track + white pill fills (tinted at runtime) and coloured variants
+save_kit('bar_track', btn(64, 24, 11, fill=(255, 255, 255, 26)), (12, 11, 12, 11))
+save_kit('bar_fill', btn(64, 24, 11, fill=AMBER + (255,)), (12, 11, 12, 11))
+save_kit('bar_fill_green', btn(64, 24, 11, fill=(124, 203, 107, 255)), (12, 11, 12, 11))
+save_kit('bar_fill_blue', btn(64, 24, 11, fill=(127, 184, 230, 255)), (12, 11, 12, 11))
+save_kit('bar_fill_red', btn(64, 24, 11, fill=(239, 106, 90, 255)), (12, 11, 12, 11))
+save_kit('bar_fill_white', btn(64, 24, 11, fill=(255, 255, 255, 255)), (12, 11, 12, 11))
+# divider: hairline fading out at both ends
+div = Image.new('RGBA', (256, 16), (0, 0, 0, 0))
+for x in range(256):
+    a = int(60 * min(1.0, min(x, 255 - x) / 64.0))
+    div.putpixel((x, 8), (255, 255, 255, a))
 save_kit('divider', div, (100, 0, 100, 0))
 # pattern tile (tiled behind headers / loading tips, very subtle)
-pattern_tile(128, GOLD, 70).save(os.path.join(KIT, 'pattern.png'), optimize=True)
+pattern_tile(128, AMBER, 26).save(os.path.join(KIT, 'pattern.png'), optimize=True)
 write_meta(os.path.join(KIT, 'pattern.png'), os.path.relpath(os.path.join(KIT, 'pattern.png'), ROOT), 'sprite', (0, 0, 0, 0), 256)
 BORDERS['pattern'] = (0, 0, 0, 0)
-# vignette / soft circle for glows and dots
-dot = Image.new('RGBA', (64, 64), (0, 0, 0, 0)); ImageDraw.Draw(dot).ellipse([2, 2, 61, 61], fill=(255, 255, 255, 255))
+# soft circle for dots / glows
+dot = Image.new('RGBA', (256, 256), (0, 0, 0, 0)); ImageDraw.Draw(dot).ellipse([4, 4, 251, 251], fill=(255, 255, 255, 255))
 dot = dot.resize((64, 64), Image.LANCZOS)
 dot.save(os.path.join(KIT, 'dot.png')); write_meta(os.path.join(KIT, 'dot.png'), os.path.relpath(os.path.join(KIT, 'dot.png'), ROOT), 'sprite', (0, 0, 0, 0), 64); BORDERS['dot'] = (0, 0, 0, 0)
 glow = Image.new('L', (128, 128), 0)
@@ -123,6 +124,27 @@ for r in range(60, 0, -1):
     ImageDraw.Draw(glow).ellipse([64 - r, 64 - r, 64 + r, 64 + r], fill=int(255 * (1 - r / 60) ** 2))
 g = Image.new('RGBA', (128, 128), (255, 255, 255, 0)); g.putalpha(glow)
 g.save(os.path.join(KIT, 'glow.png')); write_meta(os.path.join(KIT, 'glow.png'), os.path.relpath(os.path.join(KIT, 'glow.png'), ROOT), 'sprite', (0, 0, 0, 0), 128); BORDERS['glow'] = (0, 0, 0, 0)
+
+
+def plain(name, im, size):
+    p = os.path.join(KIT, name + '.png'); im.save(p, optimize=True)
+    write_meta(p, os.path.relpath(p, ROOT), 'sprite', (0, 0, 0, 0), size); BORDERS[name] = (0, 0, 0, 0)
+
+
+# gauge ring (speedometer / minimap bezel): white ring, radial-filled at runtime (Image.Type.Filled)
+ring = Image.new('RGBA', (1024, 1024), (0, 0, 0, 0)); ImageDraw.Draw(ring).ellipse([8, 8, 1015, 1015], outline=(255, 255, 255, 255), width=72)
+plain('ring', ring.resize((256, 256), Image.LANCZOS), 256)
+thin = Image.new('RGBA', (1024, 1024), (0, 0, 0, 0)); ImageDraw.Draw(thin).ellipse([8, 8, 1015, 1015], outline=(255, 255, 255, 255), width=16)
+plain('ring_thin', thin.resize((256, 256), Image.LANCZOS), 256)
+# disc with a soft shadow (round glass bezel behind the speedometer / minimap)
+disc = Image.new('RGBA', (256, 256), (0, 0, 0, 0))
+sh = Image.new('L', (256, 256), 0); ImageDraw.Draw(sh).ellipse([16, 20, 240, 244], fill=90); sh = sh.filter(ImageFilter.GaussianBlur(7))
+so = Image.new('RGBA', (256, 256), (0, 0, 0, 0)); so.putalpha(sh); disc.alpha_composite(so)
+d4 = Image.new('RGBA', (1024, 1024), (0, 0, 0, 0)); dd4 = ImageDraw.Draw(d4)
+dd4.ellipse([64, 64, 959, 959], fill=(20, 22, 25, 235), outline=(255, 255, 255, 22), width=4)
+disc.alpha_composite(d4.resize((256, 256), Image.LANCZOS))
+plain('disc', disc, 256)
+
 
 # ------------------------------------------------------------------ icons (128 px, white, tinted at runtime)
 N = 128; SS = 4; S = N * SS

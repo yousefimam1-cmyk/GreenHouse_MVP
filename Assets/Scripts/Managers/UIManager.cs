@@ -262,7 +262,7 @@ public class UIManager : MonoBehaviour
         alertMsg.DOKill();
         alertMsg.gameObject.SetActive(true);
         Loc.ApplyFont(alertMsg);
-        alertMsg.text = msg;
+        alertMsg.text = UiKit.Toast(msg);   // dark plate behind the line (design system), fades with the text
         alertMsg.alpha = Mathf.Min(alertMsg.alpha, 1f);
         alertMsg.DOFade(1.0f, 0.2f).OnComplete(() => Invoke(nameof(FadeAlertAway), alertDuration * GameSettings.NotificationScale));   // Settings > Accessibility
     }

@@ -264,7 +264,7 @@ public class IrrigationPlanner : MonoBehaviour
                 sb.Append('\n').Append(Loc.Display("<b>" + FcText.R(n.kind.ToString()) + "</b>" + (n.IsEmitter ? " · " + (n.running ? FcText.R("running") : FcText.R("stopped")) + " · " + n.delivered.ToString("F1") + "/" + n.demand.ToString("F1") + " m3/h" : "")));
                 string[] vals = { FcText.R(n.mode.ToString()), n.startHour.ToString("00") + ":00", n.hours + " h", n.revHours.ToString("F0") + " h", FcText.R(n.power.ToString()) };
                 for (int i = 0; i < EditRows.Length; i++)
-                    sb.Append('\n').Append(Loc.Display((i == EditRow ? "<color=#FF9A3C>> " : "  ") + (i + 1) + " " + FcText.R(EditRows[i]) + ": " + vals[i] + (i == EditRow ? "</color>" : "")));
+                    sb.Append('\n').Append(Loc.Display((i == EditRow ? "<color=#F2A93B>> " : "  ") + (i + 1) + " " + FcText.R(EditRows[i]) + ": " + vals[i] + (i == EditRow ? "</color>" : "")));
                 if (n.kind == IrrKind.Sensor) sb.Append('\n').Append(Loc.Display(FcText.R("Soil water") + " " + (n.reading >= 0f ? FcText.Pct(n.reading) : "-")));
             }
         }

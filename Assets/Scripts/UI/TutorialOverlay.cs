@@ -65,7 +65,7 @@ public class TutorialOverlay : MonoBehaviour
     {
         canvas = MenuKit.Canvas("Tutorial UI", transform, 45);
         panel = MenuKit.Panel("Tutorial", canvas.transform, 520);
-        panel.GetComponent<Image>().color = new Color(0.08f, 0.1f, 0.06f, 0.85f);
+        panel.GetComponent<Image>().color = UiTheme.GlassStrong;
         panel.GetComponent<Image>().raycastTarget = false;
         text = MenuKit.Text(panel, 22, Color.white);
         canvas.gameObject.SetActive(false);
