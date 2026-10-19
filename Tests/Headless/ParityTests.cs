@@ -81,16 +81,15 @@ static class ParityTests
         FakeEngine.Run(0.6f);
         T.Check("HUD: clock block top-right with time, day, season, weather, temperature and money", hud.ClockPanel.anchorMin.x == 1f && hud.ClockPanel.anchorMin.y == 1f
             && GameHUD.ClockText().Contains(WorldClock.Instance.TimeText()) && GameHUD.ClockText().Contains("Spring") && GameHUD.ClockText().Contains(" C") && GameHUD.ClockText().Contains("SAR"), GameHUD.ClockText());
-        T.Check("HUD: context help box top-left with the on-foot keys", hud.ContextPanel.anchorMin.x == 0f && hud.ContextPanel.anchorMin.y == 1f
-            && hud.ContextText.Contains("On foot") && hud.ContextText.Contains("[Tab]") && hud.ContextText.Contains("[E]"), hud.ContextText);
+        T.Check("HUD: no key list on foot - the one button prompt sits centre-bottom and is hidden with nothing to use", hud.ContextPanel.anchorMin.x == 0.5f && hud.ContextPanel.anchorMin.y == 0f
+            && !hud.PromptShown && hud.ContextText == "", hud.ContextText);
         T.Check("HUD: minimap bottom-left", Minimap.Instance.MiniRoot.anchorMin.x == 0f && Minimap.Instance.MiniRoot.anchorMin.y == 0f);
         Minimap.Instance.ScanWorld();
         T.Check("HUD: FarmCore fields carry their field number on the map", FarmFields.Instance.Fields.Count > 0 && FarmFields.Instance.Fields.All(f => f.View != null && f.View.GetComponent<MinimapIcon>() != null && f.View.GetComponent<MinimapIcon>().letter == FarmCoreFields.Number(f, -1).ToString()));
         T.Check("HUD: gauge cluster hidden on foot", !hud.GaugesVisible);
         Loc.SetLanguage(Language.Arabic);
         FakeEngine.Run(0.3f);
-        T.Check("HUD (Arabic): mirrored - clock left, context help right, minimap bottom-right", hud.ClockPanel.anchorMin.x == 0f && hud.ContextPanel.anchorMin.x == 1f && Minimap.Instance.MiniRoot.anchorMin.x == 1f
-            && hud.ContextText.Any(c => c >= 'ﭐ'), hud.ContextText);
+        T.Check("HUD (Arabic): mirrored - clock left, minimap bottom-right", hud.ClockPanel.anchorMin.x == 0f && Minimap.Instance.MiniRoot.anchorMin.x == 1f);
         Loc.SetLanguage(Language.English);
         FakeEngine.Run(0.3f);
 
@@ -103,7 +102,7 @@ static class ParityTests
         FakeEngine.Run(0.3f);
         T.Check("HUD: gauge cluster bottom-right while driving, fuel bar = fuel", hud.GaugesVisible && hud.GaugePanel.anchorMin.x == 1f && hud.GaugePanel.anchorMin.y == 0f
             && Math.Abs(hud.FuelBar - GameHUD.FuelFraction(tractor)) < 0.01f, hud.FuelBar + " vs " + GameHUD.FuelFraction(tractor));
-        T.Check("HUD: tractor context help lists implement keys", hud.ContextText.Contains("Tractor") && hud.ContextText.Contains("[V]") && hud.ContextText.Contains("[Q]"), hud.ContextText);
+        T.Check("HUD: in the tractor only one short prompt, no key list", !hud.ContextText.Contains("[Y]") && !hud.ContextText.Contains("\n"), hud.ContextText);
         Tap(kb.tabKey);
         T.Check("Tab in a vehicle: next vehicle (the truck), tractor left parked", Vehicle.Current == truck && !tractor.IsDriving);
         Tap(kb.tabKey);

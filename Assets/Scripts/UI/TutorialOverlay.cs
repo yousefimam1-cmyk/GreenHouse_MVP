@@ -161,9 +161,6 @@ public class TutorialOverlay : MonoBehaviour
         }
         sb.Append("\n\n").Append(Glyphs.Apply(UiText.T(Hints[Step])));
         if (StepDone) sb.Append("\n<color=#8CD95A><b>").Append(UiText.T("Done!")).Append("</b></color>");
-        sb.Append("\n\n<size=80%><color=#BBBBBB>")
-          .Append(GameInput.UsingGamepad ? UiText.T("[D-pad right] Next   [D-pad down] Close") : UiText.T("[Enter] Next   [Backspace] Close"))
-          .Append("</color></size>");
         return sb.ToString();
     }
 

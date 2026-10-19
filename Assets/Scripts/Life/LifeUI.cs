@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>Screen-space canvas with one rich-text label, built in code (tool wheel / stamina HUD, records panel).</summary>
+/// <summary>Screen-space canvas with one rich-text label, built in code (tool wheel HUD, records panel).</summary>
 public static class LifeCanvas
 {
     public static TextMeshProUGUI Make(Transform host, string name, int sorting, Vector2 anchor, Vector2 size, float fontSize, bool backdrop, out GameObject root)
@@ -23,7 +23,7 @@ public static class LifeCanvas
         panel.anchorMin = panel.anchorMax = panel.pivot = anchor;
         panel.sizeDelta = size;
         var img = panelGo.GetComponent<Image>();
-        img.color = backdrop ? new Color(0.08f, 0.06f, 0.04f, 0.92f) : new Color(0f, 0f, 0f, 0.35f);
+        img.color = backdrop ? UiTheme.GlassStrong : new Color(0f, 0f, 0f, 0.35f);
         img.raycastTarget = false;
         var textGo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
         textGo.transform.SetParent(panel, false);
@@ -147,7 +147,7 @@ public class HerdPanel
     }
 }
 
-/// <summary>Bottom-center on-foot HUD: stamina and thirst bars, carried load and the tool wheel (bumpers / , . cycle).</summary>
+/// <summary>Bottom-center on-foot HUD: thirst bar, carried load and the tool wheel (bumpers / , . cycle).</summary>
 public class LifeHud
 {
     private readonly GameObject root;
@@ -187,12 +187,10 @@ public class LifeHud
         {
             sb.Append("<color=#FAC75A>").Append(Loc.T(HandTools.Key(tool))).Append("</color>");
             if (tool == HandTool.WateringCan) sb.Append(" ").Append(Mathf.RoundToInt(canWater * 100f)).Append("%");
-            sb.Append("  [Z] ").Append(Loc.T("Use")).Append("   [,] [.] ").Append(Loc.T("Change tool"));
-            if (carryKg > 0f) sb.Append("   [F] ").Append(Loc.T("Put down")).Append(" (").Append(carryKg.ToString("F0")).Append(" kg)");
+            if (carryKg > 0f) sb.Append("  (").Append(carryKg.ToString("F0")).Append(" kg)");
             sb.Append('\n');
         }
-        sb.Append(Loc.T("Stamina")).Append(' ').Append(Bar(m.Stamina01, m.exhausted ? "#FF6B6B" : "#8CD95A"))
-          .Append("   ").Append(Loc.T("Water")).Append(' ').Append(Bar(m.hydration, m.hydration < 0.25f ? "#FF6B6B" : "#5BA8FF"));
+        sb.Append(Loc.T("Water")).Append(' ').Append(Bar(m.hydration, m.hydration < 0.25f ? "#FF6B6B" : "#5BA8FF"));
         LastText = sb.ToString();
         if (text == null) return;
         Loc.ApplyFont(text);

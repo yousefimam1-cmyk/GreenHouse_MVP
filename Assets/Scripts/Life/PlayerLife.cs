@@ -3,8 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// On-foot life for the StarterAssets first-person player:
-/// - stamina and thirst (StaminaModel): sprinting drains (faster in summer heat and heatwaves, and with a load),
-///   resting (crouch and stand still) and drinking at the well / water trough restore. Exhausted = no sprint.
+/// - thirst (StaminaModel, no stamina): drinking at the well / water trough restores it.
 /// - crouch / rest (Ctrl / L3), smooth acceleration and carried weight are applied by the FirstPersonController
 ///   through SpeedFactor, SprintAllowed, AccelerationFactor and Crouching.
 /// - carrying (F / D-pad up): pick up the nearest hay bale or crate, put it down in front; a bale in the pen feeds
@@ -55,7 +54,6 @@ public class PlayerLife : MonoBehaviour
     {
         Instance = this;
         Carriable.All.Clear();   // a new PlayerLife = a freshly loaded farm; its bales and crates are spawned again
-        Model.stamina = SaveData.GetFloat("mazraa.life.stamina", StaminaModel.Max);
         Model.hydration = SaveData.GetFloat("mazraa.life.hydration", 1f);
         Tool = (HandTool)Mathf.Clamp(SaveData.GetInt("mazraa.life.tool", 0), 0, HandTools.All.Length - 1);
         CanWater = SaveData.GetFloat("mazraa.life.can", 1f);
@@ -128,25 +126,24 @@ public class PlayerLife : MonoBehaviour
         return StaminaModel.Heat(c.Season, c.Weather, c.SunHeight < 0f);
     }
 
-    /// <summary>One frame of stamina / thirst from the controller's inputs, then the movement factors.</summary>
+    /// <summary>One frame of thirst from the controller's inputs, then the movement factors.</summary>
     public void Step(float dt)
     {
         if (inputs == null) FindPlayer();
         bool moving = inputs != null && inputs.move.x * inputs.move.x + inputs.move.y * inputs.move.y > 0.01f;
         bool wantSprint = inputs != null && inputs.sprint;
-        bool canSprint = MoveRules.CanSprint(CarryKg, IsCrouching, Model.exhausted);
+        bool canSprint = MoveRules.CanSprint(CarryKg, IsCrouching);
         bool jump = inputs != null && inputs.jump;
-        if (jump && !lastJump && !Model.Spend(6f, HeatNow())) { inputs.jump = false; jump = false; }
         lastJump = jump;
         float day = WorldClock.Instance != null ? WorldClock.Instance.secondsPerDay : 360f;
         Model.Tick(dt, moving, wantSprint && canSprint, IsCrouching, HeatNow(), CarryKg, dt / Mathf.Max(1f, day));
-        canSprint = MoveRules.CanSprint(CarryKg, IsCrouching, Model.exhausted);
+        canSprint = MoveRules.CanSprint(CarryKg, IsCrouching);
         if (!canSprint && inputs != null && inputs.sprint) inputs.sprint = false;
         SprintAllowed = canSprint;
-        SpeedFactor = MoveRules.SpeedFactor(CarryKg, IsCrouching, Model.exhausted, Model.hydration);
+        SpeedFactor = MoveRules.SpeedFactor(CarryKg, IsCrouching);
         AccelerationFactor = MoveRules.Acceleration(CarryKg);
         Crouching = IsCrouching;
-        JumpAllowed = !IsCrouching && CarryKg < MoveRules.NoSprintKg && !Model.exhausted;
+        JumpAllowed = !IsCrouching && CarryKg < MoveRules.NoSprintKg;
     }
 
     public void SetCrouch(bool on) { IsCrouching = on; Crouching = on; }
@@ -213,9 +210,6 @@ public class PlayerLife : MonoBehaviour
     public string UseTool()
     {
         if (!OnFoot && player == null) FindPlayer();
-        float heat = HeatNow();
-        float cost = HandTools.Cost(Tool);
-        if (cost > 0f && Model.stamina < cost * (1f + 0.5f * heat)) return Loc.T("Too tired - rest or drink water");
         var pen = AnimalPen.Instance;
         bool inPen = pen != null && (pen.Contains(Pos) || pen.Contains(Front));
         switch (Tool)
@@ -227,7 +221,7 @@ public class PlayerLife : MonoBehaviour
                 if (plot == null) return Loc.T("Nothing to hoe here - stand on an untilled field");
                 var ctx = FarmFields.Instance.HandTool(FieldTool.Hoe, at);
                 if (ctx.cells <= 0) return Loc.T("Nothing to hoe here - stand on an untilled field");
-                Model.Spend(cost, heat);
+               
                 return Loc.T("Field plowed by hand");
             }
             case HandTool.WateringCan:
@@ -246,7 +240,7 @@ public class PlayerLife : MonoBehaviour
                     var ctx = FarmFields.Instance.HandTool(FieldTool.WateringCan, at, 10f);   // ~10 L/m2 around you from a full can's quarter
                     if (ctx.cells > 0)
                     {
-                        CanWater -= 0.25f; Model.Spend(cost, heat); Save();
+                        CanWater -= 0.25f; Save();
                         return Loc.T("Field watered by hand");
                     }
                 }
@@ -254,7 +248,7 @@ public class PlayerLife : MonoBehaviour
                 {
                     pen.AddWater(0.2f);
                     if (HerdManager.Instance != null) HerdManager.Instance.WaterAll();
-                    CanWater -= 0.25f; Model.Spend(cost, heat); Save();
+                    CanWater -= 0.25f; Save();
                     return Loc.T("Poured water into the trough");
                 }
                 return Loc.T("Nothing to water here");
@@ -266,14 +260,14 @@ public class PlayerLife : MonoBehaviour
                 pen.CleanPartly(0.3f);
                 var eco = EconomyManager.Instance;
                 if (eco != null && eco.Good("manure") != null) eco.AddGood("manure", 2f);
-                Model.Spend(cost, heat);
+               
                 return Loc.T("Mucked out part of the pen");
             }
             case HandTool.Brush:
             {
                 var body = NearestAnimal();
                 if (body == null || HerdManager.Instance == null) return Loc.T("No animal close enough");
-                Model.Spend(cost, heat);
+               
                 return HerdManager.Instance.Groom(body.uid);
             }
             default:
@@ -383,7 +377,6 @@ public class PlayerLife : MonoBehaviour
 
     public void Save()
     {
-        SaveData.SetFloat("mazraa.life.stamina", Model.stamina);
         SaveData.SetFloat("mazraa.life.hydration", Model.hydration);
         SaveData.SetInt("mazraa.life.tool", (int)Tool);
         SaveData.SetFloat("mazraa.life.can", CanWater);

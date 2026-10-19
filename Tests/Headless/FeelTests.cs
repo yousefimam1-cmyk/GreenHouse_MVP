@@ -48,8 +48,8 @@ static class FeelTests
     {
         Vector3 fwd = Vector3.forward;
         float walk = MoveFeel.TargetSpeed(false, true, 1f, 1f), run = MoveFeel.TargetSpeed(true, true, 1f, 1f);
-        T.Check("Feel: walk ~1.5 m/s, run ~5 m/s", Math.Abs(walk - 1.5f) < 0.01f && Math.Abs(run - 5f) < 0.01f, walk + " / " + run);
-        T.Check("Feel: no sprint allowed (stamina / load) = walk; stick tilt scales the speed",
+        T.Check("Feel: walk 4.5 m/s, sprint 7.5 m/s", Math.Abs(walk - 4.5f) < 0.01f && Math.Abs(run - 7.5f) < 0.01f, walk + " / " + run);
+        T.Check("Feel: no sprint allowed (load) = walk; stick tilt scales the speed",
             Math.Abs(MoveFeel.TargetSpeed(true, false, 1f, 1f) - walk) < 0.01f && Math.Abs(MoveFeel.TargetSpeed(false, true, 1f, 0.5f) - walk * 0.5f) < 0.01f && MoveFeel.TargetSpeed(true, true, 1f, 0f) == 0f);
 
         foreach (float fps in Rates)

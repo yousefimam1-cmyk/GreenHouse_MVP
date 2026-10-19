@@ -33,7 +33,7 @@ public class StoryIntro : MonoBehaviour
         var bg = new GameObject("Backdrop", typeof(RectTransform), typeof(Image), typeof(Button));
         bg.transform.SetParent(canvasGo.transform, false);
         var brt = (RectTransform)bg.transform; brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one; brt.offsetMin = brt.offsetMax = Vector2.zero;
-        bg.GetComponent<Image>().color = new Color(0.03f, 0.03f, 0.02f, 0.86f);
+        bg.GetComponent<Image>().color = new Color(UiTheme.Scrim.r, UiTheme.Scrim.g, UiTheme.Scrim.b, 0.86f);
         bg.GetComponent<Button>().onClick.AddListener(Close);
 
         var tgo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));

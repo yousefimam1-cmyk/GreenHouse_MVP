@@ -90,8 +90,12 @@ public class GameHUD : MonoBehaviour
     }
 
     /// <summary>Settings > Game > Help hints: show or hide the key hints box.</summary>
-    public void SetHintsVisible(bool on) { if (hintPanel != null && hintPanel.gameObject.activeSelf != on) hintPanel.gameObject.SetActive(on); }
-    public bool HintsVisible => hintPanel != null && hintPanel.gameObject.activeSelf;
+    private bool hintsEnabled = true;
+    public void SetHintsVisible(bool on) { hintsEnabled = on; RefreshContext(); }
+    /// <summary>The button prompt is switched on (it still only shows while something can be used).</summary>
+    public bool HintsVisible => hintsEnabled;
+    /// <summary>The prompt is on screen now.</summary>
+    public bool PromptShown => hintPanel != null && hintPanel.gameObject.activeSelf;
 
     private void LateUpdate()
     {
@@ -221,7 +225,6 @@ public class GameHUD : MonoBehaviour
         string cond = Mathf.Min(eng, tyre) < 50 ? "#FF6B5B" : Mathf.Min(eng, tyre) < 80 ? "#F2B84B" : "#BBBBBB";
         sb.Append('\n').Append("<color=").Append(cond).Append('>').Append(Loc.T("Engine {0}%   Tyres {1}%   {2} t", eng, tyre, (v.TotalMass / 1000f).ToString("F1"))).Append("</color>");
         if (v.AtWorkshop && v.NeedsRepair) sb.Append('\n').Append(Glyphs.Apply(Loc.T("[R] Repair for {0} SAR", v.RepairCost.ToString("N0"))));
-        sb.Append("\n<size=75%>").Append(Glyphs.Apply(Loc.T("[F] Engine  [Shift]/[Ctrl] Gear  [Y] Cruise [Minus]/[Plus]  [Z] 4WD / diff lock  [Slash] GPS"))).Append("</size>");
     }
 
     private void RefreshTruck()
@@ -373,9 +376,15 @@ public class GameHUD : MonoBehaviour
 
     private void RefreshContext()
     {
-        if (hintText == null || !hintPanel.gameObject.activeSelf) return;
+        if (hintText == null) return;
+        // one short prompt, only while something can be used (looked at, or the vehicle's next action)
+        string p = !hintsEnabled || GameMenu.IsOpen ? null : (InteractionController.CurrentPrompt ?? ContextHelp.Prompt());
+        bool show = !string.IsNullOrEmpty(p);
+        if (hintPanel.gameObject.activeSelf != show) hintPanel.gameObject.SetActive(show);
+        if (!show) { contextRaw = ""; return; }
         Loc.ApplyFont(hintText);
-        SetContext(ContextHelp.Text());
+        hintText.alignment = TextAlignmentOptions.Center;
+        SetContext(Glyphs.Apply(p));
     }
 
     /// <summary>Context help text shown now (tests).</summary>
@@ -451,7 +460,7 @@ public class GameHUD : MonoBehaviour
         BuildClock();
         statusPanel = MakePanel("Status", new Vector2(1, 1), new Vector2(-Edge, -170), new Vector2(400, 0), out statusText, UiTheme.Small);
         infoPanel = MakePanel("CropInfo", new Vector2(0, 0.5f), new Vector2(Edge, 0), new Vector2(460, 0), out infoText, UiTheme.Body);
-        hintPanel = MakePanel("Context help", new Vector2(0, 1), new Vector2(Edge, -Edge), new Vector2(380, 0), out hintText, UiTheme.Small);   // top-left key help
+        hintPanel = MakePanel("Context help", new Vector2(0.5f, 0), new Vector2(0, 150), new Vector2(560, 0), out hintText, UiTheme.Lead);   // the one button prompt, centre-bottom
         hintText.lineSpacing = 12f;   // room for the keycap plates
         helpPanel = MakePanel("Help", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 0), out helpText, UiTheme.Lead);
         trainingPanel = MakePanel("Training", new Vector2(1, 1), new Vector2(-Edge, -84), new Vector2(400, 0), out trainingText, UiTheme.Small);
@@ -546,10 +555,9 @@ public class GameHUD : MonoBehaviour
         Mirror(pricePanel, !rtl);
         Mirror(truckPanel, !rtl);
         Mirror(infoPanel, rtl);
-        Mirror(hintPanel, rtl);
         Mirror(partnerPanel, !rtl);
         LayoutCluster(rtl);
-        foreach (var t in new[] { statusText, infoText, hintText, helpText, partnerText, gaugeDetail })
+        foreach (var t in new[] { statusText, infoText, helpText, partnerText, gaugeDetail })
         {
             Loc.ApplyFont(t);
             t.alignment = rtl ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
@@ -559,7 +567,7 @@ public class GameHUD : MonoBehaviour
         truckText.alignment = rtl ? TextAlignmentOptions.TopRight : TextAlignmentOptions.TopLeft;
         trainingText.alignment = TextAlignmentOptions.Top;
         glyphVersion = GameInput.Version;
-        SetContext(ContextHelp.Text());
+        RefreshContext();
         RefreshClock();
         helpText.text = Title(Loc.T("HELP")) + "\n" + Loc.T("HELP_BODY");
         RefreshStatus();
@@ -579,14 +587,12 @@ public class GameHUD : MonoBehaviour
         if (sm.Running)
         {
             sb.Append('\n').Append(sm.ProgressText());
-            sb.Append("\n<size=85%>").Append(Loc.T("[T] Stop training")).Append("</size>");
         }
         else
         {
             sb.Append('\n').Append(Loc.Display(ScenarioManager.Brief(d)));
             float best = sm.BestTime(d);
             if (best >= 0f) sb.Append('\n').Append(Loc.T("Best: {0}s", best.ToString("F0")));
-            sb.Append("\n<size=85%>").Append(UiText.T("[T] Start   [B] Next scenario")).Append("</size>");
         }
         trainingText.text = sb.ToString();
         // Show while running, or briefly as a menu when nothing else is open.

@@ -34,15 +34,15 @@ public class CozyPanel
         var panel = NewRect("Panel", go.transform, typeof(Image), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
         panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0.5f, 0.5f);
         panel.sizeDelta = new Vector2(width, 0);
-        panel.GetComponent<Image>().color = new Color(0.08f, 0.06f, 0.04f, 0.94f);
+        panel.GetComponent<Image>().color = UiTheme.GlassStrong;
         var vl = panel.GetComponent<VerticalLayoutGroup>();
         vl.padding = new RectOffset(28, 28, 22, 22); vl.spacing = 12;
         vl.childControlWidth = vl.childControlHeight = true; vl.childForceExpandWidth = true; vl.childForceExpandHeight = false;
         panel.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        title = NewText(panel, 32, new Color(0.98f, 0.78f, 0.35f));
+        title = NewText(panel, 32, UiTheme.Accent);
         body = NewText(panel, 22, Color.white);
-        footer = NewText(panel, 19, new Color(0.8f, 0.78f, 0.72f));
+        footer = NewText(panel, 19, UiTheme.TextDim);
         root = go;
         root.SetActive(false);
         all.Add(this);

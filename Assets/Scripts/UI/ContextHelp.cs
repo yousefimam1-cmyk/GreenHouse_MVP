@@ -75,7 +75,25 @@ public static class ContextHelp
     private static string G(string key) => Glyphs.Apply(UiText.T(key));
     private static string Hi(string s) => "<color=#FFC24D>" + s + "</color>";
 
-    /// <summary>The whole box text.</summary>
+    /// <summary>
+    /// The one short prompt for the vehicle you are in, or null: engine off, repair at the workshop, an implement in reach.
+    /// On foot the prompt is the interactable under the crosshair (InteractionController.CurrentPrompt).
+    /// </summary>
+    public static string Prompt()
+    {
+        var v = Vehicle.Current;
+        if (v == null) return null;
+        if (!v.Drive.EngineOn) return G("[F] Start engine");
+        if (v.AtWorkshop && v.NeedsRepair) return G("[R] Repair");
+        if (v is Tractor t && t.ActiveImplement == Implement.None)
+        {
+            var near = ParkedImplement.Nearest(t.HitchPoint, Tractor.AttachRange);
+            if (near != null) return G(GameInput.UsingGamepad ? "Hold [Q] Attach" : "[Q] Attach") + ": " + Loc.Display(Tractor.ImplementName(near.kind));
+        }
+        return null;
+    }
+
+    /// <summary>The full controls list text (no longer on the HUD).</summary>
     public static string Text()
     {
         var sb = new StringBuilder();

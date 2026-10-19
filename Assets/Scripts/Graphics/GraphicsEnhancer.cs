@@ -36,7 +36,7 @@ public class GraphicsEnhancer : MonoBehaviour
     /// <summary>Final post-exposure (EV) is always kept inside this range, whatever preset, brightness or weather.</summary>
     public const float MinExposure = -0.5f, MaxExposure = 0.45f;
     /// <summary>Per-preset exposure compensation (EV): High / Ultra grade in HDR and add the reflection probe, so a touch less.</summary>
-    private static readonly float[] presetExposure = { 0f, 0f, -0.05f, -0.1f };
+    private static readonly float[] presetExposure = { 0f, 0f, -0.05f, -0.05f };
     public const float LookContrast = 6f, BloomIntensity = 0.4f, BloomThreshold = 1.1f;
 
     /// <summary>Post-exposure (EV) for a preset and a Brightness setting (0.5..1.5): linear, +-0.45 EV at the ends, clamped.</summary>

@@ -5,66 +5,26 @@ using UnityEngine;
 // Pure game rules for on-foot life and animal husbandry (no scene objects), so they can be tested headlessly.
 
 /// <summary>
-/// Player stamina (0..100) and hydration (0..1). Sprinting, jumping and manual work drain stamina, more in the heat
-/// and while carrying; walking slowly, standing and crouching (resting) bring it back. Hydration drops over the day
-/// (much faster in a summer heatwave) and caps stamina; drinking at the well or a water trough refills it.
-/// Running dry makes you exhausted: no sprinting until stamina is back above 25.
+/// Player hydration (0..1). It drops over the day (much faster in a summer heatwave); drinking at the well or a water
+/// trough refills it. There is no stamina: sprinting, jumping and work are free.
 /// </summary>
 [Serializable]
 public class StaminaModel
 {
-    public const float Max = 100f;
-    public const float SprintDrain = 11f;      // per second at heat 0, nothing carried
-    public const float RecoverIdle = 9f, RecoverWalk = 4f, RecoverRest = 16f;
-    public const float ExhaustedUntil = 25f;
-
-    public float stamina = Max;
     public float hydration = 1f;
-    public bool exhausted;
-
-    /// <summary>Stamina cannot go above this while thirsty (40 when completely dry).</summary>
-    public float Cap => 40f + 60f * Mathf.Clamp01(hydration);
-    public float Stamina01 => stamina / Max;
 
     /// <summary>Advance by dt seconds. heat01: 0 cool .. 1 heatwave noon. dayFraction: dt as a fraction of an in-game day.</summary>
     public void Tick(float dt, bool moving, bool sprinting, bool crouching, float heat01, float carryKg, float dayFraction)
     {
         heat01 = Mathf.Clamp01(heat01);
-        float load = 1f + Mathf.Clamp01(carryKg / 40f);
-        if (sprinting && moving)
-            stamina -= dt * SprintDrain * (1f + 1.2f * heat01) * load;
-        else
-        {
-            float rate = !moving ? (crouching ? RecoverRest : RecoverIdle) : (crouching ? RecoverWalk * 1.5f : RecoverWalk);
-            if (carryKg > 0f) rate *= 0.5f;
-            stamina += dt * rate * (1f - 0.45f * heat01);
-        }
         // Thirst: about 60% of the water per day when mild, up to 160% in a heatwave (more when running).
         hydration -= dayFraction * (0.6f + 1.0f * heat01) * (sprinting && moving ? 1.6f : 1f);
         hydration = Mathf.Clamp01(hydration);
-        Clamp();
     }
 
-    /// <summary>Spend stamina for work (tools, jump). Returns false (and spends nothing) when too tired.</summary>
-    public bool Spend(float amount, float heat01)
-    {
-        float cost = amount * (1f + 0.5f * Mathf.Clamp01(heat01));
-        if (stamina < cost) return false;
-        stamina -= cost;
-        Clamp();
-        return true;
-    }
+    public void Drink() { hydration = 1f; }
 
-    public void Drink() { hydration = 1f; stamina = Mathf.Min(Cap, stamina + 25f); Clamp(); }
-
-    public void Reset() { stamina = Max; hydration = 1f; exhausted = false; }
-
-    private void Clamp()
-    {
-        stamina = Mathf.Clamp(stamina, 0f, Cap);
-        if (stamina <= 0.01f) exhausted = true;
-        else if (exhausted && stamina >= ExhaustedUntil) exhausted = false;
-    }
+    public void Reset() { hydration = 1f; }
 
     /// <summary>Heat felt outside: heatwave 1, summer 0.6, spring / autumn 0.15, winter 0; half at night.</summary>
     public static float Heat(Season s, Weather w, bool night)
@@ -83,22 +43,20 @@ public static class MoveRules
     public const float MaxCarryKg = 50f;
     public const float NoSprintKg = 20f;
 
-    /// <summary>1 with empty hands, down to 0.7 at the 50 kg limit (mild, Farming Simulator style).</summary>
-    public static float CarryFactor(float kg) => 1f - 0.3f * Mathf.Clamp01(kg / MaxCarryKg);
+    /// <summary>1 with empty hands, down to 0.9 at the 50 kg limit (mild, Farming Simulator style).</summary>
+    public static float CarryFactor(float kg) => 1f - 0.1f * Mathf.Clamp01(kg / MaxCarryKg);
 
-    public static float SpeedFactor(float kg, bool crouching, bool exhausted, float hydration)
+    public static float SpeedFactor(float kg, bool crouching)
     {
         float f = CarryFactor(kg);
         if (crouching) f *= 0.5f;
-        if (exhausted) f *= 0.85f;
-        if (hydration < 0.15f) f *= 0.9f;
         return f;
     }
 
-    public static bool CanSprint(float kg, bool crouching, bool exhausted) => !exhausted && !crouching && kg < NoSprintKg;
+    public static bool CanSprint(float kg, bool crouching) => !crouching && kg < NoSprintKg;
 
     /// <summary>Acceleration multiplier for the controller (MoveFeel): 1 with empty hands, a little slower with a load.</summary>
-    public static float Acceleration(float kg) => Mathf.Lerp(1f, 0.75f, Mathf.Clamp01(kg / MaxCarryKg));
+    public static float Acceleration(float kg) => Mathf.Lerp(1f, 0.9f, Mathf.Clamp01(kg / MaxCarryKg));
 }
 
 public enum HandTool { Hands, Hoe, WateringCan, Shovel, Brush }

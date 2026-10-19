@@ -17,6 +17,8 @@ public class InteractionController : MonoBehaviour
 
     /// <summary>True while something interactable is under the crosshair (A / Cross then interacts instead of jumping).</summary>
     public static bool HasTarget { get; private set; }
+    /// <summary>Prompt of the interactable under the crosshair ("[E] Drive tractor"), null when none; the HUD shows it centre-bottom.</summary>
+    public static string CurrentPrompt { get; private set; }
 
     private void Awake()
     {
@@ -57,18 +59,17 @@ public class InteractionController : MonoBehaviour
                 {
                     currentInteractable.SetHighlighted(true);
                     shownPrompt = currentInteractable.InteractionPrompt;
-                    if (promptUI != null)
-                        promptUI.Show(shownPrompt, hit.collider.transform, currentInteractable.PromptOffset);
+                    CurrentPrompt = shownPrompt;
                 }
             }
             else if (currentInteractable != null)
             {
                 // Prompt can change while looking (growth %, harvest ready, language switch).
                 string prompt = currentInteractable.InteractionPrompt;
-                if (prompt != shownPrompt && promptUI != null)
+                if (prompt != shownPrompt)
                 {
                     shownPrompt = prompt;
-                    promptUI.Show(prompt, currentCollider.transform, currentInteractable.PromptOffset);
+                    CurrentPrompt = prompt;
                 }
             }
         }
@@ -96,7 +97,7 @@ public class InteractionController : MonoBehaviour
         }
     }
 
-    private void OnDisable() => HasTarget = false;
+    private void OnDisable() { HasTarget = false; CurrentPrompt = null; }
 
     private void ClearCurrent()
     {
@@ -107,6 +108,7 @@ public class InteractionController : MonoBehaviour
             currentCollider = null;
             shownPrompt = null;
         }
+        CurrentPrompt = null;
         if (promptUI != null) promptUI.Hide();
     }
 }
